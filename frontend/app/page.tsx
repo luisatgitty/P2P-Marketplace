@@ -11,14 +11,14 @@ const MOCK_LISTINGS: PostCardProps[] = [
   { id: "4", title: "MacBook Pro M2 2023", price: 68000, type: "sale", location: "Quezon City", postedAt: "5h ago", imageUrl: "https://images.unsplash.com/photo-1593642632559-0c6d3fc62b89?w=400&q=80", seller: { name: "Ana Reyes", rating: 4.8 } },
   { id: "5", title: "Honda Click 125 Scooter", price: 600, priceUnit: "/ day", type: "rent", location: "Laguna", postedAt: "6h ago", imageUrl: "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&q=80", seller: { name: "Carlos M.", rating: 4.6 } },
 ];
-
+//Home page showcasing featured listings, category filter, and a grid of recent listings with a "Load more" button at the bottom.
 export default function Home() {
   return (
     <>
-      {/* <section className="bg-stone-800 px-4 sm:px-6 lg:px-8 py-10 fade-in">
+      * <section className="bg-[#1e2433] px-4 sm:px-6 lg:px-8 py-10 fade-in">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
           <div>
-            <p className="text-stone-400 text-xs font-medium uppercase tracking-widest mb-2">P2P Marketplace</p>
+
             <h2 className="font-brand text-3xl sm:text-4xl text-stone-100 leading-tight max-w-lg">
               Buy, Sell & Rent —<br />
               <span className="italic font-normal text-stone-400">from people near you.</span>
@@ -29,18 +29,22 @@ export default function Home() {
             </div>
           </div>
           <div className="flex gap-6 text-center shrink-0">
-            {[{ value: "0.0k+", label: "Active Listings" }, { value: "0.0k", label: "Sellers" }, { value: "00%", label: "Satisfaction" }].map((stat, i) => (
-              <div key={stat.label} className="flex items-center gap-6">
-                {i > 0 && <div className="w-px h-10 bg-stone-700" />}
-                <div>
-                  <p className="font-brand text-2xl text-stone-100 font-semibold">{stat.value}</p>
-                  <p className="text-xs text-stone-500 mt-0.5">{stat.label}</p>
+            {[
+                { value: "Buy", label: "Find great deals" },
+                { value: "Sell", label: "List for free" },
+                { value: "Rent", label: "Short term use" },
+              ].map((stat, i) => (
+                <div key={stat.label} className="flex items-center gap-8">
+                  {i > 0 && <div className="w-px h-20 bg-stone-700" />}
+                  <div>
+                    <p className="font-brand text-2xl text-stone-100 font-semibold">{stat.value}</p>
+                    <p className="text-xs text-stone-500 mt-0.5">{stat.label}</p>
+                  </div>
                 </div>
-              </div>
             ))}
           </div>
         </div>
-      </section> */}
+      </section> 
 
       <CategoryFilter totalCount={1248} />
 
