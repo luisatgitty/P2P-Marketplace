@@ -8,6 +8,10 @@ import (
 
 func AppRoutes(app *fiber.App) {
 	// Create API endpoints
-	app.Post("/signup", controller.SignUpUser)
-	app.Post("/login", controller.LogInUser)
+	app.Post("/auth/signup", controller.SignUpUser)
+	app.Post("/auth/login", controller.LogInUser)
+
+	// protected
+	app.Get("/api/auth/me", controller.Authenticate, controller.Me)
+	app.Post("/api/auth/logout", controller.Authenticate, controller.Logout)
 }
