@@ -30,11 +30,10 @@ func main() {
 
 	// CORS configuration
 	app.Use(cors.New(cors.Config{
-		AllowOrigins: "*",
-		// AllowOrigins: "http://localhost:3000",
-		AllowHeaders: "Origin, Content-Type, Accept, Authorization",
-		AllowMethods: "GET,POST,PUT,PATCH,DELETE,OPTIONS",
-		// AllowCredentials: true,
+		AllowOrigins:     "http://localhost:3000",
+		AllowHeaders:     "Origin, Content-Type, Accept",
+		AllowMethods:     "GET,POST,PUT,PATCH,DELETE,OPTIONS",
+		AllowCredentials: true,
 	}))
 
 	// Register routes
