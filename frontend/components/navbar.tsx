@@ -4,6 +4,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useUser } from "@/utils/UserContext";
 import SearchBar from './ui/search-bar';
+import { MessageCircle } from 'lucide-react';
 
 export default function Navbar() {
     const { clearUserData, isValidated } = useUser();
@@ -25,6 +26,11 @@ export default function Navbar() {
                 {/* Right Side */}
                 <div className="flex items-center gap-1">
                     <Link href="/" className="text-l px-3 py-2 hover:bg-gray-700 rounded whitespace-nowrap truncate">Home</Link>
+                    <Link href="/messages" className="flex items-center gap-2 px-3 py-2 hover:bg-gray-700 rounded whitespace-nowrap">
+                        <MessageCircle size={20} />
+                        <span className="hidden sm:inline text-l">Messages</span>
+                    </Link>
+
                     {/* Display when user is signed in */}
                     <Link href="/profile" className="md-inline-flex items-center gap-2 text-xl px-3 py-2 hover:bg-gray-700 rounded">
                         <Image src="/profile-icon.png" alt="Profile" width={32} height={32} className="rounded-full" />
