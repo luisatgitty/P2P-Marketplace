@@ -1,6 +1,6 @@
 "use client";
 
-export default function ValidatingUser() {
+export default function ValidatingUser({ children }: { children: React.ReactNode }) {
     return (
         <div className="flex items-center justify-center min-h-screen pb-64">
             <div className="bg-gray-800 shadow-xl rounded-2xl p-10 text-center">

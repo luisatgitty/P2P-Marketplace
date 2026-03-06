@@ -2,9 +2,12 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
+import { useUser } from "@/utils/UserContext";
 import SearchBar from './ui/search-bar';
 
 export default function Navbar() {
+    const { clearUserData, isValidated } = useUser();
+
     return (
         <nav className="fixed top-0 left-0 right-0 z-50 bg-gray-800 text-white p-2">
             <div className="container mx-auto flex items-center justify-between">
@@ -22,15 +25,18 @@ export default function Navbar() {
                 {/* Right Side */}
                 <div className="flex items-center gap-1">
                     <Link href="/" className="text-l px-3 py-2 hover:bg-gray-700 rounded whitespace-nowrap truncate">Home</Link>
-
                     {/* Display when user is signed in */}
                     <Link href="/profile" className="md-inline-flex items-center gap-2 text-xl px-3 py-2 hover:bg-gray-700 rounded">
                         <Image src="/profile-icon.png" alt="Profile" width={32} height={32} className="rounded-full" />
                     </Link>
-                    <Link href="/logout" className="text-l px-3 py-2 hover:bg-gray-700 rounded whitespace-nowrap truncate">Log Out</Link>
-
-                    {/* Display when user is not sign in */}
-                    <Link href="/login" className="text-l px-3 py-2 hover:bg-gray-700 rounded whitespace-nowrap truncate">Log In</Link>
+                    {/* Display login/logout button depending on login status */}
+                    {isValidated ? 
+                    (<button
+                        onClick={clearUserData} disabled={!isValidated}
+                        className="text-l px-3 py-2 hover:bg-gray-700 rounded whitespace-nowrap truncate">
+                        Logout
+                    </button>) :
+                    (<Link href="/login" className="text-l px-3 py-2 hover:bg-gray-700 rounded whitespace-nowrap truncate">Log In</Link>)}
                 </div>
             </div>
         </nav>

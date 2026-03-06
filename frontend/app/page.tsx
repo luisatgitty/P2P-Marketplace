@@ -15,10 +15,10 @@ const MOCK_LISTINGS: PostCardProps[] = [
 export default function Home() {
   return (
     <>
-      {/* <section className="bg-stone-800 px-4 sm:px-6 lg:px-8 py-10 fade-in">
+      <section className="bg-stone-800 px-4 sm:px-6 lg:px-8 py-10 fade-in">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
           <div>
-            <p className="text-stone-400 text-xs font-medium uppercase tracking-widest mb-2">P2P Marketplace</p>
+            {/* <p className="text-stone-400 text-xs font-medium uppercase tracking-widest mb-2">P2P Marketplace</p> */}
             <h2 className="font-brand text-3xl sm:text-4xl text-stone-100 leading-tight max-w-lg">
               Buy, Sell & Rent —<br />
               <span className="italic font-normal text-stone-400">from people near you.</span>
@@ -40,7 +40,7 @@ export default function Home() {
             ))}
           </div>
         </div>
-      </section> */}
+      </section>
 
       <CategoryFilter totalCount={1248} />
 

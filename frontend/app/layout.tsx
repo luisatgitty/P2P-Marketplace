@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
-import { Inter, Lusitana } from 'next/font/google';
-import { DM_Sans } from "next/font/google";
+import { DM_Sans, Geist, Geist_Mono, Inter } from "next/font/google";
+import { UserProvider } from "@/utils/UserContext";
 import Navbar from "../components/navbar";
 import "./globals.css";
 
@@ -26,30 +25,21 @@ const inter = Inter({
   subsets: ["latin"],
 });
 
-const lusitana = Lusitana({
-  variable: "--font-lusitana",
-  weight: ['400', '700'],
-  subsets: ["latin"],
-});
-
 export const metadata: Metadata = {
   title: "P2P Marketplace",
   description: "Buy, sell, rent, and avail services from people near you.",
 };
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+export default function RootLayout({ children }: 
+  Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
-      {/* <ReactQueryClientProvider> */}
-        <body className={`${inter.variable} ${lusitana.variable} antialiased`}>
-          <Navbar />
-          {children}
+        <body className={`${inter.variable} ${dmSans.variable} antialiased`}>
+          <UserProvider>
+            <Navbar />
+            {children}
+          </UserProvider>
         </body>
-      {/* </ReactQueryClientProvider> */}
     </html>
   );
 }

@@ -1,32 +1,46 @@
 "use client"
 
 import { useState } from "react"
-import { cn } from "@/lib/utils"
+import { useRouter } from "next/navigation";
+import { useUser } from "@/utils/UserContext";
+import { getSessionMeta, signUpUser } from "@/services/authService";
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import {
-  Field,
-  FieldDescription,
-  FieldGroup,
-  FieldLabel,
-  FieldSeparator,
-} from "@/components/ui/field"
+import { Field, FieldDescription, FieldGroup, FieldLabel, FieldSeparator } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
+import { cn } from "@/lib/utils"
 
-export function LoginForm({
-  className,
-  onSubmitData,
-  ...props
-}: React.ComponentProps<"div"> & {
-  onSubmitData?: (data: { email: string; password: string }) => void
-}) {
+export function LoginForm({ className, ...props }: React.ComponentProps<"div">) {
+  const router = useRouter();
   const [form, setForm] = useState({ email: "", password: "" })
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const { saveUserData } = useUser();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Use the name attribute as the key
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setForm({ ...form, [e.target.name]: e.target.value });
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    onSubmitData?.({ email: form.email, password: form.password })
-  }
+    setLoading(true);
+    setError("");
 
+    try {
+      const { ipAddress, userAgent } = await getSessionMeta();
+      const route = "/auth/login";
+      const errorMessage = "Login failed";
+      const user = await signUpUser(route, errorMessage, { ...form, ipAddress, userAgent });
+      saveUserData(user);
+      router.push("/");
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+  
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
       <Card className="overflow-hidden p-0">
@@ -42,34 +56,35 @@ export function LoginForm({
               <Field>
                 <FieldLabel htmlFor="email">Email</FieldLabel>
                 <Input
-                  id="email"
+                  name="email"
                   type="email"
                   placeholder="m@example.com"
                   value={form.email}
-                  onChange={(e) => setForm({ ...form, email: e.target.value })}
+                  onChange={handleChange}
                   required
                 />
               </Field>
               <Field>
                 <div className="flex items-center">
                   <FieldLabel htmlFor="password">Password</FieldLabel>
-                  <a
-                    href="/forgot-password"
-                    className="ml-auto text-sm underline-offset-2 hover:underline"
-                  >
+                  <a href="/forgot-password"
+                    className="ml-auto text-sm underline-offset-2 hover:underline">
                     Forgot your password?
                   </a>
                 </div>
                 <Input
-                  id="password"
+                  name="password"
                   type="password"
                   value={form.password}
-                  onChange={(e) => setForm({ ...form, password: e.target.value })}
+                  onChange={handleChange}
                   required
                 />
               </Field>
+              {error && <p style={{ color: "red" }}>{error}</p>}
               <Field>
-                <Button type="submit">Login</Button>
+                <Button type="submit" disabled={loading}>
+                  {loading ? "Logging in..." : "Login"}
+                </Button>
               </Field>
               <FieldSeparator className="*:data-[slot=field-separator-content]:bg-card">
                 Or continue with
