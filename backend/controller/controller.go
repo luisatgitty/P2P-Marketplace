@@ -242,14 +242,14 @@ func Me(c *fiber.Ctx) error {
 func Logout(c *fiber.Ctx) error {
 	fmt.Println("/auth/logout called")
 	db := middleware.DBConn
-	token := c.Cookies("session_token")
+	sessionToken := c.Cookies("session_token")
 
-	if token == "" {
+	if sessionToken == "" {
 		return SendErrorResponse(c, 400, "No session token", nil)
 	}
 
-	hashed := HashToken(token)
-	if res := db.Exec("DELETE FROM public.sessions WHERE session_token=$1", hashed); res.Error != nil {
+	sessionId := HashToken(sessionToken)
+	if res := db.Exec("DELETE FROM public.sessions WHERE session_token=$1", sessionId); res.Error != nil {
 		return SendErrorResponse(c, 500, "Failed to delete session", res.Error)
 	}
 

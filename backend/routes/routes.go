@@ -1,17 +1,17 @@
 package routes
 
 import (
-	"p2p_marketplace/backend/controller"
-
 	"github.com/gofiber/fiber/v2"
+
+	"p2p_marketplace/backend/controller"
 )
 
 func AppRoutes(app *fiber.App) {
-	// Create API endpoints
+	// Public
 	app.Post("/auth/signup", controller.SignUpUser)
 	app.Post("/auth/login", controller.LogInUser)
 
-	// protected
-	app.Get("/api/auth/me", controller.Authenticate, controller.Me)
-	app.Post("/api/auth/logout", controller.Authenticate, controller.Logout)
+	// Protected
+	app.Get("/auth/me", controller.Authenticate, controller.Me)
+	app.Delete("/auth/logout", controller.Authenticate, controller.Logout)
 }

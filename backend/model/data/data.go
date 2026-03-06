@@ -9,7 +9,7 @@ type UserFromReq struct {
 	Password  string `json:"password"`
 	Email     string `json:"email"`
 	IpAddress string `json:"ipAddress"`
-	UserAgent string `json:"UserAgent"`
+	UserAgent string `json:"userAgent"`
 }
 
 type UserFromDb struct {
