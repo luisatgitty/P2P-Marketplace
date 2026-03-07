@@ -6,7 +6,6 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"golang.org/x/crypto/bcrypt"
-	// "p2p_marketplace/backend/controller"
 )
 
 func IsPasswordMatch(password, hash string) bool {

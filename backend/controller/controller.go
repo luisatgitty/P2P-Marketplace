@@ -12,7 +12,6 @@ import (
 )
 
 func SignUpUser(c *fiber.Ctx) error {
-	// Call database connection and initialize user struct
 	fmt.Println("/auth/signup")
 	db := middleware.DBConn
 	var rcvUser data.UserFromReq
@@ -29,10 +28,11 @@ func SignUpUser(c *fiber.Ctx) error {
 		return SendErrorResponse(c, 400, "All fields are required", nil)
 	}
 
-	// TODO: Trim whitespace from data
+	// Trim whitespace from received payload
+	rcvUser = middleware.TrimWhitespaces(rcvUser)
 
 	// Check if email already exists
-	var existingUserCount int64
+	var existingUserCount int
 	if err := db.Raw("SELECT COUNT(*) FROM public.users WHERE email=$1",
 		rcvUser.Email).Scan(&existingUserCount).Error; err != nil {
 		return SendErrorResponse(c, 500, "User data retrieval failed", err)

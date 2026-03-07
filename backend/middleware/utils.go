@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"net/mail"
 	"os"
+	"p2p_marketplace/backend/model/data"
+	"strings"
 	"unicode"
 
 	"github.com/joho/godotenv"
@@ -18,6 +20,14 @@ func GetEnv(key string) string {
 		return err.Error()
 	}
 	return os.Getenv(key)
+}
+
+func TrimWhitespaces(rcvUser data.UserFromReq) data.UserFromReq {
+	rcvUser.FirstName = strings.TrimSpace(rcvUser.FirstName)
+	rcvUser.LastName = strings.TrimSpace(rcvUser.LastName)
+	rcvUser.Email = strings.TrimSpace(rcvUser.Email)
+	rcvUser.Password = strings.TrimSpace(rcvUser.Password)
+	return rcvUser
 }
 
 func ValidateSignUpInput(email, password, firstName, lastName string) error {
