@@ -80,6 +80,7 @@ func LogInUser(c *fiber.Ctx) error {
 
 	// Check if user password matches the stored hash
 	if !middleware.IsPasswordMatch(rcvUser.Password, userFromDb.Password) {
+		repository.IncreaseUserFailedLogin(userFromDb.UserId)
 		return SendErrorResponse(c, 401, "Incorrect password", nil)
 	}
 
@@ -89,6 +90,11 @@ func LogInUser(c *fiber.Ctx) error {
 	// Create a session for the client
 	if err := repository.CreateSession(c, userFromDb, rcvUser.IpAddress, rcvUser.UserAgent); err != nil {
 		return SendErrorResponse(c, 500, "Failed to create session", err)
+	}
+
+	// Update user's last login time and reset failed login attempts
+	if err := repository.UpdateUserLastLogin(userFromDb.UserId); err != nil {
+		return SendErrorResponse(c, 500, "Failed to update last login time", err)
 	}
 
 	// Return success response with user data

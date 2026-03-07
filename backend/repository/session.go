@@ -10,8 +10,8 @@ import (
 func GetSessionById(sessionId string) (data.SessionFromDb, error) {
 	db := middleware.DBConn
 	var session data.SessionFromDb
-	query := "SELECT user_id, is_revoked, expires_at FROM public.sessions WHERE session_id=$1"
-	err := db.Raw(query, sessionId).Scan(&session).Error
+	selectQuery := "SELECT user_id, is_revoked, expires_at FROM public.sessions WHERE session_id=$1"
+	err := db.Raw(selectQuery, sessionId).Scan(&session).Error
 	return session, err
 }
 
@@ -24,9 +24,9 @@ func CreateSession(c *fiber.Ctx, user data.UserFromDb, ipAddress, userAgent stri
 	}
 
 	sessionId := middleware.HashToken(sessionToken)
-	query := "INSERT INTO public.sessions (user_id, session_id, ip_address, user_agent, expires_at) VALUES ($1,$2,$3,$4,$5)"
+	insertQuery := "INSERT INTO public.sessions (user_id, session_id, ip_address, user_agent, expires_at) VALUES ($1,$2,$3,$4,$5)"
 
-	err := db.Exec(query, user.UserId, sessionId, ipAddress, userAgent, sessionExpiration).Error
+	err := db.Exec(insertQuery, user.UserId, sessionId, ipAddress, userAgent, sessionExpiration).Error
 	cookie := middleware.SessionCookie(sessionToken, sessionExpiration)
 	c.Cookie(cookie)
 	return err
@@ -42,8 +42,8 @@ func DeleteSession(c *fiber.Ctx) error {
 	}
 
 	sessionId := middleware.HashToken(sessionToken)
-	query := "DELETE FROM public.sessions WHERE session_id=$1"
-	err := db.Exec(query, sessionId).Error
+	deleteQuery := "DELETE FROM public.sessions WHERE session_id=$1"
+	err := db.Exec(deleteQuery, sessionId).Error
 	// Clear the session cookie regardless
 	c.Cookie(middleware.ExpiredCookie())
 	return err
