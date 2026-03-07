@@ -2,6 +2,7 @@ package controller
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"p2p_marketplace/backend/middleware"
@@ -68,7 +69,8 @@ func LogInUser(c *fiber.Ctx) error {
 	}
 
 	// Trim whitespaces of user data
-	middleware.TrimWhitespaces(&rcvUser)
+	rcvUser.Email = strings.TrimSpace(rcvUser.Email)
+	rcvUser.Password = strings.TrimSpace(rcvUser.Password)
 
 	// Get userFromDb by email to verify credentials
 	userFromDb, err := repository.GetUserByEmail(rcvUser.Email)

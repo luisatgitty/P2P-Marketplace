@@ -6,7 +6,6 @@ import (
 	"net/mail"
 	"os"
 	"p2p_marketplace/backend/model/data"
-	"reflect"
 	"strings"
 	"unicode"
 
@@ -23,7 +22,11 @@ func GetEnv(key string) string {
 }
 
 func ValidateSignUpInput(rcvUser *data.UserFromReq) error {
-	TrimWhitespaces(&rcvUser)
+	// Trim whitespaces of user data
+	rcvUser.FirstName = strings.TrimSpace(rcvUser.FirstName)
+	rcvUser.LastName = strings.TrimSpace(rcvUser.LastName)
+	rcvUser.Email = strings.TrimSpace(rcvUser.Email)
+	rcvUser.Password = strings.TrimSpace(rcvUser.Password)
 
 	// Check if firstName and lastName are at least 2 characters long
 	if len(rcvUser.FirstName) < 1 || len(rcvUser.LastName) < 1 {
@@ -43,19 +46,6 @@ func ValidateSignUpInput(rcvUser *data.UserFromReq) error {
 	// }
 
 	return nil
-}
-
-func TrimWhitespaces[T any](rcvUser *T) {
-	// Get the value of the struct
-	v := reflect.ValueOf(rcvUser).Elem()
-
-	// Iterate through struct fields and trim whitespace
-	for i := 0; i < v.NumField(); i++ {
-		field := v.Field(i)
-		if field.Kind() == reflect.String && field.CanSet() {
-			field.SetString(strings.TrimSpace(field.String()))
-		}
-	}
 }
 
 func validatePasswordComplexity(password string) (bool, []string) {
