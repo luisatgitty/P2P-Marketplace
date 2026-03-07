@@ -13,13 +13,15 @@ type UserFromReq struct {
 }
 
 type UserFromDb struct {
-	UserId    string `gorm:"column:id"                  json:"userId"`
-	FirstName string `gorm:"column:first_name"          json:"firstName"`
-	LastName  string `gorm:"column:last_name"           json:"lastName"`
-	Password  string `gorm:"column:password_hash"       json:"password"`
-	Email     string `gorm:"column:email"               json:"email"`
-	Role      string `gorm:"column:role"                json:"role"`
-	Status    string `gorm:"column:verification_status" json:"status"`
+	UserId      string    `gorm:"column:id"                      json:"userId"`
+	FirstName   string    `gorm:"column:first_name"              json:"firstName"`
+	LastName    string    `gorm:"column:last_name"               json:"lastName"`
+	Password    string    `gorm:"column:password_hash"           json:"password"`
+	Email       string    `gorm:"column:email"                   json:"email"`
+	Role        string    `gorm:"column:role"                    json:"role"`
+	Status      string    `gorm:"column:verification_status"     json:"status"`
+	FailedLogin int       `gorm:"column:failed_login_attempts"   json:"failedLoginAttempts"`
+	LockedUntil time.Time `gorm:"column:account_locked_until"    json:"lockedUntil"`
 }
 
 type SessionFromDb struct {

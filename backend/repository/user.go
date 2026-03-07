@@ -10,7 +10,7 @@ import (
 
 func IsUserExist(email string) error {
 	db := middleware.DBConn
-	var count int64
+	var count int
 	selectQuery := "SELECT COUNT(*) FROM public.users WHERE email=$1"
 
 	if err := db.Raw(selectQuery, email).Scan(&count).Error; err != nil {
@@ -25,15 +25,20 @@ func IsUserExist(email string) error {
 func GetUserByEmail(email string) (data.UserFromDb, error) {
 	db := middleware.DBConn
 	var user data.UserFromDb
-	selectQuery := "SELECT id, first_name, last_name, email, password_hash, role, verification_status FROM public.users WHERE email=$1"
+	selectQuery := "SELECT id, first_name, last_name, email, password_hash, role, verification_status, failed_login_attempts, account_locked_until FROM public.users WHERE email=$1"
 	err := db.Raw(selectQuery, email).Scan(&user).Error
+
+	// Check if user exists
+	if user.UserId == "" {
+		return user, fiber.NewError(404, "User not found")
+	}
 	return user, err
 }
 
 func GetUserById(userId interface{}) (data.UserFromDb, error) {
 	db := middleware.DBConn
 	var user data.UserFromDb
-	selectQuery := "SELECT id, first_name, last_name, email, password_hash, role, verification_status FROM public.users WHERE id=$1"
+	selectQuery := "SELECT id, first_name, last_name, email, password_hash, role, verification_status, failed_login_attempts, account_locked_until FROM public.users WHERE id=$1"
 	err := db.Raw(selectQuery, userId).Scan(&user).Error
 	return user, err
 }
@@ -55,4 +60,11 @@ func IncreaseUserFailedLogin(userId string) error {
 	db := middleware.DBConn
 	updateQuery := "UPDATE public.users SET failed_login_attempts = failed_login_attempts + 1 WHERE id=$1"
 	return db.Exec(updateQuery, userId).Error
+}
+
+func LockedUserAccount(userId string) error {
+	db := middleware.DBConn
+	updateQuery := "UPDATE public.users SET failed_login_attempts=0, account_locked_until=$1 WHERE id=$2"
+	// NOTE: Update lock duration after development and testing
+	return db.Exec(updateQuery, time.Now().Add(30*time.Second), userId).Error
 }

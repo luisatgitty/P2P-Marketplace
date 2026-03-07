@@ -78,6 +78,17 @@ func LogInUser(c *fiber.Ctx) error {
 		return SendErrorResponse(c, 500, "User data retrieval failed", err)
 	}
 
+	// Check if user account is locked
+	if !userFromDb.LockedUntil.IsZero() && userFromDb.LockedUntil.After(time.Now()) {
+		return SendErrorResponse(c, 403, "Account locked due to too many failed login attempts", nil)
+	}
+
+	// Check if user login attempts exceeded the limit
+	if userFromDb.FailedLogin >= 5 {
+		repository.LockedUserAccount(userFromDb.UserId)
+		return SendErrorResponse(c, 403, "Account locked due to too many failed login attempts", nil)
+	}
+
 	// Check if user password matches the stored hash
 	if !middleware.IsPasswordMatch(rcvUser.Password, userFromDb.Password) {
 		repository.IncreaseUserFailedLogin(userFromDb.UserId)
