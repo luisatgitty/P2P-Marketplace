@@ -6,6 +6,7 @@ import (
 	"net/mail"
 	"os"
 	"p2p_marketplace/backend/model/data"
+	"reflect"
 	"strings"
 	"unicode"
 
@@ -13,37 +14,30 @@ import (
 )
 
 func GetEnv(key string) string {
-	err := godotenv.Load(".env")
-
-	if err != nil {
+	// Load .env file and get the value of the specified key
+	if err := godotenv.Load(".env"); err != nil {
 		fmt.Println("Error loading .env file")
 		return err.Error()
 	}
 	return os.Getenv(key)
 }
 
-func TrimWhitespaces(rcvUser data.UserFromReq) data.UserFromReq {
-	rcvUser.FirstName = strings.TrimSpace(rcvUser.FirstName)
-	rcvUser.LastName = strings.TrimSpace(rcvUser.LastName)
-	rcvUser.Email = strings.TrimSpace(rcvUser.Email)
-	rcvUser.Password = strings.TrimSpace(rcvUser.Password)
-	return rcvUser
-}
+func ValidateSignUpInput(rcvUser *data.UserFromReq) error {
+	TrimWhitespaces(&rcvUser)
 
-func ValidateSignUpInput(email, password, firstName, lastName string) error {
 	// Check if firstName and lastName are at least 2 characters long
-	if len(firstName) < 1 || len(lastName) < 1 {
+	if len(rcvUser.FirstName) < 1 || len(rcvUser.LastName) < 1 {
 		return errors.New("First name and last name must be at least 2 characters long")
 	}
 
 	// Check if email is valid
-	_, emailError := mail.ParseAddress(email)
+	_, emailError := mail.ParseAddress(rcvUser.Email)
 	if emailError != nil {
 		return errors.New("Invalid email address")
 	}
 
 	// NOTE: Disabled password complexity validation during development
-	// isPassValid, passErrors := ValidatePasswordComplexity(password)
+	// isPassValid, passErrors := validatePasswordComplexity(rcvUser.Password)
 	// if !isPassValid {
 	// 	return errors.New(passErrors[0])
 	// }
@@ -51,9 +45,21 @@ func ValidateSignUpInput(email, password, firstName, lastName string) error {
 	return nil
 }
 
-func ValidatePasswordComplexity(password string) (bool, []string) {
-	var errs []string
+func TrimWhitespaces[T any](rcvUser *T) {
+	// Get the value of the struct
+	v := reflect.ValueOf(rcvUser).Elem()
 
+	// Iterate through struct fields and trim whitespace
+	for i := 0; i < v.NumField(); i++ {
+		field := v.Field(i)
+		if field.Kind() == reflect.String && field.CanSet() {
+			field.SetString(strings.TrimSpace(field.String()))
+		}
+	}
+}
+
+func validatePasswordComplexity(password string) (bool, []string) {
+	var errs []string
 	var (
 		hasUpper   bool
 		hasLower   bool
@@ -64,6 +70,7 @@ func ValidatePasswordComplexity(password string) (bool, []string) {
 	// Typically required special characters
 	specialChars := "!@#$%^&*()-_=+[]{}|;:',.<>?/`~"
 
+	// Check for uppercase, lowercase, digit, and special character
 	for _, ch := range password {
 		switch {
 		case unicode.IsUpper(ch):
@@ -72,12 +79,12 @@ func ValidatePasswordComplexity(password string) (bool, []string) {
 			hasLower = true
 		case unicode.IsDigit(ch):
 			hasDigit = true
-		case ContainsRune(specialChars, ch):
+		case containsRune(specialChars, ch):
 			hasSpecial = true
 		}
 	}
 
-	// Error messages
+	// Append error messages for any unmet criteria
 	if len(password) < 8 {
 		errs = append(errs, "Password must be at least 8 characters long")
 	}
@@ -100,7 +107,7 @@ func ValidatePasswordComplexity(password string) (bool, []string) {
 	return len(errs) == 0, errs
 }
 
-func ContainsRune(s string, r rune) bool {
+func containsRune(s string, r rune) bool {
 	// Check if password contains a specific special character
 	for _, c := range s {
 		if c == r {

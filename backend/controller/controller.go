@@ -4,246 +4,159 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/gofiber/fiber/v2"
-
 	"p2p_marketplace/backend/middleware"
 	"p2p_marketplace/backend/model/data"
 	"p2p_marketplace/backend/model/response"
+	"p2p_marketplace/backend/repository"
+
+	"github.com/gofiber/fiber/v2"
 )
 
 func SignUpUser(c *fiber.Ctx) error {
-	fmt.Println("/auth/signup")
-	db := middleware.DBConn
+	fmt.Println(c.Path())
 	var rcvUser data.UserFromReq
-	var userFromDb data.UserFromDb
 
-	// Parse request body into user struct
+	// Parse the request body
 	if err := c.BodyParser(&rcvUser); err != nil {
 		return SendErrorResponse(c, 400, "Invalid request body", err)
 	}
 
-	// Basic validation for required fields
-	if rcvUser.FirstName == "" || rcvUser.LastName == "" ||
-		rcvUser.Email == "" || rcvUser.Password == "" {
-		return SendErrorResponse(c, 400, "All fields are required", nil)
+	// Validate the received user data
+	if err := middleware.ValidateSignUpInput(&rcvUser); err != nil {
+		return SendErrorResponse(c, 400, "Invalid user data", err)
 	}
-
-	// Trim whitespace from received payload
-	rcvUser = middleware.TrimWhitespaces(rcvUser)
 
 	// Check if email already exists
-	var existingUserCount int
-	if err := db.Raw("SELECT COUNT(*) FROM public.users WHERE email=$1",
-		rcvUser.Email).Scan(&existingUserCount).Error; err != nil {
-		return SendErrorResponse(c, 500, "User data retrieval failed", err)
-	}
-
-	// If email exists, return conflict response
-	if existingUserCount > 0 {
+	if err := repository.IsUserExist(rcvUser.Email); err != nil {
 		return SendErrorResponse(c, 409, "Email already exists", nil)
 	}
 
-	// Validate user input
-	// TODO: Include the correct error messages
-	if err := middleware.ValidateSignUpInput(rcvUser.Email, rcvUser.Password,
-		rcvUser.FirstName, rcvUser.LastName); err != nil {
-		return SendErrorResponse(c, 400, "Invalid request body", nil)
+	// Create the user in the database with hashed password
+	if err := repository.CreateUser(rcvUser); err != nil {
+		return SendErrorResponse(c, 500, "Failed to create user", err)
 	}
 
-	// Hash the password and clear
-	hashedPassword := GenerateHashPassword(rcvUser.Password)
+	// Reduce password exposure incase of logging or other operations
 	rcvUser.Password = ""
 
-	// Insert user data into database
-	if res := db.Exec("INSERT INTO public.users (first_name, last_name, email, password_hash) VALUES ($1,$2,$3,$4)",
-		rcvUser.FirstName, rcvUser.LastName, rcvUser.Email, hashedPassword); res.Error != nil {
-		return SendErrorResponse(c, 500, "New user data insertion failed", res.Error)
-	}
-
-	// Get user data from database
-	if err := db.Raw("SELECT id, first_name, last_name, email, password_hash, role, verification_status FROM public.users WHERE email=$1",
-		rcvUser.Email).Scan(&userFromDb).Error; err != nil {
+	// Fetch the created user to get the ID and other details for session creation
+	userFromDb, err := repository.GetUserByEmail(rcvUser.Email)
+	if err != nil {
 		return SendErrorResponse(c, 500, "User data retrieval failed", err)
 	}
 
-	// Generate session sessionToken
-	sessionToken, sessionExpiration, err := GenerateToken()
-	if err != nil {
+	// Create a session for the client
+	if err := repository.CreateSession(c, userFromDb, rcvUser.IpAddress, rcvUser.UserAgent); err != nil {
 		return SendErrorResponse(c, 500, "Failed to create session", err)
 	}
 
-	sessionId := HashToken(sessionToken)
-
-	// Store hashed token and expiry in sessions table
-	if res := db.Exec("INSERT INTO public.sessions (user_id, session_id, ip_address, user_agent, expires_at) VALUES ($1,$2,$3,$4,$5)",
-		userFromDb.UserId, sessionId, rcvUser.IpAddress, rcvUser.UserAgent, sessionExpiration); res.Error != nil {
-		return SendErrorResponse(c, 500, "Failed to persist session", res.Error)
-	}
-
-	// Set cookie with raw token
-	cookie := middleware.SessionCookie(sessionToken, sessionExpiration)
-	c.Cookie(cookie)
-
-	// Return the cookies to user
+	// Return success response with user data
 	return c.Status(201).JSON(response.ResponseModel{
 		RetCode: "201",
 		Message: "User created successfully",
-		Data: map[string]interface{}{
-			"user": map[string]interface{}{
-				"firstName": userFromDb.FirstName,
-				"lastName":  userFromDb.LastName,
-				"email":     userFromDb.Email,
-				"role":      userFromDb.Role,
-				"status":    userFromDb.Status,
-			},
-		},
+		Data:    map[string]interface{}{"user": BuildUserResponse(userFromDb)},
 	})
 }
 
 func LogInUser(c *fiber.Ctx) error {
-	// Call database connection and initialize user struct
-	fmt.Println("/auth/login")
-	db := middleware.DBConn
+	fmt.Println(c.Path())
 	var rcvUser data.UserFromReq
-	var userFromDb data.UserFromDb
 
-	// Parse request body into user struct
+	// Parse the request body
 	if err := c.BodyParser(&rcvUser); err != nil {
 		return SendErrorResponse(c, 400, "Invalid request body", err)
 	}
 
-	// Get user data from database
-	if err := db.Raw("SELECT id, first_name, last_name, email, password_hash, role, verification_status FROM public.users WHERE email=$1",
-		rcvUser.Email).Scan(&userFromDb).Error; err != nil {
+	// Trim whitespaces of user data
+	middleware.TrimWhitespaces(&rcvUser)
+
+	// Get userFromDb by email to verify credentials
+	userFromDb, err := repository.GetUserByEmail(rcvUser.Email)
+	if err != nil {
 		return SendErrorResponse(c, 500, "User data retrieval failed", err)
 	}
 
-	// Compare passwords
+	// Check if user password matches the stored hash
 	if !middleware.IsPasswordMatch(rcvUser.Password, userFromDb.Password) {
 		return SendErrorResponse(c, 401, "Incorrect password", nil)
 	}
 
-	// Clear password before returning
+	// Reduce password exposure incase of logging or other operations
 	rcvUser.Password = ""
 
-	// Generate session sessionToken
-	sessionToken, sessionExpiration, err := GenerateToken()
-	if err != nil {
+	// Create a session for the client
+	if err := repository.CreateSession(c, userFromDb, rcvUser.IpAddress, rcvUser.UserAgent); err != nil {
 		return SendErrorResponse(c, 500, "Failed to create session", err)
 	}
 
-	sessionId := HashToken(sessionToken)
-
-	// Store hashed token and expiry in sessions table
-	if res := db.Exec("INSERT INTO public.sessions (user_id, session_id, ip_address, user_agent, expires_at) VALUES ($1,$2,$3,$4,$5)",
-		userFromDb.UserId, sessionId, rcvUser.IpAddress, rcvUser.UserAgent, sessionExpiration); res.Error != nil {
-		return SendErrorResponse(c, 500, "Failed to persist session", res.Error)
-	}
-
-	// Set cookie with raw token
-	cookie := middleware.SessionCookie(sessionToken, sessionExpiration)
-	c.Cookie(cookie)
-
-	// Return the cookies to user
-	return c.Status(201).JSON(response.ResponseModel{
-		RetCode: "201",
-		Message: "User created successfully",
-		Data: map[string]interface{}{
-			"user": map[string]interface{}{
-				"firstName": userFromDb.FirstName,
-				"lastName":  userFromDb.LastName,
-				"email":     userFromDb.Email,
-				"role":      userFromDb.Role,
-				"status":    userFromDb.Status,
-			},
-		},
+	// Return success response with user data
+	return c.Status(200).JSON(response.ResponseModel{
+		RetCode: "200",
+		Message: "Logged in successfully",
+		Data:    map[string]interface{}{"user": BuildUserResponse(userFromDb)},
 	})
 }
 
-func Authenticate(c *fiber.Ctx) error {
-	fmt.Println("/auth/authenticate")
-	db := middleware.DBConn
-	var sessionFromDb data.SessionFromDb
+func AuthenticateUser(c *fiber.Ctx) error {
+	fmt.Println(c.Path())
 
-	// Check if session token is present
+	// Check for session token in cookies
 	sessionToken := c.Cookies("session_token")
 	if sessionToken == "" {
 		return SendErrorResponse(c, 401, "Missing session token", nil)
 	}
 
-	// Get session from database
-	sessionId := HashToken(sessionToken)
-	if err := db.Raw("SELECT user_id, is_revoked, expires_at FROM public.sessions WHERE session_id=$1", sessionId).Scan(&sessionFromDb).Error; err != nil {
-		return SendErrorResponse(c, 401, "Invalid session", err)
+	// Fetch session data from DB
+	sessionId := middleware.HashToken(sessionToken)
+	sessionFromDb, err := repository.GetSessionById(sessionId)
+	if err != nil {
+		return SendErrorResponse(c, 401, "Invalid session token", err)
 	}
 
-	// Check if session is valid
-	if sessionFromDb.UserId == "" ||
-		sessionFromDb.IsRevoked ||
-		sessionFromDb.ExpiresAt.Before(time.Now()) {
-		// Clear the cookie of the user
-		cookie := middleware.ExpiredCookie()
-		c.Cookie(cookie)
-		return SendErrorResponse(c, 401, "Invalid session", nil)
+	// Remove the invalid session cookie from client if session is invalid
+	if sessionFromDb.UserId == "" || sessionFromDb.IsRevoked || sessionFromDb.ExpiresAt.Before(time.Now()) {
+		c.Cookie(middleware.ExpiredCookie())
+		return SendErrorResponse(c, 401, "Session expired or revoked", nil)
 	}
 
-	// Attach to context for downstream handlers
+	// Store userId in context for future handlers to use
 	c.Locals("userId", sessionFromDb.UserId)
 	return c.Next()
 }
 
 func Me(c *fiber.Ctx) error {
-	fmt.Println("/auth/me")
-	userId := c.Locals("userId")
-	db := middleware.DBConn
-	var userFromDb data.UserFromDb
+	fmt.Println(c.Path())
 
+	// Check if user successfully identified
+	userId := c.Locals("userId")
 	if userId == nil {
-		// Clear the cookie of the user
-		cookie := middleware.ExpiredCookie()
-		c.Cookie(cookie)
+		// Clear the session cookie if userId is not found
+		c.Cookie(middleware.ExpiredCookie())
 		return SendErrorResponse(c, 401, "Not authenticated", nil)
 	}
 
-	// Get user data from database
-	if err := db.Raw("SELECT id, first_name, last_name, email, password_hash, role, verification_status FROM public.users WHERE id=$1",
-		userId).Scan(&userFromDb).Error; err != nil {
+	// Fetch userFromDb data to return in response
+	userFromDb, err := repository.GetUserById(userId)
+	if err != nil {
 		return SendErrorResponse(c, 500, "User data retrieval failed", err)
 	}
 
-	return c.Status(201).JSON(response.ResponseModel{
-		RetCode: "201",
+	// Return success response with user data
+	return c.Status(200).JSON(response.ResponseModel{
+		RetCode: "200",
 		Message: "User is authenticated",
-		Data: map[string]interface{}{
-			"user": map[string]interface{}{
-				"firstName": userFromDb.FirstName,
-				"lastName":  userFromDb.LastName,
-				"email":     userFromDb.Email,
-				"role":      userFromDb.Role,
-				"status":    userFromDb.Status,
-			},
-		},
+		Data:    map[string]interface{}{"user": BuildUserResponse(userFromDb)},
 	})
 }
 
 func Logout(c *fiber.Ctx) error {
-	fmt.Println("/auth/logout")
-	db := middleware.DBConn
+	fmt.Println(c.Path())
 
-	// Check if session token is present
-	sessionToken := c.Cookies("session_token")
-	if sessionToken == "" {
-		return SendErrorResponse(c, 400, "No session token", nil)
+	// Delete session from DB and clear cookie
+	if err := repository.DeleteSession(c); err != nil {
+		return SendErrorResponse(c, 500, "Failed to logout", err)
 	}
 
-	// Delete session from database
-	sessionId := HashToken(sessionToken)
-	if res := db.Exec("DELETE FROM public.sessions WHERE session_id=$1", sessionId); res.Error != nil {
-		return SendErrorResponse(c, 500, "Failed to delete session", res.Error)
-	}
-
-	// Clear the cookie of the user
-	cookie := middleware.ExpiredCookie()
-	c.Cookie(cookie)
-	return SendSuccessResponse(c, 200, "Logged out", nil)
+	// Return success response
+	return SendSuccessResponse(c, 200, "Logged out successfully", nil)
 }
