@@ -43,7 +43,7 @@ func SignUpUser(c *fiber.Ctx) error {
 	// Fetch the created user to get the ID and other details for session creation
 	userFromDb, err := repository.GetUserByEmail(rcvUser.Email)
 	if err != nil {
-		return SendErrorResponse(c, 500, "User data retrieval failed. Please contact support.", err)
+		return SendErrorResponse(c, 500, "Failed to retrieve user data. Please contact support.", err)
 	}
 
 	// Create a session for the client
@@ -72,6 +72,17 @@ func LogInUser(c *fiber.Ctx) error {
 	rcvUser.Email = strings.TrimSpace(rcvUser.Email)
 	rcvUser.Password = strings.TrimSpace(rcvUser.Password)
 
+	// Validate email format
+	if err := middleware.ValidateEmail(rcvUser.Email); err != nil {
+		return SendErrorResponse(c, 400, err.Error(), err)
+	}
+
+	// NOTE: Disabled password complexity validation during development
+	// Validate password length
+	// if err := middleware.ValidatePasswordLength(rcvUser.Password); err != nil {
+	// 	return SendErrorResponse(c, 400, err.Error(), err)
+	// }
+
 	// Get userFromDb by email to verify credentials
 	userFromDb, err := repository.GetUserByEmail(rcvUser.Email)
 	if err != nil {
@@ -92,7 +103,7 @@ func LogInUser(c *fiber.Ctx) error {
 	// Check if user password matches the stored hash
 	if !middleware.IsPasswordMatch(rcvUser.Password, userFromDb.Password) {
 		repository.IncreaseUserFailedLogin(userFromDb.UserId)
-		return SendErrorResponse(c, 401, "Incorrect password", nil)
+		return SendErrorResponse(c, 401, "Incorrect password. Please try again.", nil)
 	}
 
 	// Reduce password exposure incase of logging or other operations
@@ -105,7 +116,8 @@ func LogInUser(c *fiber.Ctx) error {
 
 	// Update user's last login time and reset failed login attempts
 	if err := repository.UpdateUserLastLogin(userFromDb.UserId); err != nil {
-		fmt.Println("Failed to update user's last login time:", err)
+		// This error is not critical. User login proceeds.
+		fmt.Println("Failed to update last login time. Please contact support.", err)
 	}
 
 	// Return success response with user data
@@ -151,13 +163,13 @@ func Me(c *fiber.Ctx) error {
 	if userId == nil {
 		// Clear the session cookie if userId is not found
 		c.Cookie(middleware.ExpiredCookie())
-		return SendErrorResponse(c, 401, "Not authenticated", nil)
+		return SendErrorResponse(c, 401, "User is not authenticated", nil)
 	}
 
 	// Fetch userFromDb data to return in response
 	userFromDb, err := repository.GetUserById(userId)
 	if err != nil {
-		return SendErrorResponse(c, 500, "User data retrieval failed", err)
+		return SendErrorResponse(c, 500, "Failed to retrieve user data. Please contact support.", err)
 	}
 
 	// Return success response with user data
@@ -173,7 +185,7 @@ func Logout(c *fiber.Ctx) error {
 
 	// Delete session from DB and clear cookie
 	if err := repository.DeleteSession(c); err != nil {
-		return SendErrorResponse(c, 500, "Failed to logout", err)
+		return SendErrorResponse(c, 500, "Failed to delete session", err)
 	}
 
 	// Return success response

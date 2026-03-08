@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"fmt"
 	"p2p_marketplace/backend/middleware"
 	"p2p_marketplace/backend/model/data"
 
@@ -38,7 +39,7 @@ func DeleteSession(c *fiber.Ctx) error {
 	// Check for session token in cookies
 	sessionToken := c.Cookies("session_token")
 	if sessionToken == "" {
-		return fiber.NewError(400, "Missing session token")
+		return fmt.Errorf("Missing session token")
 	}
 
 	sessionId := middleware.HashToken(sessionToken)

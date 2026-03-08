@@ -8,7 +8,6 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/gofiber/fiber/v2"
 	"github.com/joho/godotenv"
 )
 
@@ -28,39 +27,94 @@ func ValidateSignUpInput(rcvUser *data.UserFromReq) error {
 	rcvUser.Email = strings.TrimSpace(rcvUser.Email)
 	rcvUser.Password = strings.TrimSpace(rcvUser.Password)
 
-	// Check if firstName and lastName are at least 2 characters long
-	if len(rcvUser.FirstName) < 2 || len(rcvUser.LastName) < 2 {
-		return fiber.NewError(400, "First name and last name must be at least 2 characters long")
+	// Validate first name and last name
+	if err := validateUserName(rcvUser.FirstName, "First name"); err != nil {
+		return err
+	}
+	if err := validateUserName(rcvUser.LastName, "Last name"); err != nil {
+		return err
 	}
 
-	// Check if email is valid
-	_, emailError := mail.ParseAddress(rcvUser.Email)
-	if emailError != nil {
-		return fiber.NewError(400, "Invalid email format")
+	// Validate email format
+	if err := ValidateEmail(rcvUser.Email); err != nil {
+		return err
 	}
 
 	// NOTE: Disabled password complexity validation during development
-	// isPassValid, passErrors := validatePasswordComplexity(rcvUser.Password)
-	// if !isPassValid {
-	// 	return fiber.NewError(400, passErrors[0])
+	// Validate password complexity
+	// if err := validatePasswordComplexity(rcvUser.Password); err != nil {
+	// 	return err
 	// }
 
 	return nil
 }
+func validateUserName(name string, field string) error {
+	// Check if firstName and lastName are at least 2 characters
+	if len(name) < 2 {
+		return fmt.Errorf("%s must be at least 2 characters", field)
+	}
 
-func validatePasswordComplexity(password string) (bool, []string) {
-	var errs []string
-	var (
-		hasUpper   bool
-		hasLower   bool
-		hasDigit   bool
-		hasSpecial bool
-	)
+	// Check if firstName and lastName are not more than 50 characters
+	if len(name) > 50 {
+		return fmt.Errorf("%s must not exceed 50 characters", field)
+	}
 
-	// Typically required special characters
+	// Check if the name contains only letters, spaces, or hyphens
+	for _, ch := range name {
+		if !(unicode.IsLetter(ch) || unicode.IsSpace(ch) || ch == '-') {
+			return fmt.Errorf("%s can only contain letters, spaces, or hyphens", field)
+		}
+	}
+
+	return nil
+}
+
+func ValidateEmail(email string) error {
+	// Validate email length
+	if len(email) > 254 || len(email) < 3 {
+		return fmt.Errorf("Invalid email length")
+	}
+
+	// Validate email local part and domain part lengths
+	parts := strings.Split(email, "@")
+	if len(parts) != 2 {
+		return fmt.Errorf("Invalid email format")
+	}
+	if len(parts[0]) > 64 {
+		return fmt.Errorf("Invalid email local part length")
+	}
+	if len(parts[1]) > 255 {
+		return fmt.Errorf("Invalid email domain part length")
+	}
+
+	// Validate email format using net/mail package
+	if _, err := mail.ParseAddress(email); err != nil {
+		return fmt.Errorf("Invalid email format")
+	}
+
+	return nil
+}
+
+func ValidatePasswordLength(password string) error {
+	if len(password) < 8 {
+		return fmt.Errorf("Password must be at least 8 characters")
+	}
+	if len(password) > 72 {
+		return fmt.Errorf("Password must not exceed 72 characters")
+	}
+	return nil
+}
+
+func validatePasswordComplexity(password string) error {
+	var hasUpper, hasLower, hasDigit, hasSpecial bool
 	specialChars := "!@#$%^&*()-_=+[]{}|;:',.<>?/`~"
 
-	// Check for uppercase, lowercase, digit, and special character
+	// Validate password length before checking complexity
+	if err := ValidatePasswordLength(password); err != nil {
+		return err
+	}
+
+	// Check each character for uppercase, lowercase, digit, and special character
 	for _, ch := range password {
 		switch {
 		case unicode.IsUpper(ch):
@@ -74,27 +128,21 @@ func validatePasswordComplexity(password string) (bool, []string) {
 		}
 	}
 
-	// Append error messages for any unmet criteria
-	if len(password) < 8 {
-		errs = append(errs, "Password must be at least 8 characters long")
-	}
-	if len(password) > 64 {
-		errs = append(errs, "Password must not exceed 64 characters")
-	}
+	// Validate password complexity requirements
 	if !hasUpper {
-		errs = append(errs, "Password must contain at least one uppercase letter")
+		return fmt.Errorf("Password must contain at least one uppercase letter")
 	}
 	if !hasLower {
-		errs = append(errs, "Password must contain at least one lowercase letter")
+		return fmt.Errorf("Password must contain at least one lowercase letter")
 	}
 	if !hasDigit {
-		errs = append(errs, "Password must contain at least one number")
+		return fmt.Errorf("Password must contain at least one number")
 	}
 	if !hasSpecial {
-		errs = append(errs, "Password must contain at least one special character (!@#$%^&*...)")
+		return fmt.Errorf("Password must contain at least one special character")
 	}
 
-	return len(errs) == 0, errs
+	return nil
 }
 
 func containsRune(s string, r rune) bool {

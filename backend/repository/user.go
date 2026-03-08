@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"fmt"
 	"p2p_marketplace/backend/middleware"
 	"p2p_marketplace/backend/model/data"
 	"time"
@@ -14,10 +15,10 @@ func IsUserExist(email string) error {
 	selectQuery := "SELECT COUNT(*) FROM public.users WHERE email=$1"
 
 	if err := db.Raw(selectQuery, email).Scan(&count).Error; err != nil {
-		return err
+		return fmt.Errorf("Failed checking if user exist. Please contact support.")
 	}
 	if count > 0 {
-		return fiber.NewError(409, "Email already exists")
+		return fmt.Errorf("User with email %s already exists", email)
 	}
 	return nil
 }
@@ -30,7 +31,7 @@ func GetUserByEmail(email string) (data.UserFromDb, error) {
 
 	// Check if user exists
 	if user.UserId == "" {
-		return user, fiber.NewError(404, "Incorrect email")
+		return user, fiber.NewError(404, "Incorrect email. Please try again.")
 	}
 	return user, err
 }
