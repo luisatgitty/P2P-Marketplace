@@ -19,12 +19,12 @@ func SignUpUser(c *fiber.Ctx) error {
 
 	// Parse the request body
 	if err := c.BodyParser(&rcvUser); err != nil {
-		return SendErrorResponse(c, 400, "Invalid request body", err)
+		return SendErrorResponse(c, 400, "Invalid request body. Please contact support.", err)
 	}
 
 	// Validate the received user data
 	if err := middleware.ValidateSignUpInput(&rcvUser); err != nil {
-		return SendErrorResponse(c, 400, "Invalid user data", err)
+		return SendErrorResponse(c, 400, err.Error(), err)
 	}
 
 	// Check if email already exists
@@ -34,7 +34,7 @@ func SignUpUser(c *fiber.Ctx) error {
 
 	// Create the user in the database with hashed password
 	if err := repository.CreateUser(rcvUser); err != nil {
-		return SendErrorResponse(c, 500, "Failed to create user", err)
+		return SendErrorResponse(c, 500, "Failed to create user. Please contact support.", err)
 	}
 
 	// Reduce password exposure incase of logging or other operations
@@ -43,12 +43,12 @@ func SignUpUser(c *fiber.Ctx) error {
 	// Fetch the created user to get the ID and other details for session creation
 	userFromDb, err := repository.GetUserByEmail(rcvUser.Email)
 	if err != nil {
-		return SendErrorResponse(c, 500, "User data retrieval failed", err)
+		return SendErrorResponse(c, 500, "User data retrieval failed. Please contact support.", err)
 	}
 
 	// Create a session for the client
 	if err := repository.CreateSession(c, userFromDb, rcvUser.IpAddress, rcvUser.UserAgent); err != nil {
-		return SendErrorResponse(c, 500, "Failed to create session", err)
+		return SendErrorResponse(c, 500, "Failed to create session. Please contact support.", err)
 	}
 
 	// Return success response with user data
@@ -65,7 +65,7 @@ func LogInUser(c *fiber.Ctx) error {
 
 	// Parse the request body
 	if err := c.BodyParser(&rcvUser); err != nil {
-		return SendErrorResponse(c, 400, "Invalid request body", err)
+		return SendErrorResponse(c, 400, "Invalid request body. Please contact support.", err)
 	}
 
 	// Trim whitespaces of user data
@@ -75,18 +75,18 @@ func LogInUser(c *fiber.Ctx) error {
 	// Get userFromDb by email to verify credentials
 	userFromDb, err := repository.GetUserByEmail(rcvUser.Email)
 	if err != nil {
-		return SendErrorResponse(c, 500, "User data retrieval failed", err)
+		return SendErrorResponse(c, 500, err.Error(), err)
 	}
 
 	// Check if user account is locked
 	if !userFromDb.LockedUntil.IsZero() && userFromDb.LockedUntil.After(time.Now()) {
-		return SendErrorResponse(c, 403, "Account locked due to too many failed login attempts", nil)
+		return SendErrorResponse(c, 403, "Account temporarily locked due to too many failed login attempts. Please try again later.", nil)
 	}
 
 	// Check if user login attempts exceeded the limit
 	if userFromDb.FailedLogin >= 5 {
 		repository.LockedUserAccount(userFromDb.UserId)
-		return SendErrorResponse(c, 403, "Account locked due to too many failed login attempts", nil)
+		return SendErrorResponse(c, 403, "Account temporarily locked due to too many failed login attempts", nil)
 	}
 
 	// Check if user password matches the stored hash
@@ -100,12 +100,12 @@ func LogInUser(c *fiber.Ctx) error {
 
 	// Create a session for the client
 	if err := repository.CreateSession(c, userFromDb, rcvUser.IpAddress, rcvUser.UserAgent); err != nil {
-		return SendErrorResponse(c, 500, "Failed to create session", err)
+		return SendErrorResponse(c, 500, "Failed to create session. Please contact support.", err)
 	}
 
 	// Update user's last login time and reset failed login attempts
 	if err := repository.UpdateUserLastLogin(userFromDb.UserId); err != nil {
-		return SendErrorResponse(c, 500, "Failed to update last login time", err)
+		fmt.Println("Failed to update user's last login time:", err)
 	}
 
 	// Return success response with user data

@@ -1,7 +1,6 @@
 package middleware
 
 import (
-	"errors"
 	"fmt"
 	"net/mail"
 	"os"
@@ -9,6 +8,7 @@ import (
 	"strings"
 	"unicode"
 
+	"github.com/gofiber/fiber/v2"
 	"github.com/joho/godotenv"
 )
 
@@ -29,20 +29,20 @@ func ValidateSignUpInput(rcvUser *data.UserFromReq) error {
 	rcvUser.Password = strings.TrimSpace(rcvUser.Password)
 
 	// Check if firstName and lastName are at least 2 characters long
-	if len(rcvUser.FirstName) < 1 || len(rcvUser.LastName) < 1 {
-		return errors.New("First name and last name must be at least 2 characters long")
+	if len(rcvUser.FirstName) < 2 || len(rcvUser.LastName) < 2 {
+		return fiber.NewError(400, "First name and last name must be at least 2 characters long")
 	}
 
 	// Check if email is valid
 	_, emailError := mail.ParseAddress(rcvUser.Email)
 	if emailError != nil {
-		return errors.New("Invalid email address")
+		return fiber.NewError(400, "Invalid email format")
 	}
 
 	// NOTE: Disabled password complexity validation during development
 	// isPassValid, passErrors := validatePasswordComplexity(rcvUser.Password)
 	// if !isPassValid {
-	// 	return errors.New(passErrors[0])
+	// 	return fiber.NewError(400, passErrors[0])
 	// }
 
 	return nil

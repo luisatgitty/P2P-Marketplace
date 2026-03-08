@@ -30,7 +30,7 @@ func GetUserByEmail(email string) (data.UserFromDb, error) {
 
 	// Check if user exists
 	if user.UserId == "" {
-		return user, fiber.NewError(404, "User not found")
+		return user, fiber.NewError(404, "Incorrect email")
 	}
 	return user, err
 }
