@@ -1,13 +1,9 @@
 import type { Metadata } from "next";
-import { DM_Sans, Geist, Geist_Mono, Inter } from "next/font/google";
+import { DM_Sans, Geist_Mono, Inter } from "next/font/google";
 import { UserProvider } from "@/utils/UserContext";
 import Navbar from "../components/navbar";
+import Footer from "../components/footer";
 import "./globals.css";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
@@ -34,12 +30,13 @@ export default function RootLayout({ children }:
   Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
-        <body className={`${inter.variable} ${dmSans.variable} antialiased`}>
-          <UserProvider>
-            <Navbar />
-            {children}
-          </UserProvider>
-        </body>
+      <body className={`${inter.variable} ${dmSans.variable} antialiased`}>
+        <UserProvider>
+          <Navbar />
+          {children}
+          <Footer />
+        </UserProvider>
+      </body>
     </html>
   );
 }
