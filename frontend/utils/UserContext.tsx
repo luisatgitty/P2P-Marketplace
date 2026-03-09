@@ -43,6 +43,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         credentials: "include",
       });
     } finally {
+      // Clear user data and validation state regardless of logout success
       setUser(null);
       setIsValidated(false);
     }
@@ -52,19 +53,21 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const validateUser = async () => {
       try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/me`, {
-          method: "GET",
-          credentials: "include",
-        });
+        // If the client has a stored session cookie
+        if (document.cookie.includes("session_token")) {
+          const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/me`, {
+            method: "GET",
+            credentials: "include",
+          });
 
-        if (!res.ok) {
-          setIsValidated(false);
-          return;
+          if (!res.ok) {
+            setIsValidated(false);
+            return;
+          }
+
+          const json = await res.json();
+          saveUserData(json.data.user);
         }
-
-        const json = await res.json();
-        saveUserData(json.data.user);
-
       } catch {
         setIsValidated(false);
       }
