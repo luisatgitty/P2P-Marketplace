@@ -44,7 +44,7 @@ export default function Home() {
             ))}
           </div>
         </div>
-      </section> 
+      </section>
 
       <CategoryFilter totalCount={1248} />
 

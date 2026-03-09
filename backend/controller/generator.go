@@ -2,8 +2,11 @@ package controller
 
 import (
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"fmt"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"golang.org/x/crypto/bcrypt"
@@ -17,10 +20,21 @@ func GenerateHashPassword(password string) string {
 	return string(hashedPassword)
 }
 
-func GenerateSessionID() (string, error) {
+func GenerateToken() (string, time.Time, error) {
+	sessionExpiration := time.Now().Add(7 * 24 * time.Hour)
+
 	b := make([]byte, 32)
-	_, err := rand.Read(b)
-	return base64.URLEncoding.EncodeToString(b), err
+	if _, err := rand.Read(b); err != nil {
+		return "", sessionExpiration, err
+	}
+	// Use RawURLEncoding to avoid '=' padding
+	return base64.RawURLEncoding.EncodeToString(b), sessionExpiration, nil
+}
+
+// Hash the token before storing in DB (store only this)
+func HashToken(token string) string {
+	h := sha256.Sum256([]byte(token))
+	return hex.EncodeToString(h[:])
 }
 
 func GetRetCodeMessage(retCode int) string {
