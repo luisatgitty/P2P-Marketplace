@@ -44,7 +44,7 @@ func GetUserById(userId interface{}) (data.UserFromDb, error) {
 	return user, err
 }
 
-func CreateUser(user data.UserFromReq) error {
+func CreateUser(user data.UserFromBody) error {
 	db := middleware.DBConn
 	insertQuery := "INSERT INTO public.users (first_name, last_name, email, password_hash, last_login_at) VALUES ($1,$2,$3,$4,$5)"
 	hashedPassword := middleware.HashPassword(user.Password)

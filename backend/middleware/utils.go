@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"encoding/base64"
 	"fmt"
 	"net/mail"
 	"os"
@@ -20,7 +21,7 @@ func GetEnv(key string) string {
 	return os.Getenv(key)
 }
 
-func ValidateSignUpInput(rcvUser *data.UserFromReq) error {
+func ValidateSignUpInput(rcvUser *data.UserFromBody) error {
 	// Trim whitespaces of user data
 	rcvUser.FirstName = strings.TrimSpace(rcvUser.FirstName)
 	rcvUser.LastName = strings.TrimSpace(rcvUser.LastName)
@@ -105,7 +106,7 @@ func ValidatePasswordLength(password string) error {
 	return nil
 }
 
-func validatePasswordComplexity(password string) error {
+func ValidatePasswordComplexity(password string) error {
 	var hasUpper, hasLower, hasDigit, hasSpecial bool
 	specialChars := "!@#$%^&*()-_=+[]{}|;:',.<>?/`~"
 
@@ -153,4 +154,30 @@ func containsRune(s string, r rune) bool {
 		}
 	}
 	return false
+}
+
+func ValidateTokenFormat(token string) error {
+	// Check if the token is empty
+	if token == "" {
+		return fmt.Errorf("Token cannot be empty")
+	}
+
+	// Check token length (32 characters for a 128-bit token represented in hex)
+	if len(token) != 32 {
+		return fmt.Errorf("Invalid token length")
+	}
+
+	// Check if token contains only hexadecimal characters
+	for _, ch := range token {
+		if !unicode.Is(unicode.Hex_Digit, ch) {
+			return fmt.Errorf("Invalid token format")
+		}
+	}
+
+	// Check if token is valid base64
+	if _, err := base64.RawURLEncoding.DecodeString(token); err != nil {
+		return fmt.Errorf("Invalid token format")
+	}
+
+	return nil
 }

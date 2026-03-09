@@ -20,8 +20,8 @@ func IsPasswordMatch(password, hash string) bool {
 	return err == nil
 }
 
-func GenerateToken() (string, time.Time, error) {
-	sessionExpiration := time.Now().Add(7 * 24 * time.Hour)
+func GenerateToken(expirationMinutes int) (string, time.Time, error) {
+	sessionExpiration := time.Now().Add(time.Duration(expirationMinutes) * time.Minute)
 
 	b := make([]byte, 32)
 	if _, err := rand.Read(b); err != nil {
