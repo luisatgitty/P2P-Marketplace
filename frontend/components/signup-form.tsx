@@ -1,43 +1,51 @@
 "use client";
 
 import { useState } from "react"
-import { cn } from "@/lib/utils"
+import { useRouter } from "next/navigation";
+import { useUser } from "@/utils/UserContext";
+import { getSessionMeta, signUpUser } from "@/services/authService";
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import {
-  Field,
-  FieldDescription,
-  FieldGroup,
-  FieldLabel,
-  FieldSeparator,
-} from "@/components/ui/field"
+import { Field, FieldDescription, FieldGroup, FieldLabel, FieldSeparator } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
+import { cn } from "@/lib/utils"
 
-export function SignupForm({
-  className,
-  onSubmitData,
-  ...props
-}: React.ComponentProps<"div"> & {
-  onSubmitData?: (data: { firstName: string; lastName: string;
-     email: string; password: string }) => void
-}) {
-  const [form, setForm] = useState({ firstName: "", lastName: "", 
-    email: "", password: "", confirmPassword: "" })
+export function SignupForm({ className, ...props }: React.ComponentProps<"div">) {
+  const router = useRouter();
+  const [form, setForm] = useState({ 
+    firstName: "", 
+    lastName: "", 
+    email: "", 
+    password: "", 
+    confirmPassword: "" 
+  });
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const { saveUserData } = useUser();
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
+  // Use the name attribute as the key
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setForm({ ...form, [e.target.name]: e.target.value });
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
+
     try {
-      if (form.password !== form.confirmPassword) {
-        alert("Passwords do not match")
-        return
-      }
-      onSubmitData?.({ firstName: form.firstName, lastName: form.lastName, 
-        email: form.email, password: form.password })
-    } catch (err) {
-      console.error("SignupForm handleSubmit error:", err)
-      alert("An unexpected error occurred. Check the console for details.")
+      const { ipAddress, userAgent } = await getSessionMeta();
+      const route = "/auth/signup";
+      const errorMessage = "Signup failed";
+      const user = await signUpUser(route, errorMessage, { ...form, ipAddress, userAgent });
+      saveUserData(user);
+      router.push("/");
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
     }
-  }
+  };
 
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
@@ -52,55 +60,56 @@ export function SignupForm({
                 </p>
               </div>
               <Field>
-                <FieldLabel htmlFor="name">First Name</FieldLabel>
+                <FieldLabel htmlFor="firstName">First Name</FieldLabel>
                 <Input
-                  id="firstName"
+                  name="firstName"
                   type="text"
                   value={form.firstName}
-                  onChange={(e) => setForm({ ...form, firstName: e.target.value })}
+                  onChange={handleChange}
                   required
                 />
               </Field>
               <Field>
-                <FieldLabel htmlFor="name">Last Name</FieldLabel>
+                <FieldLabel htmlFor="lastName">Last Name</FieldLabel>
                 <Input
-                  id="lastName"
+                  name="lastName"
                   type="text"
                   value={form.lastName}
-                  onChange={(e) => setForm({ ...form, lastName: e.target.value })}
+                  onChange={handleChange}
                   required
                 />
               </Field>
               <Field>
                 <FieldLabel htmlFor="email">Email</FieldLabel>
                 <Input
-                  id="email"
+                  name="email"
                   type="email"
-                  placeholder="m@example.com"
+                  placeholder="example@email.com"
                   value={form.email}
-                  onChange={(e) => setForm({ ...form, email: e.target.value })}
+                  onChange={handleChange}
                   required
                 />
               </Field>
+              {/* TODO: Add password visibility toggle */}
               <Field>
                 <Field className="grid grid-cols-2 gap-4">
                   <Field>
                     <FieldLabel htmlFor="password">Password</FieldLabel>
                     <Input
-                      id="password"
+                      name="password"
                       type="password"
                       value={form.password}
-                      onChange={(e) => setForm({ ...form, password: e.target.value })}
+                      onChange={handleChange}
                       required
                     />
                   </Field>
                   <Field>
-                    <FieldLabel htmlFor="confirm-password">Confirm Password</FieldLabel>
+                    <FieldLabel htmlFor="confirmPassword">Confirm Password</FieldLabel>
                     <Input
-                      id="confirm-password"
+                      name="confirmPassword"
                       type="password"
                       value={form.confirmPassword}
-                      onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })}
+                      onChange={handleChange}
                       required
                     />
                   </Field>
@@ -109,8 +118,11 @@ export function SignupForm({
                   Must be at least 8 characters long.
                 </FieldDescription>
               </Field>
+              {error && <p style={{ color: "red" }}>{error}</p>}
               <Field>
-                <Button type="submit">Create Account</Button>
+                <Button type="submit" disabled={loading}>
+                  {loading ? "Creating Account..." : "Create Account"}
+                </Button>
               </Field>
               <FieldSeparator className="*:data-[slot=field-separator-content]:bg-card">
                 Or continue with

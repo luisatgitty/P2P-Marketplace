@@ -13,8 +13,10 @@ const MOCK_LISTINGS: PostCardProps[] = [
 ];
 //Home page showcasing featured listings, category filter, and a grid of recent listings with a "Load more" button at the bottom.
 export default function Home() {
-  return (<><section className="bg-[#1e2433] px-4 sm:px-6 lg:px-8 py-10 fade-in">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-1">
+  return (
+    <>
+      * <section className="bg-[#1e2433] px-4 sm:px-6 lg:px-8 py-10 fade-in">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
           <div>
 
             <h2 className="font-brand text-3xl sm:text-4xl text-stone-100 leading-tight max-w-lg">
@@ -26,7 +28,7 @@ export default function Home() {
               <Link href="/post/create" className="border border-stone-600 text-stone-300 text-sm font-medium px-5 py-2.5 rounded-full hover:border-stone-300 hover:text-white transition-colors">Post for Free</Link>
             </div>
           </div>
-          {/* <div className="flex gap-6 text-center shrink-0">
+          <div className="flex gap-6 text-center shrink-0">
             {[
                 { value: "Buy", label: "Find great deals" },
                 { value: "Sell", label: "List for free" },
@@ -40,14 +42,14 @@ export default function Home() {
                   </div>
                 </div>
             ))}
-          </div> */}
+          </div>
         </div>
-      </section> 
+      </section>
 
       <CategoryFilter totalCount={1248} />
 
       <main id="listings" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 fade-in delay-2">
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 pt-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 pt-28">
           {MOCK_LISTINGS.map((listing) => <PostCard key={listing.id} {...listing} />)}
         </div>
         <div className="flex justify-center mt-10">
