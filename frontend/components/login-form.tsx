@@ -4,6 +4,7 @@ import { useState } from "react"
 import { useRouter } from "next/navigation";
 import { useUser } from "@/utils/UserContext";
 import { getSessionMeta, signUpUser } from "@/services/authService";
+import { isValidEmail } from "@/utils/validation";
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Field, FieldDescription, FieldGroup, FieldLabel, FieldSeparator } from "@/components/ui/field"
@@ -17,8 +18,8 @@ export function LoginForm({ className, ...props }: React.ComponentProps<"div">) 
   const [loading, setLoading] = useState(false);
   const { saveUserData } = useUser();
 
-  // Use the name attribute as the key
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Use the name attribute as the key
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
@@ -27,15 +28,24 @@ export function LoginForm({ className, ...props }: React.ComponentProps<"div">) 
     setLoading(true);
     setError("");
 
+    // Validate email before sending request to backend
+    const emailError = isValidEmail(form.email);
+    if (emailError) {
+      setError(emailError);
+      setLoading(false);
+      return;
+    }
+
     try {
+      // Get the user's IP address and user agent
       const { ipAddress, userAgent } = await getSessionMeta();
       const route = "/auth/login";
-      const errorMessage = "Login failed";
-      const user = await signUpUser(route, errorMessage, { ...form, ipAddress, userAgent });
+      // Send the form data to the backend
+      const user = await signUpUser(route, { ...form, ipAddress, userAgent });
       saveUserData(user);
       router.push("/");
-    } catch (err: any) {
-      setError(err.message);
+    } catch (error: any) {
+      setError(error);
     } finally {
       setLoading(false);
     }
@@ -80,7 +90,7 @@ export function LoginForm({ className, ...props }: React.ComponentProps<"div">) 
                   required
                 />
               </Field>
-              {error && <p style={{ color: "red" }}>{error}</p>}
+              {error && <p style={{ color: "red", fontSize: "0.875rem" }}>{error}</p>}
               <Field>
                 <Button type="submit" disabled={loading}>
                   {loading ? "Logging in..." : "Login"}
