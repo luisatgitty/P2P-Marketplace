@@ -21,7 +21,7 @@ export default function Home() {
     : ALL_LISTINGS.filter((l) => l.type === activeTab);
 
   return (
-    <>
+    <>*
       <section className="bg-[#1e2433] px-4 sm:px-6 lg:px-8 py-10 fade-in">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
           <div>

@@ -1,3 +1,5 @@
+import Image from "next/image";
+
 const TwitterIcon = () => (
   <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
     <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.737-8.835L1.254 2.25H8.08l4.253 5.622 5.91-5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
@@ -24,7 +26,16 @@ const DiscordIcon = () => (
   </svg>
 );
 
-const LINKS = ["Buy", "Rent", "Services", "Post for Free", "FAQ", "Privacy", "Terms"];
+const LINKS = [
+  { label: "Buy",          href: "/buy"     },
+  { label: "Rent",         href: "/rent"    },
+  { label: "Services",     href: "/services"},
+  { label: "Post for Free",href: "/create"  },
+  { label: "FAQ",          href: "/faq"     },
+  { label: "Privacy",      href: "/privacy" },
+  { label: "Terms",        href: "/terms"   },
+];
+
 const SOCIALS = [
   { icon: <TwitterIcon />,   href: "#" },
   { icon: <InstagramIcon />, href: "#" },
@@ -35,7 +46,7 @@ const SOCIALS = [
 
 export default function Footer() {
   return (
-    <footer className="bg-[#1e2433] px-4 sm:px-6 lg:px-8 py-10 mt-auto">
+    <footer className="bg-[#161d2b] px-4 sm:px-6 lg:px-8 py-10 mt-auto">
       <div className="max-w-7xl mx-auto">
 
         {/* Top */}
@@ -43,12 +54,7 @@ export default function Footer() {
           {/* Logo + tagline */}
           <div>
             <div className="flex items-center gap-2 mb-3">
-              <div className="w-8 h-8 bg-stone-100 rounded-lg flex items-center justify-center">
-                <svg className="w-4 h-4 text-stone-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                    d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13l-1.5 6h13M7 13l-1-4h12" />
-                </svg>
-              </div>
+              <Image src="/logo.png" alt="P2P Marketplace" width={40} height={40} />
               <span className="text-stone-100 font-semibold text-lg">P2P Marketplace</span>
             </div>
             <p className="text-stone-400 text-sm max-w-xs leading-relaxed">
@@ -59,9 +65,9 @@ export default function Footer() {
           {/* Nav links */}
           <nav className="flex flex-wrap gap-x-6 gap-y-2">
             {LINKS.map((link) => (
-              <a key={link} href="#"
+              <a key={link.label} href={link.href}
                 className="text-stone-400 text-sm hover:text-stone-100 transition-colors whitespace-nowrap">
-                {link}
+                {link.label}
               </a>
             ))}
           </nav>
@@ -78,7 +84,6 @@ export default function Footer() {
                 className="text-stone-500 hover:text-stone-100 transition-colors">
                 {s.icon}
               </a>
-
             ))}
           </div>
         </div>
