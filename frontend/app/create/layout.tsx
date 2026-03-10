@@ -7,6 +7,6 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
       <Navbar isLoggedIn={false} messageCount={3} notifCount={2} />
       <main className="pt-16">{children}</main>
       <Footer />
-    </>
+    </> 
   );
 }
