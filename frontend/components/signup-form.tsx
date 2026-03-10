@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation";
 import { useUser } from "@/utils/UserContext";
 import { getSessionMeta, signUpUser } from "@/services/authService";
@@ -24,6 +24,21 @@ export function SignupForm({ className, ...props }: React.ComponentProps<"div">)
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const { saveUserData } = useUser();
+  const [authChecked, setAuthChecked] = useState(false);
+  const STORAGE_KEY = "auth_user";
+
+  // Redirect if user is already authenticated
+    useEffect(() => {
+    const userAuth = localStorage.getItem(STORAGE_KEY);
+      if (userAuth) {
+        router.push("/");
+      } else {
+        setAuthChecked(true); // Only show UI if user is not authenticated
+      }
+    }, []);
+
+  // Don't render anything until auth check is complete
+  if (!authChecked) return null;
 
   // Use the name attribute as the key
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {

@@ -6,8 +6,7 @@ import (
 	"time"
 
 	"p2p_marketplace/backend/middleware"
-	"p2p_marketplace/backend/model/data"
-	"p2p_marketplace/backend/model/response"
+	"p2p_marketplace/backend/model"
 	"p2p_marketplace/backend/repository"
 
 	"github.com/gofiber/fiber/v2"
@@ -15,44 +14,44 @@ import (
 
 func SignUpUser(c *fiber.Ctx) error {
 	fmt.Println(c.Path())
-	var rcvUser data.UserFromReq
+	var body model.UserFromBody
 
 	// Parse the request body
-	if err := c.BodyParser(&rcvUser); err != nil {
+	if err := c.BodyParser(&body); err != nil {
 		return SendErrorResponse(c, 400, "Invalid request body. Please contact support.", err)
 	}
 
 	// Validate the received user data
-	if err := middleware.ValidateSignUpInput(&rcvUser); err != nil {
+	if err := middleware.ValidateSignUpInput(&body); err != nil {
 		return SendErrorResponse(c, 400, err.Error(), err)
 	}
 
 	// Check if email already exists
-	if err := repository.IsUserExist(rcvUser.Email); err != nil {
+	if err := repository.IsUserExist(body.Email); err != nil {
 		return SendErrorResponse(c, 409, "Email already exists", nil)
 	}
 
 	// Create the user in the database with hashed password
-	if err := repository.CreateUser(rcvUser); err != nil {
+	if err := repository.CreateUser(body); err != nil {
 		return SendErrorResponse(c, 500, "Failed to create user. Please contact support.", err)
 	}
 
 	// Reduce password exposure incase of logging or other operations
-	rcvUser.Password = ""
+	body.Password = ""
 
 	// Fetch the created user to get the ID and other details for session creation
-	userFromDb, err := repository.GetUserByEmail(rcvUser.Email)
+	userFromDb, err := repository.GetUserByEmail(body.Email)
 	if err != nil {
 		return SendErrorResponse(c, 500, "Failed to retrieve user data. Please contact support.", err)
 	}
 
 	// Create a session for the client
-	if err := repository.CreateSession(c, userFromDb, rcvUser.IpAddress, rcvUser.UserAgent); err != nil {
+	if err := repository.CreateSession(c, userFromDb, body.IpAddress, body.UserAgent); err != nil {
 		return SendErrorResponse(c, 500, "Failed to create session. Please contact support.", err)
 	}
 
 	// Return success response with user data
-	return c.Status(201).JSON(response.ResponseModel{
+	return c.Status(201).JSON(model.ResponseModel{
 		RetCode: "201",
 		Message: "User created successfully",
 		Data:    map[string]interface{}{"user": BuildUserResponse(userFromDb)},
@@ -61,19 +60,19 @@ func SignUpUser(c *fiber.Ctx) error {
 
 func LogInUser(c *fiber.Ctx) error {
 	fmt.Println(c.Path())
-	var rcvUser data.UserFromReq
+	var body model.UserFromBody
 
 	// Parse the request body
-	if err := c.BodyParser(&rcvUser); err != nil {
+	if err := c.BodyParser(&body); err != nil {
 		return SendErrorResponse(c, 400, "Invalid request body. Please contact support.", err)
 	}
 
 	// Trim whitespaces of user data
-	rcvUser.Email = strings.TrimSpace(rcvUser.Email)
-	rcvUser.Password = strings.TrimSpace(rcvUser.Password)
+	body.Email = strings.TrimSpace(body.Email)
+	body.Password = strings.TrimSpace(body.Password)
 
 	// Validate email format
-	if err := middleware.ValidateEmail(rcvUser.Email); err != nil {
+	if err := middleware.ValidateEmail(body.Email); err != nil {
 		return SendErrorResponse(c, 400, err.Error(), err)
 	}
 
@@ -84,7 +83,7 @@ func LogInUser(c *fiber.Ctx) error {
 	// }
 
 	// Get userFromDb by email to verify credentials
-	userFromDb, err := repository.GetUserByEmail(rcvUser.Email)
+	userFromDb, err := repository.GetUserByEmail(body.Email)
 	if err != nil {
 		return SendErrorResponse(c, 500, err.Error(), err)
 	}
@@ -101,16 +100,16 @@ func LogInUser(c *fiber.Ctx) error {
 	}
 
 	// Check if user password matches the stored hash
-	if !middleware.IsPasswordMatch(rcvUser.Password, userFromDb.Password) {
+	if !middleware.IsPasswordMatch(body.Password, userFromDb.Password) {
 		repository.IncreaseUserFailedLogin(userFromDb.UserId)
 		return SendErrorResponse(c, 401, "Incorrect password. Please try again.", nil)
 	}
 
 	// Reduce password exposure incase of logging or other operations
-	rcvUser.Password = ""
+	body.Password = ""
 
 	// Create a session for the client
-	if err := repository.CreateSession(c, userFromDb, rcvUser.IpAddress, rcvUser.UserAgent); err != nil {
+	if err := repository.CreateSession(c, userFromDb, body.IpAddress, body.UserAgent); err != nil {
 		return SendErrorResponse(c, 500, "Failed to create session. Please contact support.", err)
 	}
 
@@ -121,7 +120,7 @@ func LogInUser(c *fiber.Ctx) error {
 	}
 
 	// Return success response with user data
-	return c.Status(200).JSON(response.ResponseModel{
+	return c.Status(200).JSON(model.ResponseModel{
 		RetCode: "200",
 		Message: "Logged in successfully",
 		Data:    map[string]interface{}{"user": BuildUserResponse(userFromDb)},
@@ -173,7 +172,7 @@ func Me(c *fiber.Ctx) error {
 	}
 
 	// Return success response with user data
-	return c.Status(200).JSON(response.ResponseModel{
+	return c.Status(200).JSON(model.ResponseModel{
 		RetCode: "200",
 		Message: "User is authenticated",
 		Data:    map[string]interface{}{"user": BuildUserResponse(userFromDb)},
