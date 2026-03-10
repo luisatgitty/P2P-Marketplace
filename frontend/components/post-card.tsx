@@ -12,6 +12,7 @@ export interface PostCardProps {
   price: number;
   priceUnit?: string;
   type: ListingType;
+  category?: string;
   location: string;
   postedAt: string;
   imageUrl: string;
