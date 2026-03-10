@@ -1,25 +1,27 @@
 export async function getSessionMeta(): Promise<{ ipAddress: string; userAgent: string }> {
-  const res = await fetch("/api/session");
-  if (!res.ok) throw new Error("Failed to fetch session metadata");
-  return res.json();
+  const response = await fetch("/api/session");
+  if (!response.ok) throw new Error("Failed to fetch session metadata");
+  return response.json();
 }
 
-export async function post(url: string, data: any, errorMessage: string) {
-  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}${url}`, {
+export async function post(url: string, data: any) {
+  const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}${url}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     credentials: "include", // Required to accept and send cookies
     body: JSON.stringify(data),
   });
 
-  const json = await res.json();
-  if (!res.ok) {
-    throw new Error(json.message || errorMessage);
+  const parsedJson = await response.json();
+  if (!response.ok) {
+    // Throw the error message to display
+    throw parsedJson.data.message;
   }
-  return json;
+  // Return the user data from database
+  return parsedJson.data;
 }
 
-export async function signUpUser(route : string, errorMessage : string, payload: {
+export async function signUpUser(route : string, payload: {
     firstName?: string;
     lastName?: string;
     email: string;
@@ -27,6 +29,7 @@ export async function signUpUser(route : string, errorMessage : string, payload:
     ipAddress: string;
     userAgent: string;
 }) {
-  const json = await post(route, payload, errorMessage);
-  return json.data.user;
+  const data = await post(route, payload);
+  // data.user is the user object returned from the backend
+  return data.user;
 }
