@@ -57,6 +57,7 @@ export function LoginForm({ className, ...props }: React.ComponentProps<"div">) 
       const route = "/auth/login";
       // Send the form data to the backend
       const user = await signUpUser(route, { ...form, ipAddress, userAgent });
+      console.log("Logged in user:", user);
       saveUserData(user);
       router.push("/");
     } catch (error: any) {

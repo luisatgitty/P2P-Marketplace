@@ -5,20 +5,24 @@ export async function getSessionMeta(): Promise<{ ipAddress: string; userAgent: 
 }
 
 export async function post(url: string, data: any) {
-  const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}${url}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    credentials: "include", // Required to accept and send cookies
-    body: JSON.stringify(data),
-  });
+  try {
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}${url}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include", // Required to accept and send cookies
+      body: JSON.stringify(data),
+    });
 
-  const parsedJson = await response.json();
-  if (!response.ok) {
-    // Throw the error message to display
-    throw parsedJson.data.message;
+    const parsedJson = await res.json();
+    if (!res.ok) {
+      // Throw the error message to display
+      throw parsedJson.data.message;
+    }
+    // Return the user data from database
+    return parsedJson.data;
+  } catch {
+    throw "An unexpected error occurred. Please try again later.";
   }
-  // Return the user data from database
-  return parsedJson.data;
 }
 
 export async function signUpUser(route : string, payload: {
