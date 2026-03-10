@@ -8,25 +8,34 @@ import { Input } from "@/components/ui/input";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsLoading(true);
     setError("");
 
-    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/forgot-password`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email }),
-    });
-
-    if (!res.ok) {
-      setError("Something went wrong. Please try again.");
-      return;
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/forgot-password`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      
+      if (!res.ok) {
+        const parsedJson = await res.json();
+        setError(parsedJson.message);
+        setIsLoading(false);
+        return;
+      }
+      setSubmitted(true);
+      setIsLoading(false);
+    } catch {
+      setIsLoading(false);
+      setError("An unexpected error occurred. Please try again later.");
     }
-
-    setSubmitted(true);
   };
 
   if (submitted) {
@@ -37,7 +46,7 @@ export default function ForgotPasswordPage() {
             <div className="flex flex-col items-center gap-2 text-center">
               <h1 className="text-2xl font-bold">Check your email</h1>
               <p className="text-muted-foreground text-balance">
-                If that email exists, a reset link has been sent. Check your inbox.
+                Reset link has been sent. Check your inbox.
               </p>
             </div>
           </CardContent>
@@ -71,7 +80,7 @@ export default function ForgotPasswordPage() {
               </Field>
               {error && <p style={{ color: "red", fontSize: "0.875rem" }}>{error}</p>}
               <Field>
-                <Button type="submit">Send Reset Link</Button>
+                <Button type="submit" disabled={isLoading}>{isLoading ? "Sending Reset Link..." : "Send Reset Link"}</Button>
               </Field>
               <FieldDescription className="text-center">
                 Remember your password? <a href="/login">Log in</a>
