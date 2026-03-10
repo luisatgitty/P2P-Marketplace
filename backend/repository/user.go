@@ -27,21 +27,30 @@ func GetUserByEmail(email string) (model.UserFromDb, error) {
 	db := middleware.DBConn
 	var user model.UserFromDb
 	selectQuery := "SELECT id, first_name, last_name, email, password_hash, role, verification_status, failed_login_attempts, account_locked_until FROM public.users WHERE email=$1"
-	err := db.Raw(selectQuery, email).Scan(&user).Error
+	results := db.Raw(selectQuery, email).Scan(&user)
 
-	// Check if user exists
-	if user.UserId == "" {
+	if results.Error != nil {
+		return user, fmt.Errorf("Failed to retrieve user. Please contact support.")
+	}
+	if results.RowsAffected == 0 {
 		return user, fiber.NewError(404, "Incorrect email. Please try again.")
 	}
-	return user, err
+	return user, nil
 }
 
 func GetUserById(userId interface{}) (model.UserFromDb, error) {
 	db := middleware.DBConn
 	var user model.UserFromDb
 	selectQuery := "SELECT id, first_name, last_name, email, password_hash, role, verification_status, failed_login_attempts, account_locked_until FROM public.users WHERE id=$1"
-	err := db.Raw(selectQuery, userId).Scan(&user).Error
-	return user, err
+	results := db.Raw(selectQuery, userId).Scan(&user)
+
+	if results.Error != nil {
+		return user, fmt.Errorf("Failed to retrieve user. Please contact support.")
+	}
+	if results.RowsAffected == 0 {
+		return user, fiber.NewError(404, "User not found. Please try again.")
+	}
+	return user, nil
 }
 
 func CreateUser(user model.UserFromBody) error {

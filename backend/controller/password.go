@@ -30,8 +30,8 @@ func ForgotPassword(c *fiber.Ctx) error {
 
 	// Get userFromDb by email to verify credentials
 	userFromDb, err := repository.GetUserByEmail(body.Email)
-	if err != nil || userFromDb.UserId == "" {
-		return SendSuccessResponse(c, 200, err.Error(), nil)
+	if err != nil {
+		return SendSuccessResponse(c, 404, err.Error(), nil)
 	}
 
 	// Check if user account is locked
