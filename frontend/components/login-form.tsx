@@ -17,7 +17,7 @@ export function LoginForm({ className, ...props }: React.ComponentProps<"div">) 
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
-  const { isValidated, saveUserData } = useUser();
+  const { saveUserData } = useUser();
   const STORAGE_KEY = "auth_user";
   
   // Redirect if user is already authenticated

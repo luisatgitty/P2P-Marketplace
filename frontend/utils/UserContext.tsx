@@ -19,17 +19,13 @@ interface UserContextType {
 }
 
 const UserContext = createContext<UserContextType | null>(null);
-const PUBLIC_ROUTES = ["/", "/login", "/signup", "/forgot-password"];
-const PROTECTED_AUTH_ROUTES = ["/login", "/signup"];
+const PUBLIC_ROUTES = ["/", "/login", "/signup", "/forgot-password", "/reset-password"];
 const STORAGE_KEY = "auth_user";
 
 export function UserProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
-
   const isPublicRoute = PUBLIC_ROUTES.includes(pathname);
-  const isProtectedAuthRoute = PROTECTED_AUTH_ROUTES.includes(pathname);
-
   const [user, setUser] = useState<User | null>(null);
   const [isValidated, setIsValidated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -54,46 +50,47 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       setUser(null);
       setIsValidated(false);
       localStorage.removeItem(STORAGE_KEY);
-    }
-  };
-
-  const validateUser = async () => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      const userData = JSON.parse(stored);
-      setUser(userData);
-      setIsValidated(true);
-      setIsLoading(false);
-      return;
-    }
-
-    try {
-      // If the client has a stored session cookie
-      if (document.cookie.includes("session_token")) {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/me`, {
-          method: "GET",
-          credentials: "include",
-        });
-
-        if (!res.ok) {
-          setUser(null);
-          setIsValidated(false);
-          return;
-        }
-
-        const json = await res.json();
-        saveUserData(json.data.user);
-      }
-    } catch {
-      setUser(null);
-      setIsValidated(false);
-    } finally {
-      setIsLoading(false);
+      router.push("/login");
     }
   };
 
   // Validate user on mount
   useEffect(() => {
+    const validateUser = async () => {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        const userData = JSON.parse(stored);
+        setUser(userData);
+        setIsValidated(true);
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        // If the client has a stored session cookie
+        if (document.cookie.includes("session_token")) {
+          const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/me`, {
+            method: "GET",
+            credentials: "include",
+          });
+
+          if (!res.ok) {
+            setUser(null);
+            setIsValidated(false);
+            return;
+          }
+
+          const json = await res.json();
+          saveUserData(json.data.user);
+        }
+      } catch {
+        setUser(null);
+        setIsValidated(false);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
     validateUser();
   }, []);
 
