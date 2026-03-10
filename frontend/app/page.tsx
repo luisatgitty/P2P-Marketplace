@@ -1,10 +1,11 @@
 "use client";
 
-import Link from "next/link";
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import PostCard, { type PostCardProps } from "@/components/post-card";
 import CategoryFilter from "@/components/category-filter";
 import LocationFilter from "@/components/location-filter";
+import { useUser } from "@/utils/UserContext";
 import * as listingService from "@/services/listingService";
 
 const MOCK_LISTINGS: PostCardProps[] = [
@@ -67,68 +68,89 @@ const MOCK_LISTINGS: PostCardProps[] = [
     seller: { name: "Carlos M.", rating: 4.6 },
   },
 ];
-//Home page showcasing featured listings, category filter, and a grid of recent listings with a "Load more" button at the bottom.
+
+// ── Post for Free — seller-aware ─────────────────────────────────────────────
+function PostForFreeButton() {
+  const { user, isValidated } = useUser();
+  const router = useRouter();
+  const isSeller = user?.status === "verified";
+
+  function handleClick() {
+    if (!isValidated) { router.push("/login"); return; }
+    if (!isSeller)    { router.push("/profile"); return; }
+    router.push("/create");
+  }
+
+  return (
+    <button
+      onClick={handleClick}
+      className="border border-stone-600 text-stone-300 text-sm font-medium px-5 py-2.5 rounded-full hover:border-stone-300 hover:text-white transition-colors flex items-center gap-2"
+    >
+      {isSeller ? "✨ Post for Free" : isValidated ? "🏪 Become a Seller" : "Post for Free"}
+    </button>
+  );
+}
+
+// ── Main page ────────────────────────────────────────────────────────────────
 export default function Home() {
   const [listings, setListings] = useState<PostCardProps[]>(MOCK_LISTINGS);
-  const [locFilter, setLocFilter] = useState<string>("Laguna");
+  const [locFilter, setLocFilter] = useState<string>("");
   const [tabFilter, setTabFilter] = useState<string>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
 
   useEffect(() => {
     const saved = listingService.getListings();
     if (saved.length) {
-      setListings((prev) => [...prev, ...saved]);
+      const existingIds = new Set(MOCK_LISTINGS.map((l) => l.id));
+      const newOnes = saved.filter((l) => !existingIds.has(l.id));
+      if (newOnes.length) setListings((prev) => [...prev, ...newOnes]);
     }
   }, []);
 
   const filtered = listings.filter((l) => {
-    // location filter
     if (locFilter && !l.location.toLowerCase().includes(locFilter.toLowerCase())) return false;
-    // tab filter (type)
     if (tabFilter !== "all" && l.type !== tabFilter) return false;
-    // category filter
     if (categoryFilter !== "all" && l.category !== categoryFilter) return false;
     return true;
   });
 
   return (
     <>
+      {/* ── Hero ── */}
       <section className="bg-[#1e2433] px-4 sm:px-6 lg:px-8 py-10 fade-in">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
-          <div>
-            <h2 className="font-brand text-3xl sm:text-4xl text-stone-100 leading-tight max-w-lg">
-              Buy, Sell & Rent —<br />
-              <span className="italic font-normal text-stone-400">from people near you.</span>
-            </h2>
-            <div className="flex gap-3 mt-6">
-              <a
-                href="#listings"
-                className="bg-stone-100 text-stone-800 text-sm font-semibold px-5 py-2.5 rounded-full hover:bg-white transition-colors"
-              >
-                Browse Listings
-              </a>
-              <Link
-                href="/create"
-                className="border border-stone-600 text-stone-300 text-sm font-medium px-5 py-2.5 rounded-full hover:border-stone-300 hover:text-white transition-colors"
-              >
-                Post for Free
-              </Link>
-            </div>
-          </div>
-          <div className="flex gap-6 text-center shrink-0">
-            {[
-              { value: "Buy", label: "Find great deals" },
-              { value: "Sell", label: "List for free" },
-              { value: "Rent", label: "Short term use" },
-            ].map((stat, i) => (
-              <div key={stat.label} className="flex items-center gap-8">
-                {i > 0 && <div className="w-px h-20 bg-stone-700" />}
-                <div>
-                  <p className="font-brand text-2xl text-stone-100 font-semibold">{stat.value}</p>
-                  <p className="text-xs text-stone-500 mt-0.5">{stat.label}</p>
-                </div>
+        <div className="max-w-7xl mx-auto">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+            <div>
+              <h2 className="font-brand text-3xl sm:text-4xl text-stone-100 leading-tight max-w-lg">
+                Buy, Sell &amp; Rent —<br />
+                <span className="italic font-normal text-stone-400">from people near you.</span>
+              </h2>
+              <div className="flex gap-3 mt-6 flex-wrap">
+                <a
+                  href="#listings"
+                  className="bg-stone-100 text-stone-800 text-sm font-semibold px-5 py-2.5 rounded-full hover:bg-white transition-colors"
+                >
+                  Browse Listings
+                </a>
+                <PostForFreeButton />
               </div>
-            ))}
+            </div>
+
+            <div className="flex gap-6 text-center shrink-0">
+              {[
+                { value: "Buy",  label: "Find great deals" },
+                { value: "Sell", label: "List for free"    },
+                { value: "Rent", label: "Short term use"   },
+              ].map((stat, i) => (
+                <div key={stat.label} className="flex items-center gap-8">
+                  {i > 0 && <div className="w-px h-20 bg-stone-700" />}
+                  <div>
+                    <p className="font-brand text-2xl text-stone-100 font-semibold">{stat.value}</p>
+                    <p className="text-xs text-stone-500 mt-0.5">{stat.label}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </section>
@@ -140,17 +162,26 @@ export default function Home() {
       />
       <LocationFilter onLocationChange={setLocFilter} />
 
+      {/* ── Listings grid ── */}
       <main
         id="listings"
         className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 fade-in delay-2"
       >
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 pt-28">
-          {filtered.map((listing) => (
-            <PostCard key={listing.id} {...listing} />
-          ))}
-        </div>
+        {filtered.length > 0 ? (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 pt-28">
+            {filtered.map((listing) => (
+              <PostCard key={listing.id} {...listing} />
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-24 pt-40">
+            <p className="text-4xl mb-4">🔍</p>
+            <p className="text-stone-500 font-medium">No listings found for these filters.</p>
+            <p className="text-stone-400 text-sm mt-1">Try a different location or category.</p>
+          </div>
+        )}
         <div className="flex justify-center mt-10">
-          <button className="border border-stone-300 text-stone-600 text-sm font-medium px-8 py-3 rounded-full hover:bg-stone-200 transition-colors">
+          <button className="border border-stone-300 dark:border-stone-600 text-stone-600 dark:text-stone-400 text-sm font-medium px-8 py-3 rounded-full hover:bg-stone-200 dark:hover:bg-stone-800 transition-colors">
             Load more listings
           </button>
         </div>

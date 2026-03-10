@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { DM_Sans, Geist_Mono, Inter } from "next/font/google";
 import { UserProvider } from "@/utils/UserContext";
+import { ThemeProvider } from "@/utils/ThemeContext";
 import Navbar from "../components/navbar";
 import Footer from "../components/footer";
 import "./globals.css";
@@ -29,13 +30,15 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: 
   Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body className={`${inter.variable} ${dmSans.variable} antialiased`}>
-        <UserProvider>
-          <Navbar />
-          {children}
-          <Footer />
-        </UserProvider>
+        <ThemeProvider>
+          <UserProvider>
+            <Navbar />
+            {children}
+            <Footer />
+          </UserProvider>
+        </ThemeProvider>
       </body>
     </html>
   );
