@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"p2p_marketplace/backend/middleware"
-	"p2p_marketplace/backend/model/data"
+	"p2p_marketplace/backend/model"
 )
 
 func InsertPasswordResetToken(userId, hashedToken string, expiresAt time.Time) error {
@@ -16,7 +16,7 @@ func InsertPasswordResetToken(userId, hashedToken string, expiresAt time.Time) e
 
 func GetUserToReset(token string) (string, error) {
 	db := middleware.DBConn
-	var reset data.PwdResetFromDb
+	var reset model.PwdResetFromDb
 	hashedToken := middleware.HashToken(token)
 	selectQuery := "SELECT user_id FROM public.password_resets WHERE token=$1 AND expires_at > $2"
 

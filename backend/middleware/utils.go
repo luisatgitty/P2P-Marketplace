@@ -1,15 +1,11 @@
 package middleware
 
 import (
-	"encoding/base64"
 	"fmt"
-	"net/mail"
 	"os"
-	"p2p_marketplace/backend/model/data"
-	"strings"
-	"unicode"
 
 	"github.com/joho/godotenv"
+	"github.com/resend/resend-go/v2"
 )
 
 func GetEnv(key string) string {
@@ -21,163 +17,35 @@ func GetEnv(key string) string {
 	return os.Getenv(key)
 }
 
-func ValidateSignUpInput(rcvUser *data.UserFromBody) error {
-	// Trim whitespaces of user data
-	rcvUser.FirstName = strings.TrimSpace(rcvUser.FirstName)
-	rcvUser.LastName = strings.TrimSpace(rcvUser.LastName)
-	rcvUser.Email = strings.TrimSpace(rcvUser.Email)
-	rcvUser.Password = strings.TrimSpace(rcvUser.Password)
+func SendPasswordResetEmail(toEmail, firstName, resetLink string) error {
+	apiKey := os.Getenv("RESEND_API_KEY")
+	from := os.Getenv("RESEND_FROM")
+	client := resend.NewClient(apiKey)
 
-	// Validate first name and last name
-	if err := validateUserName(rcvUser.FirstName, "First name"); err != nil {
-		return err
-	}
-	if err := validateUserName(rcvUser.LastName, "Last name"); err != nil {
-		return err
-	}
+	// Construct the email content
+	html := fmt.Sprintf(`
+		<h2>Hi %s,</h2>
+		<p>You requested a password reset. Click the link below:</p>
+		<a href="%s" style="
+			display: inline-block;
+			padding: 12px 24px;
+			background-color: #000;
+			color: #fff;
+			text-decoration: none;
+			border-radius: 6px;
+		">Reset Password</a>
+		<p>This link expires in <strong>15 minutes</strong>.</p>
+		<p>If you did not request this, you can safely ignore this email.</p>
+	`, firstName, resetLink)
 
-	// Validate email format
-	if err := ValidateEmail(rcvUser.Email); err != nil {
-		return err
-	}
-
-	// NOTE: Disabled password complexity validation during development
-	// Validate password complexity
-	// if err := validatePasswordComplexity(rcvUser.Password); err != nil {
-	// 	return err
-	// }
-
-	return nil
-}
-func validateUserName(name string, field string) error {
-	// Check if firstName and lastName are at least 2 characters
-	if len(name) < 2 {
-		return fmt.Errorf("%s must be at least 2 characters", field)
+	params := &resend.SendEmailRequest{
+		From:    from,
+		To:      []string{toEmail},
+		Subject: "Reset Your Password",
+		Html:    html,
 	}
 
-	// Check if firstName and lastName are not more than 50 characters
-	if len(name) > 50 {
-		return fmt.Errorf("%s must not exceed 50 characters", field)
-	}
-
-	// Check if the name contains only letters, spaces, or hyphens
-	for _, ch := range name {
-		if !(unicode.IsLetter(ch) || unicode.IsSpace(ch) || ch == '-') {
-			return fmt.Errorf("%s can only contain letters, spaces, or hyphens", field)
-		}
-	}
-
-	return nil
-}
-
-func ValidateEmail(email string) error {
-	// Validate email length
-	if len(email) > 254 || len(email) < 3 {
-		return fmt.Errorf("Invalid email length")
-	}
-
-	// Validate email local part and domain part lengths
-	parts := strings.Split(email, "@")
-	if len(parts) != 2 {
-		return fmt.Errorf("Invalid email format")
-	}
-	if len(parts[0]) > 64 {
-		return fmt.Errorf("Invalid email local part length")
-	}
-	if len(parts[1]) > 255 {
-		return fmt.Errorf("Invalid email domain part length")
-	}
-
-	// Validate email format using net/mail package
-	if _, err := mail.ParseAddress(email); err != nil {
-		return fmt.Errorf("Invalid email format")
-	}
-
-	return nil
-}
-
-func ValidatePasswordLength(password string) error {
-	if len(password) < 8 {
-		return fmt.Errorf("Password must be at least 8 characters")
-	}
-	if len(password) > 72 {
-		return fmt.Errorf("Password must not exceed 72 characters")
-	}
-	return nil
-}
-
-func ValidatePasswordComplexity(password string) error {
-	var hasUpper, hasLower, hasDigit, hasSpecial bool
-	specialChars := "!@#$%^&*()-_=+[]{}|;:',.<>?/`~"
-
-	// Validate password length before checking complexity
-	if err := ValidatePasswordLength(password); err != nil {
-		return err
-	}
-
-	// Check each character for uppercase, lowercase, digit, and special character
-	for _, ch := range password {
-		switch {
-		case unicode.IsUpper(ch):
-			hasUpper = true
-		case unicode.IsLower(ch):
-			hasLower = true
-		case unicode.IsDigit(ch):
-			hasDigit = true
-		case containsRune(specialChars, ch):
-			hasSpecial = true
-		}
-	}
-
-	// Validate password complexity requirements
-	if !hasUpper {
-		return fmt.Errorf("Password must contain at least one uppercase letter")
-	}
-	if !hasLower {
-		return fmt.Errorf("Password must contain at least one lowercase letter")
-	}
-	if !hasDigit {
-		return fmt.Errorf("Password must contain at least one number")
-	}
-	if !hasSpecial {
-		return fmt.Errorf("Password must contain at least one special character")
-	}
-
-	return nil
-}
-
-func containsRune(s string, r rune) bool {
-	// Check if password contains a specific special character
-	for _, c := range s {
-		if c == r {
-			return true
-		}
-	}
-	return false
-}
-
-func ValidateTokenFormat(token string) error {
-	// Check if the token is empty
-	if token == "" {
-		return fmt.Errorf("Token cannot be empty")
-	}
-
-	// Check token length (32 characters for a 128-bit token represented in hex)
-	if len(token) != 32 {
-		return fmt.Errorf("Invalid token length")
-	}
-
-	// Check if token contains only hexadecimal characters
-	for _, ch := range token {
-		if !unicode.Is(unicode.Hex_Digit, ch) {
-			return fmt.Errorf("Invalid token format")
-		}
-	}
-
-	// Check if token is valid base64
-	if _, err := base64.RawURLEncoding.DecodeString(token); err != nil {
-		return fmt.Errorf("Invalid token format")
-	}
-
-	return nil
+	// NOTE: Currently, only the developer email can receive emails
+	_, err := client.Emails.Send(params)
+	return err
 }

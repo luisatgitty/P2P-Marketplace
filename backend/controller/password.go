@@ -2,10 +2,11 @@ package controller
 
 import (
 	"fmt"
+	"os"
 	"time"
 
 	"p2p_marketplace/backend/middleware"
-	"p2p_marketplace/backend/model/data"
+	"p2p_marketplace/backend/model"
 	"p2p_marketplace/backend/repository"
 
 	"github.com/gofiber/fiber/v2"
@@ -51,7 +52,7 @@ func ForgotPassword(c *fiber.Ctx) error {
 	}
 
 	// Generate reset link and send email
-	resetLink := fmt.Sprintf("%s/reset-password?token=%s", middleware.GetEnv("FRONTEND_URL"), resetToken)
+	resetLink := fmt.Sprintf("%s/reset-password?token=%s", os.Getenv("FRONTEND_URL"), resetToken)
 	if err := middleware.SendPasswordResetEmail(userFromDb.Email, userFromDb.FirstName, resetLink); err != nil {
 		return SendErrorResponse(c, 500, "Failed to send reset email", err)
 	}
@@ -70,6 +71,7 @@ func ValidateResetToken(c *fiber.Ctx) error {
 
 	// Check token format
 	if err := middleware.ValidateTokenFormat(token); err != nil {
+		fmt.Println("Token format error:", err)
 		return SendErrorResponse(c, 400, err.Error(), err)
 	}
 
@@ -83,7 +85,7 @@ func ValidateResetToken(c *fiber.Ctx) error {
 
 func ResetPassword(c *fiber.Ctx) error {
 	fmt.Println(c.Path())
-	var body data.PwdResetFromBody
+	var body model.PwdResetFromBody
 
 	// Parse the request body
 	if err := c.BodyParser(&body); err != nil {

@@ -3,7 +3,7 @@ package repository
 import (
 	"fmt"
 	"p2p_marketplace/backend/middleware"
-	"p2p_marketplace/backend/model/data"
+	"p2p_marketplace/backend/model"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -23,9 +23,9 @@ func IsUserExist(email string) error {
 	return nil
 }
 
-func GetUserByEmail(email string) (data.UserFromDb, error) {
+func GetUserByEmail(email string) (model.UserFromDb, error) {
 	db := middleware.DBConn
-	var user data.UserFromDb
+	var user model.UserFromDb
 	selectQuery := "SELECT id, first_name, last_name, email, password_hash, role, verification_status, failed_login_attempts, account_locked_until FROM public.users WHERE email=$1"
 	err := db.Raw(selectQuery, email).Scan(&user).Error
 
@@ -36,15 +36,15 @@ func GetUserByEmail(email string) (data.UserFromDb, error) {
 	return user, err
 }
 
-func GetUserById(userId interface{}) (data.UserFromDb, error) {
+func GetUserById(userId interface{}) (model.UserFromDb, error) {
 	db := middleware.DBConn
-	var user data.UserFromDb
+	var user model.UserFromDb
 	selectQuery := "SELECT id, first_name, last_name, email, password_hash, role, verification_status, failed_login_attempts, account_locked_until FROM public.users WHERE id=$1"
 	err := db.Raw(selectQuery, userId).Scan(&user).Error
 	return user, err
 }
 
-func CreateUser(user data.UserFromBody) error {
+func CreateUser(user model.UserFromBody) error {
 	db := middleware.DBConn
 	insertQuery := "INSERT INTO public.users (first_name, last_name, email, password_hash, last_login_at) VALUES ($1,$2,$3,$4,$5)"
 	hashedPassword := middleware.HashPassword(user.Password)

@@ -7,6 +7,8 @@ import (
 	"encoding/hex"
 	"time"
 
+	"p2p_marketplace/backend/config"
+
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -23,7 +25,7 @@ func IsPasswordMatch(password, hash string) bool {
 func GenerateToken(expirationMinutes int) (string, time.Time, error) {
 	sessionExpiration := time.Now().Add(time.Duration(expirationMinutes) * time.Minute)
 
-	b := make([]byte, 32)
+	b := make([]byte, config.SessionTokenLength)
 	if _, err := rand.Read(b); err != nil {
 		return "", sessionExpiration, err
 	}

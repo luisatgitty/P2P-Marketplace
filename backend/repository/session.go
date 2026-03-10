@@ -3,20 +3,20 @@ package repository
 import (
 	"fmt"
 	"p2p_marketplace/backend/middleware"
-	"p2p_marketplace/backend/model/data"
+	"p2p_marketplace/backend/model"
 
 	"github.com/gofiber/fiber/v2"
 )
 
-func GetSessionById(sessionId string) (data.SessionFromDb, error) {
+func GetSessionById(sessionId string) (model.SessionFromDb, error) {
 	db := middleware.DBConn
-	var session data.SessionFromDb
+	var session model.SessionFromDb
 	selectQuery := "SELECT user_id, is_revoked, expires_at FROM public.sessions WHERE session_id=$1"
 	err := db.Raw(selectQuery, sessionId).Scan(&session).Error
 	return session, err
 }
 
-func CreateSession(c *fiber.Ctx, user data.UserFromDb, ipAddress, userAgent string) error {
+func CreateSession(c *fiber.Ctx, user model.UserFromDb, ipAddress, userAgent string) error {
 	db := middleware.DBConn
 	sevenDays := 10080 // in minutes
 	sessionToken, sessionExpiration, tokenErr := middleware.GenerateToken(sevenDays)
