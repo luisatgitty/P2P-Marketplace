@@ -223,9 +223,9 @@ func Logout(c *fiber.Ctx) error {
 
 	// Delete session from DB and clear cookie
 	if err := repository.DeleteSession(c); err != nil {
-		return SendErrorResponse(c, 500, "Failed to delete session", err)
+		fmt.Println("Failed to delete session during logout: ", err)
 	}
 
-	// Return success response
+	// Return success response with expired cookie
 	return SendSuccessResponse(c, 200, "Logged out successfully", nil)
 }

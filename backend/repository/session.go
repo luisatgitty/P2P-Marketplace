@@ -9,6 +9,8 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
+// TODO: Return a custom error type that includes an error code
+
 func GetSessionById(sessionId string) (model.SessionFromDb, error) {
 	db := middleware.DBConn
 	var session model.SessionFromDb
