@@ -16,13 +16,17 @@ const (
 	EmailMaxLength       = 254
 	EmailLocalMaxLength  = 64
 	EmailDomainMaxLength = 255
+	EmailOTPLength       = 6
+	EmailOTPDuration     = 10 * time.Minute
 )
 
 // ─── Password ─────────────────────────────────────────
 const (
-	PwdMinLength    = 8
-	PwdMaxLength    = 72
-	PwdSpecialChars = "!@#$%^&*()-_=+[]{}|;:',.<>?/`~"
+	PwdMinLength          = 8
+	PwdMaxLength          = 72
+	PwdSpecialChars       = "!@#$%^&*()-_=+[]{}|;:',.<>?/`~"
+	PwdResetTokenLength   = 32
+	PwdResetTokenDuration = 15 * time.Minute
 )
 
 // ─── Session ──────────────────────────────────────────
@@ -31,10 +35,4 @@ const (
 	SessionTokenLength    = 32
 	SessionTokenExpLength = 43
 	SessionDuration       = 7 * 24 * time.Hour
-)
-
-// ─── Password Reset ───────────────────────────────────
-const (
-	ResetTokenLength   = 32
-	ResetTokenDuration = 15 * time.Minute
 )

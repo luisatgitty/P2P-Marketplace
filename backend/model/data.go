@@ -10,6 +10,7 @@ type UserFromBody struct {
 	Email     string `json:"email"`
 	IpAddress string `json:"ipAddress"`
 	UserAgent string `json:"userAgent"`
+	OTP       string `json:"otpString"`
 }
 
 type UserFromDb struct {
@@ -38,4 +39,9 @@ type PwdResetFromDb struct {
 type PwdResetFromBody struct {
 	Token    string `json:"token"`
 	Password string `json:"password"`
+}
+
+type EmailVerifFromDb struct {
+	Email     string    `gorm:"column:email"`
+	ExpiresAt time.Time `gorm:"column:expires_at"`
 }

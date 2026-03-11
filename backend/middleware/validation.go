@@ -147,7 +147,7 @@ func containsRune(s string, r rune) bool {
 func ValidateTokenFormat(token string) error {
 	// Check if the token is empty
 	if token == "" {
-		return fmt.Errorf("Token cannot be empty")
+		return fmt.Errorf("Missing token")
 	}
 
 	// Check token length (Expected length is 43 chars for a 32-byte base64 string)

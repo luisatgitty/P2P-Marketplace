@@ -33,7 +33,7 @@ func GetUserByEmail(email string) (model.UserFromDb, error) {
 		return user, fmt.Errorf("Failed to retrieve user. Please contact support.")
 	}
 	if results.RowsAffected == 0 {
-		return user, fiber.NewError(404, "Incorrect email. Please try again.")
+		return user, fiber.NewError(404, "User does not exist. Please try again.")
 	}
 	return user, nil
 }
@@ -55,9 +55,9 @@ func GetUserById(userId interface{}) (model.UserFromDb, error) {
 
 func CreateUser(user model.UserFromBody) error {
 	db := middleware.DBConn
-	insertQuery := "INSERT INTO public.users (first_name, last_name, email, password_hash, last_login_at) VALUES ($1,$2,$3,$4,$5)"
+	insertQuery := "INSERT INTO public.users (first_name, last_name, email, password_hash, is_email_verified, last_login_at) VALUES ($1,$2,$3,$4,$5,$6)"
 	hashedPassword := middleware.HashPassword(user.Password)
-	return db.Exec(insertQuery, user.FirstName, user.LastName, user.Email, hashedPassword, time.Now()).Error
+	return db.Exec(insertQuery, user.FirstName, user.LastName, user.Email, hashedPassword, true, time.Now()).Error
 }
 
 func UpdateUserLastLogin(userId string) error {
