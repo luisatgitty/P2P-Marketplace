@@ -3,37 +3,25 @@ package controller
 import (
 	"fmt"
 
-	"p2p_marketplace/backend/model/data"
-	"p2p_marketplace/backend/model/errors"
-	"p2p_marketplace/backend/model/response"
+	"p2p_marketplace/backend/model"
 
 	"github.com/gofiber/fiber/v2"
 )
 
-func getRetCodeMessage(retCode int) string {
-	switch retCode {
-	case 400:
-		return "Unauthorized Request"
-	case 401:
-		return "Invalid Request"
-	case 404:
-		return "Bad Request"
-	case 409:
-		return "Conflict"
-	case 419:
-		return "Authentication Timeout"
-	case 500:
-		return "Internal Server Error"
-	default:
-		return "Unknown Error"
-	}
+var retCodeMessages = map[int]string{
+	400: "Unauthorized Request",
+	401: "Invalid Request",
+	404: "Bad Request",
+	409: "Conflict",
+	419: "Authentication Timeout",
+	500: "Internal Server Error",
 }
 
 func SendErrorResponse(c *fiber.Ctx, retCode int, message string, err error) error {
-	return c.Status(retCode).JSON(response.ResponseModel{
+	return c.Status(retCode).JSON(model.ResponseModel{
 		RetCode: fmt.Sprintf("%d", retCode),
-		Message: getRetCodeMessage(retCode),
-		Data: errors.ErrorModel{
+		Message: retCodeMessages[retCode],
+		Data: model.ErrorModel{
 			Message:   message,
 			IsSuccess: false,
 			Error:     err,
@@ -41,15 +29,15 @@ func SendErrorResponse(c *fiber.Ctx, retCode int, message string, err error) err
 	})
 }
 
-func SendSuccessResponse(c *fiber.Ctx, retCode int, message string, data interface{}) error {
-	return c.Status(retCode).JSON(response.ResponseModel{
+func SendSuccessResponse(c *fiber.Ctx, retCode int, message string, data any) error {
+	return c.Status(retCode).JSON(model.ResponseModel{
 		RetCode: fmt.Sprintf("%d", retCode),
 		Message: message,
 		Data:    data,
 	})
 }
 
-func BuildUserResponse(user data.UserFromDb) map[string]interface{} {
+func BuildUserResponse(user model.UserFromDb) map[string]any {
 	return map[string]interface{}{
 		"firstName": user.FirstName,
 		"lastName":  user.LastName,

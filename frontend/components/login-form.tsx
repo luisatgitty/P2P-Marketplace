@@ -1,9 +1,9 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation";
 import { useUser } from "@/utils/UserContext";
-import { getSessionMeta, signUpUser } from "@/services/authService";
+import { getSessionMeta, sendPostRequest } from "@/services/authService";
 import { isValidEmail } from "@/utils/validation";
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -16,7 +16,22 @@ export function LoginForm({ className, ...props }: React.ComponentProps<"div">) 
   const [form, setForm] = useState({ email: "", password: "" })
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [authChecked, setAuthChecked] = useState(false);
   const { saveUserData } = useUser();
+  const STORAGE_KEY = "auth_user";
+  
+  // Redirect if user is already authenticated
+  useEffect(() => {
+    const userAuth = localStorage.getItem(STORAGE_KEY);
+      if (userAuth) {
+        router.push("/");
+      } else {
+        setAuthChecked(true); // Only show UI if user is not authenticated
+      }
+    }, []);
+
+  // Don't render anything until auth check is complete
+  if (!authChecked) return null;
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     // Use the name attribute as the key
@@ -39,10 +54,10 @@ export function LoginForm({ className, ...props }: React.ComponentProps<"div">) 
     try {
       // Get the user's IP address and user agent
       const { ipAddress, userAgent } = await getSessionMeta();
-      const route = "/auth/login";
       // Send the form data to the backend
-      const user = await signUpUser(route, { ...form, ipAddress, userAgent });
-      saveUserData(user);
+      const data = await sendPostRequest("/auth/login", { ...form, ipAddress, userAgent }, true);
+      console.log("Logged in user:", data.user);
+      saveUserData(data.user);
       router.push("/");
     } catch (error: any) {
       setError(error);

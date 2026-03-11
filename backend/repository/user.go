@@ -3,7 +3,7 @@ package repository
 import (
 	"fmt"
 	"p2p_marketplace/backend/middleware"
-	"p2p_marketplace/backend/model/data"
+	"p2p_marketplace/backend/model"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -23,32 +23,41 @@ func IsUserExist(email string) error {
 	return nil
 }
 
-func GetUserByEmail(email string) (data.UserFromDb, error) {
+func GetUserByEmail(email string) (model.UserFromDb, error) {
 	db := middleware.DBConn
-	var user data.UserFromDb
+	var user model.UserFromDb
 	selectQuery := "SELECT id, first_name, last_name, email, password_hash, role, verification_status, failed_login_attempts, account_locked_until FROM public.users WHERE email=$1"
-	err := db.Raw(selectQuery, email).Scan(&user).Error
+	results := db.Raw(selectQuery, email).Scan(&user)
 
-	// Check if user exists
-	if user.UserId == "" {
-		return user, fiber.NewError(404, "Incorrect email. Please try again.")
+	if results.Error != nil {
+		return user, fmt.Errorf("Failed to retrieve user. Please contact support.")
 	}
-	return user, err
+	if results.RowsAffected == 0 {
+		return user, fiber.NewError(404, "User does not exist. Please try again.")
+	}
+	return user, nil
 }
 
-func GetUserById(userId interface{}) (data.UserFromDb, error) {
+func GetUserById(userId interface{}) (model.UserFromDb, error) {
 	db := middleware.DBConn
-	var user data.UserFromDb
+	var user model.UserFromDb
 	selectQuery := "SELECT id, first_name, last_name, email, password_hash, role, verification_status, failed_login_attempts, account_locked_until FROM public.users WHERE id=$1"
-	err := db.Raw(selectQuery, userId).Scan(&user).Error
-	return user, err
+	results := db.Raw(selectQuery, userId).Scan(&user)
+
+	if results.Error != nil {
+		return user, fmt.Errorf("Failed to retrieve user. Please contact support.")
+	}
+	if results.RowsAffected == 0 {
+		return user, fiber.NewError(404, "User not found. Please try again.")
+	}
+	return user, nil
 }
 
-func CreateUser(user data.UserFromReq) error {
+func CreateUser(user model.UserFromBody) error {
 	db := middleware.DBConn
-	insertQuery := "INSERT INTO public.users (first_name, last_name, email, password_hash, last_login_at) VALUES ($1,$2,$3,$4,$5)"
+	insertQuery := "INSERT INTO public.users (first_name, last_name, email, password_hash, is_email_verified, last_login_at) VALUES ($1,$2,$3,$4,$5,$6)"
 	hashedPassword := middleware.HashPassword(user.Password)
-	return db.Exec(insertQuery, user.FirstName, user.LastName, user.Email, hashedPassword, time.Now()).Error
+	return db.Exec(insertQuery, user.FirstName, user.LastName, user.Email, hashedPassword, true, time.Now()).Error
 }
 
 func UpdateUserLastLogin(userId string) error {

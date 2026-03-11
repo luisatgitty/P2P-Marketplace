@@ -1,8 +1,8 @@
-package data
+package model
 
 import "time"
 
-type UserFromReq struct {
+type UserFromBody struct {
 	UserId    string `json:"userId"`
 	FirstName string `json:"firstName"`
 	LastName  string `json:"lastName"`
@@ -10,6 +10,7 @@ type UserFromReq struct {
 	Email     string `json:"email"`
 	IpAddress string `json:"ipAddress"`
 	UserAgent string `json:"userAgent"`
+	OTP       string `json:"otpString"`
 }
 
 type UserFromDb struct {
@@ -28,4 +29,19 @@ type SessionFromDb struct {
 	UserId    string    `gorm:"column:user_id"       json:"userId"`
 	IsRevoked bool      `gorm:"column:is_revoked"    json:"isRevoked"`
 	ExpiresAt time.Time `gorm:"column:expires_at"    json:"expiresAt"`
+}
+
+type PwdResetFromDb struct {
+	UserId    string    `gorm:"column:user_id"`
+	ExpiresAt time.Time `gorm:"column:expires_at"`
+}
+
+type PwdResetFromBody struct {
+	Token    string `json:"token"`
+	Password string `json:"password"`
+}
+
+type EmailVerifFromDb struct {
+	Email     string    `gorm:"column:email"`
+	ExpiresAt time.Time `gorm:"column:expires_at"`
 }

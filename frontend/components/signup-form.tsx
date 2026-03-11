@@ -1,9 +1,8 @@
 "use client";
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation";
-import { useUser } from "@/utils/UserContext";
-import { getSessionMeta, signUpUser } from "@/services/authService";
+import { sendPostRequest } from "@/services/authService";
 import { validateSignupForm } from "@/utils/validation";
 import type { SignupForm } from "@/types/forms";
 import { Button } from "@/components/ui/button"
@@ -23,7 +22,22 @@ export function SignupForm({ className, ...props }: React.ComponentProps<"div">)
   });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const { saveUserData } = useUser();
+  const [authChecked, setAuthChecked] = useState(false);
+  const STORAGE_KEY = "auth_user";
+
+  // Redirect to home if user access this page while already authenticated
+    useEffect(() => {
+      // Check local storage for user data to determine if authenticated
+      const userAuth = localStorage.getItem(STORAGE_KEY);
+      if (userAuth) {
+        router.push("/");
+      } else {
+        setAuthChecked(true);
+      }
+    }, []);
+
+  // Don't render anything until auth check is complete
+  if (!authChecked) return null;
 
   // Use the name attribute as the key
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -44,13 +58,19 @@ export function SignupForm({ className, ...props }: React.ComponentProps<"div">)
     }
     
     try {
-      // Get the user's IP address and user agent
-      const { ipAddress, userAgent } = await getSessionMeta();
-      const route = "/auth/signup";
       // Send the form data to the backend
-      const user = await signUpUser(route, { ...form, ipAddress, userAgent });
-      saveUserData(user);
-      router.push("/");
+      await sendPostRequest("/auth/signup", form);
+      
+      // Store only what verify-email needs
+      sessionStorage.setItem("pending_signup", JSON.stringify({
+        email: form.email,
+        firstName: form.firstName,
+        lastName: form.lastName,
+        password: form.password,
+      }));
+
+      // Redirect to email verification page
+      router.push("/verify-email");
     } catch (error: any) {
       setError(error);
     } finally {

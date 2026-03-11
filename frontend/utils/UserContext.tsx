@@ -2,14 +2,9 @@
 
 import { createContext, useContext, useState, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
-
-interface User {
-  firstName: string;
-  lastName: string;
-  email: string;
-  role: string;
-  status: string;
-}
+import { User } from "@/types/forms";
+import { Spinner } from "@/components/ui/spinner"
+import { sendDeleteRequest, sendGetRequest } from "@/services/authService";
 
 interface UserContextType {
   user: User | null;
@@ -19,7 +14,8 @@ interface UserContextType {
 }
 
 const UserContext = createContext<UserContextType | null>(null);
-const PUBLIC_ROUTES = ["/", "/login", "/signup", "/forgot-password"];
+const PUBLIC_ROUTES = ["/", "/login", "/signup", "/forgot-password", "/reset-password", "/verify-email"];
+const STORAGE_KEY = "auth_user";
 
 export function UserProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -27,49 +23,53 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const isPublicRoute = PUBLIC_ROUTES.includes(pathname);
   const [user, setUser] = useState<User | null>(null);
   const [isValidated, setIsValidated] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   // Save user data during login
   const saveUserData = (userData: User) => {
     console.log("Logged User Data:", userData);
     setUser(userData);
     setIsValidated(true);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(userData));
   };
 
   // Clear user saved data after logout
   const clearUserData = async () => {
     try {
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/logout`, {
-        method: "DELETE",
-        credentials: "include",
-      });
+      await sendDeleteRequest("/auth/logout");
     } finally {
       // Clear user data and validation state regardless of logout success
+      // But the session cookie will remain incase of server error
       setUser(null);
       setIsValidated(false);
+      localStorage.removeItem(STORAGE_KEY);
+      router.push("/login");
     }
   };
 
   // Validate user on mount
   useEffect(() => {
     const validateUser = async () => {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        const userData = JSON.parse(stored);
+        setUser(userData);
+        setIsValidated(true);
+        setIsLoading(false);
+        return;
+      }
+
       try {
-        // If the client has a stored session cookie
+        // If the client has a stored session cookie (HTTP only)
         if (document.cookie.includes("session_token")) {
-          const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/me`, {
-            method: "GET",
-            credentials: "include",
-          });
-
-          if (!res.ok) {
-            setIsValidated(false);
-            return;
-          }
-
-          const json = await res.json();
-          saveUserData(json.data.user);
+          const user = await sendGetRequest("/auth/me", true);
+          saveUserData(user);
         }
       } catch {
+        setUser(null);
         setIsValidated(false);
+      } finally {
+        setIsLoading(false);
       }
     };
 
@@ -78,9 +78,20 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
   // Handle route protection
   useEffect(() => {
-    if (isValidated || isPublicRoute) return;
+    if (isValidated || isPublicRoute) {
+      setIsLoading(false);
+      return;
+    }
     else router.push("/login");
   }, [pathname]);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Spinner className="size-8" />
+      </div>
+    );
+  }
 
   return (
     <UserContext.Provider value={{ user, isValidated, saveUserData, clearUserData }}>

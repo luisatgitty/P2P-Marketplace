@@ -6,7 +6,10 @@ export interface SignupForm {
   confirmPassword: string;
 }
 
-export interface LoginForm {
+export interface User {
+  firstName: string;
+  lastName: string;
   email: string;
-  password: string;
+  role: string;
+  status: string;
 }
