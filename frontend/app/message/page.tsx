@@ -122,8 +122,7 @@ export default function MessagesPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Failed to load conversation");
       setMessages(data.data as Message[]);
-
-      // Mark unread messages as read
+      // Mark unread messages as read 
       (data.data as Message[])
         .filter((m) => m.receiverId === currentUserId && !m.isRead)
         .forEach((m) => markAsRead(m.id));
