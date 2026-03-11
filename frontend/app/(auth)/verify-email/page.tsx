@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, Suspense } from "react";
 import { useRouter } from "next/navigation";
-import { signUpUser, getSessionMeta } from "@/services/authService";
+import { sendPostRequest, getSessionMeta } from "@/services/authService";
 import { useUser } from "@/utils/UserContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -20,51 +20,49 @@ function VerifyEmailForm() {
         password: "",
         confirmPassword: "",
     });
-
-    const [otp, setOtp] = useState(["", "", "", "", "", ""]); // 6 digit OTP array
+    const [otp, setOtp] = useState(["", "", "", "", "", ""]);
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
-    const [resendCooldown, setResendCooldown] = useState(0); // countdown timer
-    const [timeLeft, setTimeLeft] = useState(0); // OTP expiry countdown
+    const [otpResendCooldown, setOtpResendCooldown] = useState(0);
+    const [otpTimeLeft, setOtpTimeLeft] = useState(0);
     const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
     useEffect(() => {
-        const pending = sessionStorage.getItem("pending_verification");
-        if (!pending) {
-            router.replace("/signup"); // No data found, redirect back
+        const signupData = sessionStorage.getItem("pending_signup");
+        if (!signupData) {
+            router.replace("/signup"); // Redirect if no pending signup data
             return;
         }
         // Set form data from session storage
-        const parsed = JSON.parse(pending);
-        setForm(parsed);
+        setForm(JSON.parse(signupData));
 
-        // Read existing expiry or create a new one
-        const stored = sessionStorage.getItem("otp_expires_at");
-        if (stored) {
-            const remaining = Math.max(0, Math.floor((parseInt(stored) - Date.now()) / 1000));
-            setTimeLeft(remaining);
+        // Read existing OTP expiry time or set a new one
+        const otpExpiration = sessionStorage.getItem("otp_expires_at");
+        if (otpExpiration) {
+            const remaining = Math.max(0, Math.floor((parseInt(otpExpiration) - Date.now()) / 1000));
+            setOtpTimeLeft(remaining);
         } else {
             const expiresAt = Date.now() + 10 * 60 * 1000;
             sessionStorage.setItem("otp_expires_at", expiresAt.toString());
-            setTimeLeft(10 * 60);
+            setOtpTimeLeft(10 * 60);
         }
 
-        inputRefs.current[0]?.focus(); // focus first OTP input
+        inputRefs.current[0]?.focus(); // Focus on first OTP input on mount
     }, []);
 
     // OTP expiry countdown
     useEffect(() => {
-        if (timeLeft <= 0) return;
-        const timer = setTimeout(() => setTimeLeft(timeLeft - 1), 1000);
+        if (otpTimeLeft <= 0) return;
+        const timer = setTimeout(() => setOtpTimeLeft(otpTimeLeft - 1), 1000);
         return () => clearTimeout(timer);
-    }, [timeLeft]);
+    }, [otpTimeLeft]);
 
     // Resend cooldown countdown
     useEffect(() => {
-        if (resendCooldown <= 0) return;
-        const timer = setTimeout(() => setResendCooldown(resendCooldown - 1), 1000);
+        if (otpResendCooldown <= 0) return;
+        const timer = setTimeout(() => setOtpResendCooldown(otpResendCooldown - 1), 1000);
         return () => clearTimeout(timer);
-    }, [resendCooldown]);
+    }, [otpResendCooldown]);
 
     const formatTime = (seconds: number) => {
         const m = Math.floor(seconds / 60);
@@ -74,10 +72,10 @@ function VerifyEmailForm() {
 
     // Handle individual OTP digit input
     const handleOtpChange = (index: number, value: string) => {
-        if (!/^\d*$/.test(value)) return; // numbers only
+        if (!/^\d*$/.test(value)) return; // Numbers only
 
         const newOtp = [...otp];
-        newOtp[index] = value.slice(-1); // only last digit
+        newOtp[index] = value.slice(-1); // Only last digit
         setOtp(newOtp);
 
         // Auto focus next input
@@ -86,14 +84,14 @@ function VerifyEmailForm() {
         }
     };
 
-    // Handle backspace — go to previous input
+    // Go to previous input on backspace
     const handleKeyDown = (index: number, e: React.KeyboardEvent) => {
         if (e.key === "Backspace" && !otp[index] && index > 0) {
             inputRefs.current[index - 1]?.focus();
         }
     };
 
-    // Handle paste — fill all boxes at once
+    // Fill OTP from clipboard paste
     const handlePaste = (e: React.ClipboardEvent) => {
         const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
         if (pasted.length === 6) {
@@ -107,6 +105,7 @@ function VerifyEmailForm() {
         setLoading(true);
         setError("");
 
+        // Validate OTP length
         const otpString = otp.join("");
         if (otpString.length < 6) {
             setError("Please enter the complete 6-digit OTP");
@@ -114,15 +113,21 @@ function VerifyEmailForm() {
             return;
         }
 
+        // Get client metadata and attempt to create the account
         try {
-            // Get the user's IP address and user agent
             const { ipAddress, userAgent } = await getSessionMeta();
-            const user = await signUpUser("/auth/verify-email", { ...form, ipAddress, userAgent, otpString });
-            saveUserData(user);
+            const data = await sendPostRequest(
+                "/auth/verify-email", 
+                { ...form, ipAddress, userAgent, otpString }, 
+                true
+            );
+            saveUserData(data.user);
+            sessionStorage.removeItem("pending_signup");
+            sessionStorage.removeItem("otp_expires_at");
             router.replace("/");
         } catch (err: any) {
             setError(err);
-            setOtp(["", "", "", "", "", ""]); // clear OTP on error
+            setOtp(["", "", "", "", "", ""]);
             inputRefs.current[0]?.focus();
         } finally {
             setLoading(false);
@@ -130,14 +135,14 @@ function VerifyEmailForm() {
     };
 
     const handleResend = async () => {
-        if (resendCooldown > 0) return;
+        if (otpResendCooldown > 0) return;
         try {
-            await signUpUser("/auth/resend-otp", { ...form });
+            await sendPostRequest("/auth/resend-otp", { ...form });
             // Reset OTP expiry timer
             const expiresAt = Date.now() + 10 * 60 * 1000;
             sessionStorage.setItem("otp_expires_at", expiresAt.toString());
-            setTimeLeft(10 * 60);
-            setResendCooldown(60); // 60 second cooldown
+            setOtpTimeLeft(10 * 60);
+            setOtpResendCooldown(60); // 60 second cooldown
             setError("");
         } catch (err: any) {
             setError(err);
@@ -180,8 +185,8 @@ function VerifyEmailForm() {
                     </div>
 
                     <FieldDescription className="text-center">
-                        {timeLeft > 0
-                            ? `Code expires in ${formatTime(timeLeft)}`
+                        {otpTimeLeft > 0
+                            ? `Code expires in ${formatTime(otpTimeLeft)}`
                             : <span style={{ color: "red" }}>Code has expired</span>}
                     </FieldDescription>
                     </Field>
@@ -203,10 +208,10 @@ function VerifyEmailForm() {
                     <button
                     type="button"
                     onClick={handleResend}
-                    disabled={resendCooldown > 0}
+                    disabled={otpResendCooldown > 0}
                     className="font-medium underline disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
                     >
-                    {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : "Resend"}
+                    {otpResendCooldown > 0 ? `Resend in ${otpResendCooldown}s` : "Resend"}
                     </button>
                 </div>
 

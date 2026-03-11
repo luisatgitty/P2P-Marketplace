@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation";
-import { signUpUser } from "@/services/authService";
+import { sendPostRequest } from "@/services/authService";
 import { validateSignupForm } from "@/utils/validation";
 import type { SignupForm } from "@/types/forms";
 import { Button } from "@/components/ui/button"
@@ -25,13 +25,14 @@ export function SignupForm({ className, ...props }: React.ComponentProps<"div">)
   const [authChecked, setAuthChecked] = useState(false);
   const STORAGE_KEY = "auth_user";
 
-  // Redirect to home if user is already authenticated
+  // Redirect to home if user access this page while already authenticated
     useEffect(() => {
-    const userAuth = localStorage.getItem(STORAGE_KEY);
+      // Check local storage for user data to determine if authenticated
+      const userAuth = localStorage.getItem(STORAGE_KEY);
       if (userAuth) {
         router.push("/");
       } else {
-        setAuthChecked(true); // Only show UI if user is not authenticated
+        setAuthChecked(true);
       }
     }, []);
 
@@ -58,10 +59,10 @@ export function SignupForm({ className, ...props }: React.ComponentProps<"div">)
     
     try {
       // Send the form data to the backend
-      const user = await signUpUser("/auth/signup", form);
+      await sendPostRequest("/auth/signup", form);
       
       // Store only what verify-email needs
-      sessionStorage.setItem("pending_verification", JSON.stringify({
+      sessionStorage.setItem("pending_signup", JSON.stringify({
         email: form.email,
         firstName: form.firstName,
         lastName: form.lastName,

@@ -4,13 +4,13 @@ export async function getSessionMeta(): Promise<{ ipAddress: string; userAgent: 
   return response.json();
 }
 
-export async function post(url: string, data: any) {
+export async function sendPostRequest(route : string, payload : any, includeCredentials = false) {
   try {
-    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}${url}`, {
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}${route}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      credentials: "include", // Required to accept and send cookies
-      body: JSON.stringify(data),
+      credentials: includeCredentials ? "include" : "same-origin", // Required to accept and send cookies
+      body: JSON.stringify(payload),
     });
 
     const parsedJson = await res.json();
@@ -20,34 +20,37 @@ export async function post(url: string, data: any) {
     }
     // Return the user data from database
     return parsedJson.data;
-  } catch (error: any) {
-    throw error;
+  } catch {
+    throw "An unexpected error occurred. Please try again later.";
   }
 }
 
-export async function signUpUser(route : string, payload: {
-    firstName?: string;
-    lastName?: string;
-    email: string;
-    password: string;
-    ipAddress?: string;
-    userAgent?: string;
-    otpString?: string;
-}) {
-  const data = await post(route, payload);
-  // data.user is the user object returned from the backend
-  return data.user;
+export async function sendDeleteRequest(route : string, includeCredentials = true) {
+  try {
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL}${route}`, {
+      method: "DELETE",
+      credentials: includeCredentials ? "include" : "same-origin",
+    });
+  } catch {
+    throw "An unexpected error occurred. Please try again later.";
+  }
 }
 
-export async function verifyEmail(email: string, otp: string) {
-  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/verify-email`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    credentials: "include",
-    body: JSON.stringify({ email, otp }),
-  });
+export async function sendGetRequest(route : string, includeCredentials = false) {
+  try {
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}${route}`, {
+      method: "GET",
+      credentials: includeCredentials ? "include" : "same-origin",
+    });
 
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.message);
-  return data;
+    const parsedJson = await res.json();
+    if (!res.ok) {
+      // Throw the error message to display
+      throw parsedJson.data.message;
+    }
+    // Return the user data from database
+    return parsedJson.data.user;
+  } catch {
+    throw "An unexpected error occurred. Please try again later.";
+  }
 }

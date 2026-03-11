@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { sendPostRequest } from "@/services/authService";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
@@ -18,23 +19,12 @@ export default function ForgotPasswordPage() {
     setError("");
 
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/forgot-password`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
-      });
-      
-      if (!res.ok) {
-        const parsedJson = await res.json();
-        setError(parsedJson.message);
-        setIsLoading(false);
-        return;
-      }
+      await sendPostRequest("/auth/forgot-password", { email });
       setSubmitted(true);
+    } catch (error: any) {
+      setError(error.message);
+    } finally {
       setIsLoading(false);
-    } catch {
-      setIsLoading(false);
-      setError("An unexpected error occurred. Please try again later.");
     }
   };
 
