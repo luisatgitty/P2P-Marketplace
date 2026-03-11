@@ -2,14 +2,9 @@
 
 import { createContext, useContext, useState, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
-
-interface User {
-  firstName: string;
-  lastName: string;
-  email: string;
-  role: string;
-  status: string;
-}
+import { User } from "@/types/forms";
+import { Spinner } from "@/components/ui/spinner"
+import { sendDeleteRequest, sendGetRequest } from "@/services/authService";
 
 interface UserContextType {
   user: User | null;
@@ -19,7 +14,7 @@ interface UserContextType {
 }
 
 const UserContext = createContext<UserContextType | null>(null);
-const PUBLIC_ROUTES = ["/", "/login", "/signup", "/forgot-password", "/reset-password"];
+const PUBLIC_ROUTES = ["/", "/login", "/signup", "/forgot-password", "/reset-password", "/verify-email"];
 const STORAGE_KEY = "auth_user";
 
 export function UserProvider({ children }: { children: React.ReactNode }) {
@@ -41,12 +36,10 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   // Clear user saved data after logout
   const clearUserData = async () => {
     try {
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/logout`, {
-        method: "DELETE",
-        credentials: "include",
-      });
+      await sendDeleteRequest("/auth/logout");
     } finally {
       // Clear user data and validation state regardless of logout success
+      // But the session cookie will remain incase of server error
       setUser(null);
       setIsValidated(false);
       localStorage.removeItem(STORAGE_KEY);
@@ -67,21 +60,10 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       }
 
       try {
-        // If the client has a stored session cookie
+        // If the client has a stored session cookie (HTTP only)
         if (document.cookie.includes("session_token")) {
-          const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/me`, {
-            method: "GET",
-            credentials: "include",
-          });
-
-          if (!res.ok) {
-            setUser(null);
-            setIsValidated(false);
-            return;
-          }
-
-          const json = await res.json();
-          saveUserData(json.data.user);
+          const user = await sendGetRequest("/auth/me", true);
+          saveUserData(user);
         }
       } catch {
         setUser(null);
@@ -104,7 +86,11 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   }, [pathname]);
 
   if (isLoading) {
-    return null; // or a loading spinner
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Spinner className="size-8" />
+      </div>
+    );
   }
 
   return (

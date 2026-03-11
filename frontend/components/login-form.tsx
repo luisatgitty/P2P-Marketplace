@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation";
 import { useUser } from "@/utils/UserContext";
-import { getSessionMeta, signUpUser } from "@/services/authService";
+import { getSessionMeta, sendPostRequest } from "@/services/authService";
 import { isValidEmail } from "@/utils/validation";
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -54,10 +54,10 @@ export function LoginForm({ className, ...props }: React.ComponentProps<"div">) 
     try {
       // Get the user's IP address and user agent
       const { ipAddress, userAgent } = await getSessionMeta();
-      const route = "/auth/login";
       // Send the form data to the backend
-      const user = await signUpUser(route, { ...form, ipAddress, userAgent });
-      saveUserData(user);
+      const data = await sendPostRequest("/auth/login", { ...form, ipAddress, userAgent }, true);
+      console.log("Logged in user:", data.user);
+      saveUserData(data.user);
       router.push("/");
     } catch (error: any) {
       setError(error);

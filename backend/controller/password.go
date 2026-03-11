@@ -5,6 +5,7 @@ import (
 	"os"
 	"time"
 
+	"p2p_marketplace/backend/config"
 	"p2p_marketplace/backend/middleware"
 	"p2p_marketplace/backend/model"
 	"p2p_marketplace/backend/repository"
@@ -30,8 +31,8 @@ func ForgotPassword(c *fiber.Ctx) error {
 
 	// Get userFromDb by email to verify credentials
 	userFromDb, err := repository.GetUserByEmail(body.Email)
-	if err != nil || userFromDb.UserId == "" {
-		return SendSuccessResponse(c, 200, err.Error(), nil)
+	if err != nil {
+		return SendSuccessResponse(c, 404, err.Error(), nil)
 	}
 
 	// Check if user account is locked
@@ -40,7 +41,7 @@ func ForgotPassword(c *fiber.Ctx) error {
 	}
 
 	// Generate reset token
-	resetToken, tokenExpiration, tokenErr := middleware.GenerateToken(15)
+	resetToken, tokenExpiration, tokenErr := middleware.GenerateToken(config.PwdResetTokenDuration)
 	if tokenErr != nil {
 		return SendErrorResponse(c, 500, "Failed to generate reset token. Please contact support.", tokenErr)
 	}
@@ -65,19 +66,10 @@ func ValidateResetToken(c *fiber.Ctx) error {
 
 	// Get token from query parameters included in the reset link
 	token := c.Query("token")
-	if token == "" {
-		return SendErrorResponse(c, 400, "Token is required", nil)
-	}
-
-	// Check token format
-	if err := middleware.ValidateTokenFormat(token); err != nil {
-		fmt.Println("Token format error:", err)
-		return SendErrorResponse(c, 400, err.Error(), err)
-	}
-
-	// Check if token is valid and not expired
-	if _, err := repository.GetUserToReset(token); err != nil {
-		return SendErrorResponse(c, 400, err.Error(), err)
+	// Validate token validity and expiration
+	retCode, _, err := validatePwdResetToken(token)
+	if err != nil {
+		return SendErrorResponse(c, retCode, err.Error(), err)
 	}
 
 	return SendSuccessResponse(c, 200, "Token is valid", nil)
@@ -98,15 +90,10 @@ func ResetPassword(c *fiber.Ctx) error {
 	// 	return SendErrorResponse(c, 400, err.Error(), err)
 	// }
 
-	// Check token format
-	if err := middleware.ValidateTokenFormat(body.Token); err != nil {
-		return SendErrorResponse(c, 400, err.Error(), err)
-	}
-
-	// Check if token is valid and not expired
-	userId, err := repository.GetUserToReset(body.Token)
+	// Validate token validity and expiration
+	retCode, userId, err := validatePwdResetToken(body.Token)
 	if err != nil {
-		return SendErrorResponse(c, 400, err.Error(), err)
+		return SendErrorResponse(c, retCode, err.Error(), err)
 	}
 
 	// Update password

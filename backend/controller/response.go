@@ -29,7 +29,7 @@ func SendErrorResponse(c *fiber.Ctx, retCode int, message string, err error) err
 	})
 }
 
-func SendSuccessResponse(c *fiber.Ctx, retCode int, message string, data interface{}) error {
+func SendSuccessResponse(c *fiber.Ctx, retCode int, message string, data any) error {
 	return c.Status(retCode).JSON(model.ResponseModel{
 		RetCode: fmt.Sprintf("%d", retCode),
 		Message: message,
@@ -37,7 +37,7 @@ func SendSuccessResponse(c *fiber.Ctx, retCode int, message string, data interfa
 	})
 }
 
-func BuildUserResponse(user model.UserFromDb) map[string]interface{} {
+func BuildUserResponse(user model.UserFromDb) map[string]any {
 	return map[string]interface{}{
 		"firstName": user.FirstName,
 		"lastName":  user.LastName,

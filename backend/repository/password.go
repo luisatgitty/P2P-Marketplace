@@ -14,19 +14,20 @@ func InsertPasswordResetToken(userId, hashedToken string, expiresAt time.Time) e
 	return db.Exec(insertQuery, userId, hashedToken, expiresAt).Error
 }
 
-func GetUserToReset(token string) (string, error) {
+func GetUserToReset(token string) (int, string, error) {
 	db := middleware.DBConn
 	var reset model.PwdResetFromDb
 	hashedToken := middleware.HashToken(token)
 	selectQuery := "SELECT user_id FROM public.password_resets WHERE token=$1 AND expires_at > $2"
 
 	if err := db.Raw(selectQuery, hashedToken, time.Now()).Scan(&reset).Error; err != nil {
-		return "", fmt.Errorf("Failed to retrieve user ID. Please contact support.")
+		// Add error retCode and log the error for debugging
+		return 500, "", fmt.Errorf("Failed to retrieve user ID. Please contact support.")
 	}
 	if reset.UserId == "" {
-		return "", fmt.Errorf("Invalid or expired token.")
+		return 400, "", fmt.Errorf("Invalid or expired token.")
 	}
-	return reset.UserId, nil
+	return 200, reset.UserId, nil
 }
 
 func UpdateUserPassword(userId, newPassword string) error {

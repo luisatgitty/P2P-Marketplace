@@ -5,12 +5,41 @@ import (
 	"strings"
 	"time"
 
+	"p2p_marketplace/backend/config"
 	"p2p_marketplace/backend/middleware"
 	"p2p_marketplace/backend/model"
 	"p2p_marketplace/backend/repository"
 
 	"github.com/gofiber/fiber/v2"
 )
+
+func SendEmailOTP(c *fiber.Ctx) error {
+	fmt.Println(c.Path())
+	var body model.UserFromBody
+
+	// Parse the request body
+	if err := c.BodyParser(&body); err != nil {
+		return SendErrorResponse(c, 400, "Invalid request body. Please contact support.", err)
+	}
+
+	// Validate user input and check if email already exists
+	if retCode, err := validateInputAndUser(&body); err != nil {
+		return SendErrorResponse(c, retCode, err.Error(), err)
+	}
+
+	// Send OTP to user's email and store the hashed OTP in database
+	if retCode, err := storeAndSendOTP(body.FirstName, body.Email); err != nil {
+		return SendErrorResponse(c, retCode, err.Error(), err)
+	}
+
+	// Return success response with email to indicate OTP sent
+	return c.Status(201).JSON(model.ResponseModel{
+		RetCode: "201",
+		Message: "OTP sent successfully. Please check your email.",
+		Data:    map[string]any{"user": body.Email},
+		// Data:    nil,
+	})
+}
 
 func SignUpUser(c *fiber.Ctx) error {
 	fmt.Println(c.Path())
@@ -21,14 +50,24 @@ func SignUpUser(c *fiber.Ctx) error {
 		return SendErrorResponse(c, 400, "Invalid request body. Please contact support.", err)
 	}
 
-	// Validate the received user data
-	if err := middleware.ValidateSignUpInput(&body); err != nil {
-		return SendErrorResponse(c, 400, err.Error(), err)
+	if len(body.OTP) != config.EmailOTPLength {
+		return SendErrorResponse(c, 400, fmt.Sprintf("OTP must be %d digits", config.EmailOTPLength), nil)
 	}
 
-	// Check if email already exists
-	if err := repository.IsUserExist(body.Email); err != nil {
-		return SendErrorResponse(c, 409, "Email already exists", nil)
+	// Verify the OTP against the database record
+	if err := repository.VerifyEmailVerif(body.Email, body.OTP); err != nil {
+		return SendErrorResponse(c, 400, err.Error(), nil)
+	}
+
+	// Delete the OTP record after successful verification
+	if err := repository.DeleteEmailVerif(body.Email); err != nil {
+		// Log the error but don't fail the request since verification was successful
+		fmt.Printf("Failed to delete OTP record for email %s: %v\n", body.Email, err)
+	}
+
+	/// Validate user input and check if email already exists
+	if retCode, err := validateInputAndUser(&body); err != nil {
+		return SendErrorResponse(c, retCode, err.Error(), err)
 	}
 
 	// Create the user in the database with hashed password
@@ -54,7 +93,7 @@ func SignUpUser(c *fiber.Ctx) error {
 	return c.Status(201).JSON(model.ResponseModel{
 		RetCode: "201",
 		Message: "User created successfully",
-		Data:    map[string]interface{}{"user": BuildUserResponse(userFromDb)},
+		Data:    map[string]any{"user": BuildUserResponse(userFromDb)},
 	})
 }
 
@@ -123,7 +162,7 @@ func LogInUser(c *fiber.Ctx) error {
 	return c.Status(200).JSON(model.ResponseModel{
 		RetCode: "200",
 		Message: "Logged in successfully",
-		Data:    map[string]interface{}{"user": BuildUserResponse(userFromDb)},
+		Data:    map[string]any{"user": BuildUserResponse(userFromDb)},
 	})
 }
 
@@ -175,7 +214,7 @@ func Me(c *fiber.Ctx) error {
 	return c.Status(200).JSON(model.ResponseModel{
 		RetCode: "200",
 		Message: "User is authenticated",
-		Data:    map[string]interface{}{"user": BuildUserResponse(userFromDb)},
+		Data:    map[string]any{"user": BuildUserResponse(userFromDb)},
 	})
 }
 
@@ -184,9 +223,9 @@ func Logout(c *fiber.Ctx) error {
 
 	// Delete session from DB and clear cookie
 	if err := repository.DeleteSession(c); err != nil {
-		return SendErrorResponse(c, 500, "Failed to delete session", err)
+		fmt.Println("Failed to delete session during logout: ", err)
 	}
 
-	// Return success response
+	// Return success response with expired cookie
 	return SendSuccessResponse(c, 200, "Logged out successfully", nil)
 }

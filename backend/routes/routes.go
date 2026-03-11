@@ -8,8 +8,10 @@ import (
 
 func AppRoutes(app *fiber.App) {
 	// Public
-	app.Post("/auth/signup", controller.SignUpUser)
+	app.Post("/auth/signup", controller.SendEmailOTP)
 	app.Post("/auth/login", controller.LogInUser)
+	app.Post("/auth/verify-email", controller.SignUpUser)
+	app.Post("/auth/resend-otp", controller.SendEmailOTP)
 	app.Post("/auth/forgot-password", controller.ForgotPassword)
 
 	// Protected

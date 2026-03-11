@@ -2,11 +2,14 @@ package repository
 
 import (
 	"fmt"
+	"p2p_marketplace/backend/config"
 	"p2p_marketplace/backend/middleware"
 	"p2p_marketplace/backend/model"
 
 	"github.com/gofiber/fiber/v2"
 )
+
+// TODO: Return a custom error type that includes an error code
 
 func GetSessionById(sessionId string) (model.SessionFromDb, error) {
 	db := middleware.DBConn
@@ -18,8 +21,7 @@ func GetSessionById(sessionId string) (model.SessionFromDb, error) {
 
 func CreateSession(c *fiber.Ctx, user model.UserFromDb, ipAddress, userAgent string) error {
 	db := middleware.DBConn
-	sevenDays := 10080 // in minutes
-	sessionToken, sessionExpiration, tokenErr := middleware.GenerateToken(sevenDays)
+	sessionToken, sessionExpiration, tokenErr := middleware.GenerateToken(config.SessionDuration)
 
 	if tokenErr != nil {
 		return tokenErr

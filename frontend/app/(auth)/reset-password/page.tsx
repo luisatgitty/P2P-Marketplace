@@ -17,6 +17,7 @@ export default function ResetPasswordPage() {
   const [error, setError] = useState("");
   const [tokenValid, setTokenValid] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Validate token on mount before showing form
   useEffect(() => {
@@ -26,16 +27,22 @@ export default function ResetPasswordPage() {
     }
 
     const validateToken = async () => {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/auth/validate-reset-token?token=${token}`
-      );
+      try {
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/auth/validate-reset-token?token=${token}`
+        );
 
-      if (!res.ok) {
-        setError("This reset link is invalid or has expired.");
-      } else {
-        setTokenValid(true);
+        if (!res.ok) {
+          const parsedJson = await res.json();
+          setError(parsedJson.data.message);
+        } else {
+          setTokenValid(true);
+        }
+        setIsLoading(false);
+      } catch {
+        setError("An unexpected error occurred. Please try again later.");
+        setIsLoading(false);
       }
-      setIsLoading(false);
     };
 
     validateToken();
@@ -43,26 +50,35 @@ export default function ResetPasswordPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsSubmitting(true);
     setError("");
 
     if (password !== confirmPassword) {
       setError("Passwords do not match");
+      setIsSubmitting(false);
       return;
     }
 
-    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/reset-password`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token, password }),
-    });
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/reset-password`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, password }),
+      });
 
-    if (!res.ok) {
-      const data = await res.json();
-      setError(data.data.message || "Failed to reset password");
-      return;
+      if (!res.ok) {
+        const data = await res.json();
+        setError(data.data.message);
+        setIsSubmitting(false);
+        return;
+      }
+
+      router.replace("/login");
+    } catch {
+      setError("An unexpected error occurred. Please try again later.");
+    } finally {
+      setIsSubmitting(false);
     }
-
-    router.replace("/login");
   };
 
   if (isLoading) return null;
@@ -123,7 +139,9 @@ export default function ResetPasswordPage() {
               </Field>
               {error && <p style={{ color: "red", fontSize: "0.875rem" }}>{error}</p>}
               <Field>
-                <Button type="submit" className="w-full">Reset Password</Button>
+                <Button type="submit" className="w-full" disabled={isSubmitting}>
+                  {isSubmitting ? "Resetting Password..." : "Reset Password"}
+                </Button>
               </Field>
               <FieldDescription className="text-center">
                 Remember your password? <a href="/login" className="underline underline-offset-2 hover:text-primary">Log in</a>
