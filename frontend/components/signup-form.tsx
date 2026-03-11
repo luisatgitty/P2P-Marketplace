@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation";
-import { useUser } from "@/utils/UserContext";
-import { getSessionMeta, signUpUser } from "@/services/authService";
+import { signUpUser } from "@/services/authService";
 import { validateSignupForm } from "@/utils/validation";
 import type { SignupForm } from "@/types/forms";
 import { Button } from "@/components/ui/button"
@@ -23,11 +22,10 @@ export function SignupForm({ className, ...props }: React.ComponentProps<"div">)
   });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const { saveUserData } = useUser();
   const [authChecked, setAuthChecked] = useState(false);
   const STORAGE_KEY = "auth_user";
 
-  // Redirect if user is already authenticated
+  // Redirect to home if user is already authenticated
     useEffect(() => {
     const userAuth = localStorage.getItem(STORAGE_KEY);
       if (userAuth) {
@@ -59,13 +57,19 @@ export function SignupForm({ className, ...props }: React.ComponentProps<"div">)
     }
     
     try {
-      // Get the user's IP address and user agent
-      const { ipAddress, userAgent } = await getSessionMeta();
-      const route = "/auth/signup";
       // Send the form data to the backend
-      const user = await signUpUser(route, { ...form, ipAddress, userAgent });
-      saveUserData(user);
-      router.push("/");
+      const user = await signUpUser("/auth/signup", form);
+      
+      // Store only what verify-email needs
+      sessionStorage.setItem("pending_verification", JSON.stringify({
+        email: form.email,
+        firstName: form.firstName,
+        lastName: form.lastName,
+        password: form.password,
+      }));
+
+      // Redirect to email verification page
+      router.push("/verify-email");
     } catch (error: any) {
       setError(error);
     } finally {

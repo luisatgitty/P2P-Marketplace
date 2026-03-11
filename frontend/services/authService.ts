@@ -20,8 +20,8 @@ export async function post(url: string, data: any) {
     }
     // Return the user data from database
     return parsedJson.data;
-  } catch {
-    throw "An unexpected error occurred. Please try again later.";
+  } catch (error: any) {
+    throw error;
   }
 }
 
@@ -30,10 +30,24 @@ export async function signUpUser(route : string, payload: {
     lastName?: string;
     email: string;
     password: string;
-    ipAddress: string;
-    userAgent: string;
+    ipAddress?: string;
+    userAgent?: string;
+    otpString?: string;
 }) {
   const data = await post(route, payload);
   // data.user is the user object returned from the backend
   return data.user;
+}
+
+export async function verifyEmail(email: string, otp: string) {
+  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/verify-email`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ email, otp }),
+  });
+
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message);
+  return data;
 }

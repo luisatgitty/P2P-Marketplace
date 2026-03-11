@@ -19,7 +19,7 @@ interface UserContextType {
 }
 
 const UserContext = createContext<UserContextType | null>(null);
-const PUBLIC_ROUTES = ["/", "/login", "/signup", "/forgot-password", "/reset-password"];
+const PUBLIC_ROUTES = ["/", "/login", "/signup", "/forgot-password", "/reset-password", "/verify-email"];
 const STORAGE_KEY = "auth_user";
 
 export function UserProvider({ children }: { children: React.ReactNode }) {
