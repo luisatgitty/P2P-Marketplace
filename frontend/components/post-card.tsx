@@ -3,13 +3,14 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Bookmark, BookmarkCheck, Star, MapPin, Clock } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export interface PostCardProps {
   id: string;
   title: string;
   price: number;
   priceUnit?: string;
-  type: "sale" | "rent" | "service";
+  type: "sell" | "rent" | "service";
   category?: string;
   condition?: string;
   location: string;
@@ -23,7 +24,7 @@ export interface PostCardProps {
 }
 
 const TYPE_CONFIG: Record<PostCardProps["type"], { label: string; cls: string }> = {
-  sale:    { label: "FOR SALE",  cls: "bg-blue-600 text-white"    },
+  sell:    { label: "FOR SALE",  cls: "bg-blue-600 text-white"    },
   rent:    { label: "FOR RENT",  cls: "bg-emerald-600 text-white" },
   service: { label: "SERVICE",   cls: "bg-violet-600 text-white"  },
 };
