@@ -1,7 +1,10 @@
 "use client";
 
 import { useState, useRef } from "react";
+import { useRouter } from "next/navigation";
+import * as listingService from "@/services/listingService";
 import Image from "next/image";
+import { PostCardProps } from "@/components/post-card";
 
 // ─────────────────────────────────────────
 //  TYPES
@@ -84,9 +87,32 @@ export default function PostForm() {
     setPreviews(files.map((f) => URL.createObjectURL(f)));
   };
 
+  const router = useRouter();
+
   const handleSubmit = () => {
-    console.log("Submitting:", form);
-    // TODO: connect to your API / server action
+    // create a lightweight listing object for display
+    const normalize = (text: string) =>
+      text
+        .toLowerCase()
+        .replace(/\s*&\s*/g, "-")
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "");
+
+    const newListing: PostCardProps = {
+      id: Date.now().toString(),
+      title: form.title,
+      price: Number(form.price) || 0,
+      priceUnit: form.priceUnit,
+      type: form.type,
+      category: normalize(form.category),
+      location: form.location,
+      postedAt: "Just now",
+      imageUrl: previews[0] || "",
+      seller: { name: "You", rating: 0 },
+    };
+
+    listingService.saveListing(newListing);
+    router.push("/");
   };
 
   return (

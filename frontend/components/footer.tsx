@@ -48,10 +48,7 @@ export default function Footer() {
   return (
     <footer className="bg-[#161d2b] px-4 sm:px-6 lg:px-8 py-10 mt-auto">
       <div className="max-w-7xl mx-auto">
-
-        {/* Top */}
         <div className="flex flex-col gap-6">
-          {/* Logo + tagline */}
           <div>
             <div className="flex items-center gap-2 mb-3">
               <Image src="/logo.png" alt="P2P Marketplace" width={40} height={40} />
@@ -61,8 +58,6 @@ export default function Footer() {
               Buy, sell, and rent from people near you. Your community marketplace.
             </p>
           </div>
-
-          {/* Nav links */}
           <nav className="flex flex-wrap gap-x-6 gap-y-2">
             {LINKS.map((link) => (
               <a key={link.label} href={link.href}
@@ -72,22 +67,14 @@ export default function Footer() {
             ))}
           </nav>
         </div>
-
-        {/* Divider */}
         <div className="border-t border-stone-700 mt-8 pt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p className="text-stone-500 text-sm">
-            © {new Date().getFullYear()} P2P Marketplace. All rights reserved.
-          </p>
+          <p className="text-stone-500 text-sm">© {new Date().getFullYear()} P2P Marketplace. All rights reserved.</p>
           <div className="flex items-center gap-4">
             {SOCIALS.map((s, i) => (
-              <a key={i} href={s.href}
-                className="text-stone-500 hover:text-stone-100 transition-colors">
-                {s.icon}
-              </a>
+              <a key={i} href={s.href} className="text-stone-500 hover:text-stone-100 transition-colors">{s.icon}</a>
             ))}
           </div>
         </div>
-
       </div>
     </footer>
   );
