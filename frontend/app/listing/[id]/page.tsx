@@ -7,14 +7,14 @@ import Link from "next/link";
 import {
   MapPin, Star, ShieldCheck, MessageCircle, Heart, Share2,
   ChevronLeft, ChevronRight, Flag, Eye, Clock, Package,
-  CheckCircle, Phone, Zap, ArrowLeft, Tag, Truck, RotateCcw,
+  CheckCircle, Phone, Zap, ArrowLeft, Truck, CalendarDays,
 } from "lucide-react";
 import { useUser } from "@/utils/UserContext";
 import * as listingService from "@/services/listingService";
 import { type PostCardProps } from "@/components/post-card";
 import { cn } from "@/lib/utils";
 
-// ── All mock listings (mirrors homepage mocks + any saved ones) ───────────────
+// ── Mock listings ─────────────────────────────────────────────────────────────
 const ALL_MOCK: PostCardProps[] = [
   {
     id: "1", title: "Casio G-Shock GA-2100", price: 1800, type: "sell",
@@ -60,68 +60,127 @@ const ALL_MOCK: PostCardProps[] = [
   },
 ];
 
-// ── Extra detail data keyed by listing id ─────────────────────────────────────
-const EXTRA_DETAILS: Record<string, {
-  description: string;
-  condition: string;
-  images: string[];
-  tags: string[];
-  features: string[];
-  views: number;
-  offers: number;
-}> = {
+// ── ExtraDetail — mirrors every field the listing form collects ────────────────
+interface ExtraDetail {
+  description:    string;
+  condition:      string;       // sell only — "Brand New"|"Like New"|"Good"|"Fair"|"For Parts"
+  images:         string[];
+  features:       string[];     // highlights (up to 8 keywords)
+  views:          number;
+  offers:         number;
+  // Common
+  deliveryMethod: string;       // from form's deliveryMethod field
+  // Rent-specific
+  minPeriod?:     string;
+  availability?:  string;
+  deposit?:       string;
+  amenities?:     string[];
+  // Service-specific
+  turnaround?:    string;
+  serviceArea?:   string;
+  inclusions?:    string[];
+}
+
+// ── Mock extra detail data ────────────────────────────────────────────────────
+const EXTRA_DETAILS: Record<string, ExtraDetail> = {
   "1": {
-    description: "Selling my Casio G-Shock GA-2100 in great condition. Used for about 6 months, no scratches on the bezel. All original accessories included. Perfect for everyday wear — shock resistant, water resistant up to 200m. Bought from an authorized dealer.",
-    condition: "Like New",
+    description:    "Selling my Casio G-Shock GA-2100 in great condition. Used for about 6 months, no scratches on the bezel. All original accessories included. Perfect for everyday wear — shock resistant, water resistant up to 200m. Bought from an authorized dealer.",
+    condition:      "Like New",
     images: [
       "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800&q=90",
       "https://images.unsplash.com/photo-1533139502658-0198f920d8e8?w=800&q=90",
       "https://images.unsplash.com/photo-1434056886845-dac89ffe9b56?w=800&q=90",
     ],
-    tags: ["watch", "casio", "g-shock", "waterproof"],
-    features: ["Shock Resistant", "Water Resistant 200m", "Solar Power", "Bluetooth"],
+    features:       ["Shock Resistant", "Water Resistant 200m", "Solar Power", "Bluetooth"],
     views: 142, offers: 3,
+    deliveryMethod: "Meet-up or Delivery",
+  },
+  "2": {
+    description:    "Fully furnished studio unit in the heart of Makati CBD. 18th floor with great city views. All appliances included — ref, washing machine, aircon, TV. Walking distance to Glorietta, Greenbelt, and MRT Ayala. Ideal for young professionals.",
+    condition:      "",
+    images: [
+      "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800&q=90",
+      "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800&q=90",
+      "https://images.unsplash.com/photo-1484154218962-a197022b5858?w=800&q=90",
+    ],
+    features:       ["City View", "18th Floor", "Steps to MRT", "Pet-Friendly"],
+    views: 218, offers: 5,
+    deliveryMethod: "Meet-up only",
+    minPeriod:      "3 months minimum",
+    availability:   "April 1, 2026",
+    deposit:        "2 months deposit + 1 month advance",
+    amenities:      ["WiFi", "Air Conditioning", "Hot Water", "Parking", "Security", "CCTV", "Swimming Pool", "Gym", "Elevator", "Fully Furnished"],
+  },
+  "3": {
+    description:    "Professional aircon cleaning and repair service for all brands. We use HVAC-grade equipment and certified technicians. Serving Laguna, Batangas, Cavite, and South Metro Manila. Book now for same-day or next-day service.",
+    condition:      "",
+    images: [
+      "https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=800&q=90",
+      "https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?w=800&q=90",
+      "https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=800&q=90",
+    ],
+    features:       ["All Brands Accepted", "HVAC-Grade Equipment", "7-Day Warranty", "Licensed Technicians"],
+    views: 189, offers: 12,
+    deliveryMethod: "Meet-up only",
+    turnaround:     "Same-day or next-day (by appointment)",
+    serviceArea:    "Laguna, Batangas, Cavite, South Metro Manila",
+    inclusions: [
+      "Coil cleaning (evaporator & condenser)",
+      "Drain pan & drain line flush",
+      "Filter washing & drying",
+      "Electrical connections check",
+      "Gas level inspection",
+      "Post-service test run & report",
+    ],
   },
   "4": {
-    description: "MacBook Pro M2 2023 14-inch. Space Gray. Purchased Jan 2024, barely used. AppleCare+ until 2026. Battery cycle count only 45. All ports available — HDMI, SD card, MagSafe. Perfect for developers and creators.",
-    condition: "Like New",
+    description:    "MacBook Pro M2 2023 14-inch, Space Gray. Purchased Jan 2024, barely used. AppleCare+ until 2026. Battery cycle count only 45. All ports available — HDMI, SD card, MagSafe. Perfect for developers and creators.",
+    condition:      "Like New",
     images: [
       "https://images.unsplash.com/photo-1593642632559-0c6d3fc62b89?w=800&q=90",
       "https://images.unsplash.com/photo-1541807084-5c52b6b3adef?w=800&q=90",
-      "https://images.unsplash.com/photo-1611186871525-82fd021f eas?w=800&q=90",
+      "https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=800&q=90",
     ],
-    tags: ["macbook", "apple", "laptop", "m2"],
-    features: ["M2 Pro Chip", "16GB RAM", "512GB SSD", "AppleCare+ 2026"],
+    features:       ["M2 Pro Chip", "16GB RAM", "512GB SSD", "AppleCare+ 2026"],
     views: 389, offers: 8,
+    deliveryMethod: "Meet-up or Delivery",
   },
 };
 
-function getDefaultExtra(listing: PostCardProps) {
+function getDefaultExtra(listing: PostCardProps): ExtraDetail {
   return {
-    description: `${listing.title} available in ${listing.location}. Posted ${listing.postedAt}. Contact the seller for more details about condition and availability.`,
-    condition: "Good",
-    images: [listing.imageUrl, listing.imageUrl, listing.imageUrl],
-    tags: [listing.category ?? "general", listing.type],
-    features: [] as string[],
-    views: Math.floor(Math.random() * 200) + 20,
-    offers: Math.floor(Math.random() * 10),
+    description:    `${listing.title} available in ${listing.location}. Posted ${listing.postedAt}. Contact the seller for more details.`,
+    condition:      listing.type === "sell" ? "Good" : "",
+    images:         [listing.imageUrl, listing.imageUrl, listing.imageUrl],
+    features:       [],
+    views:          Math.floor(Math.random() * 200) + 20,
+    offers:         Math.floor(Math.random() * 10),
+    deliveryMethod: listing.type === "service" ? "On-site service" : "Meet-up or Delivery",
   };
 }
 
+// ── Formatting ─────────────────────────────────────────────────────────────────
 const fmt = new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP", minimumFractionDigits: 0 });
 
+// ── Condition badge colours — keys match the form's condition values exactly ───
 const CONDITION_COLORS: Record<string, string> = {
   "Brand New": "bg-teal-100 dark:bg-teal-900/40 text-teal-700 dark:text-teal-300",
-  "Like New": "bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300",
-  "Good": "bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300",
-  "Fair": "bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-300",
+  "Like New":  "bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300",
+  "Good":      "bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300",
+  "Fair":      "bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-300",
   "For Parts": "bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400",
 };
 
-const TYPE_LABEL: Record<string, string> = { sale: "For Sale", rent: "For Rent", service: "Service" };
+// ── Type badge — keys match PostCardProps.type ("sell" | "rent" | "service") ───
+// FIX: was keyed as "sale" which never matched the actual type value "sell"
+const TYPE_LABEL: Record<string, string> = {
+  sell:    "For Sale",
+  rent:    "For Rent",
+  service: "Service",
+};
 const TYPE_COLOR: Record<string, string> = {
-  sale: "bg-stone-800 text-stone-100",
-  rent: "bg-teal-700 text-white",
+  sell:    "bg-stone-800 text-stone-100",
+  rent:    "bg-teal-700 text-white",
   service: "bg-violet-700 text-white",
 };
 
@@ -131,14 +190,23 @@ function RelatedCard({ listing }: { listing: PostCardProps }) {
     <Link href={`/listing/${listing.id}`} className="group flex-shrink-0 w-40">
       <div className="bg-white dark:bg-[#1c1f2e] rounded-xl overflow-hidden border border-stone-200 dark:border-[#2a2d3e] hover:-translate-y-1 hover:shadow-md transition-all duration-200">
         <div className="relative aspect-[4/3] overflow-hidden bg-stone-100 dark:bg-[#13151f]">
-          <Image src={listing.imageUrl} alt={listing.title} fill className="object-cover group-hover:scale-105 transition-transform duration-300" sizes="160px" />
+          <Image
+            src={listing.imageUrl} alt={listing.title} fill
+            className="object-cover group-hover:scale-105 transition-transform duration-300"
+            sizes="160px"
+          />
           <span className={cn("absolute top-1.5 left-1.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full", TYPE_COLOR[listing.type])}>
             {TYPE_LABEL[listing.type]}
           </span>
         </div>
         <div className="p-2.5">
           <p className="text-stone-800 dark:text-stone-100 font-semibold text-xs leading-tight line-clamp-2">{listing.title}</p>
-          <p className="text-stone-800 dark:text-stone-200 font-bold text-sm mt-1">{fmt.format(listing.price)}{listing.priceUnit ? <span className="text-[10px] font-normal text-stone-400 dark:text-stone-500">{listing.priceUnit}</span> : null}</p>
+          <p className="text-stone-800 dark:text-stone-200 font-bold text-sm mt-1">
+            {fmt.format(listing.price)}
+            {listing.priceUnit && (
+              <span className="text-[10px] font-normal text-stone-400 dark:text-stone-500">{listing.priceUnit}</span>
+            )}
+          </p>
           <p className="text-stone-400 dark:text-stone-500 text-[10px] mt-0.5 truncate">{listing.location}</p>
         </div>
       </div>
@@ -146,33 +214,131 @@ function RelatedCard({ listing }: { listing: PostCardProps }) {
   );
 }
 
+// ── Rent info card — shows data from form's "Rental Terms" step ───────────────
+function RentInfoCard({ extra }: { extra: ExtraDetail }) {
+  const hasData = extra.minPeriod || extra.availability || extra.deposit || extra.amenities?.length;
+  if (!hasData) return null;
+
+  return (
+    <div className="bg-white dark:bg-[#1c1f2e] rounded-2xl border border-stone-200 dark:border-[#2a2d3e] shadow-sm p-6">
+      <h2 className="font-bold text-stone-900 dark:text-stone-50 text-base mb-4">Rental Terms</h2>
+      <div className="flex flex-col gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {extra.minPeriod && (
+            <div className="bg-stone-50 dark:bg-[#13151f] rounded-xl p-3">
+              <p className="text-[10px] font-semibold text-stone-400 dark:text-stone-500 uppercase tracking-widest mb-1">Min. Period</p>
+              <p className="text-sm font-semibold text-stone-800 dark:text-stone-100">{extra.minPeriod}</p>
+            </div>
+          )}
+          {extra.availability && (
+            <div className="bg-stone-50 dark:bg-[#13151f] rounded-xl p-3">
+              <p className="text-[10px] font-semibold text-stone-400 dark:text-stone-500 uppercase tracking-widest mb-1">Available From</p>
+              <p className="text-sm font-semibold text-stone-800 dark:text-stone-100 flex items-center gap-1.5">
+                <CalendarDays className="w-3.5 h-3.5 text-teal-500 flex-shrink-0" />
+                {extra.availability}
+              </p>
+            </div>
+          )}
+          {extra.deposit && (
+            <div className="bg-stone-50 dark:bg-[#13151f] rounded-xl p-3">
+              <p className="text-[10px] font-semibold text-stone-400 dark:text-stone-500 uppercase tracking-widest mb-1">Deposit</p>
+              <p className="text-sm font-semibold text-stone-800 dark:text-stone-100">{extra.deposit}</p>
+            </div>
+          )}
+        </div>
+
+        {extra.amenities && extra.amenities.length > 0 && (
+          <div>
+            <p className="text-xs font-semibold text-stone-500 dark:text-stone-400 uppercase tracking-widest mb-2.5">Amenities & Features</p>
+            <div className="flex flex-wrap gap-1.5">
+              {extra.amenities.map((a) => (
+                <span key={a} className="flex items-center gap-1 text-xs bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800 px-2.5 py-1 rounded-full font-medium">
+                  <CheckCircle className="w-3 h-3 flex-shrink-0" /> {a}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Service info card — shows data from form's "Service Details" step ─────────
+function ServiceInfoCard({ extra }: { extra: ExtraDetail }) {
+  const hasData = extra.turnaround || extra.serviceArea || extra.inclusions?.filter(Boolean).length;
+  if (!hasData) return null;
+
+  return (
+    <div className="bg-white dark:bg-[#1c1f2e] rounded-2xl border border-stone-200 dark:border-[#2a2d3e] shadow-sm p-6">
+      <h2 className="font-bold text-stone-900 dark:text-stone-50 text-base mb-4">Service Details</h2>
+      <div className="flex flex-col gap-4">
+        {(extra.turnaround || extra.serviceArea) && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {extra.turnaround && (
+              <div className="bg-stone-50 dark:bg-[#13151f] rounded-xl p-3">
+                <p className="text-[10px] font-semibold text-stone-400 dark:text-stone-500 uppercase tracking-widest mb-1">Turnaround</p>
+                <p className="text-sm font-semibold text-stone-800 dark:text-stone-100 flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5 text-violet-500 flex-shrink-0" />
+                  {extra.turnaround}
+                </p>
+              </div>
+            )}
+            {extra.serviceArea && (
+              <div className="bg-stone-50 dark:bg-[#13151f] rounded-xl p-3">
+                <p className="text-[10px] font-semibold text-stone-400 dark:text-stone-500 uppercase tracking-widest mb-1">Service Area</p>
+                <p className="text-sm font-semibold text-stone-800 dark:text-stone-100 flex items-center gap-1.5">
+                  <MapPin className="w-3.5 h-3.5 text-violet-500 flex-shrink-0" />
+                  {extra.serviceArea}
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {extra.inclusions && extra.inclusions.filter(Boolean).length > 0 && (
+          <div>
+            <p className="text-xs font-semibold text-stone-500 dark:text-stone-400 uppercase tracking-widest mb-2.5">What&apos;s Included</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-2 gap-x-6">
+              {extra.inclusions.filter(Boolean).map((item) => (
+                <div key={item} className="flex items-start gap-2 text-sm text-stone-700 dark:text-stone-200">
+                  <CheckCircle className="w-4 h-4 text-violet-500 flex-shrink-0 mt-0.5" />
+                  {item}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function ListingDetailPage() {
-  const { id } = useParams<{ id: string }>();
-  const router = useRouter();
+  const { id }   = useParams<{ id: string }>();
+  const router   = useRouter();
   const { user, isValidated } = useUser();
 
-  const [listing, setListing] = useState<PostCardProps | null>(null);
-  const [extra, setExtra] = useState(getDefaultExtra({ id: "", title: "", price: 0, type: "sell", location: "", postedAt: "", imageUrl: "", seller: {
-    name: "",
-    rating: 0
-  } }));
-  const [imgIdx, setImgIdx] = useState(0);
-  const [saved, setSaved] = useState(false);
-  const [offerOpen, setOfferOpen] = useState(false);
-  const [offerAmount, setOfferAmount] = useState("");
-  const [offerSent, setOfferSent] = useState(false);
-  const [reportOpen, setReportOpen] = useState(false);
-  const [shareToast, setShareToast] = useState(false);
-  const [quantity, setQuantity] = useState(1);
+  const [listing,     setListing]    = useState<PostCardProps | null>(null);
+  const [extra,       setExtra]      = useState<ExtraDetail>(
+    getDefaultExtra({ id: "", title: "", price: 0, type: "sell", location: "", postedAt: "", imageUrl: "", seller: { name: "", rating: 0 } })
+  );
+  const [imgIdx,      setImgIdx]     = useState(0);
+  const [saved,       setSaved]      = useState(false);
+  const [offerOpen,   setOfferOpen]  = useState(false);
+  const [offerAmount, setOfferAmt]   = useState("");
+  const [offerSent,   setOfferSent]  = useState(false);
+  const [reportOpen,  setReportOpen] = useState(false);
+  const [shareToast,  setShareToast] = useState(false);
 
   useEffect(() => {
-    const all = [...ALL_MOCK, ...listingService.getListings()];
+    const all   = [...ALL_MOCK, ...listingService.getListings()];
     const found = all.find((l) => l.id === id);
     if (found) {
       setListing(found);
       setExtra(EXTRA_DETAILS[id] ?? getDefaultExtra(found));
-      setOfferAmount(String(Math.round(found.price * 0.9)));
+      setOfferAmt(String(Math.round(found.price * 0.9)));
     }
   }, [id]);
 
@@ -188,11 +354,12 @@ export default function ListingDetailPage() {
     );
   }
 
-  const related = ALL_MOCK.filter((l) => l.id !== id && (l.category === listing.category || l.type === listing.type)).slice(0, 8);
-  const isOwnListing = user?.firstName && listing.seller.name === "You";
-  const isSeller = listing.type === "sell";
-  const isRent = listing.type === "rent";
-  const isService = listing.type === "service";
+  const related      = ALL_MOCK.filter((l) => l.id !== id && (l.category === listing.category || l.type === listing.type)).slice(0, 8);
+  const isOwnListing = !!(user?.firstName && listing.seller.name === "You");
+  const isSell       = listing.type === "sell";
+  const isRent       = listing.type === "rent";
+  const isService    = listing.type === "service";
+  const images       = extra.images.filter(Boolean);
 
   function handleShare() {
     navigator.clipboard.writeText(window.location.href).catch(() => {});
@@ -215,8 +382,6 @@ export default function ListingDetailPage() {
     setOfferSent(true);
     setTimeout(() => { setOfferOpen(false); setOfferSent(false); }, 2000);
   }
-
-  const images = extra.images.filter(Boolean);
 
   return (
     <div className="min-h-screen bg-stone-100 dark:bg-[#0f1117] pt-16">
@@ -242,7 +407,6 @@ export default function ListingDetailPage() {
 
             {/* ── Image gallery ── */}
             <div className="bg-white dark:bg-[#1c1f2e] rounded-2xl border border-stone-200 dark:border-[#2a2d3e] overflow-hidden shadow-sm">
-              {/* Main image */}
               <div className="relative aspect-[16/10] bg-stone-100 dark:bg-[#13151f] overflow-hidden group">
                 <Image
                   src={images[imgIdx] ?? listing.imageUrl}
@@ -251,30 +415,42 @@ export default function ListingDetailPage() {
                   sizes="(max-width: 1024px) 100vw, 60vw"
                   priority
                 />
+
                 {/* Type badge */}
                 <span className={cn("absolute top-4 left-4 text-xs font-bold px-3 py-1 rounded-full", TYPE_COLOR[listing.type])}>
                   {TYPE_LABEL[listing.type]}
                 </span>
+
                 {listing.seller.isPro && (
                   <span className="absolute top-4 left-28 bg-amber-400 text-amber-900 text-xs font-bold px-2.5 py-1 rounded-full">PRO</span>
                 )}
-                {/* Condition badge */}
-                <span className={cn("absolute top-4 right-4 text-xs font-semibold px-3 py-1 rounded-full", CONDITION_COLORS[extra.condition] ?? CONDITION_COLORS["Good"])}>
-                  {extra.condition}
-                </span>
+
+                {/* Condition badge — sell listings only; rent/service have no condition */}
+                {isSell && extra.condition && (
+                  <span className={cn(
+                    "absolute top-4 right-4 text-xs font-semibold px-3 py-1 rounded-full",
+                    CONDITION_COLORS[extra.condition] ?? CONDITION_COLORS["Good"]
+                  )}>
+                    {extra.condition}
+                  </span>
+                )}
+
                 {/* Nav arrows */}
                 {images.length > 1 && (
                   <>
-                    <button onClick={() => setImgIdx((i) => (i - 1 + images.length) % images.length)}
+                    <button
+                      onClick={() => setImgIdx((i) => (i - 1 + images.length) % images.length)}
                       className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 bg-white/80 dark:bg-black/50 rounded-full flex items-center justify-center shadow-md hover:bg-white dark:hover:bg-black/70 transition-colors opacity-0 group-hover:opacity-100">
                       <ChevronLeft className="w-5 h-5 text-stone-700 dark:text-stone-200" />
                     </button>
-                    <button onClick={() => setImgIdx((i) => (i + 1) % images.length)}
+                    <button
+                      onClick={() => setImgIdx((i) => (i + 1) % images.length)}
                       className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 bg-white/80 dark:bg-black/50 rounded-full flex items-center justify-center shadow-md hover:bg-white dark:hover:bg-black/70 transition-colors opacity-0 group-hover:opacity-100">
                       <ChevronRight className="w-5 h-5 text-stone-700 dark:text-stone-200" />
                     </button>
                   </>
                 )}
+
                 {/* Dot indicators */}
                 {images.length > 1 && (
                   <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5">
@@ -285,13 +461,16 @@ export default function ListingDetailPage() {
                   </div>
                 )}
               </div>
+
               {/* Thumbnails */}
               {images.length > 1 && (
                 <div className="flex gap-2 p-3 overflow-x-auto">
                   {images.map((img, i) => (
                     <button key={i} onClick={() => setImgIdx(i)}
-                      className={cn("relative flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 transition-all",
-                        i === imgIdx ? "border-stone-800 dark:border-stone-300" : "border-transparent opacity-60 hover:opacity-100")}>
+                      className={cn(
+                        "relative flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 transition-all",
+                        i === imgIdx ? "border-stone-800 dark:border-stone-300" : "border-transparent opacity-60 hover:opacity-100"
+                      )}>
                       <Image src={img} alt={`Photo ${i + 1}`} fill className="object-cover" sizes="64px" />
                     </button>
                   ))}
@@ -299,14 +478,14 @@ export default function ListingDetailPage() {
               )}
             </div>
 
-            {/* ── Description ── */}
+            {/* ── Description + Highlights ── */}
             <div className="bg-white dark:bg-[#1c1f2e] rounded-2xl border border-stone-200 dark:border-[#2a2d3e] shadow-sm p-6">
               <h2 className="font-bold text-stone-900 dark:text-stone-50 text-base mb-3">About this listing</h2>
               <p className="text-stone-600 dark:text-stone-300 text-sm leading-relaxed">{extra.description}</p>
 
-              {/* Features */}
+              {/* Highlights — populated from the form's highlights field (extra.features) */}
               {extra.features.length > 0 && (
-                <div className="mt-4">
+                <div className="mt-4 pt-4 border-t border-stone-100 dark:border-[#2a2d3e]">
                   <h3 className="text-xs font-semibold text-stone-500 dark:text-stone-400 uppercase tracking-widest mb-3">Highlights</h3>
                   <div className="grid grid-cols-2 gap-2">
                     {extra.features.map((f) => (
@@ -318,26 +497,31 @@ export default function ListingDetailPage() {
                   </div>
                 </div>
               )}
-
-              {/* Tags */}
-              {extra.tags.length > 0 && (
-                <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-stone-100 dark:border-[#2a2d3e]">
-                  {extra.tags.map((t) => (
-                    <span key={t} className="flex items-center gap-1 text-xs bg-stone-100 dark:bg-[#252837] text-stone-500 dark:text-stone-400 px-3 py-1 rounded-full">
-                      <Tag className="w-2.5 h-2.5" /> {t}
-                    </span>
-                  ))}
-                </div>
-              )}
             </div>
 
-            {/* ── Policies / info rows ── */}
+            {/* ── Type-specific info cards ── */}
+            {isRent    && <RentInfoCard    extra={extra} />}
+            {isService && <ServiceInfoCard extra={extra} />}
+
+            {/* ── Listing info rows ── */}
             <div className="bg-white dark:bg-[#1c1f2e] rounded-2xl border border-stone-200 dark:border-[#2a2d3e] shadow-sm divide-y divide-stone-100 dark:divide-[#2a2d3e]">
               {[
-                { icon: <MapPin className="w-4 h-4 text-stone-400" />, label: "Pickup location", value: listing.location },
-                { icon: <Truck className="w-4 h-4 text-stone-400" />, label: "Meet-up / Delivery", value: isService ? "On-site service" : "Meetup preferred · Delivery negotiable" },
-                { icon: <RotateCcw className="w-4 h-4 text-stone-400" />, label: "Returns", value: isService ? "Satisfaction guaranteed" : "No returns — inspect before buying" },
-                { icon: <Eye className="w-4 h-4 text-stone-400" />, label: "Listing stats", value: `${extra.views} views · ${extra.offers} offers received` },
+                {
+                  icon:  <MapPin className="w-4 h-4 text-stone-400" />,
+                  label: "Location",
+                  value: listing.location,
+                },
+                {
+                  icon:  <Truck className="w-4 h-4 text-stone-400" />,
+                  label: isService ? "Arrangement" : "Meet-up / Delivery",
+                  // Reflects the actual deliveryMethod the seller chose in the form
+                  value: extra.deliveryMethod,
+                },
+                {
+                  icon:  <Eye className="w-4 h-4 text-stone-400" />,
+                  label: "Listing stats",
+                  value: `${extra.views} views · ${extra.offers} ${isService ? "bookings" : "offers"} received`,
+                },
               ].map((row) => (
                 <div key={row.label} className="flex items-center gap-3 px-5 py-3.5">
                   <div className="shrink-0">{row.icon}</div>
@@ -358,7 +542,7 @@ export default function ListingDetailPage() {
             )}
           </div>
 
-          {/* ══ RIGHT COLUMN — sticky action panel ═══════════════════════════ */}
+          {/* ══ RIGHT COLUMN ══════════════════════════════════════════════════ */}
           <div className="flex flex-col gap-4">
             <div className="lg:sticky lg:top-20">
 
@@ -367,12 +551,18 @@ export default function ListingDetailPage() {
                 <div className="flex items-start justify-between gap-2 mb-2">
                   <h1 className="text-xl font-bold text-stone-900 dark:text-stone-50 leading-tight">{listing.title}</h1>
                   <div className="flex gap-1.5 shrink-0">
-                    <button onClick={() => setSaved((v) => !v)}
-                      className={cn("w-9 h-9 rounded-full flex items-center justify-center border transition-all",
-                        saved ? "border-rose-200 bg-rose-50 dark:bg-rose-900/30 dark:border-rose-800 text-rose-500" : "border-stone-200 dark:border-[#2a2d3e] text-stone-400 dark:text-stone-500 hover:border-rose-200 hover:text-rose-400")}>
+                    <button
+                      onClick={() => setSaved((v) => !v)}
+                      className={cn(
+                        "w-9 h-9 rounded-full flex items-center justify-center border transition-all",
+                        saved
+                          ? "border-rose-200 bg-rose-50 dark:bg-rose-900/30 dark:border-rose-800 text-rose-500"
+                          : "border-stone-200 dark:border-[#2a2d3e] text-stone-400 dark:text-stone-500 hover:border-rose-200 hover:text-rose-400"
+                      )}>
                       <Heart className={cn("w-4 h-4", saved && "fill-rose-500")} />
                     </button>
-                    <button onClick={handleShare}
+                    <button
+                      onClick={handleShare}
                       className="w-9 h-9 rounded-full flex items-center justify-center border border-stone-200 dark:border-[#2a2d3e] text-stone-400 dark:text-stone-500 hover:border-stone-400 dark:hover:border-stone-500 transition-all">
                       <Share2 className="w-4 h-4" />
                     </button>
@@ -384,8 +574,10 @@ export default function ListingDetailPage() {
                   <span className="text-3xl font-extrabold text-stone-900 dark:text-stone-50">{fmt.format(listing.price)}</span>
                   {listing.priceUnit && <span className="text-stone-400 dark:text-stone-500 text-sm">{listing.priceUnit}</span>}
                 </div>
-                {isSeller && (
-                  <p className="text-xs text-stone-400 dark:text-stone-500 mb-3">Price is {extra.offers > 2 ? "firm" : "negotiable"} · {extra.offers} offer{extra.offers !== 1 ? "s" : ""} received</p>
+                {isSell && (
+                  <p className="text-xs text-stone-400 dark:text-stone-500 mb-3">
+                    Price is {extra.offers > 2 ? "firm" : "negotiable"} · {extra.offers} offer{extra.offers !== 1 ? "s" : ""} received
+                  </p>
                 )}
 
                 {/* Location + posted */}
@@ -394,25 +586,13 @@ export default function ListingDetailPage() {
                   <span className="flex items-center gap-1"><Clock className="w-3 h-3" />Posted {listing.postedAt}</span>
                 </div>
 
-                {/* Quantity (for sale items only) */}
-                {isSeller && !isOwnListing && (
-                  <div className="flex items-center gap-3 mb-4">
-                    <span className="text-xs font-medium text-stone-500 dark:text-stone-400">Qty:</span>
-                    <div className="flex items-center border border-stone-200 dark:border-[#2a2d3e] rounded-full overflow-hidden">
-                      <button onClick={() => setQuantity((q) => Math.max(1, q - 1))} className="w-8 h-8 flex items-center justify-center text-stone-500 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-[#252837] transition-colors text-lg leading-none">−</button>
-                      <span className="w-8 text-center text-sm font-semibold text-stone-800 dark:text-stone-100">{quantity}</span>
-                      <button onClick={() => setQuantity((q) => q + 1)} className="w-8 h-8 flex items-center justify-center text-stone-500 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-[#252837] transition-colors text-lg leading-none">+</button>
-                    </div>
-                    {quantity > 1 && (
-                      <span className="text-xs text-stone-400 dark:text-stone-500">= {fmt.format(listing.price * quantity)}</span>
-                    )}
-                  </div>
-                )}
-
                 {/* ── CTA buttons ── */}
                 {isOwnListing ? (
                   <div className="flex flex-col gap-2">
-                    <Link href="/create" className="flex items-center justify-center gap-2 w-full py-3 rounded-full bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 text-sm font-bold hover:opacity-90 transition-opacity">
+                    {/* FIX: was href="/create" — now correctly routes to the edit form */}
+                    <Link
+                      href={`/listing/${id}/edit`}
+                      className="flex items-center justify-center gap-2 w-full py-3 rounded-full bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 text-sm font-bold hover:opacity-90 transition-opacity">
                       ✏️ Edit Listing
                     </Link>
                     <button className="flex items-center justify-center gap-2 w-full py-3 rounded-full border border-red-200 dark:border-red-800 text-red-500 dark:text-red-400 text-sm font-semibold hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors">
@@ -421,36 +601,36 @@ export default function ListingDetailPage() {
                   </div>
                 ) : (
                   <div className="flex flex-col gap-2">
-                    {/* Primary action */}
-                    {isSeller && (
-                      <button onClick={handleBuy}
+                    {isSell && (
+                      <button
+                        onClick={handleBuy}
                         className="flex items-center justify-center gap-2 w-full py-3 rounded-full text-sm font-bold text-white transition-all hover:opacity-90 active:scale-[0.98]"
                         style={{ background: "linear-gradient(135deg, #1e2433 0%, #3a4a6a 100%)" }}>
                         <Zap className="w-4 h-4" /> Make an Offer
                       </button>
                     )}
                     {isRent && (
-                      <button onClick={handleBuy}
+                      <button
+                        onClick={handleBuy}
                         className="flex items-center justify-center gap-2 w-full py-3 rounded-full text-sm font-bold text-white bg-teal-700 hover:bg-teal-600 transition-colors active:scale-[0.98]">
                         <Package className="w-4 h-4" /> Request to Rent
                       </button>
                     )}
                     {isService && (
-                      <button onClick={handleBuy}
+                      <button
+                        onClick={handleBuy}
                         className="flex items-center justify-center gap-2 w-full py-3 rounded-full text-sm font-bold text-white bg-violet-700 hover:bg-violet-600 transition-colors active:scale-[0.98]">
                         <CheckCircle className="w-4 h-4" /> Book Service
                       </button>
                     )}
-
-                    {/* Message */}
-                    <button onClick={handleMessage}
+                    <button
+                      onClick={handleMessage}
                       className="flex items-center justify-center gap-2 w-full py-3 rounded-full border-2 border-stone-200 dark:border-[#2a2d3e] text-stone-700 dark:text-stone-200 text-sm font-semibold hover:border-stone-400 dark:hover:border-stone-500 hover:bg-stone-50 dark:hover:bg-[#252837] transition-all">
                       <MessageCircle className="w-4 h-4" /> Message Seller
                     </button>
-
-                    {/* Call */}
-                    <button className="flex items-center justify-center gap-2 w-full py-2.5 rounded-full text-stone-500 dark:text-stone-400 text-xs font-medium hover:text-stone-700 dark:hover:text-stone-200 transition-colors"
-                      onClick={() => !isValidated && router.push("/login")}>
+                    <button
+                      onClick={() => !isValidated && router.push("/login")}
+                      className="flex items-center justify-center gap-2 w-full py-2.5 rounded-full text-stone-500 dark:text-stone-400 text-xs font-medium hover:text-stone-700 dark:hover:text-stone-200 transition-colors">
                       <Phone className="w-3.5 h-3.5" /> Show Contact Number
                     </button>
                   </div>
@@ -465,7 +645,7 @@ export default function ListingDetailPage() {
                   </div>
                   <div className="min-w-0">
                     <p className="font-bold text-stone-900 dark:text-stone-50 text-sm">{listing.seller.name}</p>
-                    <div className="flex items-center gap-1.5 mt-0.5">
+                    <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
                       {listing.seller.rating && (
                         <span className="flex items-center gap-0.5 text-xs text-amber-500 font-semibold">
                           <Star className="w-3 h-3 fill-amber-400" /> {listing.seller.rating.toFixed(1)}
@@ -483,9 +663,9 @@ export default function ListingDetailPage() {
 
                 <div className="grid grid-cols-3 gap-2 mb-4 text-center">
                   {[
-                    { label: "Listings", value: "24" },
+                    { label: "Listings", value: "24"   },
                     { label: "Response", value: "< 1h" },
-                    { label: "Sales",    value: "98%" },
+                    { label: "Sales",    value: "98%"  },
                   ].map((s) => (
                     <div key={s.label} className="bg-stone-50 dark:bg-[#13151f] rounded-xl py-2.5">
                       <p className="text-sm font-bold text-stone-900 dark:text-stone-50">{s.value}</p>
@@ -494,7 +674,8 @@ export default function ListingDetailPage() {
                   ))}
                 </div>
 
-                <Link href="/profile"
+                <Link
+                  href="/profile"
                   className="flex items-center justify-center gap-2 w-full py-2.5 rounded-full border border-stone-200 dark:border-[#2a2d3e] text-stone-600 dark:text-stone-300 text-xs font-semibold hover:border-stone-400 dark:hover:border-stone-500 hover:bg-stone-50 dark:hover:bg-[#252837] transition-all">
                   View Seller Profile
                 </Link>
@@ -518,7 +699,8 @@ export default function ListingDetailPage() {
               </div>
 
               {/* Report link */}
-              <button onClick={() => setReportOpen(true)}
+              <button
+                onClick={() => setReportOpen(true)}
                 className="flex items-center gap-1.5 text-xs text-stone-400 dark:text-stone-500 hover:text-red-500 dark:hover:text-red-400 transition-colors mt-3 mx-auto">
                 <Flag className="w-3 h-3" /> Report this listing
               </button>
@@ -529,12 +711,13 @@ export default function ListingDetailPage() {
 
       {/* ══ OFFER MODAL ══════════════════════════════════════════════════════ */}
       {offerOpen && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+        <div
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
           onClick={(e) => e.target === e.currentTarget && setOfferOpen(false)}>
           <div className="bg-white dark:bg-[#1c1f2e] rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden">
             <div className="bg-[#1e2433] px-6 py-5">
               <h2 className="text-white font-bold text-lg">
-                {isSeller ? "Make an Offer" : isRent ? "Request to Rent" : "Book Service"}
+                {isSell ? "Make an Offer" : isRent ? "Request to Rent" : "Book Service"}
               </h2>
               <p className="text-slate-400 text-sm mt-1 truncate">{listing.title}</p>
             </div>
@@ -543,13 +726,13 @@ export default function ListingDetailPage() {
                 <div className="text-center py-6">
                   <div className="text-5xl mb-3">🎉</div>
                   <p className="font-bold text-stone-900 dark:text-stone-50 text-lg">
-                    {isSeller ? "Offer Sent!" : isRent ? "Request Sent!" : "Booking Sent!"}
+                    {isSell ? "Offer Sent!" : isRent ? "Request Sent!" : "Booking Sent!"}
                   </p>
                   <p className="text-sm text-stone-500 dark:text-stone-400 mt-1">The seller will respond shortly.</p>
                 </div>
               ) : (
                 <>
-                  {isSeller && (
+                  {isSell && (
                     <div className="mb-4">
                       <div className="flex justify-between text-xs text-stone-500 dark:text-stone-400 mb-2">
                         <span>Your offer</span>
@@ -557,12 +740,16 @@ export default function ListingDetailPage() {
                       </div>
                       <div className="flex items-center border-2 border-stone-200 dark:border-[#2a2d3e] rounded-xl overflow-hidden focus-within:border-stone-400 dark:focus-within:border-stone-500 transition-colors">
                         <span className="px-4 text-stone-400 dark:text-stone-500 font-semibold text-sm bg-stone-50 dark:bg-[#13151f] py-3 border-r border-stone-200 dark:border-[#2a2d3e]">₱</span>
-                        <input type="number" value={offerAmount} onChange={(e) => setOfferAmount(e.target.value)}
-                          className="flex-1 px-4 py-3 text-stone-900 dark:text-stone-50 bg-transparent text-sm font-semibold outline-none" />
+                        <input
+                          type="number" value={offerAmount}
+                          onChange={(e) => setOfferAmt(e.target.value)}
+                          className="flex-1 px-4 py-3 text-stone-900 dark:text-stone-50 bg-transparent text-sm font-semibold outline-none"
+                        />
                       </div>
                       <div className="flex gap-2 mt-2">
                         {[0.9, 0.85, 0.8].map((p) => (
-                          <button key={p} onClick={() => setOfferAmount(String(Math.round(listing.price * p)))}
+                          <button key={p}
+                            onClick={() => setOfferAmt(String(Math.round(listing.price * p)))}
                             className="flex-1 text-xs py-1.5 rounded-full border border-stone-200 dark:border-[#2a2d3e] text-stone-500 dark:text-stone-400 hover:border-stone-400 hover:text-stone-700 dark:hover:text-stone-200 transition-colors">
                             {Math.round(p * 100)}%
                           </button>
@@ -572,20 +759,26 @@ export default function ListingDetailPage() {
                   )}
                   <div className="mb-4">
                     <label className="text-xs font-medium text-stone-500 dark:text-stone-400 mb-1.5 block">
-                      {isSeller ? "Add a message (optional)" : "Your message"}
+                      {isSell ? "Add a message (optional)" : "Your message"}
                     </label>
-                    <textarea rows={3} placeholder={
-                      isSeller ? "e.g. Can we meetup in SM Calamba on Saturday?"
-                      : isRent ? "e.g. I'd like to rent from Aug 1–7. Is it still available?"
-                      : "e.g. I need aircon cleaning for 2 units. When are you available?"
-                    } className="w-full bg-stone-50 dark:bg-[#13151f] border border-stone-200 dark:border-[#2a2d3e] rounded-xl px-3 py-2.5 text-sm text-stone-800 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-600 outline-none focus:border-stone-400 dark:focus:border-stone-500 resize-none" />
+                    <textarea
+                      rows={3}
+                      placeholder={
+                        isSell    ? "e.g. Can we meet up in SM Calamba on Saturday?"        :
+                        isRent    ? "e.g. I'd like to rent from Aug 1–7. Still available?"  :
+                                    "e.g. I need aircon cleaning for 2 units. When are you available?"
+                      }
+                      className="w-full bg-stone-50 dark:bg-[#13151f] border border-stone-200 dark:border-[#2a2d3e] rounded-xl px-3 py-2.5 text-sm text-stone-800 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-600 outline-none focus:border-stone-400 dark:focus:border-stone-500 resize-none"
+                    />
                   </div>
                   <div className="flex gap-2">
-                    <button onClick={() => setOfferOpen(false)}
+                    <button
+                      onClick={() => setOfferOpen(false)}
                       className="flex-1 py-3 rounded-full border border-stone-200 dark:border-[#2a2d3e] text-stone-600 dark:text-stone-300 text-sm font-semibold hover:bg-stone-50 dark:hover:bg-[#252837] transition-colors">
                       Cancel
                     </button>
-                    <button onClick={sendOffer}
+                    <button
+                      onClick={sendOffer}
                       className="flex-1 py-3 rounded-full bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 text-sm font-bold hover:opacity-90 transition-opacity">
                       Send →
                     </button>
@@ -597,21 +790,24 @@ export default function ListingDetailPage() {
         </div>
       )}
 
-      {/* ══ REPORT MODAL ═════════════════════════════════════════════════════ */}
+      {/* ══ REPORT MODAL ══════════════════════════════════════════════════════ */}
       {reportOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
           onClick={(e) => e.target === e.currentTarget && setReportOpen(false)}>
           <div className="bg-white dark:bg-[#1c1f2e] rounded-2xl w-full max-w-sm shadow-2xl p-6">
             <h2 className="font-bold text-stone-900 dark:text-stone-50 text-lg mb-1">Report Listing</h2>
-            <p className="text-sm text-stone-500 dark:text-stone-400 mb-4">What's wrong with this listing?</p>
+            <p className="text-sm text-stone-500 dark:text-stone-400 mb-4">What&apos;s wrong with this listing?</p>
             <div className="flex flex-col gap-2 mb-5">
               {["Scam / Fraud", "Prohibited item", "Fake / Counterfeit", "Wrong category", "Spam / Duplicate", "Other"].map((r) => (
-                <button key={r} className="text-left text-sm text-stone-700 dark:text-stone-200 px-4 py-3 rounded-xl border border-stone-200 dark:border-[#2a2d3e] hover:border-red-300 hover:bg-red-50 dark:hover:bg-red-950/20 dark:hover:border-red-800 transition-colors">
+                <button key={r}
+                  className="text-left text-sm text-stone-700 dark:text-stone-200 px-4 py-3 rounded-xl border border-stone-200 dark:border-[#2a2d3e] hover:border-red-300 hover:bg-red-50 dark:hover:bg-red-950/20 dark:hover:border-red-800 transition-colors">
                   {r}
                 </button>
               ))}
             </div>
-            <button onClick={() => setReportOpen(false)}
+            <button
+              onClick={() => setReportOpen(false)}
               className="w-full py-2.5 rounded-full border border-stone-200 dark:border-[#2a2d3e] text-stone-500 dark:text-stone-400 text-sm hover:bg-stone-50 dark:hover:bg-[#252837] transition-colors">
               Cancel
             </button>
@@ -629,15 +825,17 @@ export default function ListingDetailPage() {
       {/* ── Mobile sticky bar ── */}
       {!isOwnListing && (
         <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white dark:bg-[#1c1f2e] border-t border-stone-200 dark:border-[#2a2d3e] px-4 py-3 flex gap-3 shadow-lg">
-          <button onClick={handleMessage}
+          <button
+            onClick={handleMessage}
             className="flex-1 flex items-center justify-center gap-2 py-3 rounded-full border-2 border-stone-200 dark:border-[#2a2d3e] text-stone-700 dark:text-stone-200 text-sm font-semibold">
             <MessageCircle className="w-4 h-4" /> Message
           </button>
-          <button onClick={handleBuy}
+          <button
+            onClick={handleBuy}
             className="flex-1 flex items-center justify-center gap-2 py-3 rounded-full text-white text-sm font-bold"
             style={{ background: "linear-gradient(135deg, #1e2433, #3a4a6a)" }}>
             <Zap className="w-4 h-4" />
-            {isSeller ? "Offer" : isRent ? "Rent" : "Book"}
+            {isSell ? "Offer" : isRent ? "Rent" : "Book"}
           </button>
         </div>
       )}
