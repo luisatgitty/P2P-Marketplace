@@ -47,6 +47,7 @@
   --radius-4xl: calc(var(--radius) + 16px);
 }
 
+/* ── Light mode tokens ── */
 :root {
   --radius: 0.625rem;
   --background: oklch(1 0 0);
@@ -82,40 +83,104 @@
   --sidebar-ring: oklch(0.707 0.022 261.325);
 }
 
+/* ── Dark mode tokens ── */
 .dark {
-  --background: oklch(0.13 0.03 250);
-  --foreground: oklch(0.92 0.015 240);
-  --card: oklch(0.16 0.035 252);
-  --card-foreground: oklch(0.92 0.015 240);
-  --popover: oklch(0.16 0.035 252);
-  --popover-foreground: oklch(0.92 0.015 240);
-  --primary: oklch(0.75 0.08 240);
-  --primary-foreground: oklch(0.13 0.03 250);
-  --secondary: oklch(0.19 0.04 252);
-  --secondary-foreground: oklch(0.92 0.015 240);
-  --muted: oklch(0.19 0.04 252);
-  --muted-foreground: oklch(0.6 0.04 245);
-  --accent: oklch(0.21 0.045 253);
-  --accent-foreground: oklch(0.92 0.015 240);
+  --background: #0f1117;
+  --foreground: #e8eaf0;
+  --card: #1c1f2e;
+  --card-foreground: #e8eaf0;
+  --popover: #1c1f2e;
+  --popover-foreground: #e8eaf0;
+  --primary: #e2e4ee;
+  --primary-foreground: #1c1f2e;
+  --secondary: #252837;
+  --secondary-foreground: #e8eaf0;
+  --muted: #252837;
+  --muted-foreground: #8b90a4;
+  --accent: #252837;
+  --accent-foreground: #e8eaf0;
   --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 8%);
-  --input: oklch(1 0 0 / 10%);
-  --ring: oklch(0.45 0.06 250);
-  --sidebar: oklch(0.15 0.035 251);
-  --sidebar-foreground: oklch(0.92 0.015 240);
-  --sidebar-primary: oklch(0.55 0.1 250);
-  --sidebar-primary-foreground: oklch(0.92 0.015 240);
-  --sidebar-accent: oklch(0.19 0.04 252);
-  --sidebar-accent-foreground: oklch(0.92 0.015 240);
-  --sidebar-border: oklch(1 0 0 / 8%);
-  --sidebar-ring: oklch(0.45 0.06 250);
+  --border: #2a2d3e;
+  --input: #2a2d3e;
+  --ring: #555968;
+  --sidebar: #13151f;
+  --sidebar-foreground: #e8eaf0;
+  --sidebar-primary: #e2e4ee;
+  --sidebar-primary-foreground: #1c1f2e;
+  --sidebar-accent: #252837;
+  --sidebar-accent-foreground: #e8eaf0;
+  --sidebar-border: #2a2d3e;
+  --sidebar-ring: #555968;
 }
 
+/* ── Base resets ── */
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
   body {
     @apply bg-background text-foreground;
+    transition: background-color 0.2s ease, color 0.2s ease;
   }
 }
+
+/* ═══════════════════════════════════════
+   DARK MODE — explicit overrides for
+   components that use hardcoded colours
+═══════════════════════════════════════ */
+
+/* Page backgrounds */
+.dark body                 { background-color: #0f1117; color: #e8eaf0; }
+
+/* shadcn Button in dark mode */
+.dark [data-slot="button"][data-variant="outline"] {
+  background-color: #1c1f2e;
+  border-color: #2a2d3e;
+  color: #c8cad8;
+}
+.dark [data-slot="button"][data-variant="outline"]:hover {
+  background-color: #252837;
+  color: #e8eaf0;
+}
+
+/* shadcn Input in dark mode */
+.dark [data-slot="input"] {
+  background-color: #1c1f2e;
+  border-color: #2a2d3e;
+  color: #e8eaf0;
+}
+.dark [data-slot="input"]::placeholder { color: #555968; }
+
+/* Native inputs / selects / textareas */
+.dark input:not([type="checkbox"]):not([type="radio"]),
+.dark select,
+.dark textarea {
+  background-color: #1c1f2e;
+  border-color: #2a2d3e;
+  color: #e8eaf0;
+}
+.dark input::placeholder,
+.dark textarea::placeholder { color: #555968; }
+.dark select option          { background-color: #1c1f2e; color: #e8eaf0; }
+
+/* ── Utility classes ── */
+
+/* No-scrollbar */
+.no-scroll                   { scrollbar-width: none; -ms-overflow-style: none; }
+.no-scroll::-webkit-scrollbar { display: none; }
+
+/* Fade-in animation */
+.fade-in                     { animation: fadeUp .45s ease both; }
+.fade-in.delay-2             { animation-delay: .1s; }
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Font brand */
+.font-brand { font-family: var(--font-dm-sans), sans-serif; font-weight: 600; }
+
+/* Card hover lift */
+.card-hover { transition: transform .18s ease, box-shadow .18s ease; }
+.card-hover:hover      { transform: translateY(-3px); box-shadow: 0 8px 28px rgba(0,0,0,.1); }
+.dark .card-hover:hover { box-shadow: 0 8px 28px rgba(0,0,0,.45); }
