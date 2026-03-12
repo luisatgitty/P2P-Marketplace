@@ -184,7 +184,7 @@ export default function MessagesPage() {
         <InboxIcon /> Messages
       </h1>
 
-      <div className="flex border border-stone-200 rounded-2xl overflow-hidden bg-white shadow-sm min-h-[600px]">
+      <div className="flex border border-stone-200 rounded-2xl overflow-hidden bg-white shadow-sm min-h-150">
 
         {/* ── Conversation List ── */}
         <div className={`w-full sm:w-80 border-r border-stone-200 flex flex-col ${selectedUser ? "hidden sm:flex" : "flex"}`}>
