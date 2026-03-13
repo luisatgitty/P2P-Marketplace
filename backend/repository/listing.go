@@ -644,6 +644,80 @@ func deleteListingImagesTx(tx *gorm.DB, listingId string) error {
 	return nil
 }
 
+func DeleteListing(userId, listingId string) error {
+	db := middleware.DBConn
+	tx := db.Begin()
+	if tx.Error != nil {
+		return tx.Error
+	}
+
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	var existingId string
+	ownerCheckQuery := `
+		SELECT id
+		FROM public.listings
+		WHERE id = $1 AND user_id = $2
+		LIMIT 1
+	`
+	ownerCheckResult := tx.Raw(ownerCheckQuery, listingId, userId).Scan(&existingId)
+	if ownerCheckResult.Error != nil {
+		tx.Rollback()
+		return fmt.Errorf("Failed to validate listing ownership")
+	}
+	if ownerCheckResult.RowsAffected == 0 {
+		tx.Rollback()
+		return fmt.Errorf("Listing not found or unauthorized")
+	}
+
+	if err := tx.Exec(`DELETE FROM public.bookmarks WHERE listing_id = $1`, listingId).Error; err != nil {
+		tx.Rollback()
+		return fmt.Errorf("Failed to remove listing bookmarks")
+	}
+
+	if err := tx.Exec(`DELETE FROM public.listing_sell_details WHERE listing_id = $1`, listingId).Error; err != nil {
+		tx.Rollback()
+		return fmt.Errorf("Failed to remove listing sell details")
+	}
+	if err := tx.Exec(`DELETE FROM public.listing_rent_details WHERE listing_id = $1`, listingId).Error; err != nil {
+		tx.Rollback()
+		return fmt.Errorf("Failed to remove listing rent details")
+	}
+	if err := tx.Exec(`DELETE FROM public.listing_service_details WHERE listing_id = $1`, listingId).Error; err != nil {
+		tx.Rollback()
+		return fmt.Errorf("Failed to remove listing service details")
+	}
+
+	if err := deleteListingImagesTx(tx, listingId); err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	deleteListingQuery := `
+		DELETE FROM public.listings
+		WHERE id = $1 AND user_id = $2
+	`
+	deleteResult := tx.Exec(deleteListingQuery, listingId, userId)
+	if deleteResult.Error != nil {
+		tx.Rollback()
+		return fmt.Errorf("Failed to remove listing")
+	}
+	if deleteResult.RowsAffected == 0 {
+		tx.Rollback()
+		return fmt.Errorf("Listing not found or unauthorized")
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func GetListingDetailById(listingId string) (model.ListingDetailFromDb, error) {
 	db := middleware.DBConn
 	var listing model.ListingDetailFromDb

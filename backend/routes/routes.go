@@ -23,5 +23,6 @@ func AppRoutes(app *fiber.App) {
 	app.Post("/listing", controller.AuthenticateUser, controller.CreateListing)
 	app.Get("/listing/:id/edit", controller.AuthenticateUser, controller.GetListingEditById)
 	app.Put("/listing/:id", controller.AuthenticateUser, controller.UpdateListing)
+	app.Delete("/listing/:id", controller.AuthenticateUser, controller.DeleteListing)
 	app.Get("/profile/me", controller.AuthenticateUser, controller.MeProfile)
 }

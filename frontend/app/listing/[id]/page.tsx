@@ -222,6 +222,7 @@ export default function ListingDetailPage() {
   const [offerSent,   setOfferSent]  = useState(false);
   const [reportOpen,  setReportOpen] = useState(false);
   const [shareToast,  setShareToast] = useState(false);
+  const [deleting,    setDeleting]   = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -299,6 +300,38 @@ export default function ListingDetailPage() {
   function sendOffer() {
     setOfferSent(true);
     setTimeout(() => { setOfferOpen(false); setOfferSent(false); }, 2000);
+  }
+
+  async function handleRemoveListing() {
+    if (!isValidated) {
+      router.push("/login");
+      return;
+    }
+    if (!isOwnListing || deleting) return;
+
+    const confirmed = window.confirm("Delete this listing permanently? This action cannot be undone.");
+    if (!confirmed) return;
+
+    setDeleting(true);
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/listing/${id}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+      });
+
+      const parsedJson = await response.json();
+      if (!response.ok) {
+        throw new Error(parsedJson?.data?.message || "Failed to remove listing.");
+      }
+
+      router.push("/profile");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to remove listing.";
+      window.alert(message);
+    } finally {
+      setDeleting(false);
+    }
   }
 
   return (
@@ -513,8 +546,12 @@ export default function ListingDetailPage() {
                       className="flex items-center justify-center gap-2 w-full py-3 rounded-full bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 text-sm font-bold hover:opacity-90 transition-opacity">
                       ✏️ Edit Listing
                     </Link>
-                    <button className="flex items-center justify-center gap-2 w-full py-3 rounded-full border border-red-200 dark:border-red-800 text-red-500 dark:text-red-400 text-sm font-semibold hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors">
-                      🗑 Remove Listing
+                    <button
+                      onClick={handleRemoveListing}
+                      disabled={deleting}
+                      className="flex items-center justify-center gap-2 w-full py-3 rounded-full border border-red-200 dark:border-red-800 text-red-500 dark:text-red-400 text-sm font-semibold hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                    >
+                      🗑 {deleting ? "Removing..." : "Remove Listing"}
                     </button>
                   </div>
                 ) : (
