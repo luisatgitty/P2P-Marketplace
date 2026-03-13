@@ -175,7 +175,7 @@ function HomePageInner() {
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-8">
 
             {/* Left: Headline */}
-            <div className="max-w-xl">
+            <div className="max-w-xl animate-fade-in-up">
               {tabLabel && (
                 <span className="inline-block text-xs font-semibold bg-amber-700 text-white px-3 py-1 rounded-full mb-3 uppercase tracking-wider">
                   {tabLabel}
@@ -201,7 +201,7 @@ function HomePageInner() {
             {/* Right: Stats */}
             <div className="flex gap-6 sm:gap-10 shrink-0">
               {[
-                { value: "12,000+", label: "Active Listings" },
+                { value: `${ALL_LISTINGS.length.toLocaleString()}+`, label: "Active Listings" },
                 { value: "Free",    label: "To post items"   },
                 { value: "PH-Wide", label: "All regions"     },
               ].map((stat, i) => (
@@ -209,7 +209,7 @@ function HomePageInner() {
                   {i > 0 && <div className="w-px h-12 bg-stone-700" />}
                   <div className="text-center">
                     <p className="text-xl sm:text-2xl font-bold text-stone-100">{stat.value}</p>
-                    <p className="text-xs text-stone-500 mt-0.5">{stat.label}</p>
+                    <p className="text-xs text-stone-300 mt-0.5">{stat.label}</p>
                   </div>
                 </div>
               ))}
