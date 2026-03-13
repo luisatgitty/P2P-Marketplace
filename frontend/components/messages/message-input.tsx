@@ -1,23 +1,31 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Send, Paperclip, Image, Folder, MapPin } from "lucide-react";
+import { Send, Paperclip, Image, Folder, MapPin, X, CornerUpLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
+import type { ReplyPreview } from "@/types/messaging";
 
 interface MessageInputProps {
-  onSend: (content: string) => void;
-  disabled?: boolean;
+  onSend:     (content: string) => void;
+  disabled?:  boolean;
+  replyTo?:   ReplyPreview | null;
+  onCancelReply?: () => void;
 }
 
 const ATTACH_OPTS = [
   { icon: Image,  label: "Photo / Video" },
-  { icon: Folder, label: "File" },
-  { icon: MapPin, label: "Location" },
+  { icon: Folder, label: "File"          },
+  { icon: MapPin, label: "Location"      },
 ];
 
-export default function MessageInput({ onSend, disabled }: MessageInputProps) {
-  const [value,        setValue]      = useState("");
-  const [attachOpen,   setAttachOpen] = useState(false);
+export default function MessageInput({
+  onSend,
+  disabled,
+  replyTo,
+  onCancelReply,
+}: MessageInputProps) {
+  const [value,      setValue]      = useState("");
+  const [attachOpen, setAttachOpen] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const attachRef   = useRef<HTMLDivElement>(null);
 
@@ -29,12 +37,16 @@ export default function MessageInput({ onSend, disabled }: MessageInputProps) {
     el.style.height = Math.min(el.scrollHeight, 120) + "px";
   }, [value]);
 
+  // Focus textarea when a reply is set
+  useEffect(() => {
+    if (replyTo) textareaRef.current?.focus();
+  }, [replyTo]);
+
   // Close attach menu on outside click
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (attachRef.current && !attachRef.current.contains(e.target as Node)) {
+      if (attachRef.current && !attachRef.current.contains(e.target as Node))
         setAttachOpen(false);
-      }
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
@@ -49,16 +61,41 @@ export default function MessageInput({ onSend, disabled }: MessageInputProps) {
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
-    }
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); }
+    if (e.key === "Escape" && replyTo)     { onCancelReply?.(); }
   };
 
   const canSend = value.trim().length > 0 && !disabled;
 
   return (
     <div className="px-3 py-2.5 border-t border-border bg-white dark:bg-[#1c1f2e] shrink-0">
+
+      {/* ── Reply banner ───────────────────────────────────────────────── */}
+      {replyTo && (
+        <div className={cn(
+          "flex items-center gap-2 px-3 py-2 mb-2 rounded-xl",
+          "bg-stone-50 dark:bg-[#13151f] border border-border"
+        )}>
+          <CornerUpLeft size={13} className="text-amber-600 dark:text-amber-500 shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-[10px] font-semibold text-amber-700 dark:text-amber-500 leading-none mb-0.5">
+              Replying to {replyTo.senderName}
+            </p>
+            <p className="text-xs text-stone-500 dark:text-stone-400 truncate">
+              {replyTo.contentPreview}
+            </p>
+          </div>
+          <button
+            onClick={onCancelReply}
+            className="shrink-0 p-1 rounded-full text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-200 dark:hover:bg-white/10 transition-colors"
+            aria-label="Cancel reply"
+          >
+            <X size={13} />
+          </button>
+        </div>
+      )}
+
+      {/* ── Input row ──────────────────────────────────────────────────── */}
       <div className="flex items-end gap-2 bg-stone-100 dark:bg-[#13151f] rounded-2xl px-3 py-2">
 
         {/* Attach */}
@@ -93,7 +130,7 @@ export default function MessageInput({ onSend, disabled }: MessageInputProps) {
           value={value}
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Type a message… (Enter to send)"
+          placeholder={replyTo ? `Reply to ${replyTo.senderName}…` : "Type a message… (Enter to send)"}
           rows={1}
           disabled={disabled}
           className={cn(
@@ -120,7 +157,7 @@ export default function MessageInput({ onSend, disabled }: MessageInputProps) {
       </div>
 
       <p className="text-[10px] text-stone-400 dark:text-stone-600 text-center mt-1.5">
-        Shift + Enter for new line
+        Shift + Enter for new line{replyTo ? "  ·  Esc to cancel reply" : ""}
       </p>
     </div>
   );
