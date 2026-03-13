@@ -1,54 +1,59 @@
-"use client";
+import { Check, CheckCheck } from "lucide-react";
+import { cn } from "@/lib/utils";
+import type { Message } from "@/types/messaging";
 
-export interface MessageBubbleProps {
-  id: string;
-  content: string;
-  senderName: string;
-  senderId: string;
-  timestamp: Date;
-  isOwn: boolean;
-  senderAvatar?: string;
+interface MessageBubbleProps {
+  message: Message;
+  /** The logged-in user's id — used to determine if bubble is "sent" or "received" */
+  currentUserId: string;
+  /** Whether to show the time label (e.g. first message in a group) */
+  showTime?: boolean;
 }
 
-export const MessageBubble = ({
-  content,
-  senderName,
-  isOwn,
-  timestamp,
-  senderAvatar,
-}: MessageBubbleProps) => {
-  const timeStr = new Date(timestamp).toLocaleTimeString("en-US", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: true,
-  });
+function formatTime(iso: string) {
+  return new Date(iso).toLocaleTimeString("en-PH", { hour: "2-digit", minute: "2-digit" });
+}
+
+export default function MessageBubble({ message, currentUserId, showTime }: MessageBubbleProps) {
+  const isMe = message.senderId === currentUserId;
 
   return (
-    <div
-      className={`flex gap-3 mb-4 ${isOwn ? "flex-row-reverse" : "flex-row"}`}
-    >
-      {!isOwn && (
-        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white text-sm font-semibold flex-shrink-0">
-          {senderAvatar || senderName.charAt(0).toUpperCase()}
-        </div>
-      )}
-      <div className={`flex flex-col ${isOwn ? "items-end" : "items-start"}`}>
-        {!isOwn && (
-          <span className="text-xs text-gray-500 font-medium mb-1">
-            {senderName}
-          </span>
+    <div className={cn("flex", isMe ? "justify-end" : "justify-start")}>
+      <div
+        className={cn(
+          "max-w-[75%] sm:max-w-[65%]",
+          isMe ? "items-end" : "items-start",
+          "flex flex-col gap-0.5"
         )}
+      >
         <div
-          className={`px-4 py-2 rounded-lg max-w-xs word-wrap ${
-            isOwn
-              ? "bg-blue-600 text-white rounded-br-none"
-              : "bg-gray-200 text-gray-900 rounded-bl-none"
-          }`}
+          className={cn(
+            "px-3.5 py-2.5 text-sm leading-relaxed break-words",
+            isMe
+              ? "bg-amber-700 text-white rounded-2xl rounded-br-sm shadow-sm"
+              : "bg-white dark:bg-[#252837] text-stone-800 dark:text-stone-100 rounded-2xl rounded-bl-sm border border-border shadow-sm"
+          )}
         >
-          <p className="text-sm">{content}</p>
+          {message.content}
         </div>
-        <span className="text-xs text-gray-500 mt-1">{timeStr}</span>
+
+        {/* Time + status */}
+        {showTime && (
+          <div
+            className={cn(
+              "flex items-center gap-1 text-[10px] text-stone-400 dark:text-stone-500 px-1",
+              isMe && "flex-row-reverse"
+            )}
+          >
+            <span>{formatTime(message.createdAt)}</span>
+            {isMe && (
+              message.status === "READ"      ? <CheckCheck size={11} className="text-amber-500" /> :
+              message.status === "DELIVERED" ? <CheckCheck size={11} className="text-stone-400 dark:text-stone-500" /> :
+                                              <Check      size={11} className="text-stone-400 dark:text-stone-500" />
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
-};
+}
