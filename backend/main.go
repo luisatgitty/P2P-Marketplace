@@ -38,6 +38,9 @@ func main() {
 		AllowCredentials: true,
 	}))
 
+	// Serve uploaded files
+	app.Static("/uploads", "./backend/uploads")
+
 	// Register routes
 	routes.AppRoutes(app)
 	app.Listen(fmt.Sprintf(":%s", os.Getenv("PROJ_PORT")))

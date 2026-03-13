@@ -34,8 +34,8 @@ interface ProfileForm {
 
 // ─── Mock data ────────────────────────────────────────────────────────────────
 const MOCK_SELLER_LISTINGS: PostCardProps[] = [
-  { id: "s1", title: "Casio G-Shock GA-2100", price: 1800, type: "sale", category: "electronics", location: "Calamba, Laguna", postedAt: "2h ago", imageUrl: "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&q=80", seller: { name: "You", rating: 4.9 } },
-  { id: "s2", title: "MacBook Pro M1 2022",   price: 55000, type: "sale", category: "electronics", location: "Calamba, Laguna", postedAt: "1d ago",  imageUrl: "https://images.unsplash.com/photo-1593642632559-0c6d3fc62b89?w=400&q=80", seller: { name: "You", rating: 4.9 } },
+  { id: "s1", title: "Casio G-Shock GA-2100", price: 1800, type: "sell", category: "electronics", location: "Calamba, Laguna", postedAt: "2h ago", imageUrl: "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&q=80", seller: { name: "You", rating: 4.9 } },
+  { id: "s2", title: "MacBook Pro M1 2022",   price: 55000, type: "sell", category: "electronics", location: "Calamba, Laguna", postedAt: "1d ago",  imageUrl: "https://images.unsplash.com/photo-1593642632559-0c6d3fc62b89?w=400&q=80", seller: { name: "You", rating: 4.9 } },
   { id: "s3", title: "Honda Click 125",        price: 600,   priceUnit: "/ day", type: "rent", category: "vehicles", location: "Calamba, Laguna", postedAt: "3d ago", imageUrl: "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&q=80", seller: { name: "You", rating: 4.9 } },
 ];
 const MOCK_SAVED: PostCardProps[] = [
@@ -70,8 +70,8 @@ function RoleBadge({ role }: { role: UserRole }) {
 
 // ─── Profile listing card ─────────────────────────────────────────────────────
 function ProfileListingCard({ listing, showMeta = false, tab }: { listing: PostCardProps; showMeta?: boolean; tab?: ListingTab }) {
-  const badgeClass = { sale: "bg-stone-800 text-stone-100", rent: "bg-teal-700 text-white", service: "bg-violet-700 text-white" }[listing.type];
-  const badgeLabel = { sale: "For Sale", rent: "For Rent", service: "Service" }[listing.type];
+  const badgeClass = { sell: "bg-stone-800 text-stone-100", rent: "bg-teal-700 text-white", service: "bg-violet-700 text-white" }[listing.type];
+  const badgeLabel = { sell: "For Sale", rent: "For Rent", service: "Service" }[listing.type];
   const statusColor: Record<ListingTab, string> = { active: "text-teal-600", sold: "text-red-500", drafts: "text-stone-400" };
   const statusLabel: Record<ListingTab, string> = { active: "Active", sold: "Sold", drafts: "Draft" };
   const fmt = new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP", minimumFractionDigits: 0 });

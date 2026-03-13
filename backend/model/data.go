@@ -45,3 +45,45 @@ type EmailVerifFromDb struct {
 	Email     string    `gorm:"column:email"`
 	ExpiresAt time.Time `gorm:"column:expires_at"`
 }
+
+type CreateListingBody struct {
+	Type         string              `json:"type"`
+	Title        string              `json:"title"`
+	Category     string              `json:"category"`
+	Price        int                 `json:"price"`
+	PriceUnit    string              `json:"priceUnit"`
+	Description  string              `json:"description"`
+	Highlights   []string            `json:"highlights"`
+	Inclusions   []string            `json:"inclusions"`
+	Amenities    []string            `json:"amenities"`
+	Images       []ListingImageBody  `json:"images"`
+	LocationCity string              `json:"locationCity"`
+	LocationProv string              `json:"locationProv"`
+	LocationBrgy string              `json:"locationBrgy"`
+	SellData     *SellListingBody    `json:"sellData,omitempty"`
+	RentData     *RentListingBody    `json:"rentData,omitempty"`
+	ServiceData  *ServiceListingBody `json:"serviceData,omitempty"`
+}
+
+type SellListingBody struct {
+	Condition      string `json:"condition"`
+	DeliveryMethod string `json:"deliveryMethod"`
+}
+
+type RentListingBody struct {
+	MinPeriod      string `json:"minPeriod"`
+	Availability   string `json:"availability"`
+	Deposit        string `json:"deposit"`
+	DeliveryMethod string `json:"deliveryMethod"`
+}
+
+type ServiceListingBody struct {
+	Turnaround  string `json:"turnaround"`
+	ServiceArea string `json:"serviceArea"`
+}
+
+type ListingImageBody struct {
+	Name     string `json:"name"`
+	MimeType string `json:"mimeType"`
+	Data     string `json:"data"`
+}

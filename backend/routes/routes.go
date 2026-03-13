@@ -19,4 +19,5 @@ func AppRoutes(app *fiber.App) {
 	app.Delete("/auth/logout", controller.Logout)
 	app.Get("/auth/validate-reset-token", controller.ValidateResetToken)
 	app.Post("/auth/reset-password", controller.ResetPassword)
+	app.Post("/listing", controller.AuthenticateUser, controller.CreateListing)
 }
