@@ -19,6 +19,13 @@ type UserFromDb struct {
 	LastName    string    `gorm:"column:last_name"               json:"lastName"`
 	Password    string    `gorm:"column:password_hash"           json:"password"`
 	Email       string    `gorm:"column:email"                   json:"email"`
+	PhoneNumber string    `gorm:"column:phone_number"            json:"phoneNumber"`
+	Bio         string    `gorm:"column:bio"                     json:"bio"`
+	LocationBrg string    `gorm:"column:location_barangay"       json:"locationBrgy"`
+	LocationCty string    `gorm:"column:location_city"           json:"locationCity"`
+	LocationPrv string    `gorm:"column:location_province"       json:"locationProv"`
+	ProfileImg  string    `gorm:"column:profile_image_url"       json:"profileImageUrl"`
+	CoverImg    string    `gorm:"column:cover_image_url"         json:"coverImageUrl"`
 	Role        string    `gorm:"column:role"                    json:"role"`
 	Status      string    `gorm:"column:verification_status"     json:"status"`
 	FailedLogin int       `gorm:"column:failed_login_attempts"   json:"failedLoginAttempts"`
@@ -86,4 +93,34 @@ type ListingImageBody struct {
 	Name     string `json:"name"`
 	MimeType string `json:"mimeType"`
 	Data     string `json:"data"`
+}
+
+type ProfileUserFromDb struct {
+	FirstName    string `gorm:"column:first_name"         json:"firstName"`
+	LastName     string `gorm:"column:last_name"          json:"lastName"`
+	Email        string `gorm:"column:email"              json:"email"`
+	PhoneNumber  string `gorm:"column:phone_number"       json:"phoneNumber"`
+	Bio          string `gorm:"column:bio"                json:"bio"`
+	LocationBrgy string `gorm:"column:location_barangay"  json:"locationBrgy"`
+	LocationCity string `gorm:"column:location_city"      json:"locationCity"`
+	LocationProv string `gorm:"column:location_province"  json:"locationProv"`
+	ProfileImage string `gorm:"column:profile_image_url"  json:"profileImageUrl"`
+	CoverImage   string `gorm:"column:cover_image_url"    json:"coverImageUrl"`
+	Role         string `gorm:"column:role"               json:"role"`
+	Status       string `gorm:"column:verification_status" json:"status"`
+}
+
+type ProfileListingFromDb struct {
+	Id           string  `gorm:"column:id"            json:"id"`
+	Title        string  `gorm:"column:title"         json:"title"`
+	Price        int     `gorm:"column:price"         json:"price"`
+	PriceUnit    string  `gorm:"column:price_unit"    json:"priceUnit"`
+	Type         string  `gorm:"column:type"          json:"type"`
+	Category     string  `gorm:"column:category"      json:"category"`
+	Location     string  `gorm:"column:location"      json:"location"`
+	PostedAt     string  `gorm:"column:posted_at"     json:"postedAt"`
+	ImageUrl     string  `gorm:"column:image_url"     json:"imageUrl"`
+	SellerName   string  `gorm:"column:seller_name"   json:"sellerName"`
+	SellerRating float64 `gorm:"column:seller_rating" json:"sellerRating"`
+	Status       string  `gorm:"column:status"        json:"status"`
 }

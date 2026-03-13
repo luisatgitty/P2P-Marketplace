@@ -39,7 +39,11 @@ func main() {
 	}))
 
 	// Serve uploaded files
-	app.Static("/uploads", "./backend/uploads")
+	uploadDir := "./backend/uploads"
+	if _, err := os.Stat(uploadDir); err != nil {
+		uploadDir = "./uploads"
+	}
+	app.Static("/uploads", uploadDir)
 
 	// Register routes
 	routes.AppRoutes(app)

@@ -12,12 +12,12 @@ import {
 import { useUser } from "@/utils/UserContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import * as listingService from "@/services/listingService";
+import { getProfileData, type ProfileListingItem } from "@/services/profileService";
 import { type PostCardProps } from "@/components/post-card";
 import { cn } from "@/lib/utils";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-type UserRole = "buyer" | "pending" | "seller";
+type VerificationState = "unverified" | "pending" | "verified" | "rejected";
 type VerifyStep = 1 | 2 | 3 | 4;
 type ListingTab = "active" | "sold" | "drafts";
 type ProfileTab = "listings" | "saved";
@@ -33,37 +33,29 @@ interface ProfileForm {
 }
 
 // ─── Mock data ────────────────────────────────────────────────────────────────
-const MOCK_SELLER_LISTINGS: PostCardProps[] = [
-  { id: "s1", title: "Casio G-Shock GA-2100", price: 1800, type: "sell", category: "electronics", location: "Calamba, Laguna", postedAt: "2h ago", imageUrl: "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&q=80", seller: { name: "You", rating: 4.9 } },
-  { id: "s2", title: "MacBook Pro M1 2022",   price: 55000, type: "sell", category: "electronics", location: "Calamba, Laguna", postedAt: "1d ago",  imageUrl: "https://images.unsplash.com/photo-1593642632559-0c6d3fc62b89?w=400&q=80", seller: { name: "You", rating: 4.9 } },
-  { id: "s3", title: "Honda Click 125",        price: 600,   priceUnit: "/ day", type: "rent", category: "vehicles", location: "Calamba, Laguna", postedAt: "3d ago", imageUrl: "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&q=80", seller: { name: "You", rating: 4.9 } },
-];
-const MOCK_SAVED: PostCardProps[] = [
-  { id: "sv1", title: "Studio Unit — Makati CBD", price: 12000, priceUnit: "/ month", type: "rent", category: "real-estate", location: "Makati City", postedAt: "1d ago", imageUrl: "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=400&q=80", seller: { name: "Maria Santos", rating: 4.7 } },
-  { id: "sv2", title: "Aircon Cleaning & Repair", price: 500, priceUnit: "/ unit", type: "service", category: "services", location: "San Pablo, Laguna", postedAt: "3h ago", imageUrl: "https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=400&q=80", seller: { name: "Pedro Reyes", rating: 5.0, isPro: true } },
-];
-
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-function resolveRole(status: string): UserRole {
-  if (status === "verified") return "seller";
-  if (status === "pending")  return "pending";
-  return "buyer";
+function resolveVerificationState(status: string): VerificationState {
+  const normalized = status.toLowerCase();
+  if (normalized === "verified") return "verified";
+  if (normalized === "pending")  return "pending";
+  if (normalized === "rejected") return "rejected";
+  return "unverified";
 }
 
-function RoleBadge({ role }: { role: UserRole }) {
-  if (role === "seller") return (
+function VerificationBadge({ state }: { state: VerificationState }) {
+  if (state === "verified") return (
     <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700">
       <ShieldCheck className="w-3 h-3" /> Verified Seller
     </span>
   );
-  if (role === "pending") return (
+  if (state === "pending") return (
     <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 border border-orange-200 dark:border-orange-800">
       <Clock className="w-3 h-3" /> Pending Verification
     </span>
   );
   return (
     <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-800">
-      Buyer
+      {state === "rejected" ? "Verification Rejected" : "Unverified"}
     </span>
   );
 }
@@ -78,8 +70,8 @@ function ProfileListingCard({ listing, showMeta = false, tab }: { listing: PostC
   return (
     <Link href={`/listing/${listing.id}`} className="block group">
       <div className="bg-white dark:bg-[#1c1f2e] rounded-2xl overflow-hidden border border-stone-200 dark:border-[#2a2d3e] hover:-translate-y-1 hover:shadow-md transition-all duration-200">
-        <div className="relative aspect-[4/3] bg-stone-100 dark:bg-[#13151f] overflow-hidden">
-          <Image src={listing.imageUrl} alt={listing.title} fill sizes="25vw" className="object-cover group-hover:scale-105 transition-transform duration-300" />
+        <div className="relative aspect-4/3 bg-stone-100 dark:bg-[#13151f] overflow-hidden">
+          <img src={listing.imageUrl} alt={listing.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
           <span className={cn("absolute top-2 left-2 text-[10px] font-semibold px-2 py-0.5 rounded-full", badgeClass)}>{badgeLabel}</span>
           {showMeta && tab && (
             <span className={cn("absolute top-2 right-2 text-[10px] font-semibold bg-white/90 dark:bg-black/70 px-2 py-0.5 rounded-full", statusColor[tab])}>
@@ -202,7 +194,7 @@ function VerifyModal({ open, onClose, onSubmit }: { open: boolean; onClose: () =
                   { icon: "📞", title: "Verified Phone Number",  desc: "A valid PH mobile number for OTP verification and buyer contact" },
                 ].map((r) => (
                   <div key={r.title} className="flex items-start gap-3 p-4 border border-stone-200 dark:border-[#2a2d3e] rounded-xl bg-stone-50 dark:bg-[#13151f]">
-                    <span className="text-xl flex-shrink-0">{r.icon}</span>
+                    <span className="text-xl shrink-0">{r.icon}</span>
                     <div>
                       <p className="font-semibold text-sm text-stone-800 dark:text-stone-200">{r.title}</p>
                       <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5 leading-relaxed">{r.desc}</p>
@@ -259,7 +251,7 @@ function VerifyModal({ open, onClose, onSubmit }: { open: boolean; onClose: () =
                 <div className="mb-4">
                   <label className="text-xs font-medium text-stone-600 dark:text-stone-400 mb-1.5 block">Mobile Number</label>
                   <div className="flex gap-2">
-                    <div className="flex items-center justify-center bg-stone-100 dark:bg-[#13151f] border border-stone-200 dark:border-[#2a2d3e] rounded-lg px-3 text-sm text-stone-500 dark:text-stone-400 font-medium w-16 flex-shrink-0">+63</div>
+                    <div className="flex items-center justify-center bg-stone-100 dark:bg-[#13151f] border border-stone-200 dark:border-[#2a2d3e] rounded-lg px-3 text-sm text-stone-500 dark:text-stone-400 font-medium w-16 shrink-0">+63</div>
                     <Input type="tel" placeholder="9XX XXX XXXX" className="flex-1" />
                   </div>
                 </div>
@@ -301,14 +293,18 @@ function VerifyModal({ open, onClose, onSubmit }: { open: boolean; onClose: () =
 }
 
 // ─── Image upload hook with remove support ────────────────────────────────────
-function useImageUpload(storageKey: string) {
+function useImageUpload(storageKey: string, initialSrc?: string | null) {
   const [src, setSrc] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const saved = localStorage.getItem(storageKey);
-    if (saved) setSrc(saved);
-  }, [storageKey]);
+    if (saved) {
+      setSrc(saved);
+      return;
+    }
+    if (initialSrc) setSrc(initialSrc);
+  }, [storageKey, initialSrc]);
 
   function trigger() { inputRef.current?.click(); }
 
@@ -336,10 +332,7 @@ function useImageUpload(storageKey: string) {
 // ─── MAIN PAGE ────────────────────────────────────────────────────────────────
 export default function ProfilePage() {
   const { user, saveUserData } = useUser();
-  const role: UserRole = resolveRole(user?.status ?? "");
-
-  const avatar = useImageUpload("profile_avatar");
-  const cover  = useImageUpload("profile_cover");
+  const verificationState: VerificationState = resolveVerificationState(user?.status ?? "");
 
   const [editOpen, setEditOpen] = useState(false);
   const [form, setForm] = useState<ProfileForm>({
@@ -350,16 +343,59 @@ export default function ProfilePage() {
   });
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
-  const [userListings, setUserListings] = useState<PostCardProps[]>([]);
+  const [userListings, setUserListings] = useState<ProfileListingItem[]>([]);
+  const [bookmarkListings, setBookmarkListings] = useState<ProfileListingItem[]>([]);
   const [listingTab, setListingTab] = useState<ListingTab>("active");
   const [profileTab, setProfileTab] = useState<ProfileTab>("listings");
   const [verifyOpen, setVerifyOpen] = useState(false);
   const [showAvatarMenu, setShowAvatarMenu] = useState(false);
+  const [loadingProfile, setLoadingProfile] = useState(true);
+
+  const avatar = useImageUpload("profile_avatar", user?.profileImageUrl ?? null);
+  const cover  = useImageUpload("profile_cover", user?.coverImageUrl ?? null);
 
   useEffect(() => { if (user) setForm((f) => ({ ...f, firstName: user.firstName, lastName: user.lastName })); }, [user]);
-  useEffect(() => { setUserListings(listingService.getListings()); }, []);
+  useEffect(() => {
+    const loadProfile = async () => {
+      setLoadingProfile(true);
+      try {
+        const payload = await getProfileData();
+        setUserListings(payload.listings);
+        setBookmarkListings(payload.bookmarks);
+        saveUserData(payload.user);
+        setForm((f) => ({
+          ...f,
+          firstName: payload.user.firstName,
+          lastName: payload.user.lastName,
+          bio: payload.user.bio ?? "",
+          location: [payload.user.locationCity, payload.user.locationProv].filter(Boolean).join(", "),
+          phone: payload.user.phoneNumber ?? "",
+        }));
+      } catch {
+        showToast("Failed to load profile data");
+      } finally {
+        setLoadingProfile(false);
+      }
+    };
 
-  const allListings = [...MOCK_SELLER_LISTINGS, ...userListings];
+    loadProfile();
+  }, []);
+
+  const soldStatus = new Set(["sold", "rented", "completed"]);
+  const draftStatus = new Set(["hidden"]);
+
+  const activeListings = userListings.filter((l) => {
+    const status = (l.status ?? "").toLowerCase();
+    return status === "" || status === "active" || status === "available" || (!soldStatus.has(status) && !draftStatus.has(status));
+  });
+
+  const soldListings = userListings.filter((l) => soldStatus.has((l.status ?? "").toLowerCase()));
+  const draftListings = userListings.filter((l) => draftStatus.has((l.status ?? "").toLowerCase()));
+  const allListings: PostCardProps[] = listingTab === "active"
+    ? activeListings
+    : listingTab === "sold"
+      ? soldListings
+      : draftListings;
 
   function showToast(msg: string) { setToast(msg); setTimeout(() => setToast(null), 2800); }
 
@@ -373,12 +409,13 @@ export default function ProfilePage() {
   }
 
   function handleVerifySubmit() {
-    if (user) saveUserData({ ...user, status: "pending" });
+    if (user) saveUserData({ ...user, status: "PENDING" });
     showToast("🎉 Application submitted! Under review.");
   }
 
   const initials = `${user?.firstName?.[0] ?? ""}${user?.lastName?.[0] ?? ""}`.toUpperCase() || "?";
   const fullName = user ? `${user.firstName} ${user.lastName}` : "—";
+  const locationText = [user?.locationCity, user?.locationProv].filter(Boolean).join(", ") || "Location not set";
 
   // Shared label style
   const lbl = "text-xs font-medium text-stone-600 dark:text-stone-400 mb-1.5 block";
@@ -391,7 +428,7 @@ export default function ProfilePage() {
         <div className="bg-white dark:bg-[#1c1f2e] rounded-2xl border border-stone-200 dark:border-[#2a2d3e] shadow-sm overflow-hidden mb-5">
 
           {/* Cover photo */}
-          <div className="relative h-32 bg-gradient-to-r from-[#1e2433] via-[#2a3650] to-[#1a2a3a] overflow-hidden group cursor-pointer" onClick={cover.trigger}>
+          <div className="relative h-32 bg-linear-to-r from-[#1e2433] via-[#2a3650] to-[#1a2a3a] overflow-hidden group cursor-pointer" onClick={cover.trigger}>
             {cover.src
               ? <Image src={cover.src} alt="Cover" fill className="object-cover" />
               : <div className="absolute inset-0 opacity-10" style={{ backgroundImage: "radial-gradient(circle, #fff 1px, transparent 1px)", backgroundSize: "28px 28px" }} />}
@@ -422,7 +459,7 @@ export default function ProfilePage() {
                   className="relative group cursor-pointer w-20 h-20"
                   onClick={() => setShowAvatarMenu((v) => !v)}
                 >
-                  <div className="w-20 h-20 rounded-full border-4 border-white dark:border-[#1c1f2e] overflow-hidden shadow-md bg-gradient-to-br from-[#3a4a6a] to-[#1e2a40] flex items-center justify-center">
+                  <div className="w-20 h-20 rounded-full border-4 border-white dark:border-[#1c1f2e] overflow-hidden shadow-md bg-linear-to-br from-[#3a4a6a] to-[#1e2a40] flex items-center justify-center">
                     {avatar.src
                       ? <Image src={avatar.src} alt="Avatar" width={80} height={80} className="object-cover w-full h-full" />
                       : <span className="text-2xl font-bold text-slate-200">{initials}</span>}
@@ -470,7 +507,7 @@ export default function ProfilePage() {
                   <Edit2 className="w-3 h-3" />
                   {editOpen ? "Cancel" : "Edit Profile"}
                 </Button>
-                {role === "seller" && (
+                {verificationState === "verified" && (
                   <Button size="sm" className="text-xs rounded-full bg-stone-900 hover:bg-stone-800 text-white" onClick={() => showToast("Opening new listing form…")}>
                     <Plus className="w-3 h-3" /> New Listing
                   </Button>
@@ -481,16 +518,16 @@ export default function ProfilePage() {
             {/* Name + badge */}
             <div className="flex flex-wrap items-center gap-2 mb-1">
               <h1 className="text-xl font-bold text-stone-900 dark:text-stone-100">{fullName}</h1>
-              <RoleBadge role={role} />
+              <VerificationBadge state={verificationState} />
             </div>
             <p className="text-xs text-stone-400 dark:text-stone-500 mb-3">Member since Jan 2024</p>
 
             {/* Meta row */}
             <div className="flex flex-wrap gap-x-5 gap-y-1.5">
-              <span className="flex items-center gap-1.5 text-xs text-stone-500 dark:text-stone-400"><MapPin className="w-3.5 h-3.5 text-stone-400 dark:text-stone-500" /> Calamba, Laguna</span>
+              <span className="flex items-center gap-1.5 text-xs text-stone-500 dark:text-stone-400"><MapPin className="w-3.5 h-3.5 text-stone-400 dark:text-stone-500" /> {locationText}</span>
               <span className="flex items-center gap-1.5 text-xs text-stone-500 dark:text-stone-400"><Mail className="w-3.5 h-3.5 text-stone-400 dark:text-stone-500" /> {user?.email}</span>
               <span className="flex items-center gap-1.5 text-xs text-stone-500 dark:text-stone-400"><Calendar className="w-3.5 h-3.5 text-stone-400 dark:text-stone-500" /> Last active today</span>
-              {role === "seller" && (<>
+              {verificationState === "verified" && (<>
                 <span className="flex items-center gap-1.5 text-xs text-stone-500 dark:text-stone-400"><Star className="w-3.5 h-3.5 text-amber-400" /> 4.9 · 42 reviews</span>
                 <span className="flex items-center gap-1.5 text-xs text-teal-600 dark:text-teal-400 font-medium"><CheckCircle className="w-3.5 h-3.5" /> Identity Verified</span>
               </>)}
@@ -528,7 +565,7 @@ export default function ProfilePage() {
         )}
 
         {/* ── Seller stats ── */}
-        {role === "seller" && <SellerStats />}
+        {verificationState === "verified" && <SellerStats />}
 
         {/* ── Two-col layout ── */}
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_288px] gap-5 items-start">
@@ -538,7 +575,7 @@ export default function ProfilePage() {
             <div className="bg-white dark:bg-[#1c1f2e] rounded-2xl border border-stone-200 dark:border-[#2a2d3e] shadow-sm overflow-hidden">
               {/* Tab bar */}
               <div className="flex border-b border-stone-200 dark:border-[#2a2d3e]">
-                {(role === "seller" ? ["listings", "saved"] as const : ["saved"] as const).map((t) => (
+                {(["listings", "saved"] as const).map((t) => (
                   <button key={t} onClick={() => setProfileTab(t)}
                     className={cn("flex-1 py-3.5 text-sm font-medium transition-colors",
                       profileTab === t
@@ -550,7 +587,7 @@ export default function ProfilePage() {
               </div>
 
               {/* My Listings */}
-              {profileTab === "listings" && role === "seller" && (<>
+              {profileTab === "listings" && (<>
                 <div className="flex items-center justify-between px-4 pt-3 pb-2">
                   <div className="flex gap-1">
                     {(["active", "sold", "drafts"] as const).map((t) => (
@@ -559,7 +596,11 @@ export default function ProfilePage() {
                           listingTab === t
                             ? "bg-stone-900 dark:bg-stone-200 text-white dark:text-stone-900"
                             : "text-stone-400 dark:text-stone-500 hover:text-stone-600 dark:hover:text-stone-300 hover:bg-stone-100 dark:hover:bg-[#252837]")}>
-                        {t === "active" ? `🟢 Active (${allListings.length})` : t === "sold" ? "✅ Sold (8)" : "📝 Drafts (2)"}
+                        {t === "active"
+                          ? `🟢 Active (${activeListings.length})`
+                          : t === "sold"
+                            ? `✅ Sold (${soldListings.length})`
+                            : `📝 Drafts (${draftListings.length})`}
                       </button>
                     ))}
                   </div>
@@ -569,15 +610,21 @@ export default function ProfilePage() {
                     </Button>
                   </Link>
                 </div>
-                {allListings.length > 0
+                {loadingProfile ? (
+                  <div className="text-center py-14 px-6">
+                    <p className="font-semibold text-stone-400 text-sm">Loading listings...</p>
+                  </div>
+                ) : allListings.length > 0
                   ? <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 p-4">{allListings.map((l) => <ProfileListingCard key={l.id} listing={l} showMeta tab={listingTab} />)}</div>
                   : <div className="text-center py-14 px-6"><Package className="w-10 h-10 text-stone-200 dark:text-stone-700 mx-auto mb-3" /><p className="font-semibold text-stone-400 text-sm">No listings yet</p><Link href="/create"><Button size="sm" className="mt-4 rounded-full bg-stone-900 hover:bg-stone-800 text-white text-xs"><Plus className="w-3 h-3" /> Add Listing</Button></Link></div>}
               </>)}
 
               {/* Saved Items */}
-              {(profileTab === "saved" || role !== "seller") && (
-                MOCK_SAVED.length > 0
-                  ? <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 p-4">{MOCK_SAVED.map((l) => <ProfileListingCard key={l.id} listing={l} />)}</div>
+              {profileTab === "saved" && (
+                loadingProfile
+                  ? <div className="text-center py-14"><p className="font-semibold text-stone-400 text-sm">Loading saved items...</p></div>
+                  : bookmarkListings.length > 0
+                  ? <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 p-4">{bookmarkListings.map((l) => <ProfileListingCard key={l.id} listing={l} />)}</div>
                   : <div className="text-center py-14"><Heart className="w-10 h-10 text-stone-200 dark:text-stone-700 mx-auto mb-3" /><p className="font-semibold text-stone-400 text-sm">No saved items yet</p></div>
               )}
             </div>
@@ -587,7 +634,7 @@ export default function ProfilePage() {
           <div className="flex flex-col gap-4">
 
             {/* Buyer CTA */}
-            {role === "buyer" && (
+            {(verificationState === "unverified" || verificationState === "rejected") && (
               <div className="relative rounded-2xl overflow-hidden bg-[#1e2433] border border-[#2e3a50] p-5">
                 <div className="absolute inset-0 opacity-15 pointer-events-none" style={{ background: "radial-gradient(circle at 80% 20%, #ffd700, transparent 50%), radial-gradient(circle at 20% 80%, #60a5fa, transparent 40%)" }} />
                 <div className="relative">
@@ -597,7 +644,7 @@ export default function ProfilePage() {
                   <ul className="flex flex-col gap-2 mb-5">
                     {["Free to list, no monthly fees","Verified seller badge builds trust","Reach buyers across Luzon","Seller analytics & insights"].map((p) => (
                       <li key={p} className="flex items-center gap-2 text-xs text-slate-300">
-                        <span className="w-4 h-4 rounded-full bg-white/10 flex items-center justify-center text-teal-400 flex-shrink-0 text-[10px]">✓</span>{p}
+                        <span className="w-4 h-4 rounded-full bg-white/10 flex items-center justify-center text-teal-400 shrink-0 text-[10px]">✓</span>{p}
                       </li>
                     ))}
                   </ul>
@@ -609,7 +656,7 @@ export default function ProfilePage() {
             )}
 
             {/* Pending */}
-            {role === "pending" && (
+            {verificationState === "pending" && (
               <div className="rounded-2xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/20 p-5">
                 <h3 className="font-bold text-amber-800 dark:text-amber-400 text-sm mb-1">⏳ Verification In Progress</h3>
                 <p className="text-xs text-amber-700 dark:text-amber-500 leading-relaxed mb-4">Your seller application is being reviewed. We'll notify you within 1–2 business days.</p>
@@ -621,7 +668,7 @@ export default function ProfilePage() {
                     { label: "Approval",           done: false },
                   ].map((s, i) => (
                     <div key={i} className="flex items-center gap-2.5">
-                      <div className={cn("w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0",
+                      <div className={cn("w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0",
                         s.done ? "bg-teal-500 text-white" : (s as any).active ? "bg-amber-400 text-white" : "bg-stone-200 dark:bg-stone-700 text-stone-400 dark:text-stone-500")}>
                         {s.done ? "✓" : (s as any).active ? "…" : i + 1}
                       </div>
@@ -639,8 +686,8 @@ export default function ProfilePage() {
             )}
 
             {/* Verified seller badge */}
-            {role === "seller" && (
-              <div className="rounded-2xl border border-amber-300 dark:border-amber-700 bg-gradient-to-b from-amber-50 to-white dark:from-amber-950/20 dark:to-[#1c1f2e] p-5 text-center">
+            {verificationState === "verified" && (
+              <div className="rounded-2xl border border-amber-300 dark:border-amber-700 bg-linear-to-b from-amber-50 to-white dark:from-amber-950/20 dark:to-[#1c1f2e] p-5 text-center">
                 <div className="text-3xl mb-2">👑</div>
                 <h3 className="font-bold text-amber-800 dark:text-amber-400 text-sm">Verified Seller</h3>
                 <p className="text-xs text-amber-700 dark:text-amber-500 mt-0.5">Identity verified · Trusted by P2P</p>
@@ -657,8 +704,8 @@ export default function ProfilePage() {
               <div className="divide-y divide-stone-100 dark:divide-[#252837]">
                 {[
                   { icon: <Mail className="w-3.5 h-3.5" />,        label: "Email",    value: user?.email ?? "—", ok: true },
-                  { icon: <Phone className="w-3.5 h-3.5" />,       label: "Phone",    value: "Not added",        ok: false },
-                  { icon: <ShieldCheck className="w-3.5 h-3.5" />, label: "Identity", value: role === "seller" ? "Verified ✓" : role === "pending" ? "Under review…" : "Not verified", ok: role === "seller" },
+                  { icon: <Phone className="w-3.5 h-3.5" />,       label: "Phone",    value: user?.phoneNumber || "Not added", ok: Boolean(user?.phoneNumber) },
+                  { icon: <ShieldCheck className="w-3.5 h-3.5" />, label: "Identity", value: verificationState === "verified" ? "Verified ✓" : verificationState === "pending" ? "Under review…" : verificationState === "rejected" ? "Rejected" : "Not verified", ok: verificationState === "verified" },
                 ].map((item) => (
                   <div key={item.label} className="flex items-center justify-between px-5 py-3">
                     <span className="flex items-center gap-2 text-xs text-stone-400 dark:text-stone-500">{item.icon}{item.label}</span>
@@ -667,7 +714,7 @@ export default function ProfilePage() {
                 ))}
                 <div className="flex items-center justify-between px-5 py-3">
                   <span className="text-xs text-stone-400 dark:text-stone-500">Role</span>
-                  <RoleBadge role={role} />
+                  <span className="text-xs font-medium text-stone-600 dark:text-stone-300">{user?.role ?? "USER"}</span>
                 </div>
                 <div className="px-5 py-3">
                   <a href="#" className="text-xs text-stone-400 dark:text-stone-500 hover:text-stone-600 dark:hover:text-stone-300 flex items-center gap-1">
