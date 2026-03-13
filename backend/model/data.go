@@ -152,3 +152,26 @@ type ListingDetailFromDb struct {
 	SellerRating    float64    `gorm:"column:seller_rating"`
 	SellerVerified  bool       `gorm:"column:seller_verified"`
 }
+
+type ListingEditFromDb struct {
+	Id              string     `gorm:"column:id"`
+	Type            string     `gorm:"column:type"`
+	Title           string     `gorm:"column:title"`
+	Category        string     `gorm:"column:category"`
+	Price           int        `gorm:"column:price"`
+	PriceUnit       string     `gorm:"column:price_unit"`
+	Description     string     `gorm:"column:description"`
+	Highlights      string     `gorm:"column:highlights"`
+	Included        string     `gorm:"column:included"`
+	LocationBrgy    string     `gorm:"column:location_barangay"`
+	LocationCity    string     `gorm:"column:location_city"`
+	LocationProv    string     `gorm:"column:location_province"`
+	Condition       string     `gorm:"column:condition"`
+	DeliveryMethod  string     `gorm:"column:delivery_method"`
+	MinRentalPeriod int        `gorm:"column:min_rental_period"`
+	AvailableFrom   *time.Time `gorm:"column:available_from"`
+	Deposit         string     `gorm:"column:deposit"`
+	Turnaround      string     `gorm:"column:turnaround_time"`
+	ServiceArea     string     `gorm:"column:service_area"`
+	Status          string     `gorm:"column:status"`
+}

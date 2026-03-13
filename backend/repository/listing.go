@@ -344,6 +344,306 @@ func randomHex(n int) (string, error) {
 	return hex.EncodeToString(b), nil
 }
 
+func GetListingEditDataById(userId, listingId string) (model.ListingEditFromDb, error) {
+	db := middleware.DBConn
+	var listing model.ListingEditFromDb
+
+	selectQuery := `
+		SELECT
+			l.id,
+			LOWER(l.listing_type::text) AS type,
+			l.title,
+			COALESCE(c.name, 'Others') AS category,
+			l.price,
+			l.price_unit,
+			l.description,
+			COALESCE(l.highlights, '[]') AS highlights,
+			COALESCE(l.included, '[]') AS included,
+			COALESCE(l.location_barangay, '') AS location_barangay,
+			COALESCE(l.location_city, '') AS location_city,
+			COALESCE(l.location_province, '') AS location_province,
+			COALESCE(lsd.condition::text, '') AS condition,
+			COALESCE(lsd.delivery_method::text, lrd.delivery_method::text, '') AS delivery_method,
+			COALESCE(lrd.min_rental_period, 0) AS min_rental_period,
+			lrd.available_from,
+			COALESCE(lrd.deposit, '') AS deposit,
+			COALESCE(lsrv.turnaround_time, '') AS turnaround_time,
+			COALESCE(lsrv.service_area, '') AS service_area,
+			LOWER(l.status::text) AS status
+		FROM public.listings l
+		LEFT JOIN public.categories c ON c.id = l.category_id
+		LEFT JOIN public.listing_sell_details lsd ON lsd.listing_id = l.id
+		LEFT JOIN public.listing_rent_details lrd ON lrd.listing_id = l.id
+		LEFT JOIN public.listing_service_details lsrv ON lsrv.listing_id = l.id
+		WHERE l.id = $1
+			AND l.user_id = $2
+		LIMIT 1
+	`
+
+	result := db.Raw(selectQuery, listingId, userId).Scan(&listing)
+	if result.Error != nil {
+		return listing, fmt.Errorf("Failed to retrieve listing edit data")
+	}
+	if result.RowsAffected == 0 {
+		return listing, fmt.Errorf("Listing not found or unauthorized")
+	}
+
+	return listing, nil
+}
+
+func UpdateListing(userId, listingId string, body model.CreateListingBody) error {
+	db := middleware.DBConn
+	tx := db.Begin()
+	if tx.Error != nil {
+		return tx.Error
+	}
+
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	var currentType string
+	ownerCheckQuery := `
+		SELECT LOWER(listing_type::text)
+		FROM public.listings
+		WHERE id = $1 AND user_id = $2
+		LIMIT 1
+	`
+	ownerCheckResult := tx.Raw(ownerCheckQuery, listingId, userId).Scan(&currentType)
+	if ownerCheckResult.Error != nil {
+		tx.Rollback()
+		return fmt.Errorf("Failed to validate listing ownership")
+	}
+	if ownerCheckResult.RowsAffected == 0 {
+		tx.Rollback()
+		return fmt.Errorf("Listing not found or unauthorized")
+	}
+
+	bodyType := strings.ToLower(strings.TrimSpace(body.Type))
+	if bodyType == "" {
+		bodyType = currentType
+	}
+	if bodyType != strings.ToLower(strings.TrimSpace(currentType)) {
+		tx.Rollback()
+		return fmt.Errorf("Listing type cannot be changed")
+	}
+
+	categoryId, err := getOrCreateCategoryIDTx(tx, body.Category)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	highlightsJson, err := json.Marshal(body.Highlights)
+	if err != nil {
+		tx.Rollback()
+		return fmt.Errorf("Failed to encode highlights")
+	}
+
+	includedJson, err := json.Marshal(body.Inclusions)
+	if err != nil {
+		tx.Rollback()
+		return fmt.Errorf("Failed to encode inclusions")
+	}
+
+	if bodyType == "rent" {
+		includedJson, err = json.Marshal(body.Amenities)
+		if err != nil {
+			tx.Rollback()
+			return fmt.Errorf("Failed to encode amenities")
+		}
+	}
+
+	updateListingQuery := `
+		UPDATE public.listings
+		SET
+			title = $1,
+			description = $2,
+			category_id = $3,
+			price = $4,
+			price_unit = $5,
+			included = $6,
+			highlights = $7,
+			location_barangay = $8,
+			location_city = $9,
+			location_province = $10,
+			updated_at = NOW()
+		WHERE id = $11 AND user_id = $12
+	`
+
+	if err := tx.Exec(
+		updateListingQuery,
+		body.Title,
+		body.Description,
+		categoryId,
+		body.Price,
+		body.PriceUnit,
+		string(includedJson),
+		string(highlightsJson),
+		body.LocationBrgy,
+		body.LocationCity,
+		body.LocationProv,
+		listingId,
+		userId,
+	).Error; err != nil {
+		tx.Rollback()
+		return fmt.Errorf("Failed to update listing")
+	}
+
+	if err := updateTypeDetailsTx(tx, listingId, body, bodyType); err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	if len(body.Images) > 0 {
+		if err := deleteListingImagesTx(tx, listingId); err != nil {
+			tx.Rollback()
+			return err
+		}
+		if err := saveListingImagesTx(tx, listingId, body.Images); err != nil {
+			tx.Rollback()
+			return err
+		}
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func updateTypeDetailsTx(tx *gorm.DB, listingId string, body model.CreateListingBody, listingType string) error {
+	switch listingType {
+	case "sell":
+		if body.SellData == nil {
+			return fmt.Errorf("Missing sell data")
+		}
+		condition, err := mapCondition(body.SellData.Condition)
+		if err != nil {
+			return err
+		}
+		deliveryMethod, err := mapDeliveryMethod(body.SellData.DeliveryMethod)
+		if err != nil {
+			return err
+		}
+		updateSellQuery := `
+			UPDATE public.listing_sell_details
+			SET condition = $1, delivery_method = $2
+			WHERE listing_id = $3
+		`
+		res := tx.Exec(updateSellQuery, condition, deliveryMethod, listingId)
+		if res.Error != nil {
+			return fmt.Errorf("Failed to update sell details")
+		}
+		if res.RowsAffected == 0 {
+			insertSellQuery := `
+				INSERT INTO public.listing_sell_details (listing_id, condition, delivery_method)
+				VALUES ($1,$2,$3)
+			`
+			if err := tx.Exec(insertSellQuery, listingId, condition, deliveryMethod).Error; err != nil {
+				return fmt.Errorf("Failed to update sell details")
+			}
+		}
+	case "rent":
+		if body.RentData == nil {
+			return fmt.Errorf("Missing rent data")
+		}
+		minPeriod, err := parseMinRentalPeriod(body.RentData.MinPeriod)
+		if err != nil {
+			return err
+		}
+		deliveryMethod, err := mapDeliveryMethod(body.RentData.DeliveryMethod)
+		if err != nil {
+			return err
+		}
+
+		var availableFrom any = nil
+		if strings.TrimSpace(body.RentData.Availability) != "" {
+			parsedDate, err := time.Parse("2006-01-02", body.RentData.Availability)
+			if err != nil {
+				return fmt.Errorf("Invalid availability date")
+			}
+			availableFrom = parsedDate
+		}
+
+		updateRentQuery := `
+			UPDATE public.listing_rent_details
+			SET min_rental_period = $1, available_from = $2, deposit = $3, delivery_method = $4
+			WHERE listing_id = $5
+		`
+		res := tx.Exec(updateRentQuery, minPeriod, availableFrom, body.RentData.Deposit, deliveryMethod, listingId)
+		if res.Error != nil {
+			return fmt.Errorf("Failed to update rent details")
+		}
+		if res.RowsAffected == 0 {
+			insertRentQuery := `
+				INSERT INTO public.listing_rent_details (listing_id, min_rental_period, available_from, deposit, delivery_method)
+				VALUES ($1,$2,$3,$4,$5)
+			`
+			if err := tx.Exec(insertRentQuery, listingId, minPeriod, availableFrom, body.RentData.Deposit, deliveryMethod).Error; err != nil {
+				return fmt.Errorf("Failed to update rent details")
+			}
+		}
+	case "service":
+		if body.ServiceData == nil {
+			return fmt.Errorf("Missing service data")
+		}
+		updateServiceQuery := `
+			UPDATE public.listing_service_details
+			SET turnaround_time = $1, service_area = $2
+			WHERE listing_id = $3
+		`
+		res := tx.Exec(updateServiceQuery, body.ServiceData.Turnaround, body.ServiceData.ServiceArea, listingId)
+		if res.Error != nil {
+			return fmt.Errorf("Failed to update service details")
+		}
+		if res.RowsAffected == 0 {
+			insertServiceQuery := `
+				INSERT INTO public.listing_service_details (listing_id, turnaround_time, service_area)
+				VALUES ($1,$2,$3)
+			`
+			if err := tx.Exec(insertServiceQuery, listingId, body.ServiceData.Turnaround, body.ServiceData.ServiceArea).Error; err != nil {
+				return fmt.Errorf("Failed to update service details")
+			}
+		}
+	default:
+		return fmt.Errorf("Invalid listing type")
+	}
+
+	return nil
+}
+
+func deleteListingImagesTx(tx *gorm.DB, listingId string) error {
+	rows := make([]struct {
+		ImageURL string `gorm:"column:image_url"`
+	}, 0)
+
+	if err := tx.Raw(`SELECT image_url FROM public.listing_images WHERE listing_id = $1`, listingId).Scan(&rows).Error; err != nil {
+		return fmt.Errorf("Failed to retrieve existing listing images")
+	}
+
+	for _, row := range rows {
+		url := strings.TrimSpace(row.ImageURL)
+		if !strings.HasPrefix(url, "/uploads/") {
+			continue
+		}
+
+		relPath := strings.TrimPrefix(url, "/")
+		if err := os.Remove(filepath.Clean(relPath)); err != nil && !os.IsNotExist(err) {
+			return fmt.Errorf("Failed to remove previous listing image")
+		}
+	}
+
+	if err := tx.Exec(`DELETE FROM public.listing_images WHERE listing_id = $1`, listingId).Error; err != nil {
+		return fmt.Errorf("Failed to remove previous listing image references")
+	}
+
+	return nil
+}
+
 func GetListingDetailById(listingId string) (model.ListingDetailFromDb, error) {
 	db := middleware.DBConn
 	var listing model.ListingDetailFromDb

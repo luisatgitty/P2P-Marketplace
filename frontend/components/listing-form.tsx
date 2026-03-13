@@ -798,8 +798,12 @@ export default function ListingForm({ type, initialData, isEdit = false, listing
     setErrors((prev) => ({ ...prev, submit: "" }));
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/listing`, {
-        method: "POST",
+      const endpoint = isEdit
+        ? `${process.env.NEXT_PUBLIC_API_URL}/listing/${listingId}`
+        : `${process.env.NEXT_PUBLIC_API_URL}/listing`;
+
+      const response = await fetch(endpoint, {
+        method: isEdit ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({ ...commonData, ...typeSpecific }),
@@ -807,13 +811,13 @@ export default function ListingForm({ type, initialData, isEdit = false, listing
 
       const parsedJson = await response.json();
       if (!response.ok) {
-        throw new Error(parsedJson?.data?.message || "Failed to create listing.");
+        throw new Error(parsedJson?.data?.message || (isEdit ? "Failed to update listing." : "Failed to create listing."));
       }
 
-      const createdListingId = parsedJson?.data?.listingId;
-      router.push(`/listing/${createdListingId ?? listingId ?? "1"}`);
+      const savedListingId = parsedJson?.data?.listingId;
+      router.push(`/listing/${savedListingId ?? listingId ?? "1"}`);
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to create listing.";
+      const message = err instanceof Error ? err.message : (isEdit ? "Failed to update listing." : "Failed to create listing.");
       setErrors((prev) => ({ ...prev, submit: message }));
     } finally {
       setSub(false);
@@ -1151,9 +1155,9 @@ export default function ListingForm({ type, initialData, isEdit = false, listing
                 <ChevronLeft size={16} /> Back
               </button>
             ) : (
-              <button type="button" onClick={() => router.push("/create")}
+              <button type="button" onClick={() => router.push(isEdit ? `/listing/${listingId}` : "/create")}
                 className="flex items-center gap-1.5 text-sm font-semibold text-stone-500 dark:text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 transition-colors">
-                <ChevronLeft size={16} /> Change type
+                <ChevronLeft size={16} /> {isEdit ? "Back to listing" : "Change type"}
               </button>
             )}
 
