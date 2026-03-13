@@ -9,7 +9,7 @@ import { PostCardProps } from "@/components/post-card";
 // ─────────────────────────────────────────
 //  TYPES
 // ─────────────────────────────────────────
-type ListingType = "sale" | "rent" | "service";
+type ListingType = "sell" | "rent" | "service";
 type Condition   = "brand-new" | "like-new" | "good" | "fair" | "for-parts";
 
 interface FormData {
@@ -28,13 +28,13 @@ interface FormData {
 //  CONSTANTS
 // ─────────────────────────────────────────
 const LISTING_TYPES: { value: ListingType; label: string }[] = [
-  { value: "sale",    label: "For Sale" },
+  { value: "sell",    label: "For Sale" },
   { value: "rent",    label: "For Rent" },
   { value: "service", label: "Service"  },
 ];
 
 const CATEGORIES = {
-  sale: ["Electronics", "Clothing & Accessories", "Furniture & Home", "Vehicles", "Sports & Hobbies", "Books", "Others"],
+  sell: ["Electronics", "Clothing & Accessories", "Furniture & Home", "Vehicles", "Sports & Hobbies", "Books", "Others"],
   rent: ["Real Estate", "Equipment", "Vehicles", "Event Spaces", "Others"],
   service: ["Home Services", "Professional Services", "Tutoring", "Transportation", "Others"],
 };
@@ -65,7 +65,7 @@ const STEPS = ["Details", "Photos", "Review"];
 export default function PostForm() {
   const [step, setStep]       = useState(0);
   const [form, setForm]       = useState<FormData>({
-    type: "sale",
+    type: "sell",
     category: "",
     title: "",
     description: "",
@@ -259,8 +259,8 @@ export default function PostForm() {
             </div>
           </div>
 
-          {/* Condition (sale only) */}
-          {form.type === "sale" && (
+          {/* Condition (sell only) */}
+          {form.type === "sell" && (
             <div>
               <label className="block text-sm font-medium text-stone-700 mb-2">Condition</label>
               <div className="flex gap-2 flex-wrap">

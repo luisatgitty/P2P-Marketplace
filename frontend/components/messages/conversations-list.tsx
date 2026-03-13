@@ -1,84 +1,151 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { Search } from "lucide-react";
-import { ConversationItem } from "./conversation-item";
+import { useState, useEffect, useCallback } from "react";
+import { usePathname } from "next/navigation";
+import { Search, X, SlidersHorizontal } from "lucide-react";
+import { cn } from "@/lib/utils";
+import type { Conversation, MessageTab } from "@/types/messaging";
+import { getConversations } from "@/services/messagingService";
+import ConversationItem from "./conversation-item";
+import EmptyState from "./empty-state";
 
-export interface Conversation {
-  id: string;
-  userName: string;
-  lastMessage: string;
-  timestamp: Date;
-  unreadCount: number;
-  userAvatar?: string;
-  listingTitle?: string;
+// ─── Tab filter logic ─────────────────────────────────────────────────────────
+
+function filterByTab(conversations: Conversation[], tab: MessageTab): Conversation[] {
+  switch (tab) {
+    case "buying":   return conversations.filter((c) => !c.isSeller && c.listing.listingType === "SELL");
+    case "selling":  return conversations.filter((c) =>  c.isSeller && c.listing.listingType === "SELL");
+    case "rental":   return conversations.filter((c) => c.listing.listingType === "RENT");
+    case "services": return conversations.filter((c) => c.listing.listingType === "SERVICE");
+    default:         return conversations; // "all"
+  }
 }
 
-export interface ConversationsListProps {
-  conversations: Conversation[];
-  activeId?: string;
+// ─── Props ────────────────────────────────────────────────────────────────────
+
+interface ConversationsListProps {
+  activeTab: MessageTab;
 }
 
-export const ConversationsList = ({
-  conversations,
-  activeId,
-}: ConversationsListProps) => {
-  const [searchQuery, setSearchQuery] = useState("");
+// ─── Component ────────────────────────────────────────────────────────────────
 
-  const filteredConversations = useMemo(() => {
-    return conversations.filter((conv) =>
-      conv.userName.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-  }, [conversations, searchQuery]);
+export default function ConversationsList({ activeTab }: ConversationsListProps) {
+  const pathname   = usePathname();
+  const activeConvId = pathname.startsWith("/messages/") ? pathname.split("/")[2] : null;
 
-  const unreadCount = conversations.reduce(
-    (sum, conv) => sum + conv.unreadCount,
-    0
-  );
+  const [allConversations, setAllConversations]   = useState<Conversation[]>([]);
+  const [search, setSearch] = useState("");
+  const [loading, setLoading] = useState(true);
+
+  const loadConvs = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await getConversations();
+      setAllConversations(data);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { loadConvs(); }, [loadConvs]);
+
+  // Re-load when navigating (so unread counts update after reading)
+  useEffect(() => { loadConvs(); }, [pathname, loadConvs]);
+
+  const tabFiltered = filterByTab(allConversations, activeTab);
+
+  const filtered = search.trim()
+    ? tabFiltered.filter((c) =>
+        [
+          `${c.otherParticipant.firstName} ${c.otherParticipant.lastName}`,
+          c.listing.title,
+          c.lastMessage ?? "",
+        ].some((s) => s.toLowerCase().includes(search.toLowerCase()))
+      )
+    : tabFiltered;
 
   return (
-    <div className="w-full md:w-80 border-r border-gray-200 flex flex-col bg-white">
-      {/* Header */}
-      <div className="border-b border-gray-200 p-4">
-        <h2 className="text-xl font-bold text-gray-900 mb-4">Messages</h2>
-        <div className="relative">
-          <Search
-            size={18}
-            className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-          />
-          <input
-            type="text"
-            placeholder="Search conversations..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
+    <div className="flex flex-col h-full">
+
+      {/* ── Search bar ──────────────────────────────────────────────── */}
+      <div className="px-3 pt-3 pb-2 border-b border-border shrink-0">
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1">
+            <Search
+              size={14}
+              className="absolute left-2.5 top-1/2 -translate-y-1/2 text-stone-400 dark:text-stone-500 pointer-events-none"
+            />
+            <input
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search conversations…"
+              className={cn(
+                "w-full pl-8 pr-7 py-2 text-xs rounded-lg bg-stone-100 dark:bg-[#13151f] border border-transparent",
+                "placeholder:text-stone-400 dark:placeholder:text-stone-600",
+                "text-stone-800 dark:text-stone-100",
+                "focus:outline-none focus:ring-1 focus:ring-amber-500/50 focus:border-amber-500/50",
+                "transition-all"
+              )}
+            />
+            {search && (
+              <button
+                onClick={() => setSearch("")}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 transition-colors"
+                aria-label="Clear search"
+              >
+                <X size={12} />
+              </button>
+            )}
+          </div>
+          <button
+            className="p-2 rounded-lg bg-stone-100 dark:bg-[#13151f] text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-100 transition-colors shrink-0"
+            aria-label="Filter"
+            title="Filter conversations"
+          >
+            <SlidersHorizontal size={14} />
+          </button>
         </div>
-        {unreadCount > 0 && (
-          <p className="text-xs text-gray-500 mt-2">
-            {unreadCount} unread message{unreadCount !== 1 ? "s" : ""}
-          </p>
-        )}
+
+        {/* Result count */}
+        <p className="text-[10px] text-stone-400 dark:text-stone-500 mt-1.5 px-0.5">
+          {loading
+            ? "Loading…"
+            : `${filtered.length} conversation${filtered.length !== 1 ? "s" : ""}`}
+        </p>
       </div>
 
-      {/* Conversations List */}
-      <div className="flex-1 overflow-y-auto">
-        {filteredConversations.length > 0 ? (
-          filteredConversations.map((conversation) => (
-            <ConversationItem
-              key={conversation.id}
-              {...conversation}
-              active={activeId === conversation.id}
-            />
-          ))
+      {/* ── List ────────────────────────────────────────────────────── */}
+      <div className="flex-1 overflow-y-auto no-scroll">
+        {loading ? (
+          // Skeleton
+          <div className="flex flex-col gap-0">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="flex items-start gap-3 px-4 py-3 border-l-2 border-l-transparent">
+                <div className="w-11 h-11 rounded-full bg-stone-100 dark:bg-[#252837] animate-pulse shrink-0" />
+                <div className="flex-1 space-y-1.5">
+                  <div className="h-3 w-32 rounded bg-stone-100 dark:bg-[#252837] animate-pulse" />
+                  <div className="h-2.5 w-48 rounded bg-stone-100 dark:bg-[#252837] animate-pulse" />
+                  <div className="h-2.5 w-40 rounded bg-stone-100 dark:bg-[#252837] animate-pulse" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : filtered.length === 0 ? (
+          <EmptyState tab={activeTab} hasSearch={!!search} />
         ) : (
-          <div className="flex items-center justify-center h-full text-gray-500">
-            <p className="text-center text-sm">
-              {searchQuery ? "No conversations found" : "No conversations yet"}
-            </p>
+          <div className="divide-y divide-border/50">
+            {filtered.map((conv) => (
+              <ConversationItem
+                key={conv.id}
+                conversation={conv}
+                isActive={conv.id === activeConvId}
+                showTypeBadge={activeTab === "all"}
+              />
+            ))}
           </div>
         )}
       </div>
     </div>
   );
-};
+}

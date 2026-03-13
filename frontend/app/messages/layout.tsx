@@ -1,56 +1,148 @@
 "use client";
 
-import { Conversation, ConversationsList } from "@/components/messages/conversations-list";
+import { useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import Image from "next/image";
+import { cn } from "@/lib/utils";
+import type { MessageTab } from "@/types/messaging";
+import MessagesTabNav from "@/components/messages/messages-tab-nav";
+import ConversationsList from "@/components/messages/conversations-list";
 
-// Mock conversations - replace with API call
-const MOCK_CONVERSATIONS: Conversation[] = [
-  {
-    id: "1",
-    userName: "Juan dela Cruz",
-    lastMessage: "Is this still available?",
-    timestamp: new Date(Date.now() - 5 * 60 * 1000),
-    unreadCount: 2,
-    listingTitle: "Casio G-Shock GA-2100",
-  },
-  {
-    id: "2",
-    userName: "Maria Santos",
-    lastMessage: "Can you show me more photos?",
-    timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000),
-    unreadCount: 0,
-    listingTitle: "Studio Unit — Makati CBD",
-  },
-  {
-    id: "3",
-    userName: "Pedro Reyes",
-    lastMessage: "Thanks for the repair!",
-    timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000),
-    unreadCount: 0,
-    listingTitle: "Aircon Cleaning & Repair",
-  },
-  {
-    id: "4",
-    userName: "Ana Reyes",
-    lastMessage: "When can you deliver?",
-    timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
-    unreadCount: 1,
-    listingTitle: "MacBook Pro M2 2023",
-  },
-];
+export default function MessagesLayout({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  const router   = useRouter();
 
-export default function MessagesLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  const activeId = children?.props?.params?.userId;
+  const [activeTab, setActiveTab] = useState<MessageTab>("all");
+
+  // On mobile: if we're on a specific conversation, show the chat view full-screen
+  const isInConversation = pathname !== "/messages";
+
+  const handleTabChange = (tab: MessageTab) => {
+    setActiveTab(tab);
+    // On mobile, tapping a tab while in a conversation navigates back to the list
+    if (isInConversation) {
+      router.push("/messages");
+    }
+  };
 
   return (
-    <div className="h-[calc(100vh-80px)] flex bg-gray-50">
-      <ConversationsList conversations={MOCK_CONVERSATIONS} activeId={activeId} />
-      <div className="flex-1 flex flex-col">
+    // Takes exactly the viewport height below the fixed navbar (1px stripe + 56px nav = 57px)
+    <div className="h-[calc(100vh-57px)] flex overflow-hidden bg-background">
+
+      {/* ══════════════════════════════════════════════
+          LEFT — vertical tab sidebar (md+)
+      ══════════════════════════════════════════════ */}
+      <aside className="hidden md:flex flex-col w-14 lg:w-56 shrink-0 bg-[#1a2235] border-r border-white/5">
+
+        {/* Branding */}
+        <div className="flex items-center gap-2.5 px-3 lg:px-4 py-4 border-b border-white/5">
+          <Image
+            src="/logo.png"
+            alt="P2P Marketplace"
+            width={28}
+            height={28}
+            className="rounded-md shrink-0"
+          />
+          <span className="hidden lg:block font-bold text-sm text-white tracking-tight">
+            Messages
+          </span>
+        </div>
+
+        {/* Tab navigation */}
+        <div className="flex-1 overflow-hidden pt-1">
+          <MessagesTabNav
+            activeTab={activeTab}
+            onTabChange={handleTabChange}
+            orientation="vertical"
+          />
+        </div>
+
+        {/* Bottom: back to marketplace link */}
+        <div className="p-3 border-t border-white/5">
+          <a
+            href="/"
+            className={cn(
+              "flex items-center gap-2.5 px-3 py-2 rounded-lg text-stone-400 hover:text-stone-100 hover:bg-white/5 transition-colors",
+              "text-xs font-medium"
+            )}
+          >
+            <span className="text-base">←</span>
+            <span className="hidden lg:inline">Back to Marketplace</span>
+          </a>
+        </div>
+      </aside>
+
+      {/* ══════════════════════════════════════════════
+          MIDDLE — conversations list
+          • Always visible on md+
+          • On mobile: visible only on /messages, hidden when in a conversation
+      ══════════════════════════════════════════════ */}
+      <div
+        className={cn(
+          "flex flex-col border-r border-border bg-white dark:bg-[#1c1f2e] shrink-0",
+          // Width
+          "w-full md:w-80",
+          // Mobile visibility
+          isInConversation ? "hidden md:flex" : "flex"
+        )}
+      >
+        {/* Panel header */}
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+          <div>
+            <h1 className="text-base font-bold text-stone-900 dark:text-stone-50 leading-tight">
+              Inbox
+            </h1>
+            <p className="text-[11px] text-stone-400 dark:text-stone-500 capitalize">
+              {activeTab === "all" ? "All messages" : activeTab}
+            </p>
+          </div>
+        </div>
+
+        <ConversationsList activeTab={activeTab} />
+      </div>
+
+      {/* ══════════════════════════════════════════════
+          RIGHT — chat view or empty state
+          • Always visible on md+
+          • On mobile: visible only when in a conversation
+      ══════════════════════════════════════════════ */}
+      <div
+        className={cn(
+          "flex-1 flex flex-col overflow-hidden",
+          // Mobile visibility — hide the empty-state on /messages so only the list shows
+          !isInConversation && "hidden md:flex"
+        )}
+      >
         {children}
       </div>
+
+      {/* ══════════════════════════════════════════════
+          BOTTOM — mobile-only tab nav
+          Always rendered on mobile so users can switch
+          categories even while reading a conversation.
+      ══════════════════════════════════════════════ */}
+      <nav
+        aria-label="Message categories"
+        className={cn(
+          "md:hidden fixed bottom-0 inset-x-0 z-40",
+          "bg-white dark:bg-[#1c1f2e] border-t border-border",
+          // Add padding for iOS home indicator
+          "pb-safe"
+        )}
+      >
+        <MessagesTabNav
+          activeTab={activeTab}
+          onTabChange={handleTabChange}
+          orientation="horizontal"
+        />
+      </nav>
+
+      {/* Spacer so the content isn't hidden behind the mobile bottom nav */}
+      <style>{`
+        @supports (padding-bottom: env(safe-area-inset-bottom)) {
+          .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+        }
+      `}</style>
     </div>
   );
 }
