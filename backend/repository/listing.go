@@ -343,3 +343,130 @@ func randomHex(n int) (string, error) {
 	}
 	return hex.EncodeToString(b), nil
 }
+
+func GetListingDetailById(listingId string) (model.ListingDetailFromDb, error) {
+	db := middleware.DBConn
+	var listing model.ListingDetailFromDb
+
+	selectQuery := `
+		SELECT
+			l.id,
+			l.title,
+			l.price,
+			l.price_unit,
+			LOWER(l.listing_type::text) AS type,
+			COALESCE(c.name, 'Others') AS category,
+			l.category_id,
+			l.description,
+			l.location_city,
+			l.location_province,
+			l.created_at,
+			l.view_count,
+			LOWER(l.status::text) AS status,
+			COALESCE(l.highlights, '[]') AS highlights,
+			COALESCE(l.included, '[]') AS included,
+			COALESCE(lsd.condition::text, '') AS condition,
+			COALESCE(lsd.delivery_method::text, lrd.delivery_method::text, '') AS delivery_method,
+			COALESCE(lrd.min_rental_period, 0) AS min_rental_period,
+			lrd.available_from,
+			COALESCE(lrd.deposit, '') AS deposit,
+			COALESCE(lsrv.turnaround_time, '') AS turnaround_time,
+			COALESCE(lsrv.service_area, '') AS service_area,
+			TRIM(BOTH ' ' FROM CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, ''))) AS seller_name,
+			COALESCE(rv.avg_rating, 5.0) AS seller_rating,
+			(u.verification_status = 'VERIFIED') AS seller_verified
+		FROM public.listings l
+		INNER JOIN public.users u ON u.id = l.user_id
+		LEFT JOIN public.categories c ON c.id = l.category_id
+		LEFT JOIN public.listing_sell_details lsd ON lsd.listing_id = l.id
+		LEFT JOIN public.listing_rent_details lrd ON lrd.listing_id = l.id
+		LEFT JOIN public.listing_service_details lsrv ON lsrv.listing_id = l.id
+		LEFT JOIN LATERAL (
+			SELECT AVG(r.rating)::float AS avg_rating
+			FROM public.reviews r
+			WHERE r.reviewed_user_id = l.user_id
+		) rv ON TRUE
+		WHERE l.id = $1
+		LIMIT 1
+	`
+
+	result := db.Raw(selectQuery, listingId).Scan(&listing)
+	if result.Error != nil {
+		return listing, fmt.Errorf("Failed to retrieve listing details")
+	}
+	if result.RowsAffected == 0 {
+		return listing, fmt.Errorf("Listing not found")
+	}
+
+	return listing, nil
+}
+
+func GetListingImages(listingId string) ([]string, error) {
+	db := middleware.DBConn
+	rows := make([]struct {
+		ImageURL string `gorm:"column:image_url"`
+	}, 0)
+
+	query := `
+		SELECT image_url
+		FROM public.listing_images
+		WHERE listing_id = $1
+		ORDER BY is_primary DESC, id ASC
+	`
+
+	if err := db.Raw(query, listingId).Scan(&rows).Error; err != nil {
+		return nil, fmt.Errorf("Failed to retrieve listing images")
+	}
+
+	images := make([]string, 0, len(rows))
+	for _, row := range rows {
+		images = append(images, row.ImageURL)
+	}
+	return images, nil
+}
+
+func GetRelatedListings(listingId, categoryId, listingType string) ([]model.ProfileListingFromDb, error) {
+	db := middleware.DBConn
+	related := make([]model.ProfileListingFromDb, 0)
+
+	query := `
+		SELECT
+			l.id,
+			l.title,
+			l.price,
+			l.price_unit,
+			LOWER(l.listing_type::text) AS type,
+			COALESCE(c.name, 'Others') AS category,
+			TRIM(BOTH ', ' FROM CONCAT_WS(', ', NULLIF(l.location_city, ''), NULLIF(l.location_province, ''))) AS location,
+			TO_CHAR(l.created_at, 'Mon DD, YYYY') AS posted_at,
+			COALESCE(li.image_url, '') AS image_url,
+			TRIM(BOTH ' ' FROM CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, ''))) AS seller_name,
+			COALESCE(rv.avg_rating, 5.0) AS seller_rating,
+			LOWER(l.status::text) AS status
+		FROM public.listings l
+		INNER JOIN public.users u ON u.id = l.user_id
+		LEFT JOIN public.categories c ON c.id = l.category_id
+		LEFT JOIN LATERAL (
+			SELECT image_url
+			FROM public.listing_images
+			WHERE listing_id = l.id
+			ORDER BY is_primary DESC, id ASC
+			LIMIT 1
+		) li ON TRUE
+		LEFT JOIN LATERAL (
+			SELECT AVG(r.rating)::float AS avg_rating
+			FROM public.reviews r
+			WHERE r.reviewed_user_id = l.user_id
+		) rv ON TRUE
+		WHERE l.id <> $1
+			AND (l.category_id = $2 OR l.listing_type::text = $3)
+		ORDER BY l.created_at DESC
+		LIMIT 8
+	`
+
+	if err := db.Raw(query, listingId, categoryId, strings.ToUpper(listingType)).Scan(&related).Error; err != nil {
+		return nil, fmt.Errorf("Failed to retrieve related listings")
+	}
+
+	return related, nil
+}

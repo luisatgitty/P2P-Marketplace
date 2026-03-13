@@ -124,3 +124,31 @@ type ProfileListingFromDb struct {
 	SellerRating float64 `gorm:"column:seller_rating" json:"sellerRating"`
 	Status       string  `gorm:"column:status"        json:"status"`
 }
+
+type ListingDetailFromDb struct {
+	Id              string     `gorm:"column:id"`
+	Title           string     `gorm:"column:title"`
+	Price           int        `gorm:"column:price"`
+	PriceUnit       string     `gorm:"column:price_unit"`
+	Type            string     `gorm:"column:type"`
+	Category        string     `gorm:"column:category"`
+	CategoryID      string     `gorm:"column:category_id"`
+	Description     string     `gorm:"column:description"`
+	LocationCity    string     `gorm:"column:location_city"`
+	LocationProv    string     `gorm:"column:location_province"`
+	CreatedAt       time.Time  `gorm:"column:created_at"`
+	ViewCount       int        `gorm:"column:view_count"`
+	Status          string     `gorm:"column:status"`
+	Highlights      string     `gorm:"column:highlights"`
+	Included        string     `gorm:"column:included"`
+	Condition       string     `gorm:"column:condition"`
+	DeliveryMethod  string     `gorm:"column:delivery_method"`
+	MinRentalPeriod int        `gorm:"column:min_rental_period"`
+	AvailableFrom   *time.Time `gorm:"column:available_from"`
+	Deposit         string     `gorm:"column:deposit"`
+	Turnaround      string     `gorm:"column:turnaround_time"`
+	ServiceArea     string     `gorm:"column:service_area"`
+	SellerName      string     `gorm:"column:seller_name"`
+	SellerRating    float64    `gorm:"column:seller_rating"`
+	SellerVerified  bool       `gorm:"column:seller_verified"`
+}

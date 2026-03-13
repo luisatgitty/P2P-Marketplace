@@ -13,6 +13,7 @@ func AppRoutes(app *fiber.App) {
 	app.Post("/auth/verify-email", controller.SignUpUser)
 	app.Post("/auth/resend-otp", controller.SendEmailOTP)
 	app.Post("/auth/forgot-password", controller.ForgotPassword)
+	app.Get("/listing/:id", controller.GetListingById)
 
 	// Protected
 	app.Get("/auth/me", controller.AuthenticateUser, controller.Me)

@@ -1,8 +1,10 @@
 package controller
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
 	"p2p_marketplace/backend/model"
 	"p2p_marketplace/backend/repository"
@@ -51,4 +53,214 @@ func CreateListing(c *fiber.Ctx) error {
 	}
 
 	return SendSuccessResponse(c, 201, "Listing created successfully", map[string]any{"listingId": listingId})
+}
+
+func GetListingById(c *fiber.Ctx) error {
+	fmt.Println(c.Path())
+
+	listingId := strings.TrimSpace(c.Params("id"))
+	if listingId == "" {
+		return SendErrorResponse(c, 400, "Listing ID is required", nil)
+	}
+
+	listing, err := repository.GetListingDetailById(listingId)
+	if err != nil {
+		return SendErrorResponse(c, 404, err.Error(), err)
+	}
+
+	images, err := repository.GetListingImages(listingId)
+	if err != nil {
+		return SendErrorResponse(c, 500, err.Error(), err)
+	}
+
+	related, err := repository.GetRelatedListings(listingId, listing.CategoryID, listing.Type)
+	if err != nil {
+		return SendErrorResponse(c, 500, err.Error(), err)
+	}
+
+	baseURL := c.BaseURL()
+	features := parseJSONStringArray(listing.Highlights)
+	included := parseJSONStringArray(listing.Included)
+
+	extra := map[string]any{
+		"description":    listing.Description,
+		"condition":      mapConditionDisplay(listing.Condition),
+		"images":         mapAssetURLs(baseURL, images),
+		"features":       features,
+		"views":          listing.ViewCount,
+		"offers":         0,
+		"deliveryMethod": mapDeliveryDisplay(listing.DeliveryMethod),
+	}
+
+	if listing.Type == "rent" {
+		extra["minPeriod"] = formatMinPeriod(listing.MinRentalPeriod)
+		if listing.AvailableFrom != nil {
+			extra["availability"] = listing.AvailableFrom.Format("Jan 02, 2006")
+		}
+		extra["deposit"] = listing.Deposit
+		extra["amenities"] = included
+	} else if listing.Type == "service" {
+		extra["turnaround"] = listing.Turnaround
+		extra["serviceArea"] = listing.ServiceArea
+		extra["inclusions"] = included
+	} else {
+		extra["inclusions"] = included
+	}
+
+	listingCard := map[string]any{
+		"id":        listing.Id,
+		"title":     listing.Title,
+		"price":     listing.Price,
+		"priceUnit": listing.PriceUnit,
+		"type":      listing.Type,
+		"category":  listing.Category,
+		"location":  strings.TrimSpace(fmt.Sprintf("%s, %s", listing.LocationCity, listing.LocationProv)),
+		"postedAt":  timeAgo(listing.CreatedAt),
+		"imageUrl":  mapPrimaryImage(baseURL, images),
+		"seller": map[string]any{
+			"name":   listing.SellerName,
+			"rating": listing.SellerRating,
+			"isPro":  listing.SellerVerified,
+		},
+	}
+
+	return SendSuccessResponse(c, 200, "Listing fetched successfully", map[string]any{
+		"listing": listingCard,
+		"extra":   extra,
+		"related": mapRelatedListings(baseURL, related),
+	})
+}
+
+func parseJSONStringArray(raw string) []string {
+	trimmed := strings.TrimSpace(raw)
+	if trimmed == "" {
+		return []string{}
+	}
+
+	var parsed []string
+	if err := json.Unmarshal([]byte(trimmed), &parsed); err != nil {
+		return []string{trimmed}
+	}
+
+	out := make([]string, 0, len(parsed))
+	for _, item := range parsed {
+		v := strings.TrimSpace(item)
+		if v != "" {
+			out = append(out, v)
+		}
+	}
+	return out
+}
+
+func mapConditionDisplay(raw string) string {
+	switch strings.ToUpper(strings.TrimSpace(raw)) {
+	case "NEW":
+		return "New"
+	case "LIKE_NEW":
+		return "Like New"
+	case "LIGHTLY_USED":
+		return "Lightly Used"
+	case "WELL_USED":
+		return "Well Used"
+	case "HEAVILY_USED":
+		return "Heavily Used"
+	default:
+		return ""
+	}
+}
+
+func mapDeliveryDisplay(raw string) string {
+	switch strings.ToUpper(strings.TrimSpace(raw)) {
+	case "MEETUP":
+		return "Meet-up only"
+	case "SHIPPING":
+		return "Delivery available"
+	case "BOTH":
+		return "Meet-up or Delivery"
+	default:
+		return ""
+	}
+}
+
+func formatMinPeriod(v int) string {
+	if v <= 0 {
+		return ""
+	}
+	if v == 1 {
+		return "1 month"
+	}
+	return fmt.Sprintf("%d months", v)
+}
+
+func mapAssetURLs(baseURL string, raw []string) []string {
+	out := make([]string, 0, len(raw))
+	for _, item := range raw {
+		trimmed := strings.TrimSpace(item)
+		if trimmed == "" {
+			continue
+		}
+		if strings.HasPrefix(trimmed, "http://") || strings.HasPrefix(trimmed, "https://") {
+			out = append(out, trimmed)
+			continue
+		}
+		out = append(out, strings.TrimRight(baseURL, "/")+"/"+strings.TrimLeft(trimmed, "/"))
+	}
+	return out
+}
+
+func mapPrimaryImage(baseURL string, raw []string) string {
+	images := mapAssetURLs(baseURL, raw)
+	if len(images) == 0 {
+		return "https://images.unsplash.com/photo-1484154218962-a197022b5858?w=800&q=80"
+	}
+	return images[0]
+}
+
+func mapRelatedListings(baseURL string, listings []model.ProfileListingFromDb) []map[string]any {
+	items := make([]map[string]any, 0, len(listings))
+	for _, l := range listings {
+		img := l.ImageUrl
+		if img == "" {
+			img = "https://images.unsplash.com/photo-1484154218962-a197022b5858?w=800&q=80"
+		} else if !strings.HasPrefix(img, "http://") && !strings.HasPrefix(img, "https://") {
+			img = strings.TrimRight(baseURL, "/") + "/" + strings.TrimLeft(img, "/")
+		}
+
+		items = append(items, map[string]any{
+			"id":        l.Id,
+			"title":     l.Title,
+			"price":     l.Price,
+			"priceUnit": l.PriceUnit,
+			"type":      l.Type,
+			"category":  l.Category,
+			"location":  l.Location,
+			"postedAt":  l.PostedAt,
+			"imageUrl":  img,
+			"seller": map[string]any{
+				"name":   l.SellerName,
+				"rating": l.SellerRating,
+			},
+		})
+	}
+	return items
+}
+
+func timeAgo(t time.Time) string {
+	if t.IsZero() {
+		return "recently"
+	}
+	delta := time.Since(t)
+	if delta < time.Minute {
+		return "just now"
+	}
+	if delta < time.Hour {
+		return fmt.Sprintf("%dm ago", int(delta.Minutes()))
+	}
+	if delta < 24*time.Hour {
+		return fmt.Sprintf("%dh ago", int(delta.Hours()))
+	}
+	if delta < 30*24*time.Hour {
+		return fmt.Sprintf("%dd ago", int(delta.Hours()/24))
+	}
+	return t.Format("Jan 02, 2006")
 }
