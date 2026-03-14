@@ -76,6 +76,7 @@ function TabsFallback() {
 export default function Navbar() {
   const { clearUserData, isValidated, user } = useUser();
   const { theme, setTheme } = useTheme();
+  const isVerifiedSeller = (user?.status ?? "").toLowerCase() === "verified";
   const [dropdownOpen, setDropdownOpen]     = useState(false);
   const [mounted, setMounted]               = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -148,7 +149,7 @@ export default function Navbar() {
               >
                 <div className="w-7 h-7 rounded-full bg-stone-600 overflow-hidden border border-white/20">
                   <Image
-                    src="/profile-icon.png"
+                    src={user?.profileImageUrl || '/profile-icon.png'}
                     alt="Profile"
                     width={28}
                     height={28}
@@ -191,14 +192,25 @@ export default function Navbar() {
                           <MessageCircle size={15} className="text-stone-400" />
                           Messages
                         </Link>
-                        <Link
-                          href="/create"
-                          onClick={() => setDropdownOpen(false)}
-                          className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-200 hover:bg-white/10 hover:text-white transition-colors"
-                        >
-                          <Tag size={15} className="text-stone-400" />
-                          Post a Listing
-                        </Link>
+                        {isVerifiedSeller ? (
+                          <Link
+                            href="/create"
+                            onClick={() => setDropdownOpen(false)}
+                            className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-200 hover:bg-white/10 hover:text-white transition-colors"
+                          >
+                            <Tag size={15} className="text-stone-400" />
+                            Post a Listing
+                          </Link>
+                        ) : (
+                          <Link
+                            href="/become-seller"
+                            onClick={() => setDropdownOpen(false)}
+                            className="flex items-center gap-3 px-4 py-2.5 text-sm text-amber-300 hover:bg-amber-500/10 hover:text-amber-200 transition-colors"
+                          >
+                            <UserPlus size={15} />
+                            Become a Seller
+                          </Link>
+                        )}
                       </div>
 
                       <div className="border-t border-white/10" />
@@ -238,7 +250,7 @@ export default function Navbar() {
       </nav>
 
       {/* Spacer for fixed navbar (1px stripe + 56px nav) */}
-      <div className="h-[57px]" />
+      <div className="h-14.25" />
     </>
   );
 }
