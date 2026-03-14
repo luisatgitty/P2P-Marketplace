@@ -487,11 +487,6 @@ export default function MessageBubble({
               )}
             >
               {message.content}
-              {message.isEdited && (
-                <span className={cn("text-[10px] ml-1.5 italic", isMe ? "text-amber-200/70" : "text-stone-400 dark:text-stone-500")}>
-                  edited
-                </span>
-              )}
             </p>
           )}
         </div>
@@ -508,6 +503,11 @@ export default function MessageBubble({
         {/* Time + status */}
         {showTime && (
           <div className={cn("flex items-center gap-1 text-[11px] text-stone-400 dark:text-stone-500 px-1 mt-0.5", isMe && "flex-row-reverse")}>
+            {message.isEdited && (
+              <span className={cn("italic", isMe ? "text-amber-200/70" : "text-stone-400 dark:text-stone-500")}>
+                • edited
+              </span>
+            )}
             <span>{formatTime(message.createdAt)}</span>
             {isMe && (
               message.status === "READ"      ? <CheckCheck size={11} className="text-amber-500" /> :

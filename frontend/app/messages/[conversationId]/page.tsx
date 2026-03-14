@@ -126,7 +126,7 @@ function MediaViewerModal({
         type: "video" as const,
         sources: [{ src: item.fileUrl, type: "video/mp4" }],
         poster: item.fileUrl,
-      };``
+      };
     }
 
     return {
@@ -366,48 +366,50 @@ export default function ConversationPage() {
 
         {/* Messages area */}
         <div className="flex-1 overflow-y-auto no-scroll px-4 py-3">
-          {messages.length === 0 && (
-            <div className="flex flex-col items-center justify-center h-full gap-2 text-center">
-              <p className="text-xs text-stone-400 dark:text-stone-600">No messages yet. Say hello!</p>
-            </div>
-          )}
-
-          {messages.map((msg, i) => {
-            const prev     = messages[i - 1];
-            const next     = messages[i + 1];
-            const showDate = !prev || !isSameDay(prev.createdAt, msg.createdAt);
-            const showTime =
-              !next ||
-              next.senderId !== msg.senderId ||
-              new Date(next.createdAt).getTime() - new Date(msg.createdAt).getTime() > 60_000;
-
-            return (
-              <div key={msg.id}>
-                {showDate && (
-                  <div className="flex items-center gap-3 my-4">
-                    <div className="flex-1 h-px bg-border" />
-                    <span className="text-[10px] font-medium text-stone-400 dark:text-stone-500 px-2">
-                      {formatDateSeparator(msg.createdAt)}
-                    </span>
-                    <div className="flex-1 h-px bg-border" />
-                  </div>
-                )}
-                <MessageBubble
-                  message={msg}
-                  currentUserId={currentUserId}
-                  showTime={showTime}
-                  otherName={otherName}
-                  onReply={handleReply}
-                  onReact={handleReact}
-                  onEdit={handleEdit}
-                  onDelete={handleDelete}
-                  onOpenMediaViewer={handleOpenMediaViewer}
-                />
+          <div className="min-h-full flex flex-col justify-end">
+            {messages.length === 0 && (
+              <div className="flex flex-1 flex-col items-center justify-center gap-2 text-center">
+                <p className="text-xs text-stone-400 dark:text-stone-600">No messages yet. Say hello!</p>
               </div>
-            );
-          })}
+            )}
 
-          <div ref={bottomRef} />
+            {messages.map((msg, i) => {
+              const prev     = messages[i - 1];
+              const next     = messages[i + 1];
+              const showDate = !prev || !isSameDay(prev.createdAt, msg.createdAt);
+              const showTime =
+                !next ||
+                next.senderId !== msg.senderId ||
+                new Date(next.createdAt).getTime() - new Date(msg.createdAt).getTime() > 60_000;
+
+              return (
+                <div key={msg.id}>
+                  {showDate && (
+                    <div className="flex items-center gap-3 my-4">
+                      <div className="flex-1 h-px bg-border" />
+                      <span className="text-[11px] font-medium text-stone-400 dark:text-stone-500 px-2">
+                        {formatDateSeparator(msg.createdAt)}
+                      </span>
+                      <div className="flex-1 h-px bg-border" />
+                    </div>
+                  )}
+                  <MessageBubble
+                    message={msg}
+                    currentUserId={currentUserId}
+                    showTime={showTime}
+                    otherName={otherName}
+                    onReply={handleReply}
+                    onReact={handleReact}
+                    onEdit={handleEdit}
+                    onDelete={handleDelete}
+                    onOpenMediaViewer={handleOpenMediaViewer}
+                  />
+                </div>
+              );
+            })}
+
+            <div ref={bottomRef} />
+          </div>
         </div>
 
         <MessageInput
