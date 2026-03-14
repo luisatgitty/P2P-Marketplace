@@ -4,9 +4,9 @@ import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import {
-  MapPin, Mail, Calendar, Eye, MessageCircle,
-  Edit2, Plus, Package, Heart,
-  Camera, Trash2, AlertTriangle,
+  MapPin, Mail, Calendar, Star, Eye, MessageCircle,
+  Edit2, Plus, ShieldCheck, Upload, Package, Heart, 
+  X, Camera, Trash2, AlertTriangle,
 } from "lucide-react";
 import { useUser } from "@/utils/UserContext";
 import { Button } from "@/components/ui/button";
@@ -27,6 +27,7 @@ import {
 import { cn } from "@/lib/utils";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
+type VerificationState = "unverified" | "pending" | "verified" | "rejected";
 type ListingTab = "all" | "active" | "sold" | "booked";
 type ProfileTab = "listings" | "saved";
 
@@ -44,6 +45,46 @@ interface ProfileForm {
   currentPassword: string;
   newPassword: string;
   confirmPassword: string;
+}
+
+type EditableProfileSnapshot = Pick<
+  ProfileForm,
+  "firstName" | "lastName" | "bio" | "phone" | "locationProv" | "locationCity" | "locationBrgy"
+>;
+
+function normalizeEditableProfile(form: EditableProfileSnapshot): EditableProfileSnapshot {
+  return {
+    firstName: form.firstName.trim(),
+    lastName: form.lastName.trim(),
+    bio: form.bio.trim(),
+    phone: form.phone.trim(),
+    locationProv: form.locationProv.trim(),
+    locationCity: form.locationCity.trim(),
+    locationBrgy: form.locationBrgy.trim(),
+  };
+}
+
+// ─── Mock data ────────────────────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+function resolveVerificationState(status: string): VerificationState {
+  const normalized = status.toLowerCase();
+  if (normalized === "verified") return "verified";
+  if (normalized === "pending")  return "pending";
+  if (normalized === "rejected") return "rejected";
+  return "unverified";
+}
+
+function VerificationBadge({ state }: { state: VerificationState }) {
+  if (state === "verified") return (
+    <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700">
+      <ShieldCheck className="w-3 h-3" /> Verified
+    </span>
+  );
+  return (
+    <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-800">
+      <ShieldCheck className="w-3 h-3" /> Unverified
+    </span>
+  );
 }
 
 // ─── Profile listing card ─────────────────────────────────────────────────────
@@ -231,6 +272,7 @@ async function encodeFileToPayload(file: File): Promise<EncodedImagePayload> {
 // ─── MAIN PAGE ────────────────────────────────────────────────────────────────
 export default function ProfilePage() {
   const { user, saveUserData, clearUserData } = useUser();
+  const verificationState: VerificationState = resolveVerificationState(user?.status ?? "");
 
   const [editOpen, setEditOpen] = useState(false);
   const [form, setForm] = useState<ProfileForm>({
@@ -246,6 +288,7 @@ export default function ProfilePage() {
     confirmPassword: "",
   });
   const [saving, setSaving] = useState(false);
+  const [loadingEditProfile, setLoadingEditProfile] = useState(false);
   const [deactivating, setDeactivating] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [userListings, setUserListings] = useState<ProfileListingItem[]>([]);
@@ -261,6 +304,7 @@ export default function ProfilePage() {
   const [selectedCityCode, setSelectedCityCode] = useState("");
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [uploadingCover, setUploadingCover] = useState(false);
+  const [editSnapshot, setEditSnapshot] = useState<EditableProfileSnapshot | null>(null);
 
   const handleAvatarUpload = async (file: File) => {
     setUploadingAvatar(true);
@@ -411,23 +455,49 @@ export default function ProfilePage() {
       return;
     }
 
+    const currentComparable = normalizeEditableProfile({
+      firstName: form.firstName,
+      lastName: form.lastName,
+      bio: form.bio,
+      phone: form.phone,
+      locationProv: form.locationProv,
+      locationCity: form.locationCity,
+      locationBrgy: form.locationBrgy,
+    });
+
+    const baselineComparable = normalizeEditableProfile(
+      editSnapshot ?? {
+        firstName: user?.firstName ?? "",
+        lastName: user?.lastName ?? "",
+        bio: user?.bio ?? "",
+        phone: user?.phoneNumber ?? "",
+        locationProv: user?.locationProv ?? "",
+        locationCity: user?.locationCity ?? "",
+        locationBrgy: user?.locationBrgy ?? "",
+      }
+    );
+
+    const hasProfileChanges = JSON.stringify(currentComparable) !== JSON.stringify(baselineComparable);
+    const hasPasswordChanges = Boolean(form.currentPassword.trim() || form.newPassword.trim() || form.confirmPassword.trim());
+
+    if (!hasProfileChanges && !hasPasswordChanges) {
+      setEditOpen(false)
+      showToast("No changes detected");
+      return;
+    }
+
     setSaving(true);
     try {
-      const profileImage = avatar.file ? await encodeFileToPayload(avatar.file) : undefined;
-      const coverImage = cover.file ? await encodeFileToPayload(cover.file) : undefined;
-
       const updatedUser = await updateProfileData({
-        firstName: form.firstName.trim(),
-        lastName: form.lastName.trim(),
-        phoneNumber: form.phone.trim(),
-        bio: form.bio.trim(),
-        locationProv: form.locationProv.trim(),
-        locationCity: form.locationCity.trim(),
-        locationBrgy: form.locationBrgy.trim(),
+        firstName: currentComparable.firstName,
+        lastName: currentComparable.lastName,
+        phoneNumber: currentComparable.phone,
+        bio: currentComparable.bio,
+        locationProv: currentComparable.locationProv,
+        locationCity: currentComparable.locationCity,
+        locationBrgy: currentComparable.locationBrgy,
         currentPassword: form.currentPassword.trim(),
         newPassword: form.newPassword.trim(),
-        profileImage,
-        coverImage,
       });
 
       if (user) {
@@ -440,6 +510,7 @@ export default function ProfilePage() {
         newPassword: "",
         confirmPassword: "",
       }));
+      setEditSnapshot(currentComparable);
       setEditOpen(false);
       showToast("✅ Profile updated successfully");
     } catch (err) {
@@ -470,9 +541,52 @@ export default function ProfilePage() {
   const initials = `${user?.firstName?.[0] ?? ""}${user?.lastName?.[0] ?? ""}`.toUpperCase() || "?";
   const fullName = user ? `${user.firstName} ${user.lastName}` : "—";
   const locationText = [user?.locationCity, user?.locationProv].filter(Boolean).join(", ") || "Location not set";
+  const isVerifiedSeller = (user?.status ?? "").toLowerCase() === "verified";
 
   // Shared label style
   const lbl = "text-xs font-medium text-stone-600 dark:text-stone-400 mb-1.5 block";
+
+  async function handleEditProfileClick() {
+    if (editOpen) {
+      setEditOpen(false);
+      return;
+    }
+
+    setLoadingEditProfile(true);
+    try {
+      const payload = await getProfileData();
+      setUserListings(payload.listings);
+      setBookmarkListings(payload.bookmarks);
+      saveUserData(payload.user);
+
+      const nextSnapshot: EditableProfileSnapshot = {
+        firstName: payload.user.firstName,
+        lastName: payload.user.lastName,
+        bio: payload.user.bio ?? "",
+        phone: payload.user.phoneNumber ?? "",
+        locationProv: payload.user.locationProv ?? "",
+        locationCity: payload.user.locationCity ?? "",
+        locationBrgy: payload.user.locationBrgy ?? "",
+      };
+
+      setEditSnapshot(nextSnapshot);
+      setForm((prev) => ({
+        ...prev,
+        ...nextSnapshot,
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+      }));
+
+      setEditOpen(true);
+    } catch (err) {
+      const message = typeof err === "string" ? err : (err instanceof Error ? err.message : "Failed to load latest profile data");
+      showToast(message);
+      setEditOpen(false);
+    } finally {
+      setLoadingEditProfile(false);
+    }
+  }
 
   return (
     <div className="min-h-screen bg-stone-100 dark:bg-[#0f1117]">
@@ -557,16 +671,18 @@ export default function ProfilePage() {
               <div className="flex items-center gap-2 pb-1">
                 <Button variant="outline" size="sm"
                   className="text-xs rounded-full border-stone-200 dark:border-[#2a2d3e] text-stone-600 dark:text-stone-300 hover:border-stone-400 dark:hover:border-stone-500 dark:bg-transparent dark:hover:bg-[#252837]"
-                  onClick={() => setEditOpen((v) => !v)}>
+                  onClick={handleEditProfileClick}
+                  disabled={loadingEditProfile}>
                   <Edit2 className="w-3 h-3" />
-                  {editOpen ? "Cancel" : "Edit Profile"}
+                  {loadingEditProfile ? "Loading..." : editOpen ? "Cancel" : "Edit Profile"}
                 </Button>
               </div>
             </div>
 
-            {/* Name */}
+            {/* Name + badge */}
             <div className="flex flex-wrap items-center gap-2 mb-1">
               <h1 className="text-xl font-bold text-stone-900 dark:text-stone-100">{fullName}</h1>
+              <VerificationBadge state={verificationState} />
             </div>
             <p className="text-xs text-stone-400 dark:text-stone-500 mb-3">Member since Jan 2024</p>
 
@@ -597,13 +713,13 @@ export default function ProfilePage() {
                   <p className="text-xs text-stone-400 dark:text-stone-500 mt-1">{form.bio.length} / 200</p>
                 </div>
                 <div>
-                  <label className={lbl}>Phone (private)</label>
+                  <label className={lbl}>Phone Number</label>
                   <Input
                     id="phoneNumber"
                     name="phoneNumber"
                     value={form.phone}
                     onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                    placeholder="+63 9XX XXX XXXX"
+                    placeholder="09XX XXX XXXX"
                     type="tel"
                     autoComplete="tel-national"
                     inputMode="tel"
@@ -756,8 +872,8 @@ export default function ProfilePage() {
                     <p className="font-semibold text-stone-400 text-sm">Loading listings...</p>
                   </div>
                 ) : allListings.length > 0
-                  ? <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 p-4">{allListings.map((l) => <ProfileListingCard key={l.id} listing={l} showMeta tab={listingTab} />)}<AddListingCard /></div>
-                  : <div className="text-center py-14 px-6"><Package className="w-10 h-10 text-stone-200 dark:text-stone-700 mx-auto mb-3" /><p className="font-semibold text-stone-400 text-sm">No listings yet</p><Link href="/create"><Button size="sm" className="mt-4 rounded-full bg-stone-900 hover:bg-stone-800 text-white text-xs"><Plus className="w-3 h-3" /> Add Listing</Button></Link></div>}
+                  ? <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 p-4">{allListings.map((l) => <ProfileListingCard key={l.id} listing={l} showMeta tab={listingTab} />)}{isVerifiedSeller && <AddListingCard />}</div>
+                  : <div className="text-center py-14 px-6"><Package className="w-10 h-10 text-stone-200 dark:text-stone-700 mx-auto mb-3" /><p className="font-semibold text-stone-400 text-sm">No listings yet</p>{isVerifiedSeller && <Link href="/create"><Button size="sm" className="mt-4 rounded-full bg-stone-900 hover:bg-stone-800 text-white text-xs"><Plus className="w-3 h-3" /> Add Listing</Button></Link>}</div>}
               </>)}
 
               {/* Saved Items */}
