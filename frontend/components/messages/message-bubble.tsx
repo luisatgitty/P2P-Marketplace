@@ -30,9 +30,7 @@ function formatTime(iso: string) {
 // Layout rules:
 //   1 file  → full width, 16:9 for video, 4:3 for image
 //   2 files → side by side, equal width, square crop
-//   3 files → big left (2/3) + two stacked right (1/3)
-//   4 files → 2×2 grid
-//   5+ files→ 2×2 grid, last cell shows "+N more" overlay
+//   3+ files→ compact stack preview (2 tiles), second tile shows "+N more"
 
 function AttachmentGrid({ attachments }: { attachments: MessageAttachment[] }) {
   const count = attachments.length;
@@ -93,40 +91,23 @@ function AttachmentGrid({ attachments }: { attachments: MessageAttachment[] }) {
     );
   }
 
-  if (count === 3) {
-    return (
-      <div className="grid grid-cols-3 gap-1" style={{ gridTemplateRows: "1fr 1fr" }}>
-        {/* Big cell spans 2 rows on the left (2/3 width) */}
-        <MediaCell att={attachments[0]} className="col-span-2 row-span-2 aspect-square" />
-        <MediaCell att={attachments[1]} className="aspect-square" />
-        <MediaCell att={attachments[2]} className="aspect-square" />
-      </div>
-    );
-  }
-
-  // 4+ files → 2×2 grid, last cell may show "+N more"
-  const visible = attachments.slice(0, 4);
-  const remaining = count - 4;
+  // 3+ files → compact preview: show first 2 only, second has "+N" overlay
+  const first = attachments[0];
+  const second = attachments[1];
+  const hiddenCount = count - 2;
 
   return (
     <div className="grid grid-cols-2 gap-1">
-      {visible.map((att, i) => {
-        const isLast = i === 3 && remaining > 0;
-        return (
-          <MediaCell
-            key={att.id}
-            att={att}
-            className="aspect-square"
-            overlay={
-              isLast ? (
-                <div className="absolute inset-0 flex items-center justify-center bg-black/55">
-                  <span className="text-white font-bold text-lg">+{remaining}</span>
-                </div>
-              ) : undefined
-            }
-          />
-        );
-      })}
+      <MediaCell att={first} className="aspect-square" />
+      <MediaCell
+        att={second}
+        className="aspect-square"
+        overlay={
+          <div className="absolute inset-0 flex items-center justify-center bg-black/55">
+            <span className="text-white font-bold text-lg">+{hiddenCount}</span>
+          </div>
+        }
+      />
     </div>
   );
 }
@@ -144,25 +125,19 @@ function ReplyQuote({
   currentUserId: string;
   otherName: string;
 }) {
-  const senderLabel = replyTo.senderId === currentUserId ? "You" : otherName;
   return (
     <div
       className={cn(
-        "flex gap-2 px-3 pt-2 pb-1 rounded-t-xl -mb-1 border-l-2 text-xs",
+        "flex gap-2 px-3 pt-2 pb-1 rounded-t-xl text-xs",
         isMe
-          ? "bg-amber-800/40 border-amber-300/60"
-          : "bg-stone-100 dark:bg-stone-700/40 border-stone-400 dark:border-stone-500"
+          ? "bg-amber-800/40"
+          : "bg-stone-100 dark:bg-stone-700/40"
       )}
     >
       <CornerUpLeft size={11} className={cn("mt-0.5 shrink-0", isMe ? "text-amber-200/70" : "text-stone-400 dark:text-stone-500")} />
-      <div className="min-w-0">
-        <p className={cn("font-semibold text-[10px] truncate", isMe ? "text-amber-200" : "text-stone-500 dark:text-stone-400")}>
-          {senderLabel}
-        </p>
-        <p className={cn("truncate leading-snug", isMe ? "text-amber-100/70" : "text-stone-400 dark:text-stone-500")}>
-          {replyTo.contentPreview}
-        </p>
-      </div>
+      <p className={cn("min-w-0 truncate leading-snug", isMe ? "text-amber-100/70" : "text-stone-400 dark:text-stone-500")}>
+        {replyTo.contentPreview}
+      </p>
     </div>
   );
 }

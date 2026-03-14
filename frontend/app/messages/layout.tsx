@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import Image from "next/image";
 import { cn } from "@/lib/utils";
 import type { MessageTab } from "@/types/messaging";
 import MessagesTabNav from "@/components/messages/messages-tab-nav";
