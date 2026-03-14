@@ -4,10 +4,9 @@ import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import {
-  MapPin, Mail, Phone, Calendar, Star, Eye, MessageCircle,
-  Edit2, Plus, CheckCircle, Clock, ShieldCheck, Upload,
-  ChevronRight, Package, Heart, BarChart2, X, Camera,
-  TrendingUp, Trash2, AlertTriangle,
+  MapPin, Mail, Calendar, Star, Eye, MessageCircle,
+  Edit2, Plus, ShieldCheck, Upload, Package, Heart, 
+  X, Camera, Trash2, AlertTriangle,
 } from "lucide-react";
 import { useUser } from "@/utils/UserContext";
 import { Button } from "@/components/ui/button";
@@ -25,15 +24,17 @@ import {
   getProvinces,
   type LocationOption,
 } from "@/services/locationService";
-import { type PostCardProps } from "@/components/post-card";
 import { cn } from "@/lib/utils";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type VerificationState = "unverified" | "pending" | "verified" | "rejected";
 type VerifyStep = 1 | 2 | 3 | 4;
-type ListingTab = "active" | "sold" | "drafts";
+type ListingTab = "all" | "active" | "sold" | "booked";
 type ProfileTab = "listings" | "saved";
 type DocType = "philsys" | "passport" | "drivers" | "sss" | "voters" | "other" | null;
+
+const SOLD_STATUSES = new Set(["sold", "rented", "completed"]);
+const BOOKED_STATUSES = new Set(["hidden"]);
 
 interface ProfileForm {
   firstName: string;
@@ -61,27 +62,33 @@ function resolveVerificationState(status: string): VerificationState {
 function VerificationBadge({ state }: { state: VerificationState }) {
   if (state === "verified") return (
     <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700">
-      <ShieldCheck className="w-3 h-3" /> Verified Seller
-    </span>
-  );
-  if (state === "pending") return (
-    <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 border border-orange-200 dark:border-orange-800">
-      <Clock className="w-3 h-3" /> Pending Verification
+      <ShieldCheck className="w-3 h-3" /> Verified
     </span>
   );
   return (
     <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-800">
-      {state === "rejected" ? "Verification Rejected" : "Unverified"}
+      <ShieldCheck className="w-3 h-3" /> Unverified
     </span>
   );
 }
 
 // ─── Profile listing card ─────────────────────────────────────────────────────
-function ProfileListingCard({ listing, showMeta = false, tab }: { listing: PostCardProps; showMeta?: boolean; tab?: ListingTab }) {
+function ProfileListingCard({ listing, showMeta = false, tab }: { listing: ProfileListingItem; showMeta?: boolean; tab?: ListingTab }) {
   const badgeClass = { sell: "bg-stone-800 text-stone-100", rent: "bg-teal-700 text-white", service: "bg-violet-700 text-white" }[listing.type];
   const badgeLabel = { sell: "For Sale", rent: "For Rent", service: "Service" }[listing.type];
-  const statusColor: Record<ListingTab, string> = { active: "text-teal-600", sold: "text-red-500", drafts: "text-stone-400" };
-  const statusLabel: Record<ListingTab, string> = { active: "Active", sold: "Sold", drafts: "Draft" };
+  const statusColor: Record<ListingTab, string> = { all: "text-stone-500", active: "text-teal-600", sold: "text-red-500", booked: "text-stone-400" };
+  const statusLabel: Record<ListingTab, string> = { all: "All", active: "Active", sold: "Sold", booked: "Booked" };
+  const normalizedStatus = (listing.status ?? "").toLowerCase();
+  const statusByListing = SOLD_STATUSES.has(normalizedStatus)
+    ? { label: "Sold", color: statusColor.sold }
+    : BOOKED_STATUSES.has(normalizedStatus)
+      ? { label: "Booked", color: statusColor.booked }
+      : { label: "Active", color: statusColor.active };
+  const statusMeta = tab === "all"
+    ? statusByListing
+    : tab
+      ? { label: statusLabel[tab], color: statusColor[tab] }
+      : null;
   const fmt = new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP", minimumFractionDigits: 0 });
   return (
     <Link href={`/listing/${listing.id}`} className="block group">
@@ -89,9 +96,9 @@ function ProfileListingCard({ listing, showMeta = false, tab }: { listing: PostC
         <div className="relative aspect-4/3 bg-stone-100 dark:bg-[#13151f] overflow-hidden">
           <img src={listing.imageUrl} alt={listing.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
           <span className={cn("absolute top-2 left-2 text-[10px] font-semibold px-2 py-0.5 rounded-full", badgeClass)}>{badgeLabel}</span>
-          {showMeta && tab && (
-            <span className={cn("absolute top-2 right-2 text-[10px] font-semibold bg-white/90 dark:bg-black/70 px-2 py-0.5 rounded-full", statusColor[tab])}>
-              ● {statusLabel[tab]}
+          {showMeta && statusMeta && (
+            <span className={cn("absolute top-2 right-2 text-[10px] font-semibold bg-white/90 dark:bg-black/70 px-2 py-0.5 rounded-full", statusMeta.color)}>
+              ● {statusMeta.label}
             </span>
           )}
         </div>
@@ -118,25 +125,21 @@ function ProfileListingCard({ listing, showMeta = false, tab }: { listing: PostC
   );
 }
 
-// ─── Seller stats ─────────────────────────────────────────────────────────────
-function SellerStats() {
-  const stats = [
-    { value: "12",   label: "Active Listings", icon: <Package className="w-4 h-4 text-stone-400 dark:text-stone-500" />,   delta: "+3 this month",    color: "text-teal-600 dark:text-teal-400"  },
-    { value: "₱84k", label: "Total Sales",     icon: <BarChart2 className="w-4 h-4 text-stone-400 dark:text-stone-500" />, delta: "+₱12k this month", color: "text-teal-600 dark:text-teal-400"  },
-    { value: "4.9",  label: "Avg. Rating",     icon: <Star className="w-4 h-4 text-stone-400 dark:text-stone-500" />,      delta: "42 reviews",       color: "text-amber-500 dark:text-amber-400"},
-    { value: "98%",  label: "Response Rate",   icon: <TrendingUp className="w-4 h-4 text-stone-400 dark:text-stone-500" />,delta: "Avg. reply 2h",    color: "text-teal-600 dark:text-teal-400"  },
-  ];
+function AddListingCard() {
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
-      {stats.map((s) => (
-        <div key={s.label} className="bg-white dark:bg-[#1c1f2e] rounded-2xl border border-stone-200 dark:border-[#2a2d3e] p-4 shadow-sm">
-          <div className="flex items-center justify-between mb-1">{s.icon}</div>
-          <p className="text-2xl font-bold text-stone-900 dark:text-stone-100 leading-none">{s.value}</p>
-          <p className="text-xs text-stone-500 dark:text-stone-400 mt-1">{s.label}</p>
-          <p className={cn("text-[11px] font-medium mt-1.5", s.color)}>{s.delta}</p>
+    <Link href="/create" className="block group">
+      <div className="bg-white dark:bg-[#1c1f2e] rounded-2xl overflow-hidden border border-dashed border-stone-300 dark:border-[#3a3e52] hover:-translate-y-1 hover:shadow-md transition-all duration-200 h-full">
+        <div className="relative aspect-4/3 bg-stone-50 dark:bg-[#13151f] flex items-center justify-center">
+          <div className="w-11 h-11 rounded-full bg-stone-900 dark:bg-stone-200 text-white dark:text-stone-900 flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform duration-200">
+            <Plus className="w-5 h-5" />
+          </div>
         </div>
-      ))}
-    </div>
+        <div className="p-3">
+          <p className="text-stone-800 dark:text-stone-100 font-semibold text-sm leading-tight">Add Listing</p>
+          <p className="text-xs text-stone-400 dark:text-stone-500 mt-1">Post a new item or service</p>
+        </div>
+      </div>
+    </Link>
   );
 }
 
@@ -581,21 +584,20 @@ export default function ProfilePage() {
     }
   }, [form.locationProv, provinces]);
 
-  const soldStatus = new Set(["sold", "rented", "completed"]);
-  const draftStatus = new Set(["hidden"]);
-
   const activeListings = userListings.filter((l) => {
     const status = (l.status ?? "").toLowerCase();
-    return status === "" || status === "active" || status === "available" || (!soldStatus.has(status) && !draftStatus.has(status));
+    return status === "" || status === "active" || status === "available" || (!SOLD_STATUSES.has(status) && !BOOKED_STATUSES.has(status));
   });
 
-  const soldListings = userListings.filter((l) => soldStatus.has((l.status ?? "").toLowerCase()));
-  const draftListings = userListings.filter((l) => draftStatus.has((l.status ?? "").toLowerCase()));
-  const allListings: PostCardProps[] = listingTab === "active"
-    ? activeListings
-    : listingTab === "sold"
-      ? soldListings
-      : draftListings;
+  const soldListings = userListings.filter((l) => SOLD_STATUSES.has((l.status ?? "").toLowerCase()));
+  const bookedListings = userListings.filter((l) => BOOKED_STATUSES.has((l.status ?? "").toLowerCase()));
+  const allListings: ProfileListingItem[] = listingTab === "all"
+    ? userListings
+    : listingTab === "active"
+      ? activeListings
+      : listingTab === "sold"
+        ? soldListings
+        : bookedListings;
 
   function showToast(msg: string) { setToast(msg); setTimeout(() => setToast(null), 2800); }
 
@@ -760,11 +762,6 @@ export default function ProfilePage() {
                   <Edit2 className="w-3 h-3" />
                   {editOpen ? "Cancel" : "Edit Profile"}
                 </Button>
-                {verificationState === "verified" && (
-                  <Button size="sm" className="text-xs rounded-full bg-stone-900 hover:bg-stone-800 text-white" onClick={() => showToast("Opening new listing form…")}>
-                    <Plus className="w-3 h-3" /> New Listing
-                  </Button>
-                )}
               </div>
             </div>
 
@@ -782,7 +779,6 @@ export default function ProfilePage() {
               <span className="flex items-center gap-1.5 text-xs text-stone-500 dark:text-stone-400"><Calendar className="w-3.5 h-3.5 text-stone-400 dark:text-stone-500" /> Last active today</span>
               {verificationState === "verified" && (<>
                 <span className="flex items-center gap-1.5 text-xs text-stone-500 dark:text-stone-400"><Star className="w-3.5 h-3.5 text-amber-400" /> 4.9 · 42 reviews</span>
-                <span className="flex items-center gap-1.5 text-xs text-teal-600 dark:text-teal-400 font-medium"><CheckCircle className="w-3.5 h-3.5" /> Identity Verified</span>
               </>)}
             </div>
           </div>
@@ -924,9 +920,6 @@ export default function ProfilePage() {
           </div>
         )}
 
-        {/* ── Seller stats ── */}
-        {verificationState === "verified" && <SellerStats />}
-
         {/* ── Two-col layout ── */}
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_288px] gap-5 items-start">
 
@@ -950,32 +943,30 @@ export default function ProfilePage() {
               {profileTab === "listings" && (<>
                 <div className="flex items-center justify-between px-4 pt-3 pb-2">
                   <div className="flex gap-1">
-                    {(["active", "sold", "drafts"] as const).map((t) => (
+                    {(["all", "active", "sold", "booked"] as const).map((t) => (
                       <button key={t} onClick={() => setListingTab(t)}
                         className={cn("text-xs font-medium px-3 py-1.5 rounded-full transition-colors capitalize",
                           listingTab === t
                             ? "bg-stone-900 dark:bg-stone-200 text-white dark:text-stone-900"
                             : "text-stone-400 dark:text-stone-500 hover:text-stone-600 dark:hover:text-stone-300 hover:bg-stone-100 dark:hover:bg-[#252837]")}>
-                        {t === "active"
+                        {t === "all"
+                          ? `📋 All (${userListings.length})`
+                          : t === "active"
                           ? `🟢 Active (${activeListings.length})`
                           : t === "sold"
                             ? `✅ Sold (${soldListings.length})`
-                            : `📝 Drafts (${draftListings.length})`}
+                            : `📝 Booked (${bookedListings.length})`}
                       </button>
                     ))}
                   </div>
-                  <Link href="/create">
-                    <Button size="sm" className="text-xs rounded-full bg-stone-900 hover:bg-stone-800 text-white h-7 px-3">
-                      <Plus className="w-3 h-3" /> Add
-                    </Button>
-                  </Link>
+                  
                 </div>
                 {loadingProfile ? (
                   <div className="text-center py-14 px-6">
                     <p className="font-semibold text-stone-400 text-sm">Loading listings...</p>
                   </div>
                 ) : allListings.length > 0
-                  ? <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 p-4">{allListings.map((l) => <ProfileListingCard key={l.id} listing={l} showMeta tab={listingTab} />)}</div>
+                  ? <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 p-4">{allListings.map((l) => <ProfileListingCard key={l.id} listing={l} showMeta tab={listingTab} />)}<AddListingCard /></div>
                   : <div className="text-center py-14 px-6"><Package className="w-10 h-10 text-stone-200 dark:text-stone-700 mx-auto mb-3" /><p className="font-semibold text-stone-400 text-sm">No listings yet</p><Link href="/create"><Button size="sm" className="mt-4 rounded-full bg-stone-900 hover:bg-stone-800 text-white text-xs"><Plus className="w-3 h-3" /> Add Listing</Button></Link></div>}
               </>)}
 
@@ -1055,35 +1046,6 @@ export default function ProfilePage() {
                 <p className="text-xs text-stone-400 dark:text-stone-500 mt-2">Seller since March 2024 · 42 sales</p>
               </div>
             )}
-
-            {/* Account info */}
-            <div className="bg-white dark:bg-[#1c1f2e] rounded-2xl border border-stone-200 dark:border-[#2a2d3e] shadow-sm overflow-hidden">
-              <div className="px-5 py-3.5 border-b border-stone-200 dark:border-[#2a2d3e]">
-                <h3 className="font-bold text-stone-900 dark:text-stone-100 text-sm">Account</h3>
-              </div>
-              <div className="divide-y divide-stone-100 dark:divide-[#252837]">
-                {[
-                  { icon: <Mail className="w-3.5 h-3.5" />,        label: "Email",    value: user?.email ?? "—", ok: true },
-                  { icon: <Phone className="w-3.5 h-3.5" />,       label: "Phone",    value: user?.phoneNumber || "Not added", ok: Boolean(user?.phoneNumber) },
-                  { icon: <ShieldCheck className="w-3.5 h-3.5" />, label: "Identity", value: verificationState === "verified" ? "Verified ✓" : verificationState === "pending" ? "Under review…" : verificationState === "rejected" ? "Rejected" : "Not verified", ok: verificationState === "verified" },
-                ].map((item) => (
-                  <div key={item.label} className="flex items-center justify-between px-5 py-3">
-                    <span className="flex items-center gap-2 text-xs text-stone-400 dark:text-stone-500">{item.icon}{item.label}</span>
-                    <span className={cn("text-xs font-medium", item.ok ? "text-teal-600 dark:text-teal-400" : "text-amber-600 dark:text-amber-500")}>{item.value}</span>
-                  </div>
-                ))}
-                <div className="flex items-center justify-between px-5 py-3">
-                  <span className="text-xs text-stone-400 dark:text-stone-500">Role</span>
-                  <span className="text-xs font-medium text-stone-600 dark:text-stone-300">{user?.role ?? "USER"}</span>
-                </div>
-                <div className="px-5 py-3">
-                  <a href="#" className="text-xs text-stone-400 dark:text-stone-500 hover:text-stone-600 dark:hover:text-stone-300 flex items-center gap-1">
-                    Change password <ChevronRight className="w-3 h-3" />
-                  </a>
-                </div>
-              </div>
-            </div>
-
           </div>
         </div>
       </div>
