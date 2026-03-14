@@ -5,10 +5,10 @@ import Link from "next/link";
 import { Suspense, useState, useRef, useEffect } from "react";
 import { useUser } from "@/utils/UserContext";
 import { useTheme } from "next-themes";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import {
   Sun, Moon, MessageCircle, LogOut, User,
-  ChevronDown, Tag, Store, Wrench, LayoutGrid, UserPlus,
+  ChevronDown, Tag, Store, Wrench, LayoutGrid, UserPlus, ShieldCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -24,7 +24,9 @@ const TABS = [
 function NavTabsInner() {
   const searchParams = useSearchParams();
   const router        = useRouter();
+  const pathname      = usePathname();
   const activeType    = searchParams.get("type") || "all";
+  const isHomePage    = pathname === "/";
 
   const handleTabClick = (value: string) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -40,7 +42,7 @@ function NavTabsInner() {
   return (
     <div className="flex items-center gap-0.5 sm:gap-1">
       {TABS.map((tab) => {
-        const isActive = activeType === tab.value;
+        const isActive = isHomePage && activeType === tab.value;
         return (
           <button
             key={tab.value}
@@ -126,20 +128,6 @@ export default function Navbar() {
           {/* ── RIGHT: Actions ──────────────────────────────────── */}
           <div className="flex items-center gap-1 shrink-0">
 
-            {/* Dark mode toggle */}
-            {mounted && (
-              <button
-                onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-                className="p-2 rounded-lg hover:bg-white/10 transition-colors"
-                aria-label="Toggle theme"
-              >
-                {theme === "dark"
-                  ? <Sun size={17} className="text-amber-400" />
-                  : <Moon size={17} className="text-stone-300" />
-                }
-              </button>
-            )}
-
             {/* Profile dropdown */}
             <div className="relative" ref={dropdownRef}>
               <button
@@ -169,8 +157,9 @@ export default function Navbar() {
                     <>
                       {/* User info */}
                       <div className="px-4 py-3 border-b border-white/10 bg-white/5">
-                        <p className="text-sm font-semibold text-white leading-tight">
+                        <p className="text-sm font-semibold text-white leading-tight flex items-center gap-1.5">
                           {user?.firstName} {user?.lastName}
+                          {isVerifiedSeller && <ShieldCheck size={14} className="text-amber-400" />}
                         </p>
                         <p className="text-xs text-stone-400 truncate mt-0.5">{user?.email}</p>
                       </div>
@@ -214,6 +203,18 @@ export default function Navbar() {
                       </div>
 
                       <div className="border-t border-white/10" />
+                      {mounted && (
+                        <button
+                          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                          className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-stone-200 hover:bg-white/10 hover:text-white transition-colors"
+                        >
+                          {theme === "dark"
+                            ? <Sun size={15} className="text-amber-400" />
+                            : <Moon size={15} className="text-stone-300" />
+                          }
+                          {theme === "dark" ? "Light Mode" : "Dark Mode"}
+                        </button>
+                      )}
                       <button
                         onClick={() => { clearUserData(); setDropdownOpen(false); }}
                         className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors"
@@ -224,6 +225,18 @@ export default function Navbar() {
                     </>
                   ) : (
                     <div className="py-1">
+                      {mounted && (
+                        <button
+                          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                          className="flex items-center gap-3 w-full px-4 py-3 text-sm font-semibold text-stone-200 hover:bg-white/10 hover:text-white transition-colors"
+                        >
+                          {theme === "dark"
+                            ? <Sun size={15} className="text-amber-400" />
+                            : <Moon size={15} className="text-stone-300" />
+                          }
+                          {theme === "dark" ? "Light Mode" : "Dark Mode"}
+                        </button>
+                      )}
                       <Link
                         href="/login"
                         onClick={() => setDropdownOpen(false)}
