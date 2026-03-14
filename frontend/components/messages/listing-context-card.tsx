@@ -36,7 +36,6 @@ export default function ListingContextCard({ listing }: ListingContextCardProps)
           <span className="text-xs font-bold text-amber-700 dark:text-amber-500">
             {fmt(listing.price)}{listing.priceUnit ?? ""}
           </span>
-          <ListingTypeBadge type={listing.listingType} />
         </div>
       </div>
 

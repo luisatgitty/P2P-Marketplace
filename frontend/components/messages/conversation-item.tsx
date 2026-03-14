@@ -99,15 +99,14 @@ export default function ConversationItem({
           >
             {otherParticipant.firstName} {otherParticipant.lastName}
           </span>
-          <span className="text-[10px] text-stone-400 dark:text-stone-500 shrink-0">
+          <span className="text-[11px] text-stone-400 dark:text-stone-500 shrink-0">
             {relativeTime(lastMessageAt)}
           </span>
         </div>
 
-        {/* Row 2: Listing title + type badge */}
+        {/* Row 2: Listing title + price */}
         <div className="flex items-center gap-1.5 mb-0.5">
-          {showTypeBadge && <ListingTypeBadge type={listing.listingType} />}
-          <span className="text-[11px] text-stone-400 dark:text-stone-500 truncate">
+          <span className="text-[12px] text-stone-400 dark:text-stone-500 truncate">
             {listing.title}
             {" · "}
             <span className="text-amber-600 dark:text-amber-500 font-semibold">

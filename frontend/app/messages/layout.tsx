@@ -32,22 +32,7 @@ export default function MessagesLayout({ children }: { children: React.ReactNode
       {/* ══════════════════════════════════════════════
           LEFT — vertical tab sidebar (md+)
       ══════════════════════════════════════════════ */}
-      <aside className="hidden md:flex flex-col w-14 lg:w-56 shrink-0 bg-[#1a2235] border-r border-white/5">
-
-        {/* Branding */}
-        <div className="flex items-center gap-2.5 px-3 lg:px-4 py-4 border-b border-white/5">
-          <Image
-            src="/logo.png"
-            alt="P2P Marketplace"
-            width={28}
-            height={28}
-            className="rounded-md shrink-0"
-          />
-          <span className="hidden lg:block font-bold text-sm text-white tracking-tight">
-            Messages
-          </span>
-        </div>
-
+      <aside className="hidden md:flex flex-col w-14 lg:w-32 shrink-0 bg-[#1a2235] border-r border-white/5">
         {/* Tab navigation */}
         <div className="flex-1 overflow-hidden pt-1">
           <MessagesTabNav
@@ -55,20 +40,6 @@ export default function MessagesLayout({ children }: { children: React.ReactNode
             onTabChange={handleTabChange}
             orientation="vertical"
           />
-        </div>
-
-        {/* Bottom: back to marketplace link */}
-        <div className="p-3 border-t border-white/5">
-          <a
-            href="/"
-            className={cn(
-              "flex items-center gap-2.5 px-3 py-2 rounded-lg text-stone-400 hover:text-stone-100 hover:bg-white/5 transition-colors",
-              "text-xs font-medium"
-            )}
-          >
-            <span className="text-base">←</span>
-            <span className="hidden lg:inline">Back to Marketplace</span>
-          </a>
         </div>
       </aside>
 
@@ -81,7 +52,7 @@ export default function MessagesLayout({ children }: { children: React.ReactNode
         className={cn(
           "flex flex-col border-r border-border bg-white dark:bg-[#1c1f2e] shrink-0",
           // Width
-          "w-full md:w-80",
+          "w-full md:w-90",
           // Mobile visibility
           isInConversation ? "hidden md:flex" : "flex"
         )}
@@ -90,11 +61,8 @@ export default function MessagesLayout({ children }: { children: React.ReactNode
         <div className="flex items-center justify-between px-4 py-3 border-b border-border">
           <div>
             <h1 className="text-base font-bold text-stone-900 dark:text-stone-50 leading-tight">
-              Inbox
+              Messages
             </h1>
-            <p className="text-[11px] text-stone-400 dark:text-stone-500 capitalize">
-              {activeTab === "all" ? "All messages" : activeTab}
-            </p>
           </div>
         </div>
 
