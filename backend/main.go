@@ -27,7 +27,8 @@ func init() {
 func main() {
 	// Initialize Fiber app with custom configuration
 	app := fiber.New(fiber.Config{
-		AppName: os.Getenv("PROJ_NAME"),
+		AppName:   os.Getenv("PROJ_NAME"),
+		BodyLimit: 20 * 1024 * 1024,
 	})
 
 	// CORS configuration

@@ -28,8 +28,33 @@ type UserFromDb struct {
 	CoverImg    string    `gorm:"column:cover_image_url"         json:"coverImageUrl"`
 	Role        string    `gorm:"column:role"                    json:"role"`
 	Status      string    `gorm:"column:verification_status"     json:"status"`
+	IsActive    bool      `gorm:"column:is_active"               json:"isActive"`
 	FailedLogin int       `gorm:"column:failed_login_attempts"   json:"failedLoginAttempts"`
 	LockedUntil time.Time `gorm:"column:account_locked_until"    json:"lockedUntil"`
+}
+
+type UpdateProfileBody struct {
+	FirstName       string            `json:"firstName"`
+	LastName        string            `json:"lastName"`
+	PhoneNumber     string            `json:"phoneNumber"`
+	Bio             string            `json:"bio"`
+	LocationProv    string            `json:"locationProv"`
+	LocationCity    string            `json:"locationCity"`
+	LocationBrgy    string            `json:"locationBrgy"`
+	CurrentPassword string            `json:"currentPassword"`
+	NewPassword     string            `json:"newPassword"`
+	ProfileImage    *ListingImageBody `json:"profileImage,omitempty"`
+	CoverImage      *ListingImageBody `json:"coverImage,omitempty"`
+}
+
+type UpdateProfileImagesBody struct {
+	ProfileImage *ListingImageBody `json:"profileImage,omitempty"`
+	CoverImage   *ListingImageBody `json:"coverImage,omitempty"`
+}
+
+type LocationOption struct {
+	Code string `json:"code"`
+	Name string `json:"name"`
 }
 
 type SessionFromDb struct {

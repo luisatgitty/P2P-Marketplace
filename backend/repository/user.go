@@ -26,7 +26,7 @@ func IsUserExist(email string) error {
 func GetUserByEmail(email string) (model.UserFromDb, error) {
 	db := middleware.DBConn
 	var user model.UserFromDb
-	selectQuery := "SELECT id, first_name, last_name, email, password_hash, role, verification_status, failed_login_attempts, account_locked_until, phone_number, bio, location_barangay, location_city, location_province, profile_image_url, cover_image_url FROM public.users WHERE email=$1"
+	selectQuery := "SELECT id, first_name, last_name, email, password_hash, role, verification_status, is_active, failed_login_attempts, account_locked_until, phone_number, bio, location_barangay, location_city, location_province, profile_image_url, cover_image_url FROM public.users WHERE email=$1"
 	results := db.Raw(selectQuery, email).Scan(&user)
 
 	if results.Error != nil {
@@ -41,7 +41,7 @@ func GetUserByEmail(email string) (model.UserFromDb, error) {
 func GetUserById(userId interface{}) (model.UserFromDb, error) {
 	db := middleware.DBConn
 	var user model.UserFromDb
-	selectQuery := "SELECT id, first_name, last_name, email, password_hash, role, verification_status, failed_login_attempts, account_locked_until, phone_number, bio, location_barangay, location_city, location_province, profile_image_url, cover_image_url FROM public.users WHERE id=$1"
+	selectQuery := "SELECT id, first_name, last_name, email, password_hash, role, verification_status, is_active, failed_login_attempts, account_locked_until, phone_number, bio, location_barangay, location_city, location_province, profile_image_url, cover_image_url FROM public.users WHERE id=$1"
 	results := db.Raw(selectQuery, userId).Scan(&user)
 
 	if results.Error != nil {

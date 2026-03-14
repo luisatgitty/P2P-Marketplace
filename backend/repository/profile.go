@@ -1,10 +1,18 @@
 package repository
 
 import (
+	"database/sql"
+	"encoding/base64"
 	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+	"time"
 
 	"p2p_marketplace/backend/middleware"
 	"p2p_marketplace/backend/model"
+
+	"gorm.io/gorm"
 )
 
 func GetProfileUserById(userId string) (model.ProfileUserFromDb, error) {
@@ -123,4 +131,242 @@ func GetUserBookmarks(userId string) ([]model.ProfileListingFromDb, error) {
 		return nil, fmt.Errorf("Failed to retrieve bookmarks")
 	}
 	return bookmarks, nil
+}
+
+func UpdateProfile(userId string, body model.UpdateProfileBody) error {
+	db := middleware.DBConn
+	tx := db.Begin()
+	if tx.Error != nil {
+		return tx.Error
+	}
+
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	if strings.TrimSpace(body.NewPassword) != "" {
+		user, err := GetUserById(userId)
+		if err != nil {
+			tx.Rollback()
+			return fmt.Errorf("Failed to validate current password")
+		}
+
+		if !middleware.IsPasswordMatch(body.CurrentPassword, user.Password) {
+			tx.Rollback()
+			return fmt.Errorf("Current password is incorrect")
+		}
+	}
+
+	updateQuery := `
+		UPDATE public.users
+		SET
+			first_name = $1,
+			last_name = $2,
+			phone_number = $3,
+			bio = $4,
+			location_province = $5,
+			location_city = $6,
+			location_barangay = $7,
+			updated_at = $8
+		WHERE id = $9
+	`
+
+	if err := tx.Exec(
+		updateQuery,
+		strings.TrimSpace(body.FirstName),
+		strings.TrimSpace(body.LastName),
+		strings.TrimSpace(body.PhoneNumber),
+		strings.TrimSpace(body.Bio),
+		strings.TrimSpace(body.LocationProv),
+		strings.TrimSpace(body.LocationCity),
+		strings.TrimSpace(body.LocationBrgy),
+		time.Now(),
+		userId,
+	).Error; err != nil {
+		tx.Rollback()
+		return fmt.Errorf("Failed to update profile")
+	}
+
+	if strings.TrimSpace(body.NewPassword) != "" {
+		passwordQuery := `
+			UPDATE public.users
+			SET password_hash = $1, updated_at = $2
+			WHERE id = $3
+		`
+		hashedPassword := middleware.HashPassword(strings.TrimSpace(body.NewPassword))
+		if err := tx.Exec(passwordQuery, hashedPassword, time.Now(), userId).Error; err != nil {
+			tx.Rollback()
+			return fmt.Errorf("Failed to update password")
+		}
+	}
+
+	if err := upsertUserImageTx(tx, userId, body.ProfileImage, "profile_image_url", "profiles"); err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	if err := upsertUserImageTx(tx, userId, body.CoverImage, "cover_image_url", "covers"); err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func UpdateProfileImages(userId string, body model.UpdateProfileImagesBody) error {
+	db := middleware.DBConn
+	tx := db.Begin()
+	if tx.Error != nil {
+		return tx.Error
+	}
+
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	if body.ProfileImage == nil && body.CoverImage == nil {
+		tx.Rollback()
+		return fmt.Errorf("No image provided")
+	}
+
+	if err := upsertUserImageTx(tx, userId, body.ProfileImage, "profile_image_url", "profiles"); err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	if err := upsertUserImageTx(tx, userId, body.CoverImage, "cover_image_url", "covers"); err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func upsertUserImageTx(tx *gorm.DB, userId string, image *model.ListingImageBody, columnName, folder string) error {
+	if image == nil || strings.TrimSpace(image.Data) == "" {
+		return nil
+	}
+
+	if columnName != "profile_image_url" && columnName != "cover_image_url" {
+		return fmt.Errorf("Invalid image column")
+	}
+
+	uploadRoot := getUploadRootDir()
+	baseDir := filepath.Join(uploadRoot, "users", folder)
+	if err := os.MkdirAll(baseDir, 0755); err != nil {
+		return fmt.Errorf("Failed to create user image upload directory")
+	}
+
+	decoded, err := base64.StdEncoding.DecodeString(strings.TrimSpace(image.Data))
+	if err != nil {
+		return fmt.Errorf("Failed to decode user image payload")
+	}
+
+	ext, err := extFromMime(image.MimeType)
+	if err != nil {
+		return err
+	}
+
+	randPart, err := randomHex(10)
+	if err != nil {
+		return fmt.Errorf("Failed to generate user image filename")
+	}
+
+	fileName := fmt.Sprintf("%d_%s%s", time.Now().UnixNano(), randPart, ext)
+	filePath := filepath.Join(baseDir, fileName)
+	if err := os.WriteFile(filePath, decoded, 0644); err != nil {
+		return fmt.Errorf("Failed to save user image file")
+	}
+
+	var previousURL sql.NullString
+	selectQuery := fmt.Sprintf("SELECT %s FROM public.users WHERE id = $1", columnName)
+	if err := tx.Raw(selectQuery, userId).Scan(&previousURL).Error; err != nil {
+		return fmt.Errorf("Failed to retrieve previous user image")
+	}
+	removeLocalUpload(uploadRoot, previousURL.String)
+
+	newURL := fmt.Sprintf("/uploads/users/%s/%s", folder, fileName)
+	updateQuery := fmt.Sprintf("UPDATE public.users SET %s = $1, updated_at = $2 WHERE id = $3", columnName)
+	if err := tx.Exec(updateQuery, newURL, time.Now(), userId).Error; err != nil {
+		return fmt.Errorf("Failed to save user image reference")
+	}
+
+	return nil
+}
+
+func removeLocalUpload(uploadRoot, rawURL string) {
+	trimmed := strings.TrimSpace(rawURL)
+	if !strings.HasPrefix(trimmed, "/uploads/") {
+		return
+	}
+
+	relPath := strings.TrimPrefix(trimmed, "/uploads/")
+	fullPath := filepath.Join(uploadRoot, relPath)
+	if err := os.Remove(filepath.Clean(fullPath)); err != nil && !os.IsNotExist(err) {
+		fmt.Println("Failed to remove previous user image:", err)
+	}
+}
+
+func getUploadRootDir() string {
+	preferred := filepath.Clean(filepath.Join("backend", "uploads"))
+	if _, err := os.Stat(preferred); err == nil {
+		return preferred
+	}
+	return filepath.Clean("uploads")
+}
+
+func DeactivateAccount(userId string) error {
+	db := middleware.DBConn
+	tx := db.Begin()
+	if tx.Error != nil {
+		return tx.Error
+	}
+
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	deactivateQuery := `
+		UPDATE public.users
+		SET
+			is_active = FALSE,
+			failed_login_attempts = 0,
+			account_locked_until = NULL,
+			updated_at = $1
+		WHERE id = $2
+	`
+	result := tx.Exec(deactivateQuery, time.Now(), userId)
+	if result.Error != nil {
+		tx.Rollback()
+		return fmt.Errorf("Failed to deactivate account")
+	}
+	if result.RowsAffected == 0 {
+		tx.Rollback()
+		return fmt.Errorf("User not found")
+	}
+
+	if err := tx.Exec(`DELETE FROM public.sessions WHERE user_id = $1`, userId).Error; err != nil {
+		tx.Rollback()
+		return fmt.Errorf("Failed to revoke user sessions")
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		return err
+	}
+
+	return nil
 }

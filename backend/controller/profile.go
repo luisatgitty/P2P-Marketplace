@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strings"
 
+	"p2p_marketplace/backend/config"
+	"p2p_marketplace/backend/middleware"
 	"p2p_marketplace/backend/model"
 	"p2p_marketplace/backend/repository"
 
@@ -40,6 +42,113 @@ func MeProfile(c *fiber.Ctx) error {
 		"listings":  mapProfileListings(listings, apiURL),
 		"bookmarks": mapProfileListings(bookmarks, apiURL),
 	})
+}
+
+func UpdateMeProfile(c *fiber.Ctx) error {
+	fmt.Println(c.Path())
+
+	userId := fmt.Sprintf("%v", c.Locals("userId"))
+	if strings.TrimSpace(userId) == "" || userId == "%!v(<nil>)" {
+		return SendErrorResponse(c, 401, "User is not authenticated", nil)
+	}
+
+	var body model.UpdateProfileBody
+	if err := c.BodyParser(&body); err != nil {
+		return SendErrorResponse(c, 400, "Invalid request body. Please contact support.", err)
+	}
+
+	body.FirstName = strings.TrimSpace(body.FirstName)
+	body.LastName = strings.TrimSpace(body.LastName)
+	body.Bio = strings.TrimSpace(body.Bio)
+	body.PhoneNumber = strings.TrimSpace(body.PhoneNumber)
+	body.LocationProv = strings.TrimSpace(body.LocationProv)
+	body.LocationCity = strings.TrimSpace(body.LocationCity)
+	body.LocationBrgy = strings.TrimSpace(body.LocationBrgy)
+	body.CurrentPassword = strings.TrimSpace(body.CurrentPassword)
+	body.NewPassword = strings.TrimSpace(body.NewPassword)
+
+	if len(body.FirstName) < config.NameMinLength || len(body.FirstName) > config.NameMaxLength {
+		return SendErrorResponse(c, 400, fmt.Sprintf("First name must be between %d and %d characters", config.NameMinLength, config.NameMaxLength), nil)
+	}
+	if len(body.LastName) < config.NameMinLength || len(body.LastName) > config.NameMaxLength {
+		return SendErrorResponse(c, 400, fmt.Sprintf("Last name must be between %d and %d characters", config.NameMinLength, config.NameMaxLength), nil)
+	}
+	if body.LocationProv == "" || body.LocationCity == "" {
+		return SendErrorResponse(c, 400, "Province and city/municipality are required", nil)
+	}
+	if len(body.Bio) > 200 {
+		return SendErrorResponse(c, 400, "Bio must not exceed 200 characters", nil)
+	}
+
+	if body.NewPassword != "" {
+		if body.CurrentPassword == "" {
+			return SendErrorResponse(c, 400, "Current password is required to set a new password", nil)
+		}
+		if err := middleware.ValidatePasswordLength(body.NewPassword); err != nil {
+			return SendErrorResponse(c, 400, err.Error(), err)
+		}
+	}
+
+	if err := repository.UpdateProfile(userId, body); err != nil {
+		return SendErrorResponse(c, 400, err.Error(), err)
+	}
+
+	updatedUser, err := repository.GetProfileUserById(userId)
+	if err != nil {
+		return SendErrorResponse(c, 500, "Profile updated but failed to retrieve latest profile", err)
+	}
+
+	return SendSuccessResponse(c, 200, "Profile updated successfully", map[string]any{
+		"user": mapProfileUser(updatedUser, c.BaseURL()),
+	})
+}
+
+func UpdateMeProfileImages(c *fiber.Ctx) error {
+	fmt.Println(c.Path())
+
+	userId := fmt.Sprintf("%v", c.Locals("userId"))
+	if strings.TrimSpace(userId) == "" || userId == "%!v(<nil>)" {
+		return SendErrorResponse(c, 401, "User is not authenticated", nil)
+	}
+
+	var body model.UpdateProfileImagesBody
+	if err := c.BodyParser(&body); err != nil {
+		return SendErrorResponse(c, 400, "Invalid request body. Please contact support.", err)
+	}
+
+	if body.ProfileImage == nil && body.CoverImage == nil {
+		return SendErrorResponse(c, 400, "At least one image is required", nil)
+	}
+
+	if err := repository.UpdateProfileImages(userId, body); err != nil {
+		return SendErrorResponse(c, 400, err.Error(), err)
+	}
+
+	updatedUser, err := repository.GetProfileUserById(userId)
+	if err != nil {
+		return SendErrorResponse(c, 500, "Images updated but failed to retrieve latest profile", err)
+	}
+
+	return SendSuccessResponse(c, 200, "Profile images updated successfully", map[string]any{
+		"user": mapProfileUser(updatedUser, c.BaseURL()),
+	})
+}
+
+func DeactivateMeProfile(c *fiber.Ctx) error {
+	fmt.Println(c.Path())
+
+	userId := fmt.Sprintf("%v", c.Locals("userId"))
+	if strings.TrimSpace(userId) == "" || userId == "%!v(<nil>)" {
+		return SendErrorResponse(c, 401, "User is not authenticated", nil)
+	}
+
+	if err := repository.DeactivateAccount(userId); err != nil {
+		return SendErrorResponse(c, 500, err.Error(), err)
+	}
+
+	c.Cookie(middleware.ExpiredCookie())
+
+	return SendSuccessResponse(c, 200, "Account deactivated successfully", nil)
 }
 
 func mapProfileUser(user model.ProfileUserFromDb, apiURL string) map[string]any {

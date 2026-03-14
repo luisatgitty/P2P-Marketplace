@@ -7,12 +7,24 @@ import {
   MapPin, Mail, Phone, Calendar, Star, Eye, MessageCircle,
   Edit2, Plus, CheckCircle, Clock, ShieldCheck, Upload,
   ChevronRight, Package, Heart, BarChart2, X, Camera,
-  TrendingUp, Trash2,
+  TrendingUp, Trash2, AlertTriangle,
 } from "lucide-react";
 import { useUser } from "@/utils/UserContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { getProfileData, type ProfileListingItem } from "@/services/profileService";
+import {
+  deactivateProfile,
+  getProfileData,
+  updateProfileImages,
+  updateProfileData,
+  type ProfileListingItem,
+} from "@/services/profileService";
+import {
+  getBarangaysByCity,
+  getCitiesByProvince,
+  getProvinces,
+  type LocationOption,
+} from "@/services/locationService";
 import { type PostCardProps } from "@/components/post-card";
 import { cn } from "@/lib/utils";
 
@@ -27,9 +39,13 @@ interface ProfileForm {
   firstName: string;
   lastName: string;
   bio: string;
-  location: string;
   phone: string;
-  paymentMethods: string;
+  locationProv: string;
+  locationCity: string;
+  locationBrgy: string;
+  currentPassword: string;
+  newPassword: string;
+  confirmPassword: string;
 }
 
 // ─── Mock data ────────────────────────────────────────────────────────────────
@@ -293,55 +309,136 @@ function VerifyModal({ open, onClose, onSubmit }: { open: boolean; onClose: () =
 }
 
 // ─── Image upload hook with remove support ────────────────────────────────────
-function useImageUpload(storageKey: string, initialSrc?: string | null) {
-  const [src, setSrc] = useState<string | null>(null);
+function useImageUpload(initialSrc?: string | null, onUploaded?: (file: File) => Promise<void>) {
+  const [src, setSrc] = useState<string | null>(initialSrc ?? null);
+  const [file, setFile] = useState<File | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const saved = localStorage.getItem(storageKey);
-    if (saved) {
-      setSrc(saved);
-      return;
-    }
-    if (initialSrc) setSrc(initialSrc);
-  }, [storageKey, initialSrc]);
+    setSrc(initialSrc ?? null);
+    setFile(null);
+  }, [initialSrc]);
 
   function trigger() { inputRef.current?.click(); }
 
   function remove() {
     setSrc(null);
-    localStorage.removeItem(storageKey);
+    setFile(null);
   }
 
-  function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+  async function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    const previous = src;
+    setFile(file);
+
     const reader = new FileReader();
     reader.onload = () => {
       const result = reader.result as string;
       setSrc(result);
-      localStorage.setItem(storageKey, result);
     };
     reader.readAsDataURL(file);
+
+    if (onUploaded) {
+      try {
+        await onUploaded(file);
+      } catch {
+        setSrc(previous ?? null);
+      }
+    }
+
     e.target.value = "";
   }
 
-  return { src, trigger, remove, inputRef, onFileChange };
+  return { src, file, trigger, remove, inputRef, onFileChange };
+}
+
+type EncodedImagePayload = {
+  name: string;
+  mimeType: string;
+  data: string;
+};
+
+async function compressImageForProfile(file: File): Promise<Blob> {
+  const objectUrl = URL.createObjectURL(file);
+  try {
+    const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const img = new window.Image();
+      img.onload = () => resolve(img);
+      img.onerror = () => reject(new Error("Invalid image file."));
+      img.src = objectUrl;
+    });
+
+    const maxDimension = 1200;
+    const scale = Math.min(1, maxDimension / Math.max(image.width, image.height));
+    const width = Math.max(1, Math.round(image.width * scale));
+    const height = Math.max(1, Math.round(image.height * scale));
+
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+
+    const context = canvas.getContext("2d");
+    if (!context) return file;
+
+    context.drawImage(image, 0, 0, width, height);
+    const blob = await new Promise<Blob | null>((resolve) => {
+      canvas.toBlob((output) => resolve(output), "image/webp", 0.8);
+    });
+
+    return blob ?? file;
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
+}
+
+async function encodeFileToPayload(file: File): Promise<EncodedImagePayload> {
+  const compressed = await compressImageForProfile(file);
+
+  const data = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result;
+      if (typeof result !== "string") {
+        reject(new Error("Failed to encode image."));
+        return;
+      }
+      resolve(result.split(",")[1] ?? "");
+    };
+    reader.onerror = () => reject(new Error("Failed to encode image."));
+    reader.readAsDataURL(compressed);
+  });
+
+  const baseName = file.name.replace(/\.[^/.]+$/, "");
+
+  return {
+    name: `${baseName}.webp`,
+    mimeType: "image/webp",
+    data,
+  };
 }
 
 // ─── MAIN PAGE ────────────────────────────────────────────────────────────────
 export default function ProfilePage() {
-  const { user, saveUserData } = useUser();
+  const { user, saveUserData, clearUserData } = useUser();
   const verificationState: VerificationState = resolveVerificationState(user?.status ?? "");
 
   const [editOpen, setEditOpen] = useState(false);
   const [form, setForm] = useState<ProfileForm>({
     firstName: user?.firstName ?? "",
     lastName: user?.lastName ?? "",
-    bio: "", location: "", phone: "",
-    paymentMethods: "GCash, Cash on Delivery",
+    bio: "",
+    phone: "",
+    locationProv: "",
+    locationCity: "",
+    locationBrgy: "",
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
   });
   const [saving, setSaving] = useState(false);
+  const [deactivating, setDeactivating] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [userListings, setUserListings] = useState<ProfileListingItem[]>([]);
   const [bookmarkListings, setBookmarkListings] = useState<ProfileListingItem[]>([]);
@@ -350,11 +447,104 @@ export default function ProfilePage() {
   const [verifyOpen, setVerifyOpen] = useState(false);
   const [showAvatarMenu, setShowAvatarMenu] = useState(false);
   const [loadingProfile, setLoadingProfile] = useState(true);
+  const [provinces, setProvinces] = useState<LocationOption[]>([]);
+  const [cities, setCities] = useState<LocationOption[]>([]);
+  const [barangays, setBarangays] = useState<LocationOption[]>([]);
+  const [selectedProvCode, setSelectedProvCode] = useState("");
+  const [selectedCityCode, setSelectedCityCode] = useState("");
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [uploadingCover, setUploadingCover] = useState(false);
 
-  const avatar = useImageUpload("profile_avatar", user?.profileImageUrl ?? null);
-  const cover  = useImageUpload("profile_cover", user?.coverImageUrl ?? null);
+  const handleAvatarUpload = async (file: File) => {
+    setUploadingAvatar(true);
+    try {
+      const profileImage = await encodeFileToPayload(file);
+      const updatedUser = await updateProfileImages({ profileImage });
+      if (user) saveUserData({ ...user, ...updatedUser });
+      showToast("✅ Profile photo updated");
+    } catch (err) {
+      const message = typeof err === "string" ? err : (err instanceof Error ? err.message : "Failed to update profile photo");
+      showToast(message);
+      throw err;
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
+
+  const handleCoverUpload = async (file: File) => {
+    setUploadingCover(true);
+    try {
+      const coverImage = await encodeFileToPayload(file);
+      const updatedUser = await updateProfileImages({ coverImage });
+      if (user) saveUserData({ ...user, ...updatedUser });
+      showToast("✅ Cover photo updated");
+    } catch (err) {
+      const message = typeof err === "string" ? err : (err instanceof Error ? err.message : "Failed to update cover photo");
+      showToast(message);
+      throw err;
+    } finally {
+      setUploadingCover(false);
+    }
+  };
+
+  const avatar = useImageUpload(user?.profileImageUrl ?? null, handleAvatarUpload);
+  const cover  = useImageUpload(user?.coverImageUrl ?? null, handleCoverUpload);
 
   useEffect(() => { if (user) setForm((f) => ({ ...f, firstName: user.firstName, lastName: user.lastName })); }, [user]);
+
+  useEffect(() => {
+    const loadProvinces = async () => {
+      try {
+        const data = await getProvinces();
+        setProvinces(data);
+      } catch {
+        showToast("Failed to load provinces");
+      }
+    };
+
+    loadProvinces();
+  }, []);
+
+  useEffect(() => {
+    if (!selectedProvCode) {
+      setCities([]);
+      setSelectedCityCode("");
+      return;
+    }
+
+    const loadCities = async () => {
+      try {
+        const data = await getCitiesByProvince(selectedProvCode);
+        setCities(data);
+
+        const matched = data.find((x) => x.name === form.locationCity);
+        setSelectedCityCode(matched?.code ?? "");
+      } catch {
+        showToast("Failed to load cities/municipalities");
+      }
+    };
+
+    loadCities();
+  }, [selectedProvCode]);
+
+  useEffect(() => {
+    if (!selectedCityCode) {
+      setBarangays([]);
+      return;
+    }
+
+    const loadBarangays = async () => {
+      try {
+        const data = await getBarangaysByCity(selectedCityCode);
+        setBarangays(data);
+      } catch {
+        showToast("Failed to load barangays");
+      }
+    };
+
+    loadBarangays();
+  }, [selectedCityCode]);
+
   useEffect(() => {
     const loadProfile = async () => {
       setLoadingProfile(true);
@@ -368,8 +558,10 @@ export default function ProfilePage() {
           firstName: payload.user.firstName,
           lastName: payload.user.lastName,
           bio: payload.user.bio ?? "",
-          location: [payload.user.locationCity, payload.user.locationProv].filter(Boolean).join(", "),
           phone: payload.user.phoneNumber ?? "",
+          locationProv: payload.user.locationProv ?? "",
+          locationCity: payload.user.locationCity ?? "",
+          locationBrgy: payload.user.locationBrgy ?? "",
         }));
       } catch {
         showToast("Failed to load profile data");
@@ -380,6 +572,14 @@ export default function ProfilePage() {
 
     loadProfile();
   }, []);
+
+  useEffect(() => {
+    if (!form.locationProv || provinces.length === 0) return;
+    const matched = provinces.find((p) => p.name === form.locationProv);
+    if (matched && matched.code !== selectedProvCode) {
+      setSelectedProvCode(matched.code);
+    }
+  }, [form.locationProv, provinces]);
 
   const soldStatus = new Set(["sold", "rented", "completed"]);
   const draftStatus = new Set(["hidden"]);
@@ -399,13 +599,66 @@ export default function ProfilePage() {
 
   function showToast(msg: string) { setToast(msg); setTimeout(() => setToast(null), 2800); }
 
-  function handleSave() {
+  async function handleSave() {
+    if (form.newPassword && form.newPassword !== form.confirmPassword) {
+      showToast("New password and confirm password do not match");
+      return;
+    }
+
     setSaving(true);
-    setTimeout(() => {
-      if (user) saveUserData({ ...user, firstName: form.firstName, lastName: form.lastName });
-      setSaving(false); setEditOpen(false);
+    try {
+      const profileImage = avatar.file ? await encodeFileToPayload(avatar.file) : undefined;
+      const coverImage = cover.file ? await encodeFileToPayload(cover.file) : undefined;
+
+      const updatedUser = await updateProfileData({
+        firstName: form.firstName.trim(),
+        lastName: form.lastName.trim(),
+        phoneNumber: form.phone.trim(),
+        bio: form.bio.trim(),
+        locationProv: form.locationProv.trim(),
+        locationCity: form.locationCity.trim(),
+        locationBrgy: form.locationBrgy.trim(),
+        currentPassword: form.currentPassword.trim(),
+        newPassword: form.newPassword.trim(),
+        profileImage,
+        coverImage,
+      });
+
+      if (user) {
+        saveUserData({ ...user, ...updatedUser });
+      }
+
+      setForm((prev) => ({
+        ...prev,
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+      }));
+      setEditOpen(false);
       showToast("✅ Profile updated successfully");
-    }, 700);
+    } catch (err) {
+      const message = typeof err === "string" ? err : (err instanceof Error ? err.message : "Failed to update profile");
+      showToast(message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleDeactivateAccount() {
+    if (deactivating) return;
+
+    const confirmed = window.confirm("Deactivate your account? You will be logged out and cannot log in until support reactivates it.");
+    if (!confirmed) return;
+
+    setDeactivating(true);
+    try {
+      await deactivateProfile();
+      await clearUserData();
+    } catch {
+      showToast("Failed to deactivate account");
+    } finally {
+      setDeactivating(false);
+    }
   }
 
   function handleVerifySubmit() {
@@ -552,13 +805,120 @@ export default function ProfilePage() {
                     className="w-full bg-stone-50 dark:bg-[#13151f] border border-stone-200 dark:border-[#2a2d3e] rounded-lg px-3 py-2 text-sm text-stone-800 dark:text-stone-200 placeholder-stone-400 dark:placeholder-stone-600 outline-none focus:border-stone-400 dark:focus:border-stone-500 resize-none" />
                   <p className="text-xs text-stone-400 dark:text-stone-500 mt-1">{form.bio.length} / 200</p>
                 </div>
-                <div><label className={lbl}>Location</label><Input value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} placeholder="City, Province or Barangay" /></div>
-                <div><label className={lbl}>Phone (private)</label><Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="+63 9XX XXX XXXX" type="tel" /></div>
-                <div className="col-span-2"><label className={lbl}>Preferred Payment Methods</label><Input value={form.paymentMethods} onChange={(e) => setForm({ ...form, paymentMethods: e.target.value })} placeholder="e.g. GCash, BDO, Cash on Delivery" /></div>
+                <div>
+                  <label className={lbl}>Phone (private)</label>
+                  <Input
+                    id="phoneNumber"
+                    name="phoneNumber"
+                    value={form.phone}
+                    onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                    placeholder="+63 9XX XXX XXXX"
+                    type="tel"
+                    autoComplete="tel-national"
+                    inputMode="tel"
+                  />
+                </div>
+                <div>
+                  <label className={lbl}>Province</label>
+                  <select
+                    value={selectedProvCode}
+                    onChange={(e) => {
+                      const code = e.target.value;
+                      const selected = provinces.find((p) => p.code === code);
+                      setSelectedProvCode(code);
+                      setForm({ ...form, locationProv: selected?.name ?? "", locationCity: "", locationBrgy: "" });
+                      setSelectedCityCode("");
+                    }}
+                    className="w-full bg-stone-50 dark:bg-[#13151f] border border-stone-200 dark:border-[#2a2d3e] rounded-lg px-3 py-2 text-sm text-stone-800 dark:text-stone-200 outline-none focus:border-stone-400 dark:focus:border-stone-500"
+                  >
+                    <option value="">Select province</option>
+                    {provinces.map((prov) => <option key={prov.code} value={prov.code}>{prov.name}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className={lbl}>City / Municipality</label>
+                  <select
+                    value={selectedCityCode}
+                    onChange={(e) => {
+                      const code = e.target.value;
+                      const selected = cities.find((x) => x.code === code);
+                      setSelectedCityCode(code);
+                      setForm({ ...form, locationCity: selected?.name ?? "", locationBrgy: "" });
+                    }}
+                    disabled={!selectedProvCode}
+                    className="w-full bg-stone-50 dark:bg-[#13151f] border border-stone-200 dark:border-[#2a2d3e] rounded-lg px-3 py-2 text-sm text-stone-800 dark:text-stone-200 outline-none focus:border-stone-400 dark:focus:border-stone-500 disabled:opacity-60"
+                  >
+                    <option value="">Select city/municipality</option>
+                    {cities.map((city) => <option key={city.code} value={city.code}>{city.name}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className={lbl}>Barangay</label>
+                  <select
+                    value={form.locationBrgy}
+                    onChange={(e) => setForm({ ...form, locationBrgy: e.target.value })}
+                    disabled={!selectedCityCode}
+                    className="w-full bg-stone-50 dark:bg-[#13151f] border border-stone-200 dark:border-[#2a2d3e] rounded-lg px-3 py-2 text-sm text-stone-800 dark:text-stone-200 outline-none focus:border-stone-400 dark:focus:border-stone-500 disabled:opacity-60"
+                  >
+                    <option value="">Select barangay</option>
+                    {barangays.map((brgy) => <option key={brgy.code} value={brgy.name}>{brgy.name}</option>)}
+                  </select>
+                </div>
+                <div className="col-span-2 border-t border-stone-200 dark:border-[#2a2d3e] pt-4 mt-1">
+                  <p className="text-xs font-semibold text-stone-500 dark:text-stone-400 mb-3 uppercase tracking-wider">Change Password</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                      <label className={lbl}>Current Password</label>
+                      <Input
+                        type="password"
+                        value={form.currentPassword}
+                        onChange={(e) => setForm({ ...form, currentPassword: e.target.value })}
+                        placeholder="Required if changing"
+                      />
+                    </div>
+                    <div>
+                      <label className={lbl}>New Password</label>
+                      <Input
+                        type="password"
+                        value={form.newPassword}
+                        onChange={(e) => setForm({ ...form, newPassword: e.target.value })}
+                        placeholder="Leave blank to keep"
+                      />
+                    </div>
+                    <div>
+                      <label className={lbl}>Confirm New Password</label>
+                      <Input
+                        type="password"
+                        value={form.confirmPassword}
+                        onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })}
+                        placeholder="Repeat new password"
+                      />
+                    </div>
+                  </div>
+                </div>
               </div>
               <div className="flex justify-end gap-2 mt-5 pt-4 border-t border-stone-200 dark:border-[#2a2d3e]">
                 <Button variant="outline" size="sm" className="rounded-full dark:border-[#2a2d3e] dark:text-stone-300 dark:hover:bg-[#252837]" onClick={() => setEditOpen(false)}>Discard</Button>
-                <Button size="sm" className="rounded-full bg-stone-900 hover:bg-stone-800 text-white" onClick={handleSave} disabled={saving}>{saving ? "Saving…" : "Save Changes"}</Button>
+                <Button size="sm" className="rounded-full bg-stone-900 hover:bg-stone-800 text-white" onClick={handleSave} disabled={saving || uploadingAvatar || uploadingCover}>
+                  {saving ? "Saving…" : uploadingAvatar || uploadingCover ? "Uploading image..." : "Save Changes"}
+                </Button>
+              </div>
+              <div className="mt-4 rounded-xl border border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-950/20 p-3">
+                <p className="text-xs font-semibold text-red-600 dark:text-red-400 flex items-center gap-1.5 mb-1">
+                  <AlertTriangle className="w-3.5 h-3.5" /> Danger Zone
+                </p>
+                <p className="text-xs text-red-500/90 dark:text-red-400/80 mb-3">
+                  Deactivating your account logs you out and prevents future login.
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full border-red-300 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40"
+                  onClick={handleDeactivateAccount}
+                  disabled={deactivating}
+                >
+                  {deactivating ? "Deactivating..." : "Deactivate Account"}
+                </Button>
               </div>
             </div>
           </div>
@@ -722,17 +1082,6 @@ export default function ProfilePage() {
                   </a>
                 </div>
               </div>
-            </div>
-
-            {/* Danger zone */}
-            <div className="bg-white dark:bg-[#1c1f2e] rounded-2xl border border-stone-200 dark:border-[#2a2d3e] shadow-sm p-4 flex flex-col gap-2">
-              <p className="text-[10px] font-semibold text-stone-400 dark:text-stone-500 tracking-widest mb-1">ACCOUNT ACTIONS</p>
-              <Button variant="outline" size="sm" className="text-xs w-full border-stone-200 dark:border-[#2a2d3e] text-stone-500 dark:text-stone-400 dark:hover:bg-[#252837]" onClick={() => showToast("Downloading your data…")}>
-                📥 Download My Data
-              </Button>
-              <Button variant="outline" size="sm" className="text-xs w-full border-red-200 dark:border-red-900 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 hover:border-red-300" onClick={() => showToast("Account deletion — contact support")}>
-                🗑 Delete Account
-              </Button>
             </div>
 
           </div>
