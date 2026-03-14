@@ -78,7 +78,7 @@ function AttachmentGrid({ attachments }: { attachments: MessageAttachment[] }) {
     return (
       <MediaCell
         att={att}
-        className={cn("w-full", att.fileType === "VIDEO" ? "aspect-video" : "aspect-[4/3]")}
+        className={cn("w-full", att.fileType === "VIDEO" ? "aspect-video" : "aspect-4/3")}
       />
     );
   }
@@ -317,7 +317,7 @@ function ReactionSummary({
   })).filter((g) => g.count > 0);
 
   return (
-    <div className={cn("flex flex-wrap gap-1 mt-0.5", isMe ? "justify-end" : "justify-start")}>
+    <div className={cn("relative z-10 flex flex-wrap gap-1 -mt-2 mb-0.5 px-1", isMe ? "justify-end" : "justify-start")}>
       {grouped.map(({ type, emoji, count }) => (
         <span
           key={type}
@@ -388,7 +388,7 @@ export default function MessageBubble({
   const ActionButtons = () => (
     <div
       className={cn(
-        "flex items-center gap-0.5 self-end mb-1 shrink-0 transition-opacity duration-100",
+        "flex items-center gap-0.5 self-center pb-6 shrink-0 transition-opacity duration-100",
         actionsVisible ? "opacity-100" : "opacity-0 group-hover:opacity-100"
       )}
     >
@@ -437,11 +437,7 @@ export default function MessageBubble({
   );
 
   return (
-    <div className={cn("group flex items-end gap-1 my-0.5", isMe ? "flex-row-reverse" : "flex-row")}>
-
-      {/* Hover actions */}
-      <ActionButtons />
-
+    <div className={cn("group flex items-center gap-1 my-0.5", isMe ? "flex-row-reverse" : "flex-row")}>
       {/* Bubble column */}
       <div className={cn("flex flex-col max-w-[72%] sm:max-w-[62%]", isMe ? "items-end" : "items-start")}>
 
@@ -481,7 +477,7 @@ export default function MessageBubble({
           {hasContent && (
             <p
               className={cn(
-                "text-sm leading-relaxed break-words whitespace-pre-wrap px-3.5",
+                "text-sm leading-relaxed wrap-break-word whitespace-pre-wrap px-3.5",
                 hasAttachments ? "pt-1.5 pb-2.5" : "py-2.5"
               )}
             >
@@ -506,7 +502,7 @@ export default function MessageBubble({
 
         {/* Time + status */}
         {showTime && (
-          <div className={cn("flex items-center gap-1 text-[10px] text-stone-400 dark:text-stone-500 px-1 mt-0.5", isMe && "flex-row-reverse")}>
+          <div className={cn("flex items-center gap-1 text-[11px] text-stone-400 dark:text-stone-500 px-1 mt-0.5", isMe && "flex-row-reverse")}>
             <span>{formatTime(message.createdAt)}</span>
             {isMe && (
               message.status === "READ"      ? <CheckCheck size={11} className="text-amber-500" /> :
@@ -516,6 +512,9 @@ export default function MessageBubble({
           </div>
         )}
       </div>
+
+      {/* Hover actions */}
+      <ActionButtons />
     </div>
   );
 }
