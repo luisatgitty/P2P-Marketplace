@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Loader2 } from "lucide-react";
+import { Loader2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { Conversation, Message, ReactionType, ReplyPreview } from "@/types/messaging";
+import type { Conversation, Message, MessageAttachment, ReactionType, ReplyPreview } from "@/types/messaging";
 import {
   getConversation,
   getMessages,
@@ -53,7 +53,7 @@ function EditModal({
   useEffect(() => { ref.current?.focus(); ref.current?.select(); }, []);
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+    <div className="fixed inset-0 z-100 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm p-4">
       <div className={cn(
         "w-full max-w-md bg-white dark:bg-[#1c1f2e] rounded-2xl shadow-2xl border border-border",
         "animate-in fade-in slide-in-from-bottom-4 duration-200"
@@ -104,6 +104,91 @@ function EditModal({
   );
 }
 
+function MediaViewerModal({
+  mediaItems,
+  activeIndex,
+  onSelect,
+  onClose,
+}: {
+  mediaItems: MessageAttachment[];
+  activeIndex: number;
+  onSelect: (index: number) => void;
+  onClose: () => void;
+}) {
+  const active = mediaItems[activeIndex];
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [onClose]);
+
+  if (!active) return null;
+
+  return (
+    <div
+      className="fixed inset-0 z-120 bg-black/90 backdrop-blur-sm flex flex-col"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div className="flex items-center justify-end p-3 sm:p-4">
+        <button
+          onClick={onClose}
+          className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors"
+          aria-label="Close media viewer"
+        >
+          <X size={18} />
+        </button>
+      </div>
+
+      <div className="flex-1 min-h-0 px-4 sm:px-8 pb-4 flex items-center justify-center">
+        {active.fileType === "VIDEO" ? (
+          <video
+            src={active.fileUrl}
+            className="max-h-full max-w-full rounded-xl"
+            controls
+            autoPlay
+            playsInline
+          />
+        ) : (
+          <img
+            src={active.fileUrl}
+            alt={active.fileName ?? "media"}
+            className="max-h-full max-w-full rounded-xl object-contain"
+          />
+        )}
+      </div>
+
+      <div className="shrink-0 border-t border-white/10 bg-black/40 px-3 sm:px-4 py-3">
+        <div className="flex gap-2 overflow-x-auto no-scroll">
+          {mediaItems.map((item, idx) => (
+            <button
+              key={`${item.id}-${idx}`}
+              onClick={() => onSelect(idx)}
+              className={cn(
+                "relative shrink-0 w-16 h-16 sm:w-18 sm:h-18 rounded-lg overflow-hidden border-2 transition-all",
+                idx === activeIndex ? "border-amber-400" : "border-transparent opacity-75 hover:opacity-100"
+              )}
+            >
+              {item.fileType === "VIDEO" ? (
+                <>
+                  <video src={item.fileUrl} className="w-full h-full object-cover" preload="metadata" playsInline />
+                  <div className="absolute inset-0 bg-black/35 flex items-center justify-center text-white text-[10px] font-semibold">VIDEO</div>
+                </>
+              ) : (
+                <img src={item.fileUrl} alt={item.fileName ?? "media thumbnail"} className="w-full h-full object-cover" loading="lazy" />
+              )}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function ConversationPage() {
@@ -125,6 +210,7 @@ export default function ConversationPage() {
 
   // ── Edit state ───────────────────────────────────────────────────────────
   const [editTarget, setEditTarget] = useState<{ id: string; content: string } | null>(null);
+  const [mediaViewerIndex, setMediaViewerIndex] = useState<number | null>(null);
 
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -149,6 +235,14 @@ export default function ConversationPage() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  const mediaItems = useMemo(
+    () =>
+      messages.flatMap((msg) =>
+        (msg.attachments ?? []).filter((att) => att.fileType === "IMAGE" || att.fileType === "VIDEO")
+      ),
+    [messages]
+  );
 
   // ── Handlers ─────────────────────────────────────────────────────────────
 
@@ -229,6 +323,13 @@ export default function ConversationPage() {
     router.push("/messages");
   };
 
+  const handleOpenMediaViewer = (attachmentId: string) => {
+    const idx = mediaItems.findIndex((item) => item.id === attachmentId);
+    if (idx >= 0) {
+      setMediaViewerIndex(idx);
+    }
+  };
+
   // ── Loading ───────────────────────────────────────────────────────────────
   if (loading) {
     return (
@@ -295,6 +396,7 @@ export default function ConversationPage() {
                   onReact={handleReact}
                   onEdit={handleEdit}
                   onDelete={handleDelete}
+                  onOpenMediaViewer={handleOpenMediaViewer}
                 />
               </div>
             );
@@ -320,6 +422,15 @@ export default function ConversationPage() {
           initial={editTarget.content}
           onSave={handleEditSave}
           onClose={() => setEditTarget(null)}
+        />
+      )}
+
+      {mediaViewerIndex !== null && mediaItems.length > 0 && (
+        <MediaViewerModal
+          mediaItems={mediaItems}
+          activeIndex={mediaViewerIndex}
+          onSelect={setMediaViewerIndex}
+          onClose={() => setMediaViewerIndex(null)}
         />
       )}
     </>

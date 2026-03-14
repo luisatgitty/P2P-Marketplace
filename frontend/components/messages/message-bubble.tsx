@@ -18,6 +18,7 @@ interface MessageBubbleProps {
   onReact:  (messageId: string, reaction: ReactionType | null) => void;
   onEdit:   (messageId: string, currentContent: string) => void;
   onDelete: (messageId: string, unsend: boolean) => void;
+  onOpenMediaViewer?: (attachmentId: string) => void;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -32,7 +33,13 @@ function formatTime(iso: string) {
 //   2 files → side by side, equal width, square crop
 //   3+ files→ compact stack preview (2 tiles), second tile shows "+N more"
 
-function AttachmentGrid({ attachments }: { attachments: MessageAttachment[] }) {
+function AttachmentGrid({
+  attachments,
+  onMediaClick,
+}: {
+  attachments: MessageAttachment[];
+  onMediaClick?: (attachmentId: string) => void;
+}) {
   const count = attachments.length;
 
   const MediaCell = ({
@@ -43,8 +50,29 @@ function AttachmentGrid({ attachments }: { attachments: MessageAttachment[] }) {
     att: MessageAttachment;
     className?: string;
     overlay?: React.ReactNode;
-  }) => (
-    <div className={cn("relative overflow-hidden bg-stone-900 rounded-lg", className)}>
+  }) => {
+    const clickable = !!onMediaClick;
+    return (
+    <div
+      className={cn(
+        "relative overflow-hidden bg-stone-900 rounded-lg",
+        clickable && "cursor-zoom-in",
+        className
+      )}
+      role={clickable ? "button" : undefined}
+      tabIndex={clickable ? 0 : undefined}
+      onClick={clickable ? () => onMediaClick(att.id) : undefined}
+      onKeyDown={
+        clickable
+          ? (e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onMediaClick(att.id);
+              }
+            }
+          : undefined
+      }
+    >
       {att.fileType === "VIDEO" ? (
         <>
           <video
@@ -70,6 +98,7 @@ function AttachmentGrid({ attachments }: { attachments: MessageAttachment[] }) {
       {overlay}
     </div>
   );
+  };
 
   if (count === 1) {
     const att = attachments[0];
@@ -320,6 +349,7 @@ export default function MessageBubble({
   onReact,
   onEdit,
   onDelete,
+  onOpenMediaViewer,
 }: MessageBubbleProps) {
   const isMe = message.senderId === currentUserId;
   const [showReactionPicker, setShowReactionPicker] = useState(false);
@@ -444,7 +474,7 @@ export default function MessageBubble({
           {/* Attachment grid */}
           {hasAttachments && (
             <div className={cn(hasContent && "rounded-t-xl overflow-hidden")}>
-              <AttachmentGrid attachments={message.attachments!} />
+              <AttachmentGrid attachments={message.attachments!} onMediaClick={onOpenMediaViewer} />
             </div>
           )}
 
