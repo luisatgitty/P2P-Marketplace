@@ -473,7 +473,7 @@ export default function MessageBubble({
         >
           {/* Attachment grid */}
           {hasAttachments && (
-            <div className={cn(hasContent && "rounded-t-xl overflow-hidden")}>
+            <div className={cn(hasContent && "rounded-t-xl px-1 pt-1 overflow-hidden")}>
               <AttachmentGrid attachments={message.attachments!} onMediaClick={onOpenMediaViewer} />
             </div>
           )}

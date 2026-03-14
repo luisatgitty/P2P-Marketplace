@@ -51,7 +51,7 @@ export default function MessagesLayout({ children }: { children: React.ReactNode
         className={cn(
           "flex flex-col border-r border-border bg-white dark:bg-[#1c1f2e] shrink-0",
           // Width
-          "w-full md:w-90",
+          "w-full md:w-80",
           // Mobile visibility
           isInConversation ? "hidden md:flex" : "flex"
         )}

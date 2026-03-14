@@ -2,7 +2,12 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Loader2, X } from "lucide-react";
+import Lightbox from "yet-another-react-lightbox";
+import Thumbnails from "yet-another-react-lightbox/plugins/thumbnails";
+import Zoom from "yet-another-react-lightbox/plugins/zoom";
+import Video from "yet-another-react-lightbox/plugins/video";
+import "yet-another-react-lightbox/styles.css";
+import "yet-another-react-lightbox/plugins/thumbnails.css";
 import { cn } from "@/lib/utils";
 import type { Conversation, Message, MessageAttachment, ReactionType, ReplyPreview } from "@/types/messaging";
 import {
@@ -115,77 +120,51 @@ function MediaViewerModal({
   onSelect: (index: number) => void;
   onClose: () => void;
 }) {
-  const active = mediaItems[activeIndex];
+  const slides = mediaItems.map((item) => {
+    if (item.fileType === "VIDEO") {
+      return {
+        type: "video" as const,
+        sources: [{ src: item.fileUrl, type: "video/mp4" }],
+        poster: item.fileUrl,
+      };``
+    }
 
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+    return {
+      src: item.fileUrl,
+      alt: item.fileName ?? "media",
     };
-    document.addEventListener("keydown", handler);
-    return () => document.removeEventListener("keydown", handler);
-  }, [onClose]);
-
-  if (!active) return null;
+  });
 
   return (
-    <div
-      className="fixed inset-0 z-120 bg-black/90 backdrop-blur-sm flex flex-col"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
+    <Lightbox
+      open={activeIndex >= 0}
+      close={onClose}
+      index={activeIndex}
+      slides={slides}
+      plugins={[Zoom, Thumbnails, Video]}
+      on={{
+        view: ({ index }) => onSelect(index),
       }}
-    >
-      <div className="flex items-center justify-end p-3 sm:p-4">
-        <button
-          onClick={onClose}
-          className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors"
-          aria-label="Close media viewer"
-        >
-          <X size={18} />
-        </button>
-      </div>
-
-      <div className="flex-1 min-h-0 px-4 sm:px-8 pb-4 flex items-center justify-center">
-        {active.fileType === "VIDEO" ? (
-          <video
-            src={active.fileUrl}
-            className="max-h-full max-w-full rounded-xl"
-            controls
-            autoPlay
-            playsInline
-          />
-        ) : (
-          <img
-            src={active.fileUrl}
-            alt={active.fileName ?? "media"}
-            className="max-h-full max-w-full rounded-xl object-contain"
-          />
-        )}
-      </div>
-
-      <div className="shrink-0 border-t border-white/10 bg-black/40 px-3 sm:px-4 py-3">
-        <div className="flex gap-2 overflow-x-auto no-scroll">
-          {mediaItems.map((item, idx) => (
-            <button
-              key={`${item.id}-${idx}`}
-              onClick={() => onSelect(idx)}
-              className={cn(
-                "relative shrink-0 w-16 h-16 sm:w-18 sm:h-18 rounded-lg overflow-hidden border-2 transition-all",
-                idx === activeIndex ? "border-amber-400" : "border-transparent opacity-75 hover:opacity-100"
-              )}
-            >
-              {item.fileType === "VIDEO" ? (
-                <>
-                  <video src={item.fileUrl} className="w-full h-full object-cover" preload="metadata" playsInline />
-                  <div className="absolute inset-0 bg-black/35 flex items-center justify-center text-white text-[10px] font-semibold">VIDEO</div>
-                </>
-              ) : (
-                <img src={item.fileUrl} alt={item.fileName ?? "media thumbnail"} className="w-full h-full object-cover" loading="lazy" />
-              )}
-            </button>
-          ))}
-        </div>
-      </div>
-    </div>
+      zoom={{
+        maxZoomPixelRatio: 4,
+        zoomInMultiplier: 2,
+        doubleTapDelay: 250,
+      }}
+      thumbnails={{
+        position: "bottom",
+        width: 72,
+        height: 72,
+        border: 1,
+        borderRadius: 8,
+        gap: 8,
+      }}
+      carousel={{
+        finite: false,
+      }}
+      controller={{
+        closeOnBackdropClick: true,
+      }}
+    />
   );
 }
 
