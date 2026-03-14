@@ -27,7 +27,8 @@ func init() {
 func main() {
 	// Initialize Fiber app with custom configuration
 	app := fiber.New(fiber.Config{
-		AppName: os.Getenv("PROJ_NAME"),
+		AppName:   os.Getenv("PROJ_NAME"),
+		BodyLimit: 20 * 1024 * 1024,
 	})
 
 	// CORS configuration
@@ -37,6 +38,13 @@ func main() {
 		AllowMethods:     "GET,POST,PUT,PATCH,DELETE,OPTIONS",
 		AllowCredentials: true,
 	}))
+
+	// Serve uploaded files
+	uploadDir := "./backend/uploads"
+	if _, err := os.Stat(uploadDir); err != nil {
+		uploadDir = "./uploads"
+	}
+	app.Static("/uploads", uploadDir)
 
 	// Register routes
 	routes.AppRoutes(app)

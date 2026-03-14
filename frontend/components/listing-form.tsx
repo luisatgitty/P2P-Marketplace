@@ -37,6 +37,59 @@ export interface ListingFormData {
   inclusions:   string[];
 }
 
+export interface SellFormData {
+  title:        string;
+  category:     string;
+  price:        string;
+  priceUnit:    string;
+  description:  string;
+  inclusions:   string[];
+  highlights:   string[];
+  locationCity: string;
+  locationProv: string;
+  locationBrgy: string;
+  images:       File[];
+  // Sell-specific
+  condition:      string;
+  deliveryMethod: string;
+}
+
+export interface RentFormData {
+  title:        string;
+  category:     string;
+  price:        string;
+  priceUnit:    string;
+  description:  string;
+  inclusions:   string[];
+  highlights:   string[];
+  locationCity: string;
+  locationProv: string;
+  locationBrgy: string;
+  images:       File[];
+  // Rent-specific
+  minPeriod:    string;
+  availability: string;
+  deposit:      string;
+  deliveryMethod: string;
+}
+
+export interface ServiceFormData {
+  title:        string;
+  category:     string;
+  price:        string;
+  priceUnit:    string;
+  description:  string;
+  inclusions:   string[];
+  highlights:   string[];
+  locationCity: string;
+  locationProv: string;
+  locationBrgy: string;
+  images:       File[];
+  // Service-specific
+  turnaround:   string;
+  serviceArea:  string;
+}
+
 // ─── Per-type config ────────────────────────────────────────────────────────────
 export const FORM_CONFIG = {
   sell: {
@@ -93,18 +146,19 @@ const CATEGORIES: Record<FormType, string[]> = {
 };
 
 const PRICE_UNITS: Record<FormType, string[]> = {
-  sell:    ["(fixed price)", "(negotiable)"],
+  sell:    ["Fixed Price", "Negotiable"],
   rent:    ["/ month", "/ week", "/ day", "/ night", "/ hour"],
   service: ["/ hour", "/ project", "/ session", "/ unit", "/ day", "/ package"],
 };
 
 // Mirrors CONDITION_COLORS keys from the detail page
+// ('NEW', 'LIKE_NEW', 'LIGHTLY_USED', 'WELL_USED', 'HEAVILY_USED');
 const CONDITIONS = [
-  { value: "Brand New",  hint: "Unused, still in original packaging"   },
-  { value: "Like New",   hint: "Used briefly, no visible defects"       },
-  { value: "Good",       hint: "Normal wear, fully functional"          },
-  { value: "Fair",       hint: "Noticeable wear, still works fine"      },
-  { value: "For Parts",  hint: "Not working — sold as-is"               },
+  { value: "New",           hint: "Unused, still in original packaging" },
+  { value: "Like New",      hint: "Used briefly, no visible defects"    },
+  { value: "Lightly Used",  hint: "Normal wear, fully functional"       },
+  { value: "Well Used",     hint: "Noticeable wear, still works fine"   },
+  { value: "Heavily Used",  hint: "Significant wear, may have defects"  },
 ];
 
 const DELIVERY_OPTIONS = [
@@ -125,6 +179,73 @@ const PROVINCES = [
 ];
 
 const MAX_HIGHLIGHTS = 8;
+
+type UploadImagePayload = {
+  name: string;
+  mimeType: string;
+  data: string;
+};
+
+async function blobToBase64(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result;
+      if (typeof result !== "string") {
+        reject(new Error("Failed to encode image."));
+        return;
+      }
+      resolve(result.split(",")[1] ?? "");
+    };
+    reader.onerror = () => reject(new Error("Failed to encode image."));
+    reader.readAsDataURL(blob);
+  });
+}
+
+async function compressImage(file: File): Promise<UploadImagePayload> {
+  const objectUrl = URL.createObjectURL(file);
+
+  try {
+    const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = () => reject(new Error("Invalid image file."));
+      img.src = objectUrl;
+    });
+
+    const maxDimension = 1600;
+    const scale = Math.min(1, maxDimension / Math.max(image.width, image.height));
+    const width = Math.max(1, Math.round(image.width * scale));
+    const height = Math.max(1, Math.round(image.height * scale));
+
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+
+    const context = canvas.getContext("2d");
+    if (!context) {
+      throw new Error("Unable to process image.");
+    }
+    context.drawImage(image, 0, 0, width, height);
+
+    const compressedBlob = await new Promise<Blob | null>((resolve) => {
+      canvas.toBlob((blob) => resolve(blob), "image/webp", 0.78);
+    });
+
+    const finalBlob = compressedBlob ?? file;
+    const mimeType = compressedBlob ? "image/webp" : file.type;
+    const data = await blobToBase64(finalBlob);
+    const baseName = file.name.replace(/\.[^/.]+$/, "");
+
+    return {
+      name: compressedBlob ? `${baseName}.webp` : file.name,
+      mimeType,
+      data,
+    };
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
+}
 
 // ─── Shared UI atoms ────────────────────────────────────────────────────────────
 function FieldLabel({ children, required }: { children: React.ReactNode; required?: boolean }) {
@@ -619,17 +740,95 @@ export default function ListingForm({ type, initialData, isEdit = false, listing
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate(2)) return;
+
+    let compressedImages: UploadImagePayload[] = [];
+    try {
+      compressedImages = await Promise.all(images.map((img) => compressImage(img.file)));
+    } catch {
+      setErrors((prev) => ({ ...prev, submit: "Failed to process one or more images." }));
+      return;
+    }
+
+    const commonData = {
+      type,
+      title: title.trim(),
+      category,
+      price: Math.round(Number(price)),
+      priceUnit,
+      description: description.trim(),
+      highlights,
+      inclusions,
+      amenities,
+      images: compressedImages,
+      locationCity: locationCity.trim(),
+      locationProv,
+      locationBrgy: locationBrgy.trim(),
+    };
+
+    const typeSpecific: {
+      sellData?: { condition: string; deliveryMethod: string };
+      rentData?: { minPeriod: string; availability: string; deposit: string; deliveryMethod: string };
+      serviceData?: { turnaround: string; serviceArea: string };
+    } = {};
+
+    if (type === "sell") {
+      typeSpecific.sellData = {
+        condition,
+        deliveryMethod,
+      };
+    }
+
+    if (type === "rent") {
+      typeSpecific.rentData = {
+        minPeriod,
+        availability,
+        deposit,
+        deliveryMethod,
+      };
+    }
+
+    if (type === "service") {
+      typeSpecific.serviceData = {
+        turnaround,
+        serviceArea,
+      };
+    }
+
     setSub(true);
-    await new Promise((r) => setTimeout(r, 1200)); // TODO: replace with real API call
-    setSub(false);
-    router.push(`/listing/${listingId ?? "1"}`);
+    setErrors((prev) => ({ ...prev, submit: "" }));
+
+    try {
+      const endpoint = isEdit
+        ? `${process.env.NEXT_PUBLIC_API_URL}/listing/${listingId}`
+        : `${process.env.NEXT_PUBLIC_API_URL}/listing`;
+
+      const response = await fetch(endpoint, {
+        method: isEdit ? "PUT" : "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ ...commonData, ...typeSpecific }),
+      });
+
+      const parsedJson = await response.json();
+      if (!response.ok) {
+        throw new Error(parsedJson?.data?.message || (isEdit ? "Failed to update listing." : "Failed to create listing."));
+      }
+
+      const savedListingId = parsedJson?.data?.listingId;
+      router.push(`/listing/${savedListingId ?? listingId ?? "1"}`);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : (isEdit ? "Failed to update listing." : "Failed to create listing.");
+      setErrors((prev) => ({ ...prev, submit: message }));
+    } finally {
+      setSub(false);
+    }
   };
 
   const toggleAmen = (a: string) =>
     setAmen((prev) => prev.includes(a) ? prev.filter((x) => x !== a) : [...prev, a]);
 
   // ── Step 0 — Basic Info ──────────────────────────────────────────────────────
-  const S0 = () => (
+  const renderS0 = () => (
     <>
       <Section>
         {/* Title */}
@@ -708,7 +907,7 @@ export default function ListingForm({ type, initialData, isEdit = false, listing
   );
 
   // ── Step 1 — Type-specific ───────────────────────────────────────────────────
-  const S1 = () => {
+  const renderS1 = () => {
 
     if (type === "sell") return (
       <>
@@ -732,6 +931,14 @@ export default function ListingForm({ type, initialData, isEdit = false, listing
           </div>
         </Section>
 
+        {/* What's included */}
+        <Section title="What's Included">
+          <div>
+            <FieldLabel>List what buyers receive with this listing</FieldLabel>
+            <InclusionList items={inclusions} setItems={setIncl} />
+            <FieldHint>Clear inclusions help buyers understand exactly what they are paying for.</FieldHint>
+          </div>
+        </Section>
         {/* Highlights */}
         <Section title="Highlights">
           <div>
@@ -864,7 +1071,7 @@ export default function ListingForm({ type, initialData, isEdit = false, listing
   };
 
   // ── Step 2 — Location & Photos ───────────────────────────────────────────────
-  const S2 = () => (
+  const renderS2 = () => (
     <>
       <Section title="Pickup / Service Location">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -933,10 +1140,12 @@ export default function ListingForm({ type, initialData, isEdit = false, listing
         {/* Form */}
         <form onSubmit={submit} noValidate>
           <div className="flex flex-col gap-4">
-            {step === 0 && <S0 />}
-            {step === 1 && <S1 />}
-            {step === 2 && <S2 />}
+            {step === 0 && renderS0()}
+            {step === 1 && renderS1()}
+            {step === 2 && renderS2()}
           </div>
+
+          <ErrMsg msg={errors.submit} />
 
           {/* Nav */}
           <div className="flex items-center justify-between mt-6 pt-5 border-t border-stone-200 dark:border-[#2a2d3e]">
@@ -946,9 +1155,9 @@ export default function ListingForm({ type, initialData, isEdit = false, listing
                 <ChevronLeft size={16} /> Back
               </button>
             ) : (
-              <button type="button" onClick={() => router.push("/create")}
+              <button type="button" onClick={() => router.push(isEdit ? `/listing/${listingId}` : "/create")}
                 className="flex items-center gap-1.5 text-sm font-semibold text-stone-500 dark:text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 transition-colors">
-                <ChevronLeft size={16} /> Change type
+                <ChevronLeft size={16} /> {isEdit ? "Back to listing" : "Change type"}
               </button>
             )}
 

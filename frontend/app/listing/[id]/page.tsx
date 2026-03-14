@@ -10,55 +10,9 @@ import {
   CheckCircle, Phone, Zap, ArrowLeft, Truck, CalendarDays,
 } from "lucide-react";
 import { useUser } from "@/utils/UserContext";
-import * as listingService from "@/services/listingService";
+import { getListingDetailById } from "@/services/listingDetailService";
 import { type PostCardProps } from "@/components/post-card";
 import { cn } from "@/lib/utils";
-
-// ── Mock listings ─────────────────────────────────────────────────────────────
-const ALL_MOCK: PostCardProps[] = [
-  {
-    id: "1", title: "Casio G-Shock GA-2100", price: 1800, type: "sell",
-    category: "electronics", location: "Calamba, Laguna", postedAt: "2h ago",
-    imageUrl: "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800&q=90",
-    seller: { name: "Juan dela Cruz", rating: 4.9 },
-  },
-  {
-    id: "2", title: "Studio Unit — Makati CBD", price: 12000, priceUnit: "/ month", type: "rent",
-    category: "real-estate", location: "Makati City", postedAt: "1d ago",
-    imageUrl: "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800&q=90",
-    seller: { name: "Maria Santos", rating: 4.7 },
-  },
-  {
-    id: "3", title: "Aircon Cleaning & Repair", price: 500, priceUnit: "/ unit", type: "service",
-    category: "services", location: "San Pablo, Laguna", postedAt: "3h ago",
-    imageUrl: "https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=800&q=90",
-    seller: { name: "Pedro Reyes", rating: 5.0, isPro: true },
-  },
-  {
-    id: "4", title: "MacBook Pro M2 2023", price: 68000, type: "sell",
-    category: "electronics", location: "Quezon City", postedAt: "5h ago",
-    imageUrl: "https://images.unsplash.com/photo-1593642632559-0c6d3fc62b89?w=800&q=90",
-    seller: { name: "Ana Reyes", rating: 4.8 },
-  },
-  {
-    id: "5", title: "Honda Click 125 Scooter", price: 600, priceUnit: "/ day", type: "rent",
-    category: "vehicles", location: "Laguna", postedAt: "6h ago",
-    imageUrl: "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&q=90",
-    seller: { name: "Carlos M.", rating: 4.6 },
-  },
-  {
-    id: "s1", title: "Casio G-Shock GA-2100", price: 1800, type: "sell",
-    category: "electronics", location: "Calamba, Laguna", postedAt: "2h ago",
-    imageUrl: "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800&q=90",
-    seller: { name: "You", rating: 4.9 },
-  },
-  {
-    id: "s2", title: "MacBook Pro M1 2022", price: 55000, type: "sell",
-    category: "electronics", location: "Calamba, Laguna", postedAt: "1d ago",
-    imageUrl: "https://images.unsplash.com/photo-1593642632559-0c6d3fc62b89?w=800&q=90",
-    seller: { name: "You", rating: 4.9 },
-  },
-];
 
 // ── ExtraDetail — mirrors every field the listing form collects ────────────────
 interface ExtraDetail {
@@ -81,71 +35,6 @@ interface ExtraDetail {
   inclusions?:    string[];
 }
 
-// ── Mock extra detail data ────────────────────────────────────────────────────
-const EXTRA_DETAILS: Record<string, ExtraDetail> = {
-  "1": {
-    description:    "Selling my Casio G-Shock GA-2100 in great condition. Used for about 6 months, no scratches on the bezel. All original accessories included. Perfect for everyday wear — shock resistant, water resistant up to 200m. Bought from an authorized dealer.",
-    condition:      "Like New",
-    images: [
-      "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800&q=90",
-      "https://images.unsplash.com/photo-1533139502658-0198f920d8e8?w=800&q=90",
-      "https://images.unsplash.com/photo-1434056886845-dac89ffe9b56?w=800&q=90",
-    ],
-    features:       ["Shock Resistant", "Water Resistant 200m", "Solar Power", "Bluetooth"],
-    views: 142, offers: 3,
-    deliveryMethod: "Meet-up or Delivery",
-  },
-  "2": {
-    description:    "Fully furnished studio unit in the heart of Makati CBD. 18th floor with great city views. All appliances included — ref, washing machine, aircon, TV. Walking distance to Glorietta, Greenbelt, and MRT Ayala. Ideal for young professionals.",
-    condition:      "",
-    images: [
-      "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800&q=90",
-      "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800&q=90",
-      "https://images.unsplash.com/photo-1484154218962-a197022b5858?w=800&q=90",
-    ],
-    features:       ["City View", "18th Floor", "Steps to MRT", "Pet-Friendly"],
-    views: 218, offers: 5,
-    deliveryMethod: "Meet-up only",
-    minPeriod:      "3 months minimum",
-    availability:   "April 1, 2026",
-    deposit:        "2 months deposit + 1 month advance",
-    amenities:      ["WiFi", "Air Conditioning", "Hot Water", "Parking", "Security", "CCTV", "Swimming Pool", "Gym", "Elevator", "Fully Furnished"],
-  },
-  "3": {
-    description:    "Professional aircon cleaning and repair service for all brands. We use HVAC-grade equipment and certified technicians. Serving Laguna, Batangas, Cavite, and South Metro Manila. Book now for same-day or next-day service.",
-    condition:      "",
-    images: [
-      "https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=800&q=90",
-      "https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?w=800&q=90",
-      "https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=800&q=90",
-    ],
-    features:       ["All Brands Accepted", "HVAC-Grade Equipment", "7-Day Warranty", "Licensed Technicians"],
-    views: 189, offers: 12,
-    deliveryMethod: "Meet-up only",
-    turnaround:     "Same-day or next-day (by appointment)",
-    serviceArea:    "Laguna, Batangas, Cavite, South Metro Manila",
-    inclusions: [
-      "Coil cleaning (evaporator & condenser)",
-      "Drain pan & drain line flush",
-      "Filter washing & drying",
-      "Electrical connections check",
-      "Gas level inspection",
-      "Post-service test run & report",
-    ],
-  },
-  "4": {
-    description:    "MacBook Pro M2 2023 14-inch, Space Gray. Purchased Jan 2024, barely used. AppleCare+ until 2026. Battery cycle count only 45. All ports available — HDMI, SD card, MagSafe. Perfect for developers and creators.",
-    condition:      "Like New",
-    images: [
-      "https://images.unsplash.com/photo-1593642632559-0c6d3fc62b89?w=800&q=90",
-      "https://images.unsplash.com/photo-1541807084-5c52b6b3adef?w=800&q=90",
-      "https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=800&q=90",
-    ],
-    features:       ["M2 Pro Chip", "16GB RAM", "512GB SSD", "AppleCare+ 2026"],
-    views: 389, offers: 8,
-    deliveryMethod: "Meet-up or Delivery",
-  },
-};
 
 function getDefaultExtra(listing: PostCardProps): ExtraDetail {
   return {
@@ -324,6 +213,8 @@ export default function ListingDetailPage() {
   const [extra,       setExtra]      = useState<ExtraDetail>(
     getDefaultExtra({ id: "", title: "", price: 0, type: "sell", location: "", postedAt: "", imageUrl: "", seller: { name: "", rating: 0 } })
   );
+  const [related,     setRelated]    = useState<PostCardProps[]>([]);
+  const [isLoading,   setIsLoading]  = useState(true);
   const [imgIdx,      setImgIdx]     = useState(0);
   const [saved,       setSaved]      = useState(false);
   const [offerOpen,   setOfferOpen]  = useState(false);
@@ -331,16 +222,45 @@ export default function ListingDetailPage() {
   const [offerSent,   setOfferSent]  = useState(false);
   const [reportOpen,  setReportOpen] = useState(false);
   const [shareToast,  setShareToast] = useState(false);
+  const [deleting,    setDeleting]   = useState(false);
 
   useEffect(() => {
-    const all   = [...ALL_MOCK, ...listingService.getListings()];
-    const found = all.find((l) => l.id === id);
-    if (found) {
-      setListing(found);
-      setExtra(EXTRA_DETAILS[id] ?? getDefaultExtra(found));
-      setOfferAmt(String(Math.round(found.price * 0.9)));
+    let mounted = true;
+
+    async function loadListing() {
+      setIsLoading(true);
+      try {
+        const payload = await getListingDetailById(id);
+        if (!mounted) return;
+
+        setListing(payload.listing);
+        setExtra(payload.extra);
+        setRelated(payload.related ?? []);
+        setImgIdx(0);
+        setOfferAmt(String(Math.round(payload.listing.price * 0.9)));
+      } catch {
+        if (!mounted) return;
+        setListing(null);
+        setRelated([]);
+      } finally {
+        if (mounted) setIsLoading(false);
+      }
     }
+
+    loadListing();
+
+    return () => {
+      mounted = false;
+    };
   }, [id]);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-stone-100 dark:bg-[#0f1117]">
+        <p className="text-stone-600 dark:text-stone-400 font-medium">Loading listing...</p>
+      </div>
+    );
+  }
 
   if (!listing) {
     return (
@@ -354,8 +274,7 @@ export default function ListingDetailPage() {
     );
   }
 
-  const related      = ALL_MOCK.filter((l) => l.id !== id && (l.category === listing.category || l.type === listing.type)).slice(0, 8);
-  const isOwnListing = !!(user?.firstName && listing.seller.name === "You");
+  const isOwnListing = !!(user?.firstName && `${user.firstName} ${user.lastName}`.trim() === listing.seller.name);
   const isSell       = listing.type === "sell";
   const isRent       = listing.type === "rent";
   const isService    = listing.type === "service";
@@ -381,6 +300,38 @@ export default function ListingDetailPage() {
   function sendOffer() {
     setOfferSent(true);
     setTimeout(() => { setOfferOpen(false); setOfferSent(false); }, 2000);
+  }
+
+  async function handleRemoveListing() {
+    if (!isValidated) {
+      router.push("/login");
+      return;
+    }
+    if (!isOwnListing || deleting) return;
+
+    const confirmed = window.confirm("Delete this listing permanently? This action cannot be undone.");
+    if (!confirmed) return;
+
+    setDeleting(true);
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/listing/${id}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+      });
+
+      const parsedJson = await response.json();
+      if (!response.ok) {
+        throw new Error(parsedJson?.data?.message || "Failed to remove listing.");
+      }
+
+      router.push("/profile");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to remove listing.";
+      window.alert(message);
+    } finally {
+      setDeleting(false);
+    }
   }
 
   return (
@@ -595,8 +546,12 @@ export default function ListingDetailPage() {
                       className="flex items-center justify-center gap-2 w-full py-3 rounded-full bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 text-sm font-bold hover:opacity-90 transition-opacity">
                       ✏️ Edit Listing
                     </Link>
-                    <button className="flex items-center justify-center gap-2 w-full py-3 rounded-full border border-red-200 dark:border-red-800 text-red-500 dark:text-red-400 text-sm font-semibold hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors">
-                      🗑 Remove Listing
+                    <button
+                      onClick={handleRemoveListing}
+                      disabled={deleting}
+                      className="flex items-center justify-center gap-2 w-full py-3 rounded-full border border-red-200 dark:border-red-800 text-red-500 dark:text-red-400 text-sm font-semibold hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                    >
+                      🗑 {deleting ? "Removing..." : "Remove Listing"}
                     </button>
                   </div>
                 ) : (

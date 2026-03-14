@@ -127,6 +127,10 @@ func LogInUser(c *fiber.Ctx) error {
 		return SendErrorResponse(c, 500, err.Error(), err)
 	}
 
+	if !userFromDb.IsActive {
+		return SendErrorResponse(c, 403, "Account is inactive. Please contact support.", nil)
+	}
+
 	// Check if user account is locked
 	if !userFromDb.LockedUntil.IsZero() && userFromDb.LockedUntil.After(time.Now()) {
 		return SendErrorResponse(c, 403, "Account temporarily locked due to too many failed login attempts. Please try again later.", nil)
@@ -186,6 +190,13 @@ func AuthenticateUser(c *fiber.Ctx) error {
 	if sessionFromDb.UserId == "" || sessionFromDb.IsRevoked || sessionFromDb.ExpiresAt.Before(time.Now()) {
 		c.Cookie(middleware.ExpiredCookie())
 		return SendErrorResponse(c, 401, "Session expired or revoked", nil)
+	}
+
+	userFromDb, err := repository.GetUserById(sessionFromDb.UserId)
+	if err != nil || !userFromDb.IsActive {
+		c.Cookie(middleware.ExpiredCookie())
+		_ = repository.DeleteUserSessions(sessionFromDb.UserId)
+		return SendErrorResponse(c, 401, "Account is inactive", nil)
 	}
 
 	// Store userId in context for future handlers to use
