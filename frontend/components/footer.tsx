@@ -1,4 +1,7 @@
+"use client";
+
 import Image from "next/image";
+import { usePathname } from "next/navigation";
 
 const TwitterIcon = () => (
   <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
@@ -45,6 +48,12 @@ const SOCIALS = [
 ];
 
 export default function Footer() {
+  const pathname = usePathname();
+
+  if (pathname === "/messages" || pathname.startsWith("/messages/")) {
+    return null;
+  }
+
   return (
     <footer className="bg-[#161d2b] px-4 sm:px-6 lg:px-8 py-10 mt-auto">
       <div className="max-w-7xl mx-auto">
