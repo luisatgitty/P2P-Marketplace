@@ -49,9 +49,6 @@ export default function ConversationsList({ activeTab }: ConversationsListProps)
 
   useEffect(() => { loadConvs(); }, [loadConvs]);
 
-  // Re-load when navigating (so unread counts update after reading)
-  useEffect(() => { loadConvs(); }, [pathname, loadConvs]);
-
   const tabFiltered = filterByTab(allConversations, activeTab);
 
   const filtered = search.trim()

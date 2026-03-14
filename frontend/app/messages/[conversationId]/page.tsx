@@ -189,6 +189,36 @@ function MediaViewerModal({
   );
 }
 
+function ConversationSkeleton() {
+  return (
+    <div className="flex flex-col h-full overflow-hidden bg-white dark:bg-[#0f1117] animate-pulse">
+      <div className="h-14 shrink-0 border-b border-border bg-white dark:bg-[#1c1f2e] px-4 flex items-center gap-3">
+        <div className="w-8 h-8 rounded-full bg-stone-200 dark:bg-[#252837]" />
+        <div className="h-3 w-40 rounded bg-stone-200 dark:bg-[#252837]" />
+      </div>
+
+      <div className="h-16 shrink-0 border-b border-border px-4 py-3 bg-stone-50 dark:bg-[#13151f]">
+        <div className="h-3 w-56 rounded bg-stone-200 dark:bg-[#252837] mb-2" />
+        <div className="h-2.5 w-36 rounded bg-stone-200 dark:bg-[#252837]" />
+      </div>
+
+      <div className="flex-1 overflow-hidden px-4 py-3">
+        <div className="flex flex-col gap-3">
+          <div className="self-start h-14 w-[60%] rounded-2xl bg-stone-200 dark:bg-[#252837]" />
+          <div className="self-end h-14 w-[48%] rounded-2xl bg-stone-200 dark:bg-[#252837]" />
+          <div className="self-start h-20 w-[68%] rounded-2xl bg-stone-200 dark:bg-[#252837]" />
+          <div className="self-end h-12 w-[42%] rounded-2xl bg-stone-200 dark:bg-[#252837]" />
+        </div>
+      </div>
+
+      <div className="h-20 shrink-0 border-t border-border bg-white dark:bg-[#1c1f2e] px-3 py-2.5">
+        <div className="h-full rounded-2xl bg-stone-200 dark:bg-[#252837]" />
+      </div>
+      <div className="h-14 md:h-0 shrink-0" />
+    </div>
+  );
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function ConversationPage() {
@@ -332,11 +362,7 @@ export default function ConversationPage() {
 
   // ── Loading ───────────────────────────────────────────────────────────────
   if (loading) {
-    return (
-      <div className="flex-1 flex items-center justify-center bg-stone-50 dark:bg-[#0f1117]">
-        <Loader2 size={24} className="animate-spin text-stone-400 dark:text-stone-600" />
-      </div>
-    );
+    return <ConversationSkeleton />;
   }
 
   if (!conversation) {
