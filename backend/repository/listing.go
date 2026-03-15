@@ -799,11 +799,11 @@ func GetListingImages(listingId string) ([]string, error) {
 	return images, nil
 }
 
-func GetRelatedListings(listingId, categoryId, listingType string) ([]model.ProfileListingFromDb, error) {
+func GetRelatedListings(listingId, categoryId, listingType, excludeUserId string) ([]model.ProfileListingFromDb, error) {
 	db := middleware.DBConn
 	related := make([]model.ProfileListingFromDb, 0)
 
-	query := `
+	baseQuery := `
 		SELECT
 			l.id,
 			l.title,
@@ -834,11 +834,21 @@ func GetRelatedListings(listingId, categoryId, listingType string) ([]model.Prof
 		) rv ON TRUE
 		WHERE l.id <> $1
 			AND (l.category_id = $2 OR l.listing_type::text = $3)
+	`
+
+	query := baseQuery
+	args := []any{listingId, categoryId, strings.ToUpper(listingType)}
+	if strings.TrimSpace(excludeUserId) != "" {
+		query += "\n\t\t\tAND l.user_id <> $4"
+		args = append(args, excludeUserId)
+	}
+
+	query += `
 		ORDER BY l.created_at DESC
 		LIMIT 8
 	`
 
-	if err := db.Raw(query, listingId, categoryId, strings.ToUpper(listingType)).Scan(&related).Error; err != nil {
+	if err := db.Raw(query, args...).Scan(&related).Error; err != nil {
 		return nil, fmt.Errorf("Failed to retrieve related listings")
 	}
 
