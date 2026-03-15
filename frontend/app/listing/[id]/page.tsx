@@ -5,12 +5,12 @@ import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import {
-  MapPin, Star, ShieldCheck, MessageCircle, Heart, Share2,
+  MapPin, Star, ShieldCheck, MessageCircle, Bookmark, Share2,
   ChevronLeft, ChevronRight, Flag, Eye, Clock, Package,
   CheckCircle, Phone, Zap, ArrowLeft, Truck, CalendarDays,
 } from "lucide-react";
 import { useUser } from "@/utils/UserContext";
-import { getListingDetailById } from "@/services/listingDetailService";
+import { addListingBookmark, getListingDetailById, removeListingBookmark } from "@/services/listingDetailService";
 import { openOrCreateConversationFromListing } from "@/services/messagingService";
 import { type PostCardProps } from "@/components/post-card";
 import { cn } from "@/lib/utils";
@@ -217,7 +217,7 @@ export default function ListingDetailPage() {
   const [related,     setRelated]    = useState<PostCardProps[]>([]);
   const [isLoading,   setIsLoading]  = useState(true);
   const [imgIdx,      setImgIdx]     = useState(0);
-  const [saved,       setSaved]      = useState(false);
+  const [isBookmarked, setIsBookmarked] = useState(false);
   const [offerOpen,   setOfferOpen]  = useState(false);
   const [offerAmount, setOfferAmt]   = useState("");
   const [offerSent,   setOfferSent]  = useState(false);
@@ -225,6 +225,7 @@ export default function ListingDetailPage() {
   const [shareToast,  setShareToast] = useState(false);
   const [deleting,    setDeleting]   = useState(false);
   const [messaging,   setMessaging]  = useState(false);
+  const [isBookmarking, setIsBookmarking] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -238,6 +239,7 @@ export default function ListingDetailPage() {
         setListing(payload.listing);
         setExtra(payload.extra);
         setRelated(payload.related ?? []);
+        setIsBookmarked(Boolean(payload.isBookmarked));
         setImgIdx(0);
         setOfferAmt(String(Math.round(payload.listing.price * 0.9)));
       } catch {
@@ -286,6 +288,30 @@ export default function ListingDetailPage() {
     navigator.clipboard.writeText(window.location.href).catch(() => {});
     setShareToast(true);
     setTimeout(() => setShareToast(false), 2500);
+  }
+
+  async function handleToggleBookmark() {
+    if (!isValidated) {
+      router.push("/login");
+      return;
+    }
+    if (!listing || isBookmarking) return;
+
+    setIsBookmarking(true);
+    try {
+      if (isBookmarked) {
+        await removeListingBookmark(listing.id);
+        setIsBookmarked(false);
+      } else {
+        await addListingBookmark(listing.id);
+        setIsBookmarked(true);
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to update bookmark.";
+      window.alert(message);
+    } finally {
+      setIsBookmarking(false);
+    }
   }
 
   async function handleMessage() {
@@ -515,14 +541,15 @@ export default function ListingDetailPage() {
                   <h1 className="text-xl font-bold text-stone-900 dark:text-stone-50 leading-tight">{listing.title}</h1>
                   <div className="flex gap-1.5 shrink-0">
                     <button
-                      onClick={() => setSaved((v) => !v)}
+                      onClick={handleToggleBookmark}
+                      disabled={isBookmarking}
                       className={cn(
-                        "w-9 h-9 rounded-full flex items-center justify-center border transition-all",
-                        saved
+                        "w-9 h-9 rounded-full flex items-center justify-center border transition-all disabled:opacity-60 disabled:cursor-not-allowed",
+                        isBookmarked
                           ? "border-rose-200 bg-rose-50 dark:bg-rose-900/30 dark:border-rose-800 text-rose-500"
                           : "border-stone-200 dark:border-[#2a2d3e] text-stone-400 dark:text-stone-500 hover:border-rose-200 hover:text-rose-400"
                       )}>
-                      <Heart className={cn("w-4 h-4", saved && "fill-rose-500")} />
+                      <Bookmark className={cn("w-4 h-4", isBookmarked && "fill-rose-500")} />
                     </button>
                     <button
                       onClick={handleShare}

@@ -855,6 +855,56 @@ func GetRelatedListings(listingId, categoryId, listingType, excludeUserId string
 	return related, nil
 }
 
+func IsListingBookmarked(userId, listingId string) (bool, error) {
+	db := middleware.DBConn
+
+	var exists bool
+	query := `
+		SELECT EXISTS(
+			SELECT 1
+			FROM public.bookmarks
+			WHERE user_id = $1 AND listing_id = $2
+		)
+	`
+
+	if err := db.Raw(query, userId, listingId).Scan(&exists).Error; err != nil {
+		return false, fmt.Errorf("Failed to check bookmark status")
+	}
+
+	return exists, nil
+}
+
+func AddBookmark(userId, listingId string) error {
+	db := middleware.DBConn
+
+	query := `
+		INSERT INTO public.bookmarks (user_id, listing_id)
+		VALUES ($1, $2)
+		ON CONFLICT (user_id, listing_id) DO NOTHING
+	`
+
+	if err := db.Exec(query, userId, listingId).Error; err != nil {
+		return fmt.Errorf("Failed to bookmark listing")
+	}
+
+	return nil
+}
+
+func RemoveBookmark(userId, listingId string) error {
+	db := middleware.DBConn
+
+	query := `
+		DELETE FROM public.bookmarks
+		WHERE user_id = $1 AND listing_id = $2
+	`
+
+	if err := db.Exec(query, userId, listingId).Error; err != nil {
+		return fmt.Errorf("Failed to remove bookmark")
+	}
+
+	return nil
+}
+
 func GetAllListings(excludeUserId string) ([]model.HomeListingFromDb, error) {
 	db := middleware.DBConn
 	listings := make([]model.HomeListingFromDb, 0)

@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import {
   MapPin, Mail, Calendar, Star, Eye, MessageCircle,
-  Edit2, Plus, ShieldCheck, Upload, Package, Heart, 
+  Edit2, Plus, ShieldCheck, Upload, Package, Bookmark,
   X, Camera, Trash2, AlertTriangle,
 } from "lucide-react";
 import { useUser } from "@/utils/UserContext";
@@ -29,7 +29,7 @@ import { cn } from "@/lib/utils";
 // ─── Types ────────────────────────────────────────────────────────────────────
 type VerificationState = "unverified" | "pending" | "verified" | "rejected";
 type ListingTab = "all" | "active" | "sold" | "booked";
-type ProfileTab = "listings" | "saved";
+type ProfileTab = "listings" | "bookmarks";
 
 const SOLD_STATUSES = new Set(["sold", "rented", "completed"]);
 const BOOKED_STATUSES = new Set(["hidden"]);
@@ -834,13 +834,13 @@ export default function ProfilePage() {
         <div className="bg-white dark:bg-[#1c1f2e] rounded-2xl border border-stone-200 dark:border-[#2a2d3e] shadow-sm overflow-hidden">
               {/* Tab bar */}
               <div className="flex border-b border-stone-200 dark:border-[#2a2d3e]">
-                {(["listings", "saved"] as const).map((t) => (
+                {(["listings", "bookmarks"] as const).map((t) => (
                   <button key={t} onClick={() => setProfileTab(t)}
                     className={cn("flex-1 py-3.5 text-sm font-medium transition-colors",
                       profileTab === t
                         ? "text-stone-900 dark:text-stone-100 border-b-2 border-stone-900 dark:border-stone-300"
                         : "text-stone-400 dark:text-stone-500 hover:text-stone-600 dark:hover:text-stone-300")}>
-                    {t === "listings" ? "📦 My Listings" : "❤️ Saved Items"}
+                    {t === "listings" ? "📦 My Listings" : "🔖 Bookmarked Items"}
                   </button>
                 ))}
               </div>
@@ -872,17 +872,17 @@ export default function ProfilePage() {
                     <p className="font-semibold text-stone-400 text-sm">Loading listings...</p>
                   </div>
                 ) : allListings.length > 0
-                  ? <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 p-4">{allListings.map((l) => <ProfileListingCard key={l.id} listing={l} showMeta tab={listingTab} />)}{isVerifiedSeller && <AddListingCard />}</div>
+                  ? <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 p-4">{allListings.map((l) => <ProfileListingCard key={l.id} listing={l} showMeta tab={listingTab} />)}{isVerifiedSeller && <AddListingCard />}</div>
                   : <div className="text-center py-14 px-6"><Package className="w-10 h-10 text-stone-200 dark:text-stone-700 mx-auto mb-3" /><p className="font-semibold text-stone-400 text-sm">No listings yet</p>{isVerifiedSeller && <Link href="/create"><Button size="sm" className="mt-4 rounded-full bg-stone-900 hover:bg-stone-800 text-white text-xs"><Plus className="w-3 h-3" /> Add Listing</Button></Link>}</div>}
               </>)}
 
-              {/* Saved Items */}
-              {profileTab === "saved" && (
+              {/* Bookmarked Items */}
+              {profileTab === "bookmarks" && (
                 loadingProfile
-                  ? <div className="text-center py-14"><p className="font-semibold text-stone-400 text-sm">Loading saved items...</p></div>
+                  ? <div className="text-center py-14"><p className="font-semibold text-stone-400 text-sm">Loading bookmarked items...</p></div>
                   : bookmarkListings.length > 0
-                  ? <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 p-4">{bookmarkListings.map((l) => <ProfileListingCard key={l.id} listing={l} />)}</div>
-                  : <div className="text-center py-14"><Heart className="w-10 h-10 text-stone-200 dark:text-stone-700 mx-auto mb-3" /><p className="font-semibold text-stone-400 text-sm">No saved items yet</p></div>
+                  ? <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 p-4">{bookmarkListings.map((l) => <ProfileListingCard key={l.id} listing={l} />)}</div>
+                  : <div className="text-center py-14"><Bookmark className="w-10 h-10 text-stone-200 dark:text-stone-700 mx-auto mb-3" /><p className="font-semibold text-stone-400 text-sm">No bookmarked items yet</p></div>
               )}
         </div>
       </div>

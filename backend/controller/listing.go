@@ -201,6 +201,15 @@ func GetListingById(c *fiber.Ctx) error {
 		return SendErrorResponse(c, 500, err.Error(), err)
 	}
 
+	isBookmarked := false
+	if strings.TrimSpace(userId) != "" {
+		bookmarked, err := repository.IsListingBookmarked(userId, listingId)
+		if err != nil {
+			return SendErrorResponse(c, 500, err.Error(), err)
+		}
+		isBookmarked = bookmarked
+	}
+
 	baseURL := c.BaseURL()
 	features := parseJSONStringArray(listing.Highlights)
 	included := parseJSONStringArray(listing.Included)
@@ -248,9 +257,54 @@ func GetListingById(c *fiber.Ctx) error {
 	}
 
 	return SendSuccessResponse(c, 200, "Listing fetched successfully", map[string]any{
-		"listing": listingCard,
-		"extra":   extra,
-		"related": mapRelatedListings(baseURL, related),
+		"listing":      listingCard,
+		"extra":        extra,
+		"related":      mapRelatedListings(baseURL, related),
+		"isBookmarked": isBookmarked,
+	})
+}
+
+func AddListingBookmark(c *fiber.Ctx) error {
+	fmt.Println(c.Path())
+
+	listingId := strings.TrimSpace(c.Params("id"))
+	if listingId == "" {
+		return SendErrorResponse(c, 400, "Listing ID is required", nil)
+	}
+
+	userId := fmt.Sprintf("%v", c.Locals("userId"))
+	if strings.TrimSpace(userId) == "" || userId == "%!v(<nil>)" {
+		return SendErrorResponse(c, 401, "User is not authenticated", nil)
+	}
+
+	if err := repository.AddBookmark(userId, listingId); err != nil {
+		return SendErrorResponse(c, 400, err.Error(), err)
+	}
+
+	return SendSuccessResponse(c, 200, "Listing bookmarked successfully", map[string]any{
+		"listingId": listingId,
+	})
+}
+
+func RemoveListingBookmark(c *fiber.Ctx) error {
+	fmt.Println(c.Path())
+
+	listingId := strings.TrimSpace(c.Params("id"))
+	if listingId == "" {
+		return SendErrorResponse(c, 400, "Listing ID is required", nil)
+	}
+
+	userId := fmt.Sprintf("%v", c.Locals("userId"))
+	if strings.TrimSpace(userId) == "" || userId == "%!v(<nil>)" {
+		return SendErrorResponse(c, 401, "User is not authenticated", nil)
+	}
+
+	if err := repository.RemoveBookmark(userId, listingId); err != nil {
+		return SendErrorResponse(c, 400, err.Error(), err)
+	}
+
+	return SendSuccessResponse(c, 200, "Listing bookmark removed successfully", map[string]any{
+		"listingId": listingId,
 	})
 }
 

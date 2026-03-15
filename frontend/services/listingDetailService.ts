@@ -21,6 +21,7 @@ export interface ListingDetailPayload {
   listing: PostCardProps;
   extra: ListingExtra;
   related: PostCardProps[];
+  isBookmarked?: boolean;
 }
 
 export async function getListingDetailById(id: string): Promise<ListingDetailPayload> {
@@ -37,6 +38,42 @@ export async function getListingDetailById(id: string): Promise<ListingDetailPay
 
     return parsedJson.data as ListingDetailPayload;
   } catch {
+    throw "An unexpected error occurred. Please try again later.";
+  }
+}
+
+export async function addListingBookmark(id: string): Promise<void> {
+  try {
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/listing/${id}/bookmark`, {
+      method: "POST",
+      credentials: "include",
+    });
+
+    if (!res.ok) {
+      const parsedJson = await res.json();
+      throw parsedJson?.data?.message || "Failed to bookmark listing.";
+    }
+  } catch (err) {
+    if (typeof err === "string") throw err;
+    if (err instanceof Error) throw err.message;
+    throw "An unexpected error occurred. Please try again later.";
+  }
+}
+
+export async function removeListingBookmark(id: string): Promise<void> {
+  try {
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/listing/${id}/bookmark`, {
+      method: "DELETE",
+      credentials: "include",
+    });
+
+    if (!res.ok) {
+      const parsedJson = await res.json();
+      throw parsedJson?.data?.message || "Failed to remove bookmark.";
+    }
+  } catch (err) {
+    if (typeof err === "string") throw err;
+    if (err instanceof Error) throw err.message;
     throw "An unexpected error occurred. Please try again later.";
   }
 }

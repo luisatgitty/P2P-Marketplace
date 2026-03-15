@@ -31,7 +31,7 @@ const TYPE_CONFIG: Record<PostCardProps["type"], { label: string; cls: string }>
 
 export default function PostCard(props: PostCardProps) {
   const { id, title, price, priceUnit, type, category, location, postedAt, imageUrl, seller } = props;
-  const [saved, setSaved] = useState(false);
+  const [isBookmarked, setIsBookmarked] = useState(false);
   const cfg = TYPE_CONFIG[type];
 
   const formatPrice = (p: number) =>
@@ -52,11 +52,11 @@ export default function PostCard(props: PostCardProps) {
           {cfg.label}
         </span>
         <button
-          onClick={(e) => { e.preventDefault(); setSaved((v) => !v); }}
+          onClick={(e) => { e.preventDefault(); setIsBookmarked((v) => !v); }}
           className="absolute top-2 right-2 p-1.5 rounded-full bg-white/90 dark:bg-black/60 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-all duration-150 hover:scale-110"
-          aria-label={saved ? "Remove bookmark" : "Bookmark listing"}
+          aria-label={isBookmarked ? "Remove bookmark" : "Bookmark listing"}
         >
-          {saved
+          {isBookmarked
             ? <BookmarkCheck size={13} className="text-amber-600" fill="currentColor" />
             : <Bookmark size={13} className="text-stone-600 dark:text-stone-300" />
           }
