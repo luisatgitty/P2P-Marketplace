@@ -150,6 +150,23 @@ type ProfileListingFromDb struct {
 	Status       string  `gorm:"column:status"        json:"status"`
 }
 
+type HomeListingFromDb struct {
+	Id           string    `gorm:"column:id"`
+	Title        string    `gorm:"column:title"`
+	Price        int       `gorm:"column:price"`
+	PriceUnit    string    `gorm:"column:price_unit"`
+	Type         string    `gorm:"column:type"`
+	Category     string    `gorm:"column:category"`
+	Condition    string    `gorm:"column:condition"`
+	LocationCity string    `gorm:"column:location_city"`
+	LocationProv string    `gorm:"column:location_province"`
+	CreatedAt    time.Time `gorm:"column:created_at"`
+	ImageUrl     string    `gorm:"column:image_url"`
+	SellerName   string    `gorm:"column:seller_name"`
+	SellerRating float64   `gorm:"column:seller_rating"`
+	SellerIsPro  bool      `gorm:"column:seller_is_pro"`
+}
+
 type ListingDetailFromDb struct {
 	Id              string     `gorm:"column:id"`
 	Title           string     `gorm:"column:title"`

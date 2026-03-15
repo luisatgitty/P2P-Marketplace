@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"p2p_marketplace/backend/middleware"
 	"p2p_marketplace/backend/model"
 	"p2p_marketplace/backend/repository"
 
@@ -250,6 +251,63 @@ func GetListingById(c *fiber.Ctx) error {
 		"extra":   extra,
 		"related": mapRelatedListings(baseURL, related),
 	})
+}
+
+func GetListings(c *fiber.Ctx) error {
+	fmt.Println(c.Path())
+
+	userId := getOptionalUserIdFromSession(c)
+	listings, err := repository.GetAllListings(userId)
+	if err != nil {
+		return SendErrorResponse(c, 500, err.Error(), err)
+	}
+
+	baseURL := c.BaseURL()
+	items := make([]map[string]any, 0, len(listings))
+	for _, l := range listings {
+		location := strings.TrimSpace(fmt.Sprintf("%s, %s", l.LocationCity, l.LocationProv))
+		items = append(items, map[string]any{
+			"id":        l.Id,
+			"title":     l.Title,
+			"price":     l.Price,
+			"priceUnit": l.PriceUnit,
+			"type":      strings.ToLower(strings.TrimSpace(l.Type)),
+			"category":  l.Category,
+			"condition": mapConditionDisplay(l.Condition),
+			"location":  location,
+			"postedAt":  timeAgo(l.CreatedAt),
+			"createdAt": l.CreatedAt.UnixMilli(),
+			"imageUrl":  mapPrimaryImage(baseURL, []string{l.ImageUrl}),
+			"seller": map[string]any{
+				"name":   l.SellerName,
+				"rating": l.SellerRating,
+				"isPro":  l.SellerIsPro,
+			},
+		})
+	}
+
+	return SendSuccessResponse(c, 200, "Listings fetched successfully", map[string]any{
+		"listings": items,
+	})
+}
+
+func getOptionalUserIdFromSession(c *fiber.Ctx) string {
+	sessionToken := strings.TrimSpace(c.Cookies("session_token"))
+	if sessionToken == "" {
+		return ""
+	}
+
+	sessionId := middleware.HashToken(sessionToken)
+	session, err := repository.GetSessionById(sessionId)
+	if err != nil {
+		return ""
+	}
+
+	if session.UserId == "" || session.IsRevoked || session.ExpiresAt.Before(time.Now()) {
+		return ""
+	}
+
+	return session.UserId
 }
 
 func parseJSONStringArray(raw string) []string {

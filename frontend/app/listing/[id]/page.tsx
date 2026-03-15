@@ -77,7 +77,7 @@ const TYPE_COLOR: Record<string, string> = {
 // ── Small related card ────────────────────────────────────────────────────────
 function RelatedCard({ listing }: { listing: PostCardProps }) {
   return (
-    <Link href={`/listing/${listing.id}`} className="group flex-shrink-0 w-40">
+    <Link href={`/listing/${listing.id}`} className="group block w-full">
       <div className="bg-white dark:bg-[#1c1f2e] rounded-xl overflow-hidden border border-stone-200 dark:border-[#2a2d3e] hover:-translate-y-1 hover:shadow-md transition-all duration-200">
         <div className="relative aspect-[4/3] overflow-hidden bg-stone-100 dark:bg-[#13151f]">
           <Image
@@ -498,7 +498,7 @@ export default function ListingDetailPage() {
             {related.length > 0 && (
               <div>
                 <h2 className="font-bold text-stone-900 dark:text-stone-50 text-base mb-3">You might also like</h2>
-                <div className="flex gap-3 overflow-x-auto pb-1 no-scroll">
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
                   {related.map((l) => <RelatedCard key={l.id} listing={l} />)}
                 </div>
               </div>

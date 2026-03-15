@@ -844,3 +844,60 @@ func GetRelatedListings(listingId, categoryId, listingType string) ([]model.Prof
 
 	return related, nil
 }
+
+func GetAllListings(excludeUserId string) ([]model.HomeListingFromDb, error) {
+	db := middleware.DBConn
+	listings := make([]model.HomeListingFromDb, 0)
+
+	baseQuery := `
+		SELECT
+			l.id,
+			l.title,
+			l.price,
+			COALESCE(l.price_unit, '') AS price_unit,
+			LOWER(l.listing_type::text) AS type,
+			COALESCE(c.name, 'Others') AS category,
+			COALESCE(lsd.condition::text, '') AS condition,
+			COALESCE(l.location_city, '') AS location_city,
+			COALESCE(l.location_province, '') AS location_province,
+			l.created_at,
+			COALESCE(li.image_url, '') AS image_url,
+			TRIM(BOTH ' ' FROM CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, ''))) AS seller_name,
+			COALESCE(rv.avg_rating, 5.0) AS seller_rating,
+			(u.verification_status = 'VERIFIED') AS seller_is_pro
+		FROM public.listings l
+		INNER JOIN public.users u ON u.id = l.user_id
+		LEFT JOIN public.categories c ON c.id = l.category_id
+		LEFT JOIN public.listing_sell_details lsd ON lsd.listing_id = l.id
+		LEFT JOIN LATERAL (
+			SELECT image_url
+			FROM public.listing_images
+			WHERE listing_id = l.id
+			ORDER BY is_primary DESC, id ASC
+			LIMIT 1
+		) li ON TRUE
+		LEFT JOIN LATERAL (
+			SELECT AVG(r.rating)::float AS avg_rating
+			FROM public.reviews r
+			WHERE r.reviewed_user_id = l.user_id
+		) rv ON TRUE
+		WHERE l.status <> 'HIDDEN'
+	`
+
+	query := baseQuery
+	args := make([]any, 0)
+	if strings.TrimSpace(excludeUserId) != "" {
+		query += "\n\t\t\tAND l.user_id <> $1"
+		args = append(args, excludeUserId)
+	}
+
+	query += `
+		ORDER BY l.created_at DESC
+	`
+
+	if err := db.Raw(query, args...).Scan(&listings).Error; err != nil {
+		return nil, fmt.Errorf("Failed to retrieve listings")
+	}
+
+	return listings, nil
+}
