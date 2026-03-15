@@ -407,14 +407,63 @@ export default function ConversationPage() {
       });
     };
 
+    const onRealtimeMessageEdit = (evt: Event) => {
+      const custom = evt as CustomEvent<{ conversationId?: string; messageId?: string; content?: string; isEdited?: boolean }>;
+      if (custom.detail?.conversationId !== conversationId) return;
+
+      const messageId = custom.detail?.messageId ?? "";
+      if (!messageId) return;
+
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === messageId
+            ? {
+                ...msg,
+                content: custom.detail?.content ?? msg.content,
+                isEdited: custom.detail?.isEdited ?? true,
+              }
+            : msg
+        )
+      );
+    };
+
+    const onRealtimeMessageUnsend = (evt: Event) => {
+      const custom = evt as CustomEvent<{ conversationId?: string; messageId?: string; isUnsent?: boolean }>;
+      if (custom.detail?.conversationId !== conversationId) return;
+
+      const messageId = custom.detail?.messageId ?? "";
+      if (!messageId) return;
+
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === messageId
+            ? { ...msg, isUnsent: custom.detail?.isUnsent ?? true, content: undefined, attachments: [], reactions: [] }
+            : msg
+        )
+      );
+
+      setConversation((prev) => {
+        if (!prev) return prev;
+        if (prev.otherLastReadMessageId !== messageId) return prev;
+        return {
+          ...prev,
+          otherLastReadMessageId: undefined,
+        };
+      });
+    };
+
     window.addEventListener("realtime:reaction", onRealtimeReaction as EventListener);
     window.addEventListener("realtime:status", onRealtimeStatus as EventListener);
     window.addEventListener("realtime:read", onRealtimeRead as EventListener);
+    window.addEventListener("realtime:message-edit", onRealtimeMessageEdit as EventListener);
+    window.addEventListener("realtime:message-unsend", onRealtimeMessageUnsend as EventListener);
 
     return () => {
       window.removeEventListener("realtime:reaction", onRealtimeReaction as EventListener);
       window.removeEventListener("realtime:status", onRealtimeStatus as EventListener);
       window.removeEventListener("realtime:read", onRealtimeRead as EventListener);
+      window.removeEventListener("realtime:message-edit", onRealtimeMessageEdit as EventListener);
+      window.removeEventListener("realtime:message-unsend", onRealtimeMessageUnsend as EventListener);
     };
   }, [conversationId, effectiveCurrentUserId, isDraftConversation]);
 

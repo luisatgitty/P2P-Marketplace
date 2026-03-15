@@ -352,6 +352,22 @@ func EditMessage(c *fiber.Ctx) error {
 		return SendErrorResponse(c, 400, err.Error(), err)
 	}
 
+	peerUserId, peerErr := repository.GetConversationPeerUserId(userId, conversationId)
+	if peerErr == nil && strings.TrimSpace(peerUserId) != "" {
+		payload := map[string]any{
+			"type": "message:edit",
+			"data": map[string]any{
+				"conversationId": conversationId,
+				"messageId":      messageId,
+				"content":        strings.TrimSpace(body.Content),
+				"isEdited":       true,
+			},
+		}
+
+		middleware.RealtimeHub.SendToUser(peerUserId, payload)
+		middleware.RealtimeHub.SendToUser(userId, payload)
+	}
+
 	return SendSuccessResponse(c, 200, "Message edited successfully", nil)
 }
 
@@ -374,6 +390,22 @@ func DeleteMessage(c *fiber.Ctx) error {
 		if err := repository.UnsendMessage(userId, conversationId, messageId); err != nil {
 			return SendErrorResponse(c, 400, err.Error(), err)
 		}
+
+		peerUserId, peerErr := repository.GetConversationPeerUserId(userId, conversationId)
+		if peerErr == nil && strings.TrimSpace(peerUserId) != "" {
+			payload := map[string]any{
+				"type": "message:unsend",
+				"data": map[string]any{
+					"conversationId": conversationId,
+					"messageId":      messageId,
+					"isUnsent":       true,
+				},
+			}
+
+			middleware.RealtimeHub.SendToUser(peerUserId, payload)
+			middleware.RealtimeHub.SendToUser(userId, payload)
+		}
+
 		return SendSuccessResponse(c, 200, "Message unsent successfully", nil)
 	}
 
