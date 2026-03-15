@@ -42,12 +42,23 @@ export default function ConversationsList({ activeTab }: ConversationsListProps)
     try {
       const data = await getConversations();
       setAllConversations(data);
+    } catch {
+      setAllConversations([]);
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => { loadConvs(); }, [loadConvs]);
+
+  useEffect(() => {
+    const refresh = () => {
+      loadConvs();
+    };
+
+    window.addEventListener("messages:updated", refresh);
+    return () => window.removeEventListener("messages:updated", refresh);
+  }, [loadConvs]);
 
   const tabFiltered = filterByTab(allConversations, activeTab);
 
