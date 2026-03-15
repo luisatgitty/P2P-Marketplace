@@ -76,6 +76,24 @@ export async function getProfileData(): Promise<ProfilePayload> {
   }
 }
 
+export async function getUserProfileData(userId: string): Promise<ProfilePayload> {
+  try {
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/profile/${userId}`, {
+      method: "GET",
+      credentials: "include",
+    });
+
+    const parsedJson = await res.json();
+    if (!res.ok) {
+      throw parsedJson?.data?.message || "Failed to fetch profile data.";
+    }
+
+    return parsedJson.data as ProfilePayload;
+  } catch {
+    throw "An unexpected error occurred. Please try again later.";
+  }
+}
+
 export async function updateProfileData(payload: UpdateProfilePayload): Promise<ProfilePayload["user"]> {
   try {
     const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/profile/me`, {

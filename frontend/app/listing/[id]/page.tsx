@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { useUser } from "@/utils/UserContext";
 import { addListingBookmark, getListingDetailById, removeListingBookmark } from "@/services/listingDetailService";
+import { getUserProfileData } from "@/services/profileService";
 import { openOrCreateConversationFromListing } from "@/services/messagingService";
 import { type PostCardProps } from "@/components/post-card";
 import { cn } from "@/lib/utils";
@@ -223,9 +224,12 @@ export default function ListingDetailPage() {
   const [offerSent,   setOfferSent]  = useState(false);
   const [reportOpen,  setReportOpen] = useState(false);
   const [shareToast,  setShareToast] = useState(false);
+  const [contactToast, setContactToast] = useState<string | null>(null);
+  const [shownContactNumber, setShownContactNumber] = useState<string | null>(null);
   const [deleting,    setDeleting]   = useState(false);
   const [messaging,   setMessaging]  = useState(false);
   const [isBookmarking, setIsBookmarking] = useState(false);
+  const [isFetchingContact, setIsFetchingContact] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -240,6 +244,7 @@ export default function ListingDetailPage() {
         setExtra(payload.extra);
         setRelated(payload.related ?? []);
         setIsBookmarked(Boolean(payload.isBookmarked));
+        setShownContactNumber(null);
         setImgIdx(0);
         setOfferAmt(String(Math.round(payload.listing.price * 0.9)));
       } catch {
@@ -283,11 +288,69 @@ export default function ListingDetailPage() {
   const isRent       = listing.type === "rent";
   const isService    = listing.type === "service";
   const images       = extra.images.filter(Boolean);
+  const sellerProfileHref = isOwnListing
+    ? "/profile"
+    : (listing.seller.id ? `/profile?userId=${listing.seller.id}` : "/profile");
 
   function handleShare() {
     navigator.clipboard.writeText(window.location.href).catch(() => {});
     setShareToast(true);
     setTimeout(() => setShareToast(false), 2500);
+  }
+
+  function showContactToastMessage(message: string) {
+    setContactToast(message);
+    setTimeout(() => setContactToast(null), 2800);
+  }
+
+  async function handleShowContactNumber() {
+    if (shownContactNumber) {
+      setShownContactNumber(null);
+      return;
+    }
+
+    if (isOwnListing) {
+      const myMobileNumber = user?.phoneNumber?.trim();
+      if (!myMobileNumber) {
+        showContactToastMessage("You do not have a mobile number yet.");
+        return;
+      }
+      setShownContactNumber(myMobileNumber);
+      return;
+    }
+
+    if (!isValidated) {
+      router.push("/login");
+      return;
+    }
+
+    if ((user?.status ?? "").toLowerCase() !== "verified") {
+      router.push("/become-seller");
+      return;
+    }
+
+    if (!listing?.seller?.id || isFetchingContact) {
+      if (!listing?.seller?.id) {
+        showContactToastMessage("Seller contact is unavailable.");
+      }
+      return;
+    }
+
+    setIsFetchingContact(true);
+    try {
+      const payload = await getUserProfileData(listing.seller.id);
+      const sellerMobileNumber = payload.user.phoneNumber?.trim();
+      if (!sellerMobileNumber) {
+        showContactToastMessage("Seller does not have a mobile number.");
+        return;
+      }
+      setShownContactNumber(sellerMobileNumber);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to retrieve contact number.";
+      showContactToastMessage(message);
+    } finally {
+      setIsFetchingContact(false);
+    }
   }
 
   async function handleToggleBookmark() {
@@ -592,6 +655,12 @@ export default function ListingDetailPage() {
                     >
                       🗑 {deleting ? "Removing..." : "Remove Listing"}
                     </button>
+                    <button
+                      onClick={handleShowContactNumber}
+                      className="flex items-center justify-center gap-2 w-full py-2.5 rounded-full text-stone-500 dark:text-stone-400 text-xs font-medium hover:text-stone-700 dark:hover:text-stone-200 transition-colors"
+                    >
+                      <Phone className="w-3.5 h-3.5" /> {shownContactNumber ?? "Show My Number"}
+                    </button>
                   </div>
                 ) : (
                   <div className="flex flex-col gap-2">
@@ -624,9 +693,10 @@ export default function ListingDetailPage() {
                       <MessageCircle className="w-4 h-4" /> {messaging ? "Opening chat..." : "Message Seller"}
                     </button>
                     <button
-                      onClick={() => !isValidated && router.push("/login")}
-                      className="flex items-center justify-center gap-2 w-full py-2.5 rounded-full text-stone-500 dark:text-stone-400 text-xs font-medium hover:text-stone-700 dark:hover:text-stone-200 transition-colors">
-                      <Phone className="w-3.5 h-3.5" /> Show Contact Number
+                      onClick={handleShowContactNumber}
+                      disabled={isFetchingContact}
+                      className="flex items-center justify-center gap-2 w-full py-2.5 rounded-full text-stone-500 dark:text-stone-400 text-xs font-medium hover:text-stone-700 dark:hover:text-stone-200 transition-colors disabled:opacity-60 disabled:cursor-not-allowed">
+                      <Phone className="w-3.5 h-3.5" /> {shownContactNumber ?? (isFetchingContact ? "Loading Number..." : "Show Contact Number")}
                     </button>
                   </div>
                 )}
@@ -635,9 +705,11 @@ export default function ListingDetailPage() {
               {/* ── Seller card ── */}
               <div className="bg-white dark:bg-[#1c1f2e] rounded-2xl border border-stone-200 dark:border-[#2a2d3e] shadow-sm p-5 mb-4">
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#3a4a6a] to-[#1e2a40] flex items-center justify-center text-white font-bold text-lg flex-shrink-0">
-                    {listing.seller.name[0].toUpperCase()}
-                  </div>
+                  <Link href={sellerProfileHref} className="block">
+                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#3a4a6a] to-[#1e2a40] flex items-center justify-center text-white font-bold text-lg flex-shrink-0 hover:opacity-90 transition-opacity">
+                      {listing.seller.name[0].toUpperCase()}
+                    </div>
+                  </Link>
                   <div className="min-w-0">
                     <p className="font-bold text-stone-900 dark:text-stone-50 text-sm">{listing.seller.name}</p>
                     <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
@@ -670,9 +742,9 @@ export default function ListingDetailPage() {
                 </div>
 
                 <Link
-                  href="/profile"
+                  href={sellerProfileHref}
                   className="flex items-center justify-center gap-2 w-full py-2.5 rounded-full border border-stone-200 dark:border-[#2a2d3e] text-stone-600 dark:text-stone-300 text-xs font-semibold hover:border-stone-400 dark:hover:border-stone-500 hover:bg-stone-50 dark:hover:bg-[#252837] transition-all">
-                  View Seller Profile
+                  {isOwnListing ? "View My Profile" : "View Seller Profile"}
                 </Link>
               </div>
 
@@ -814,6 +886,12 @@ export default function ListingDetailPage() {
       {shareToast && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-stone-900 text-white text-sm font-medium px-5 py-3 rounded-full shadow-xl whitespace-nowrap">
           🔗 Link copied to clipboard!
+        </div>
+      )}
+
+      {contactToast && (
+        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 bg-stone-900 text-white text-sm font-medium px-5 py-3 rounded-full shadow-xl whitespace-nowrap">
+          {contactToast}
         </div>
       )}
 

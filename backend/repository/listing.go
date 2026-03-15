@@ -725,6 +725,7 @@ func GetListingDetailById(listingId string) (model.ListingDetailFromDb, error) {
 	selectQuery := `
 		SELECT
 			l.id,
+			l.user_id AS seller_id,
 			l.title,
 			l.price,
 			l.price_unit,

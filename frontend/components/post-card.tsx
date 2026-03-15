@@ -17,6 +17,7 @@ export interface PostCardProps {
   postedAt: string;
   imageUrl: string;
   seller: {
+    id?: string;
     name: string;
     rating: number;
     isPro?: boolean;

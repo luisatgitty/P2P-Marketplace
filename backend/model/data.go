@@ -169,6 +169,7 @@ type HomeListingFromDb struct {
 
 type ListingDetailFromDb struct {
 	Id              string     `gorm:"column:id"`
+	SellerId        string     `gorm:"column:seller_id"`
 	Title           string     `gorm:"column:title"`
 	Price           int        `gorm:"column:price"`
 	PriceUnit       string     `gorm:"column:price_unit"`

@@ -44,6 +44,33 @@ func MeProfile(c *fiber.Ctx) error {
 	})
 }
 
+func ProfileById(c *fiber.Ctx) error {
+	fmt.Println(c.Path())
+
+	profileUserId := strings.TrimSpace(c.Params("id"))
+	if profileUserId == "" {
+		return SendErrorResponse(c, 400, "Profile user ID is required", nil)
+	}
+
+	user, err := repository.GetProfileUserById(profileUserId)
+	if err != nil {
+		return SendErrorResponse(c, 404, err.Error(), err)
+	}
+
+	listings, err := repository.GetUserListings(profileUserId)
+	if err != nil {
+		return SendErrorResponse(c, 500, err.Error(), err)
+	}
+
+	apiURL := c.BaseURL()
+
+	return SendSuccessResponse(c, 200, "Profile fetched successfully", map[string]any{
+		"user":      mapProfileUser(user, apiURL),
+		"listings":  mapProfileListings(listings, apiURL),
+		"bookmarks": []map[string]any{},
+	})
+}
+
 func UpdateMeProfile(c *fiber.Ctx) error {
 	fmt.Println(c.Path())
 
