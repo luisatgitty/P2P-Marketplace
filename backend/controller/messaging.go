@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"p2p_marketplace/backend/middleware"
 	"p2p_marketplace/backend/model"
 	"p2p_marketplace/backend/repository"
 
@@ -52,12 +53,13 @@ func mapConversationPayload(baseURL string, row model.ConversationFromDb) map[st
 			"firstName":       row.OtherFirstName,
 			"lastName":        row.OtherLastName,
 			"profileImageUrl": toAbsoluteAssetURL(baseURL, row.OtherProfileImgUrl),
-			"isOnline":        false,
+			"isOnline":        middleware.RealtimeHub.IsOnline(row.OtherUserId),
 		},
-		"lastMessage":   strings.TrimSpace(row.LastMessage),
-		"lastMessageAt": lastMessageAt,
-		"unreadCount":   row.UnreadCount,
-		"isSeller":      row.IsSeller,
+		"lastMessage":            strings.TrimSpace(row.LastMessage),
+		"lastMessageAt":          lastMessageAt,
+		"otherLastReadMessageId": strings.TrimSpace(row.OtherLastReadMsgId),
+		"unreadCount":            row.UnreadCount,
+		"isSeller":               row.IsSeller,
 	}
 }
 
@@ -246,6 +248,7 @@ func SendMessage(c *fiber.Ctx) error {
 		"id":             msg.Id,
 		"conversationId": msg.ConversationId,
 		"senderId":       msg.SenderId,
+		"receiverId":     msg.ReceiverId,
 		"content":        strings.TrimSpace(msg.Content),
 		"status":         repository.NormalizeMessageStatus(msg.Status),
 		"isEdited":       msg.IsEdited,
@@ -257,6 +260,24 @@ func SendMessage(c *fiber.Ctx) error {
 			"messageId": replyToMessageId,
 		}
 	}
+
+	if middleware.RealtimeHub.IsOnline(msg.ReceiverId) {
+		_ = repository.MarkMessageDelivered(msg.ConversationId, msg.Id, msg.ReceiverId)
+		payload["status"] = "DELIVERED"
+		middleware.RealtimeHub.SendToUser(msg.SenderId, map[string]any{
+			"type": "message:status",
+			"data": map[string]any{
+				"conversationId": msg.ConversationId,
+				"messageId":      msg.Id,
+				"status":         "DELIVERED",
+			},
+		})
+	}
+
+	middleware.RealtimeHub.SendToUser(msg.ReceiverId, map[string]any{
+		"type": "message:new",
+		"data": payload,
+	})
 
 	return SendSuccessResponse(c, 201, "Message sent successfully", map[string]any{"message": payload})
 }
@@ -282,6 +303,24 @@ func ReactToMessage(c *fiber.Ctx) error {
 
 	if err := repository.UpsertMessageReaction(userId, conversationId, messageId, body.Reaction); err != nil {
 		return SendErrorResponse(c, 400, err.Error(), err)
+	}
+
+	peerUserId, err := repository.GetConversationPeerUserId(userId, conversationId)
+	if err == nil && strings.TrimSpace(peerUserId) != "" {
+		reactionValue := ""
+		if body.Reaction != nil {
+			reactionValue = strings.ToUpper(strings.TrimSpace(*body.Reaction))
+		}
+
+		middleware.RealtimeHub.SendToUser(peerUserId, map[string]any{
+			"type": "reaction:update",
+			"data": map[string]any{
+				"conversationId": conversationId,
+				"messageId":      messageId,
+				"userId":         userId,
+				"reaction":       reactionValue,
+			},
+		})
 	}
 
 	return SendSuccessResponse(c, 200, "Reaction updated successfully", nil)
@@ -358,8 +397,32 @@ func MarkMessagesRead(c *fiber.Ctx) error {
 		return SendErrorResponse(c, 401, err.Error(), nil)
 	}
 
-	if err := repository.MarkConversationRead(userId, conversationId); err != nil {
+	lastReadMessageId, err := repository.MarkConversationRead(userId, conversationId)
+	if err != nil {
 		return SendErrorResponse(c, 400, err.Error(), err)
+	}
+
+	peerUserId, peerErr := repository.GetConversationPeerUserId(userId, conversationId)
+	if peerErr == nil && strings.TrimSpace(peerUserId) != "" {
+		middleware.RealtimeHub.SendToUser(peerUserId, map[string]any{
+			"type": "message:read",
+			"data": map[string]any{
+				"conversationId":    conversationId,
+				"readerId":          userId,
+				"lastReadMessageId": strings.TrimSpace(lastReadMessageId),
+			},
+		})
+
+		if strings.TrimSpace(lastReadMessageId) != "" {
+			middleware.RealtimeHub.SendToUser(peerUserId, map[string]any{
+				"type": "message:status",
+				"data": map[string]any{
+					"conversationId": conversationId,
+					"messageId":      strings.TrimSpace(lastReadMessageId),
+					"status":         "READ",
+				},
+			})
+		}
 	}
 
 	return SendSuccessResponse(c, 200, "Conversation marked as read", nil)

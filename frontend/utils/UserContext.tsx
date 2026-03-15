@@ -17,6 +17,21 @@ const UserContext = createContext<UserContextType | null>(null);
 const PUBLIC_ROUTES = ["/", "/login", "/signup", "/forgot-password", "/reset-password", "/verify-email"];
 const STORAGE_KEY = "auth_user";
 
+function getRealtimeSocketURL(): string {
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL?.trim();
+  if (!apiUrl) return "";
+
+  try {
+    const url = new URL(apiUrl);
+    url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
+    url.pathname = "/ws";
+    url.search = "";
+    return url.toString();
+  } catch {
+    return "";
+  }
+}
+
 export function UserProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -24,6 +39,94 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isValidated, setIsValidated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    if (!isValidated) return;
+
+    let ws: WebSocket | null = null;
+    let pingInterval: ReturnType<typeof setInterval> | null = null;
+    let reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
+    let closedByCleanup = false;
+
+    const wsUrl = getRealtimeSocketURL();
+    if (!wsUrl) return;
+
+    const connect = () => {
+      if (closedByCleanup) return;
+
+      ws = new WebSocket(wsUrl);
+
+      ws.onopen = () => {
+        window.dispatchEvent(new Event("messages:updated"));
+
+        if (pingInterval) clearInterval(pingInterval);
+        pingInterval = setInterval(() => {
+          if (ws?.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: "ping" }));
+          }
+        }, 25_000);
+      };
+
+      ws.onmessage = (evt) => {
+        try {
+          const parsed = JSON.parse(evt.data) as { type?: string; data?: any };
+
+          if (parsed.type === "presence:update") {
+            window.dispatchEvent(new CustomEvent("realtime:presence", { detail: parsed.data }));
+            window.dispatchEvent(new Event("messages:updated"));
+            return;
+          }
+
+          if (parsed.type === "message:new") {
+            window.dispatchEvent(new CustomEvent("realtime:message", { detail: parsed.data }));
+            window.dispatchEvent(new Event("messages:updated"));
+            return;
+          }
+
+          if (parsed.type === "reaction:update") {
+            window.dispatchEvent(new CustomEvent("realtime:reaction", { detail: parsed.data }));
+            return;
+          }
+
+          if (parsed.type === "message:read") {
+            window.dispatchEvent(new CustomEvent("realtime:read", { detail: parsed.data }));
+            window.dispatchEvent(new Event("messages:updated"));
+            return;
+          }
+
+          if (parsed.type === "message:status") {
+            window.dispatchEvent(new CustomEvent("realtime:status", { detail: parsed.data }));
+          }
+        } catch {
+          // Ignore malformed realtime payloads.
+        }
+      };
+
+      ws.onclose = () => {
+        if (pingInterval) {
+          clearInterval(pingInterval);
+          pingInterval = null;
+        }
+
+        if (!closedByCleanup) {
+          reconnectTimeout = setTimeout(connect, 2000);
+        }
+      };
+
+      ws.onerror = () => {
+        ws?.close();
+      };
+    };
+
+    connect();
+
+    return () => {
+      closedByCleanup = true;
+      if (pingInterval) clearInterval(pingInterval);
+      if (reconnectTimeout) clearTimeout(reconnectTimeout);
+      ws?.close();
+    };
+  }, [isValidated]);
 
   // Save user data during login
   const saveUserData = (userData: User) => {

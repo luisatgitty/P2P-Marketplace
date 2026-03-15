@@ -274,6 +274,7 @@ export default function ConversationPage() {
   // ── Edit state ───────────────────────────────────────────────────────────
   const [editTarget, setEditTarget] = useState<{ id: string; content: string } | null>(null);
   const [mediaViewerIndex, setMediaViewerIndex] = useState<number | null>(null);
+  const [animatedReadMarkerId, setAnimatedReadMarkerId] = useState<string | null>(null);
 
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -322,14 +323,6 @@ export default function ConversationPage() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const mediaItems = useMemo(
-    () =>
-      messages.flatMap((msg) =>
-        (msg.attachments ?? []).filter((att) => att.fileType === "IMAGE" || att.fileType === "VIDEO")
-      ),
-    [messages]
-  );
-
   const effectiveCurrentUserId = useMemo(() => {
     if (currentUserId) return currentUserId;
 
@@ -339,6 +332,131 @@ export default function ConversationPage() {
     const mine = messages.find((msg) => msg.senderId !== otherUserId)?.senderId;
     return mine ?? "";
   }, [conversation?.otherParticipant?.id, currentUserId, messages]);
+
+  useEffect(() => {
+    if (isDraftConversation || !conversationId) return;
+
+    const onRealtimeMessage = async (evt: Event) => {
+      const custom = evt as CustomEvent<{ conversationId?: string }>;
+      if (custom.detail?.conversationId !== conversationId) return;
+
+      const freshMessages = await getMessages(conversationId);
+      setMessages(freshMessages);
+      const freshConversation = await getConversation(conversationId);
+      if (freshConversation) {
+        setConversation(freshConversation);
+      }
+      await markConversationRead(conversationId);
+    };
+
+    window.addEventListener("realtime:message", onRealtimeMessage as EventListener);
+    return () => window.removeEventListener("realtime:message", onRealtimeMessage as EventListener);
+  }, [conversationId, isDraftConversation]);
+
+  useEffect(() => {
+    if (isDraftConversation || !conversationId) return;
+
+    const onRealtimeReaction = async (evt: Event) => {
+      const custom = evt as CustomEvent<{ conversationId?: string }>;
+      if (custom.detail?.conversationId !== conversationId) return;
+
+      const freshMessages = await getMessages(conversationId);
+      setMessages(freshMessages);
+    };
+
+    const onRealtimeStatus = (evt: Event) => {
+      const custom = evt as CustomEvent<{ conversationId?: string; messageId?: string; status?: Message["status"] }>;
+      if (custom.detail?.conversationId !== conversationId) return;
+      const targetMessageId = custom.detail?.messageId ?? "";
+      const nextStatus = custom.detail?.status;
+      if (!targetMessageId || !nextStatus) return;
+
+      setMessages((prev) =>
+        prev.map((msg) => (msg.id === targetMessageId ? { ...msg, status: nextStatus } : msg))
+      );
+    };
+
+    const onRealtimeRead = (evt: Event) => {
+      const custom = evt as CustomEvent<{ conversationId?: string; lastReadMessageId?: string }>;
+      if (custom.detail?.conversationId !== conversationId) return;
+
+      const lastReadMessageId = (custom.detail?.lastReadMessageId ?? "").trim();
+      if (!lastReadMessageId) return;
+
+      setConversation((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          otherLastReadMessageId: lastReadMessageId,
+        };
+      });
+
+      setAnimatedReadMarkerId(lastReadMessageId);
+      setMessages((prev) => {
+        const targetMessage = prev.find((msg) => msg.id === lastReadMessageId);
+        if (!targetMessage) return prev;
+
+        const targetTime = new Date(targetMessage.createdAt).getTime();
+        return prev.map((msg) => {
+          if (msg.senderId !== effectiveCurrentUserId) return msg;
+          if (new Date(msg.createdAt).getTime() <= targetTime) {
+            return { ...msg, status: "READ" };
+          }
+          return msg;
+        });
+      });
+    };
+
+    window.addEventListener("realtime:reaction", onRealtimeReaction as EventListener);
+    window.addEventListener("realtime:status", onRealtimeStatus as EventListener);
+    window.addEventListener("realtime:read", onRealtimeRead as EventListener);
+
+    return () => {
+      window.removeEventListener("realtime:reaction", onRealtimeReaction as EventListener);
+      window.removeEventListener("realtime:status", onRealtimeStatus as EventListener);
+      window.removeEventListener("realtime:read", onRealtimeRead as EventListener);
+    };
+  }, [conversationId, effectiveCurrentUserId, isDraftConversation]);
+
+  useEffect(() => {
+    const onPresenceUpdate = (evt: Event) => {
+      const custom = evt as CustomEvent<{ userId?: string; isOnline?: boolean }>;
+      const updatedUserId = custom.detail?.userId ?? "";
+      const isOnline = Boolean(custom.detail?.isOnline);
+
+      setConversation((prev) => {
+        if (!prev || prev.otherParticipant.id !== updatedUserId) return prev;
+        return {
+          ...prev,
+          otherParticipant: {
+            ...prev.otherParticipant,
+            isOnline,
+          },
+        };
+      });
+    };
+
+    window.addEventListener("realtime:presence", onPresenceUpdate as EventListener);
+    return () => window.removeEventListener("realtime:presence", onPresenceUpdate as EventListener);
+  }, []);
+
+  useEffect(() => {
+    if (!animatedReadMarkerId) return;
+
+    const timer = setTimeout(() => {
+      setAnimatedReadMarkerId(null);
+    }, 900);
+
+    return () => clearTimeout(timer);
+  }, [animatedReadMarkerId]);
+
+  const mediaItems = useMemo(
+    () =>
+      messages.flatMap((msg) =>
+        (msg.attachments ?? []).filter((att) => att.fileType === "IMAGE" || att.fileType === "VIDEO")
+      ),
+    [messages]
+  );
 
   // ── Handlers ─────────────────────────────────────────────────────────────
 
@@ -513,6 +631,30 @@ export default function ConversationPage() {
                     onDelete={handleDelete}
                     onOpenMediaViewer={handleOpenMediaViewer}
                   />
+
+                  {msg.senderId === effectiveCurrentUserId && conversation.otherLastReadMessageId === msg.id && (
+                    <div className="flex justify-end pr-1 mt-0.5">
+                      {conversation.otherParticipant.profileImageUrl ? (
+                        <img
+                          src={conversation.otherParticipant.profileImageUrl}
+                          alt={`${conversation.otherParticipant.firstName} read receipt`}
+                          className={cn(
+                            "w-3.5 h-3.5 rounded-full object-cover border border-border",
+                            animatedReadMarkerId === msg.id && "animate-read-drop"
+                          )}
+                        />
+                      ) : (
+                        <span
+                          className={cn(
+                            "w-3.5 h-3.5 rounded-full border border-border bg-stone-200 dark:bg-stone-700 text-[8px] font-bold text-stone-700 dark:text-stone-100 inline-flex items-center justify-center",
+                            animatedReadMarkerId === msg.id && "animate-read-drop"
+                          )}
+                        >
+                          {conversation.otherParticipant.firstName.charAt(0).toUpperCase()}
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -549,6 +691,27 @@ export default function ConversationPage() {
           onClose={() => setMediaViewerIndex(null)}
         />
       )}
+
+      <style jsx>{`
+        @keyframes readDrop {
+          0% {
+            opacity: 0;
+            transform: translateY(-10px) scale(0.92);
+          }
+          65% {
+            opacity: 1;
+            transform: translateY(1px) scale(1);
+          }
+          100% {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+          }
+        }
+
+        .animate-read-drop {
+          animation: readDrop 280ms ease-out;
+        }
+      `}</style>
     </>
   );
 }

@@ -17,6 +17,7 @@ type ConversationFromDb struct {
 	OtherProfileImgUrl string     `gorm:"column:other_profile_image_url"`
 	LastMessage        string     `gorm:"column:last_message"`
 	LastMessageAt      *time.Time `gorm:"column:last_message_at"`
+	OtherLastReadMsgId string     `gorm:"column:other_last_read_message_id"`
 	UnreadCount        int        `gorm:"column:unread_count"`
 	IsSeller           bool       `gorm:"column:is_seller"`
 }
@@ -25,6 +26,7 @@ type MessageFromDb struct {
 	Id              string    `gorm:"column:id"`
 	ConversationId  string    `gorm:"column:conversation_id"`
 	SenderId        string    `gorm:"column:sender_id"`
+	ReceiverId      string    `gorm:"column:receiver_id"`
 	Content         string    `gorm:"column:content"`
 	Status          string    `gorm:"column:status"`
 	IsEdited        bool      `gorm:"column:is_edited"`

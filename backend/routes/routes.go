@@ -4,6 +4,7 @@ import (
 	"p2p_marketplace/backend/controller"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/websocket/v2"
 )
 
 func AppRoutes(app *fiber.App) {
@@ -45,4 +46,5 @@ func AppRoutes(app *fiber.App) {
 	app.Patch("/messages/conversations/:id/messages/:messageId", controller.AuthenticateUser, controller.EditMessage)
 	app.Delete("/messages/conversations/:id/messages/:messageId", controller.AuthenticateUser, controller.DeleteMessage)
 	app.Delete("/messages/conversations/:id", controller.AuthenticateUser, controller.DeleteConversation)
+	app.Get("/ws", controller.AuthenticateUser, controller.UpgradeRealtimeSocket, websocket.New(controller.RealtimeSocket))
 }
