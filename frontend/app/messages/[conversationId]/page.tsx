@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Lightbox from "yet-another-react-lightbox";
 import Thumbnails from "yet-another-react-lightbox/plugins/thumbnails";
 import Zoom from "yet-another-react-lightbox/plugins/zoom";
@@ -9,8 +9,11 @@ import Video from "yet-another-react-lightbox/plugins/video";
 import "yet-another-react-lightbox/styles.css";
 import "yet-another-react-lightbox/plugins/thumbnails.css";
 import { cn } from "@/lib/utils";
+import type { PostCardProps } from "@/components/post-card";
 import type { Conversation, Message, MessageAttachment, ReactionType, ReplyPreview } from "@/types/messaging";
+import { getListingDetailById } from "@/services/listingDetailService";
 import {
+  getConversations,
   getConversation,
   getMessages,
   sendMessage,
@@ -19,6 +22,7 @@ import {
   reactToMessage,
   editMessage,
   deleteMessage,
+  openOrCreateConversationFromListing,
 } from "@/services/messagingService";
 import { useUser } from "@/utils/UserContext";
 import ChatHeader         from "@/components/messages/chat-header";
@@ -39,6 +43,53 @@ function formatDateSeparator(iso: string): string {
 
 function isSameDay(a: string, b: string) {
   return new Date(a).toDateString() === new Date(b).toDateString();
+}
+
+const DRAFT_CONVERSATION_ID = "new";
+
+function splitSellerName(fullName: string): { firstName: string; lastName: string } {
+  const parts = fullName.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) {
+    return { firstName: "Seller", lastName: "User" };
+  }
+  if (parts.length === 1) {
+    return { firstName: parts[0], lastName: "Seller" };
+  }
+
+  return {
+    firstName: parts[0],
+    lastName: parts.slice(1).join(" "),
+  };
+}
+
+function toListingType(type: PostCardProps["type"]): "SELL" | "RENT" | "SERVICE" {
+  if (type === "rent") return "RENT";
+  if (type === "service") return "SERVICE";
+  return "SELL";
+}
+
+function toDraftConversation(listing: PostCardProps): Conversation {
+  const seller = splitSellerName(listing.seller.name);
+  return {
+    id: DRAFT_CONVERSATION_ID,
+    listing: {
+      id: listing.id,
+      title: listing.title,
+      price: listing.price,
+      priceUnit: listing.priceUnit,
+      listingType: toListingType(listing.type),
+      imageUrl: listing.imageUrl,
+      status: "ACTIVE",
+    },
+    otherParticipant: {
+      id: listing.seller.id ?? "",
+      firstName: seller.firstName,
+      lastName: seller.lastName,
+      isOnline: false,
+    },
+    unreadCount: 0,
+    isSeller: false,
+  };
 }
 
 // ─── Edit modal ───────────────────────────────────────────────────────────────
@@ -203,11 +254,14 @@ function ConversationSkeleton() {
 export default function ConversationPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user } = useUser();
-  const currentUserId = (user as any)?.id ?? "me";
+  const currentUserId = user?.userId ?? "";
 
   const conversationId =
     typeof params.conversationId === "string" ? params.conversationId : "";
+  const isDraftConversation = conversationId === DRAFT_CONVERSATION_ID;
+  const draftListingId = (searchParams.get("listingId") ?? "").trim();
 
   const [conversation, setConversation] = useState<Conversation | null>(null);
   const [messages,     setMessages]     = useState<Message[]>([]);
@@ -227,6 +281,26 @@ export default function ConversationPage() {
     if (!conversationId) return;
     setLoading(true);
     try {
+      if (isDraftConversation) {
+        if (!draftListingId) {
+          setConversation(null);
+          setMessages([]);
+          return;
+        }
+
+        const existingConversations = await getConversations();
+        const existingConversation = existingConversations.find((item) => item.listing.id === draftListingId);
+        if (existingConversation) {
+          router.replace(`/messages/${existingConversation.id}`);
+          return;
+        }
+
+        const listingPayload = await getListingDetailById(draftListingId);
+        setConversation(toDraftConversation(listingPayload.listing));
+        setMessages([]);
+        return;
+      }
+
       const [conv, msgs] = await Promise.all([
         getConversation(conversationId),
         getMessages(conversationId),
@@ -234,10 +308,13 @@ export default function ConversationPage() {
       setConversation(conv);
       setMessages(msgs);
       await markConversationRead(conversationId);
+    } catch {
+      setConversation(null);
+      setMessages([]);
     } finally {
       setLoading(false);
     }
-  }, [conversationId]);
+  }, [conversationId, draftListingId, isDraftConversation, router]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -253,15 +330,42 @@ export default function ConversationPage() {
     [messages]
   );
 
+  const effectiveCurrentUserId = useMemo(() => {
+    if (currentUserId) return currentUserId;
+
+    const otherUserId = conversation?.otherParticipant?.id ?? "";
+    if (!otherUserId) return "";
+
+    const mine = messages.find((msg) => msg.senderId !== otherUserId)?.senderId;
+    return mine ?? "";
+  }, [conversation?.otherParticipant?.id, currentUserId, messages]);
+
   // ── Handlers ─────────────────────────────────────────────────────────────
 
   const handleSend = async (content: string) => {
     if (sending) return;
     setSending(true);
     try {
-      const newMsg = await sendMessage(conversationId, content, currentUserId, replyTo);
+      let targetConversationId = conversationId;
+      if (isDraftConversation) {
+        if (!draftListingId) {
+          throw new Error("Listing is required to start a conversation.");
+        }
+
+        targetConversationId = await openOrCreateConversationFromListing(draftListingId);
+        const freshConversation = await getConversation(targetConversationId);
+        if (freshConversation) {
+          setConversation(freshConversation);
+        }
+        router.replace(`/messages/${targetConversationId}`);
+      }
+
+      const newMsg = await sendMessage(targetConversationId, content, effectiveCurrentUserId, replyTo);
       setMessages((prev) => [...prev, newMsg]);
       setReplyTo(null);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to send message.";
+      window.alert(message);
     } finally {
       setSending(false);
     }
@@ -269,7 +373,7 @@ export default function ConversationPage() {
 
   const handleReply = (msg: Message) => {
     const senderName =
-      msg.senderId === currentUserId
+      msg.senderId === effectiveCurrentUserId
         ? "You"
         : conversation?.otherParticipant
           ? `${conversation.otherParticipant.firstName}`
@@ -290,14 +394,14 @@ export default function ConversationPage() {
   };
 
   const handleReact = async (messageId: string, reaction: ReactionType | null) => {
-    await reactToMessage(conversationId, messageId, currentUserId, reaction);
+    await reactToMessage(conversationId, messageId, effectiveCurrentUserId, reaction);
     setMessages((prev) =>
       prev.map((m) => {
         if (m.id !== messageId) return m;
-        const existing = (m.reactions ?? []).filter((r) => r.userId !== currentUserId);
+        const existing = (m.reactions ?? []).filter((r) => r.userId !== effectiveCurrentUserId);
         return {
           ...m,
-          reactions: reaction ? [...existing, { userId: currentUserId, type: reaction }] : existing,
+          reactions: reaction ? [...existing, { userId: effectiveCurrentUserId, type: reaction }] : existing,
         };
       })
     );
@@ -328,6 +432,11 @@ export default function ConversationPage() {
   };
 
   const handleDeleteConversation = async () => {
+    if (isDraftConversation) {
+      router.push("/messages");
+      return;
+    }
+
     await deleteConversation(conversationId);
     router.push("/messages");
   };
@@ -395,7 +504,7 @@ export default function ConversationPage() {
                   )}
                   <MessageBubble
                     message={msg}
-                    currentUserId={currentUserId}
+                    currentUserId={effectiveCurrentUserId}
                     showTime={showTime}
                     otherName={otherName}
                     onReply={handleReply}

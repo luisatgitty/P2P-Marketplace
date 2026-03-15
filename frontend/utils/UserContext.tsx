@@ -52,10 +52,25 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     const validateUser = async () => {
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {
-        const userData = JSON.parse(stored);
+        const userData = JSON.parse(stored) as User;
         setUser(userData);
         setIsValidated(true);
-        setIsLoading(false);
+
+        if (userData.userId) {
+          setIsLoading(false);
+          return;
+        }
+
+        try {
+          if (document.cookie.includes("session_token")) {
+            const freshUser = await sendGetRequest("/auth/me", true);
+            saveUserData(freshUser);
+          }
+        } catch {
+          // Keep existing local user as a fallback.
+        } finally {
+          setIsLoading(false);
+        }
         return;
       }
 

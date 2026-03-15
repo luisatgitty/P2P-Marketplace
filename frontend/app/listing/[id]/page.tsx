@@ -12,7 +12,6 @@ import {
 import { useUser } from "@/utils/UserContext";
 import { addListingBookmark, getListingDetailById, removeListingBookmark } from "@/services/listingDetailService";
 import { getUserProfileData } from "@/services/profileService";
-import { openOrCreateConversationFromListing } from "@/services/messagingService";
 import { type PostCardProps } from "@/components/post-card";
 import { cn } from "@/lib/utils";
 
@@ -383,8 +382,7 @@ export default function ListingDetailPage() {
 
     setMessaging(true);
     try {
-      const conversationId = await openOrCreateConversationFromListing(listing.id);
-      router.push(`/messages/${conversationId}`);
+      router.push(`/messages/new?listingId=${listing.id}`);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to open conversation.";
       window.alert(message);
