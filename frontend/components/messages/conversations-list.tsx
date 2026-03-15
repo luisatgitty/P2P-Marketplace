@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { usePathname } from "next/navigation";
-import { Search, X, SlidersHorizontal } from "lucide-react";
+import { Search, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Conversation, MessageTab } from "@/types/messaging";
 import { getConversations } from "@/services/messagingService";
@@ -42,6 +42,8 @@ export default function ConversationsList({ activeTab }: ConversationsListProps)
     try {
       const data = await getConversations();
       setAllConversations(data);
+    } catch {
+      setAllConversations([]);
     } finally {
       setLoading(false);
     }
@@ -49,8 +51,14 @@ export default function ConversationsList({ activeTab }: ConversationsListProps)
 
   useEffect(() => { loadConvs(); }, [loadConvs]);
 
-  // Re-load when navigating (so unread counts update after reading)
-  useEffect(() => { loadConvs(); }, [pathname, loadConvs]);
+  useEffect(() => {
+    const refresh = () => {
+      loadConvs();
+    };
+
+    window.addEventListener("messages:updated", refresh);
+    return () => window.removeEventListener("messages:updated", refresh);
+  }, [loadConvs]);
 
   const tabFiltered = filterByTab(allConversations, activeTab);
 
@@ -82,6 +90,8 @@ export default function ConversationsList({ activeTab }: ConversationsListProps)
               placeholder="Search conversations…"
               className={cn(
                 "w-full pl-8 pr-7 py-2 text-xs rounded-lg bg-stone-100 dark:bg-[#13151f] border border-transparent",
+                "[&::-webkit-search-cancel-button]:appearance-none [&::-webkit-search-decoration]:appearance-none", // Remove default "x" button in WebKit browsers
+                "[&::-ms-clear]:hidden [&::-ms-reveal]:hidden", // Remove default "x" button in IE/Edge
                 "placeholder:text-stone-400 dark:placeholder:text-stone-600",
                 "text-stone-800 dark:text-stone-100",
                 "focus:outline-none focus:ring-1 focus:ring-amber-500/50 focus:border-amber-500/50",
@@ -98,21 +108,7 @@ export default function ConversationsList({ activeTab }: ConversationsListProps)
               </button>
             )}
           </div>
-          <button
-            className="p-2 rounded-lg bg-stone-100 dark:bg-[#13151f] text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-100 transition-colors shrink-0"
-            aria-label="Filter"
-            title="Filter conversations"
-          >
-            <SlidersHorizontal size={14} />
-          </button>
         </div>
-
-        {/* Result count */}
-        <p className="text-[10px] text-stone-400 dark:text-stone-500 mt-1.5 px-0.5">
-          {loading
-            ? "Loading…"
-            : `${filtered.length} conversation${filtered.length !== 1 ? "s" : ""}`}
-        </p>
       </div>
 
       {/* ── List ────────────────────────────────────────────────────── */}

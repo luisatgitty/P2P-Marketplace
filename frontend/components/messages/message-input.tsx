@@ -68,7 +68,7 @@ export default function MessageInput({
   const canSend = value.trim().length > 0 && !disabled;
 
   return (
-    <div className="px-3 py-2.5 border-t border-border bg-white dark:bg-[#1c1f2e] shrink-0">
+    <div className="px-3 pt-3 pb-5 border-t border-border bg-white dark:bg-[#1c1f2e] shrink-0">
 
       {/* ── Reply banner ───────────────────────────────────────────────── */}
       {replyTo && (
@@ -96,13 +96,13 @@ export default function MessageInput({
       )}
 
       {/* ── Input row ──────────────────────────────────────────────────── */}
-      <div className="flex items-end gap-2 bg-stone-100 dark:bg-[#13151f] rounded-2xl px-3 py-2">
+      <div className="flex items-end gap-2 bg-white dark:bg-[#1c1f2e] border border-border rounded-2xl pl-4 pr-1 py-1">
 
         {/* Attach */}
         <div className="relative" ref={attachRef}>
           <button
             onClick={() => setAttachOpen((v) => !v)}
-            className="p-1 mb-0.5 text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 transition-colors"
+            className="text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 transition-colors"
             aria-label="Attach file"
           >
             <Paperclip size={17} />
@@ -136,7 +136,7 @@ export default function MessageInput({
           className={cn(
             "flex-1 bg-transparent resize-none outline-none text-sm leading-relaxed py-0.5",
             "text-stone-800 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-600",
-            "max-h-[120px] disabled:opacity-50"
+            "max-h-28 disabled:opacity-50",
           )}
         />
 
@@ -146,7 +146,7 @@ export default function MessageInput({
           disabled={!canSend}
           aria-label="Send message"
           className={cn(
-            "p-2 rounded-xl transition-all duration-150 mb-0.5",
+            "p-2 rounded-xl transition-all duration-150",
             canSend
               ? "bg-amber-700 text-white hover:bg-amber-600 shadow-sm"
               : "bg-transparent text-stone-300 dark:text-stone-600 cursor-not-allowed"
@@ -155,10 +155,6 @@ export default function MessageInput({
           <Send size={15} className={canSend ? "-translate-x-px" : ""} />
         </button>
       </div>
-
-      <p className="text-[10px] text-stone-400 dark:text-stone-600 text-center mt-1.5">
-        Shift + Enter for new line{replyTo ? "  ·  Esc to cancel reply" : ""}
-      </p>
     </div>
   );
 }

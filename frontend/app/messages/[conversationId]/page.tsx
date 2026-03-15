@@ -1,10 +1,15 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Loader2 } from "lucide-react";
+import Lightbox from "yet-another-react-lightbox";
+import Thumbnails from "yet-another-react-lightbox/plugins/thumbnails";
+import Zoom from "yet-another-react-lightbox/plugins/zoom";
+import Video from "yet-another-react-lightbox/plugins/video";
+import "yet-another-react-lightbox/styles.css";
+import "yet-another-react-lightbox/plugins/thumbnails.css";
 import { cn } from "@/lib/utils";
-import type { Conversation, Message, ReactionType, ReplyPreview } from "@/types/messaging";
+import type { Conversation, Message, MessageAttachment, ReactionType, ReplyPreview } from "@/types/messaging";
 import {
   getConversation,
   getMessages,
@@ -53,7 +58,7 @@ function EditModal({
   useEffect(() => { ref.current?.focus(); ref.current?.select(); }, []);
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+    <div className="fixed inset-0 z-100 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm p-4">
       <div className={cn(
         "w-full max-w-md bg-white dark:bg-[#1c1f2e] rounded-2xl shadow-2xl border border-border",
         "animate-in fade-in slide-in-from-bottom-4 duration-200"
@@ -104,6 +109,95 @@ function EditModal({
   );
 }
 
+function MediaViewerModal({
+  mediaItems,
+  activeIndex,
+  onSelect,
+  onClose,
+}: {
+  mediaItems: MessageAttachment[];
+  activeIndex: number;
+  onSelect: (index: number) => void;
+  onClose: () => void;
+}) {
+  const slides = mediaItems.map((item) => {
+    if (item.fileType === "VIDEO") {
+      return {
+        type: "video" as const,
+        sources: [{ src: item.fileUrl, type: "video/mp4" }],
+        poster: item.fileUrl,
+      };
+    }
+
+    return {
+      src: item.fileUrl,
+      alt: item.fileName ?? "media",
+    };
+  });
+
+  return (
+    <Lightbox
+      open={activeIndex >= 0}
+      close={onClose}
+      index={activeIndex}
+      slides={slides}
+      plugins={[Zoom, Thumbnails, Video]}
+      on={{
+        view: ({ index }) => onSelect(index),
+      }}
+      zoom={{
+        maxZoomPixelRatio: 4,
+        zoomInMultiplier: 2,
+        doubleTapDelay: 250,
+      }}
+      thumbnails={{
+        position: "bottom",
+        width: 72,
+        height: 72,
+        border: 1,
+        borderRadius: 8,
+        gap: 8,
+      }}
+      carousel={{
+        finite: false,
+      }}
+      controller={{
+        closeOnBackdropClick: true,
+      }}
+    />
+  );
+}
+
+function ConversationSkeleton() {
+  return (
+    <div className="flex flex-col h-full overflow-hidden bg-white dark:bg-[#0f1117] animate-pulse">
+      <div className="h-14 shrink-0 border-b border-border bg-white dark:bg-[#1c1f2e] px-4 flex items-center gap-3">
+        <div className="w-8 h-8 rounded-full bg-stone-200 dark:bg-[#252837]" />
+        <div className="h-3 w-40 rounded bg-stone-200 dark:bg-[#252837]" />
+      </div>
+
+      <div className="h-16 shrink-0 border-b border-border px-4 py-3 bg-stone-50 dark:bg-[#13151f]">
+        <div className="h-3 w-56 rounded bg-stone-200 dark:bg-[#252837] mb-2" />
+        <div className="h-2.5 w-36 rounded bg-stone-200 dark:bg-[#252837]" />
+      </div>
+
+      <div className="flex-1 overflow-hidden px-4 py-3">
+        <div className="flex flex-col gap-3">
+          <div className="self-start h-14 w-[60%] rounded-2xl bg-stone-200 dark:bg-[#252837]" />
+          <div className="self-end h-14 w-[48%] rounded-2xl bg-stone-200 dark:bg-[#252837]" />
+          <div className="self-start h-20 w-[68%] rounded-2xl bg-stone-200 dark:bg-[#252837]" />
+          <div className="self-end h-12 w-[42%] rounded-2xl bg-stone-200 dark:bg-[#252837]" />
+        </div>
+      </div>
+
+      <div className="h-20 shrink-0 border-t border-border bg-white dark:bg-[#1c1f2e] px-3 py-2.5">
+        <div className="h-full rounded-2xl bg-stone-200 dark:bg-[#252837]" />
+      </div>
+      <div className="h-14 md:h-0 shrink-0" />
+    </div>
+  );
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function ConversationPage() {
@@ -125,6 +219,7 @@ export default function ConversationPage() {
 
   // ── Edit state ───────────────────────────────────────────────────────────
   const [editTarget, setEditTarget] = useState<{ id: string; content: string } | null>(null);
+  const [mediaViewerIndex, setMediaViewerIndex] = useState<number | null>(null);
 
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -149,6 +244,14 @@ export default function ConversationPage() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  const mediaItems = useMemo(
+    () =>
+      messages.flatMap((msg) =>
+        (msg.attachments ?? []).filter((att) => att.fileType === "IMAGE" || att.fileType === "VIDEO")
+      ),
+    [messages]
+  );
 
   // ── Handlers ─────────────────────────────────────────────────────────────
 
@@ -229,13 +332,16 @@ export default function ConversationPage() {
     router.push("/messages");
   };
 
+  const handleOpenMediaViewer = (attachmentId: string) => {
+    const idx = mediaItems.findIndex((item) => item.id === attachmentId);
+    if (idx >= 0) {
+      setMediaViewerIndex(idx);
+    }
+  };
+
   // ── Loading ───────────────────────────────────────────────────────────────
   if (loading) {
-    return (
-      <div className="flex-1 flex items-center justify-center bg-stone-50 dark:bg-[#0f1117]">
-        <Loader2 size={24} className="animate-spin text-stone-400 dark:text-stone-600" />
-      </div>
-    );
+    return <ConversationSkeleton />;
   }
 
   if (!conversation) {
@@ -260,47 +366,50 @@ export default function ConversationPage() {
 
         {/* Messages area */}
         <div className="flex-1 overflow-y-auto no-scroll px-4 py-3">
-          {messages.length === 0 && (
-            <div className="flex flex-col items-center justify-center h-full gap-2 text-center">
-              <p className="text-xs text-stone-400 dark:text-stone-600">No messages yet. Say hello!</p>
-            </div>
-          )}
-
-          {messages.map((msg, i) => {
-            const prev     = messages[i - 1];
-            const next     = messages[i + 1];
-            const showDate = !prev || !isSameDay(prev.createdAt, msg.createdAt);
-            const showTime =
-              !next ||
-              next.senderId !== msg.senderId ||
-              new Date(next.createdAt).getTime() - new Date(msg.createdAt).getTime() > 60_000;
-
-            return (
-              <div key={msg.id}>
-                {showDate && (
-                  <div className="flex items-center gap-3 my-4">
-                    <div className="flex-1 h-px bg-border" />
-                    <span className="text-[10px] font-medium text-stone-400 dark:text-stone-500 px-2">
-                      {formatDateSeparator(msg.createdAt)}
-                    </span>
-                    <div className="flex-1 h-px bg-border" />
-                  </div>
-                )}
-                <MessageBubble
-                  message={msg}
-                  currentUserId={currentUserId}
-                  showTime={showTime}
-                  otherName={otherName}
-                  onReply={handleReply}
-                  onReact={handleReact}
-                  onEdit={handleEdit}
-                  onDelete={handleDelete}
-                />
+          <div className="min-h-full flex flex-col justify-end">
+            {messages.length === 0 && (
+              <div className="flex flex-1 flex-col items-center justify-center gap-2 text-center">
+                <p className="text-xs text-stone-400 dark:text-stone-600">No messages yet. Say hello!</p>
               </div>
-            );
-          })}
+            )}
 
-          <div ref={bottomRef} />
+            {messages.map((msg, i) => {
+              const prev     = messages[i - 1];
+              const next     = messages[i + 1];
+              const showDate = !prev || !isSameDay(prev.createdAt, msg.createdAt);
+              const showTime =
+                !next ||
+                next.senderId !== msg.senderId ||
+                new Date(next.createdAt).getTime() - new Date(msg.createdAt).getTime() > 60_000;
+
+              return (
+                <div key={msg.id}>
+                  {showDate && (
+                    <div className="flex items-center gap-3 my-4">
+                      <div className="flex-1 h-px bg-border" />
+                      <span className="text-[11px] font-medium text-stone-400 dark:text-stone-500 px-2">
+                        {formatDateSeparator(msg.createdAt)}
+                      </span>
+                      <div className="flex-1 h-px bg-border" />
+                    </div>
+                  )}
+                  <MessageBubble
+                    message={msg}
+                    currentUserId={currentUserId}
+                    showTime={showTime}
+                    otherName={otherName}
+                    onReply={handleReply}
+                    onReact={handleReact}
+                    onEdit={handleEdit}
+                    onDelete={handleDelete}
+                    onOpenMediaViewer={handleOpenMediaViewer}
+                  />
+                </div>
+              );
+            })}
+
+            <div ref={bottomRef} />
+          </div>
         </div>
 
         <MessageInput
@@ -320,6 +429,15 @@ export default function ConversationPage() {
           initial={editTarget.content}
           onSave={handleEditSave}
           onClose={() => setEditTarget(null)}
+        />
+      )}
+
+      {mediaViewerIndex !== null && mediaItems.length > 0 && (
+        <MediaViewerModal
+          mediaItems={mediaItems}
+          activeIndex={mediaViewerIndex}
+          onSelect={setMediaViewerIndex}
+          onClose={() => setMediaViewerIndex(null)}
         />
       )}
     </>

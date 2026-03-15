@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { useUser } from "@/utils/UserContext";
 import { getListingDetailById } from "@/services/listingDetailService";
+import { openOrCreateConversationFromListing } from "@/services/messagingService";
 import { type PostCardProps } from "@/components/post-card";
 import { cn } from "@/lib/utils";
 
@@ -223,6 +224,7 @@ export default function ListingDetailPage() {
   const [reportOpen,  setReportOpen] = useState(false);
   const [shareToast,  setShareToast] = useState(false);
   const [deleting,    setDeleting]   = useState(false);
+  const [messaging,   setMessaging]  = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -286,10 +288,20 @@ export default function ListingDetailPage() {
     setTimeout(() => setShareToast(false), 2500);
   }
 
-  function handleMessage() {
+  async function handleMessage() {
     if (!isValidated) { router.push("/login"); return; }
-    if (!listing) return;
-    router.push(`/messages/${listing.seller.name.replace(/\s+/g, "-").toLowerCase()}`);
+    if (!listing || messaging) return;
+
+    setMessaging(true);
+    try {
+      const conversationId = await openOrCreateConversationFromListing(listing.id);
+      router.push(`/messages/${conversationId}`);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to open conversation.";
+      window.alert(message);
+    } finally {
+      setMessaging(false);
+    }
   }
 
   function handleBuy() {
@@ -580,8 +592,9 @@ export default function ListingDetailPage() {
                     )}
                     <button
                       onClick={handleMessage}
+                      disabled={messaging}
                       className="flex items-center justify-center gap-2 w-full py-3 rounded-full border-2 border-stone-200 dark:border-[#2a2d3e] text-stone-700 dark:text-stone-200 text-sm font-semibold hover:border-stone-400 dark:hover:border-stone-500 hover:bg-stone-50 dark:hover:bg-[#252837] transition-all">
-                      <MessageCircle className="w-4 h-4" /> Message Seller
+                      <MessageCircle className="w-4 h-4" /> {messaging ? "Opening chat..." : "Message Seller"}
                     </button>
                     <button
                       onClick={() => !isValidated && router.push("/login")}

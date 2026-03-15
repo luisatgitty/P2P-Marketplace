@@ -80,17 +80,8 @@ export default function ChatHeader({ conversation, onDelete }: ChatHeaderProps) 
         </p>
       </div>
 
-      {/* Action buttons */}
+      {/* More menu */}
       <div className="flex items-center gap-0.5 shrink-0">
-        <button
-          className="p-2 rounded-lg text-stone-500 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-white/5 transition-colors"
-          aria-label="Call"
-          title="Call"
-        >
-          <Phone size={16} />
-        </button>
-
-        {/* More menu */}
         <div className="relative" ref={menuRef}>
           <button
             onClick={() => setMenuOpen((v) => !v)}
