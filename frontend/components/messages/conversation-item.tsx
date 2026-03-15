@@ -110,7 +110,7 @@ export default function ConversationItem({
             {listing.title}
             {" · "}
             <span className="text-amber-600 dark:text-amber-500 font-semibold">
-              {fmt(listing.price)}{listing.priceUnit ?? ""}
+              {fmt(listing.price)} {listing.priceUnit ?? ""}
             </span>
           </span>
         </div>

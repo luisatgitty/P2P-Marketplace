@@ -4,28 +4,33 @@
 import Link from "next/link";
 import { ExternalLink } from "lucide-react";
 import type { ConversationListing } from "@/types/messaging";
-import ListingTypeBadge from "./listing-type-badge";
 
 interface ListingContextCardProps {
   listing: ConversationListing;
 }
-
-const TYPE_ICON: Record<string, string> = {
-  SELL:    "🏷️",
-  RENT:    "🔑",
-  SERVICE: "🔧",
-};
 
 export default function ListingContextCard({ listing }: ListingContextCardProps) {
   const fmt = (n: number) =>
     "₱" + n.toLocaleString("en-PH", { minimumFractionDigits: 0 });
 
   return (
-    <div className="mx-3 my-2 flex items-center gap-3 px-3 py-2.5 rounded-xl bg-stone-50 dark:bg-[#13151f] border border-border shrink-0">
-      {/* Icon */}
-      <div className="w-9 h-9 rounded-lg bg-amber-700/10 dark:bg-amber-700/20 flex items-center justify-center text-xl shrink-0 select-none">
-        {TYPE_ICON[listing.listingType] ?? "📦"}
-      </div>
+    <div className="mx-3 my-2 flex items-center gap-3 px-2 py-2 rounded-xl bg-stone-50 dark:bg-[#13151f] border border-border shrink-0">
+      {/* Listing primary image */}
+      <Link
+        href={`/listing/${listing.id}`}
+        className="w-11 h-11 rounded-lg overflow-hidden shrink-0 border border-border bg-stone-100 dark:bg-[#0f1117]"
+        title="View listing"
+      >
+        {listing.imageUrl ? (
+          <img
+            src={listing.imageUrl}
+            alt={listing.title}
+            className="w-full h-full object-cover"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-base">📦</div>
+        )}
+      </Link>
 
       {/* Details */}
       <div className="flex-1 min-w-0">
@@ -34,7 +39,7 @@ export default function ListingContextCard({ listing }: ListingContextCardProps)
         </p>
         <div className="flex items-center gap-1.5 mt-0.5">
           <span className="text-xs font-bold text-amber-700 dark:text-amber-500">
-            {fmt(listing.price)}{listing.priceUnit ?? ""}
+            {fmt(listing.price)} {listing.priceUnit ?? ""}
           </span>
         </div>
       </div>

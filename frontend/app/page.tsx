@@ -171,11 +171,6 @@ function HomePageInner() {
 
             {/* Left: Headline */}
             <div className="max-w-xl animate-fade-in-up">
-              {tabLabel && (
-                <span className="inline-block text-xs font-semibold bg-amber-700 text-white px-3 py-1 rounded-full mb-3 uppercase tracking-wider">
-                  {tabLabel}
-                </span>
-              )}
               <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-stone-100 leading-tight">
                 Buy, Sell, Rent & Avail<br />
                 <span className="text-stone-400">Services from people near you.</span>

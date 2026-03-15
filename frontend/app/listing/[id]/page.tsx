@@ -85,19 +85,19 @@ function RelatedCard({ listing }: { listing: PostCardProps }) {
             className="object-cover group-hover:scale-105 transition-transform duration-300"
             sizes="160px"
           />
-          <span className={cn("absolute top-1.5 left-1.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full", TYPE_COLOR[listing.type])}>
+          <span className={cn("absolute top-1.5 left-1.5 text-[11px] font-bold px-1.5 py-0.5 rounded-full", TYPE_COLOR[listing.type])}>
             {TYPE_LABEL[listing.type]}
           </span>
         </div>
         <div className="p-2.5">
-          <p className="text-stone-800 dark:text-stone-100 font-semibold text-xs leading-tight line-clamp-2">{listing.title}</p>
+          <p className="text-stone-800 dark:text-stone-100 font-semibold text-sm leading-tight line-clamp-2">{listing.title}</p>
           <p className="text-stone-800 dark:text-stone-200 font-bold text-sm mt-1">
             {fmt.format(listing.price)}
             {listing.priceUnit && (
-              <span className="text-[10px] font-normal text-stone-400 dark:text-stone-500">{listing.priceUnit}</span>
-            )}
+              <span className="text-[11px] font-normal text-stone-400 dark:text-stone-500"> {listing.priceUnit}</span>
+            )}  
           </p>
-          <p className="text-stone-400 dark:text-stone-500 text-[10px] mt-0.5 truncate">{listing.location}</p>
+          <p className="text-stone-400 dark:text-stone-500 text-[11px] mt-0.5 truncate">{listing.location}</p>
         </div>
       </div>
     </Link>
@@ -471,10 +471,6 @@ export default function ListingDetailPage() {
                   {TYPE_LABEL[listing.type]}
                 </span>
 
-                {listing.seller.isPro && (
-                  <span className="absolute top-4 left-28 bg-amber-400 text-amber-900 text-xs font-bold px-2.5 py-1 rounded-full">PRO</span>
-                )}
-
                 {/* Condition badge — sell listings only; rent/service have no condition */}
                 {isSell && extra.condition && (
                   <span className={cn(
@@ -599,7 +595,7 @@ export default function ListingDetailPage() {
               {/* ── Price + title card ── */}
               <div className="bg-white dark:bg-[#1c1f2e] rounded-2xl border border-stone-200 dark:border-[#2a2d3e] shadow-sm p-5 mb-4">
                 <div className="flex items-start justify-between gap-2 mb-2">
-                  <h1 className="text-xl font-bold text-stone-900 dark:text-stone-50 leading-tight">{listing.title}</h1>
+                  <h1 className="text-lg font-bold text-stone-900 dark:text-stone-50 leading-tight">{listing.title}</h1>
                   <div className="flex gap-1.5 shrink-0">
                     <button
                       onClick={handleToggleBookmark}
@@ -622,17 +618,12 @@ export default function ListingDetailPage() {
 
                 {/* Price */}
                 <div className="flex items-baseline gap-1.5 mb-1">
-                  <span className="text-3xl font-extrabold text-stone-900 dark:text-stone-50">{fmt.format(listing.price)}</span>
+                  <span className="text-2xl font-extrabold text-stone-900 dark:text-stone-50">{fmt.format(listing.price)}</span>
                   {listing.priceUnit && <span className="text-stone-400 dark:text-stone-500 text-sm">{listing.priceUnit}</span>}
                 </div>
-                {isSell && (
-                  <p className="text-xs text-stone-400 dark:text-stone-500 mb-3">
-                    Price is {extra.offers > 2 ? "firm" : "negotiable"} · {extra.offers} offer{extra.offers !== 1 ? "s" : ""} received
-                  </p>
-                )}
 
                 {/* Location + posted */}
-                <div className="flex flex-wrap items-center gap-3 text-xs text-stone-400 dark:text-stone-500 mb-4">
+                <div className="flex flex-wrap items-center gap-3 text-sm text-stone-400 dark:text-stone-500 mb-4">
                   <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{listing.location}</span>
                   <span className="flex items-center gap-1"><Clock className="w-3 h-3" />Posted {listing.postedAt}</span>
                 </div>
@@ -709,15 +700,12 @@ export default function ListingDetailPage() {
                     </div>
                   </Link>
                   <div className="min-w-0">
-                    <p className="font-bold text-stone-900 dark:text-stone-50 text-sm">{listing.seller.name}</p>
+                    <p className="font-bold text-stone-900 dark:text-stone-50 text-md">{listing.seller.name}</p>
                     <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
                       {listing.seller.rating && (
                         <span className="flex items-center gap-0.5 text-xs text-amber-500 font-semibold">
                           <Star className="w-3 h-3 fill-amber-400" /> {listing.seller.rating.toFixed(1)}
                         </span>
-                      )}
-                      {listing.seller.isPro && (
-                        <span className="text-[10px] font-bold bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 px-2 py-0.5 rounded-full">PRO</span>
                       )}
                       <span className="flex items-center gap-0.5 text-xs text-teal-600 dark:text-teal-400 font-medium">
                         <ShieldCheck className="w-3 h-3" /> Verified
@@ -734,21 +722,21 @@ export default function ListingDetailPage() {
                   ].map((s) => (
                     <div key={s.label} className="bg-stone-50 dark:bg-[#13151f] rounded-xl py-2.5">
                       <p className="text-sm font-bold text-stone-900 dark:text-stone-50">{s.value}</p>
-                      <p className="text-[10px] text-stone-400 dark:text-stone-500 mt-0.5">{s.label}</p>
+                      <p className="text-[11px] text-stone-400 dark:text-stone-500 mt-0.5">{s.label}</p>
                     </div>
                   ))}
                 </div>
 
                 <Link
                   href={sellerProfileHref}
-                  className="flex items-center justify-center gap-2 w-full py-2.5 rounded-full border border-stone-200 dark:border-[#2a2d3e] text-stone-600 dark:text-stone-300 text-xs font-semibold hover:border-stone-400 dark:hover:border-stone-500 hover:bg-stone-50 dark:hover:bg-[#252837] transition-all">
+                  className="flex items-center justify-center gap-2 w-full py-2.5 rounded-full border border-stone-200 dark:border-[#2a2d3e] text-stone-600 dark:text-stone-300 text-sm font-semibold hover:border-stone-400 dark:hover:border-stone-500 hover:bg-stone-50 dark:hover:bg-[#252837] transition-all">
                   {isOwnListing ? "View My Profile" : "View Seller Profile"}
                 </Link>
               </div>
 
               {/* ── Safety tips ── */}
               <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-2xl p-4">
-                <p className="text-xs font-bold text-amber-800 dark:text-amber-300 mb-2">🛡 Safety Tips</p>
+                <p className="text-sm font-bold text-amber-800 dark:text-amber-300 mb-2">🛡 Safety Tips</p>
                 <ul className="flex flex-col gap-1.5">
                   {[
                     "Meet in a safe, public place",
@@ -756,7 +744,7 @@ export default function ListingDetailPage() {
                     "Never pay in advance via GCash",
                     "Report suspicious listings",
                   ].map((tip) => (
-                    <li key={tip} className="flex items-start gap-1.5 text-[11px] text-amber-700 dark:text-amber-400">
+                    <li key={tip} className="flex items-start gap-1.5 text-[12px] text-amber-700 dark:text-amber-400">
                       <span className="text-amber-400 dark:text-amber-500 mt-0.5 shrink-0">•</span>{tip}
                     </li>
                   ))}
@@ -766,7 +754,7 @@ export default function ListingDetailPage() {
               {/* Report link */}
               <button
                 onClick={() => setReportOpen(true)}
-                className="flex items-center gap-1.5 text-xs text-stone-400 dark:text-stone-500 hover:text-red-500 dark:hover:text-red-400 transition-colors mt-3 mx-auto">
+                className="flex items-center gap-1.5 text-sm text-stone-400 dark:text-stone-500 hover:text-red-500 dark:hover:text-red-400 transition-colors mt-3 mx-auto">
                 <Flag className="w-3 h-3" /> Report this listing
               </button>
             </div>

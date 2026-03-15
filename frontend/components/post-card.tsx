@@ -62,43 +62,25 @@ export default function PostCard(props: PostCardProps) {
             : <Bookmark size={13} className="text-stone-600 dark:text-stone-300" />
           }
         </button>
-        {seller.isPro && (
-          <span className="absolute bottom-2 left-2 text-[9px] font-bold bg-amber-500 text-white px-1.5 py-0.5 rounded-md">PRO</span>
-        )}
       </Link>
 
       {/* Content */}
-      <Link href={`/listing/${id}`} className="flex flex-col gap-1.5 p-2.5 sm:p-3 flex-1">
-        {category && (
-          <p className="text-[9px] sm:text-[10px] font-semibold text-stone-400 dark:text-stone-500 uppercase tracking-widest leading-none">
-            {category}
-          </p>
-        )}
+      <Link href={`/listing/${id}`} className="flex flex-col gap-1 p-2.5 sm:p-3 flex-1">
         <h3 className="text-xs sm:text-sm font-semibold text-stone-800 dark:text-stone-100 line-clamp-2 leading-snug">
           {title}
         </h3>
         <p className="text-sm sm:text-base font-bold text-amber-700 dark:text-amber-500 leading-none mt-0.5">
           {formatPrice(price)}
-          {priceUnit && <span className="text-[10px] font-normal text-stone-400 dark:text-stone-500 ml-1">{priceUnit}</span>}
+          {priceUnit && <span className="text-[11px] font-normal text-stone-400 dark:text-stone-500 ml-1">{priceUnit}</span>}
         </p>
         <div className="flex-1" />
-        <div className="flex items-center gap-1.5">
-          <div className="w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-stone-200 dark:bg-stone-600 flex items-center justify-center text-[9px] sm:text-[10px] font-bold text-stone-600 dark:text-stone-200 shrink-0 select-none">
-            {seller.name.charAt(0).toUpperCase()}
-          </div>
-          <span className="text-[10px] sm:text-xs text-stone-500 dark:text-stone-400 truncate leading-none">{seller.name}</span>
-          <div className="ml-auto flex items-center gap-0.5 shrink-0">
-            <Star size={9} className="text-amber-500" fill="currentColor" />
-            <span className="text-[10px] font-medium text-stone-500 dark:text-stone-400">{seller.rating.toFixed(1)}</span>
-          </div>
-        </div>
-        <div className="flex items-center justify-between gap-1 text-[9px] sm:text-[10px] text-stone-400 dark:text-stone-500">
+        <div className="flex items-center justify-between gap-1 text-[10px] sm:text-[11px] text-stone-400 dark:text-stone-500">
           <div className="flex items-center gap-0.5 min-w-0">
-            <MapPin size={8} className="shrink-0" />
+            <MapPin size={11} className="shrink-0" />
             <span className="truncate">{location}</span>
           </div>
           <div className="flex items-center gap-0.5 shrink-0">
-            <Clock size={8} />
+            <Clock size={11} />
             <span>{postedAt}</span>
           </div>
         </div>

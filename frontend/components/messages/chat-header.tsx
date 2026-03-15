@@ -17,6 +17,7 @@ export default function ChatHeader({ conversation, onDelete }: ChatHeaderProps) 
   const { otherParticipant, listing } = conversation;
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const profileHref = otherParticipant.id ? `/profile?userId=${otherParticipant.id}` : "/profile";
 
   // Close menu on outside click
   useEffect(() => {
@@ -32,7 +33,7 @@ export default function ChatHeader({ conversation, onDelete }: ChatHeaderProps) 
   const initials = `${otherParticipant.firstName[0]}${otherParticipant.lastName[0]}`.toUpperCase();
 
   const menuItems = [
-    { icon: User,         label: "View Profile",   action: () => { setMenuOpen(false); } },
+    { icon: User,         label: "View Profile",   action: () => { router.push(profileHref); setMenuOpen(false); } },
     { icon: ExternalLink, label: "View Listing",   action: () => { router.push(`/listing/${listing.id}`); setMenuOpen(false); } },
     { icon: Flag,         label: "Report User",    action: () => { setMenuOpen(false); }, danger: false },
     { icon: Trash2,       label: "Delete Chat",    action: () => { onDelete?.(); setMenuOpen(false); }, danger: true },
@@ -51,7 +52,11 @@ export default function ChatHeader({ conversation, onDelete }: ChatHeaderProps) 
       </button>
 
       {/* Avatar */}
-      <div className="relative shrink-0">
+      <button
+        onClick={() => router.push(profileHref)}
+        className="relative shrink-0 rounded-full"
+        aria-label="View user profile"
+      >
         <div className="w-9 h-9 rounded-full bg-stone-200 dark:bg-stone-700 flex items-center justify-center overflow-hidden select-none">
           {otherParticipant.profileImageUrl ? (
             <img src={otherParticipant.profileImageUrl} alt={otherParticipant.firstName} className="w-full h-full object-cover" />
@@ -62,10 +67,14 @@ export default function ChatHeader({ conversation, onDelete }: ChatHeaderProps) 
         {otherParticipant.isOnline && (
           <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-white dark:border-[#1c1f2e]" />
         )}
-      </div>
+      </button>
 
       {/* Info */}
-      <div className="flex-1 min-w-0">
+      <button
+        onClick={() => router.push(profileHref)}
+        className="flex-1 min-w-0 text-left"
+        aria-label="Open participant profile"
+      >
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-sm font-bold text-stone-900 dark:text-stone-50 truncate">
             {otherParticipant.firstName} {otherParticipant.lastName}
@@ -78,7 +87,7 @@ export default function ChatHeader({ conversation, onDelete }: ChatHeaderProps) 
         )}>
           {otherParticipant.isOnline ? "Online" : "Offline"}
         </p>
-      </div>
+      </button>
 
       {/* More menu */}
       <div className="flex items-center gap-0.5 shrink-0">
