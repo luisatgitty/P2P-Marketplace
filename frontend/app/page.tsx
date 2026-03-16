@@ -1,10 +1,11 @@
 "use client";
 
-import { Suspense, useState, useEffect, useCallback } from "react";
+import { Suspense, useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import PostCard, { type PostCardProps } from "@/components/post-card";
+import PostCard from "@/components/post-card";
 import { getHomeListings, type HomeListing } from "@/services/listingFeedService";
+import { useUser } from "@/utils/UserContext";
 import { Search, SlidersHorizontal, X, ChevronLeft, ChevronRight, PackageSearch } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -67,6 +68,7 @@ function getPageNumbers(current: number, total: number): (number | "...")[] {
 function HomePageInner() {
   const searchParams = useSearchParams();
   const router       = useRouter();
+  const { user, isValidated } = useUser();
   const typeFromUrl  = (searchParams.get("type") || "all") as string;
 
   const [allListings, setAllListings] = useState<ListingWithMeta[]>([]);
@@ -157,6 +159,20 @@ function HomePageInner() {
   // ── Tab label for hero ─────────────────────────────────────────────────────
   const tabLabel = typeFromUrl === "sell" ? "Buy" : typeFromUrl === "rent" ? "Rent" : typeFromUrl === "service" ? "Services" : null;
 
+  const handlePostForFree = () => {
+    if (!isValidated) {
+      router.push("/login");
+      return;
+    }
+
+    if ((user?.status ?? "").toLowerCase() !== "verified") {
+      router.push("/become-seller");
+      return;
+    }
+
+    router.push("/create");
+  };
+
   return (
     <div className="min-h-screen bg-stone-50 dark:bg-[#111827]">
 
@@ -172,19 +188,22 @@ function HomePageInner() {
             {/* Left: Headline */}
             <div className="max-w-xl animate-fade-in-up">
               <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-stone-100 leading-tight">
-                Buy, Sell, Rent & Avail<br />
-                <span className="text-stone-400">Services from people near you.</span>
+                Buy, Sell, Rent & Avail Services<br />
+                <span className="text-stone-400">from people near you.</span>
               </h1>
               <p className="text-stone-400 text-sm sm:text-base mt-3 max-w-md">
-                The Philippines&apos; trusted peer-to-peer marketplace. Find great deals or reach thousands of buyers — for free.
+                The Philippines&apos; trusted peer-to-peer marketplace. Find great deals or reach thousands of buyers for free.
               </p>
               <div className="flex gap-3 mt-6">
                 <a href="#listings" className="bg-amber-700 hover:bg-amber-600 text-white text-sm font-semibold px-5 py-2.5 rounded-full transition-colors">
                   Browse Listings
                 </a>
-                <Link href="/create" className="border border-stone-600 text-stone-300 hover:border-stone-400 hover:text-white text-sm font-medium px-5 py-2.5 rounded-full transition-colors">
+                <button
+                  onClick={handlePostForFree}
+                  className="border border-stone-600 text-stone-300 hover:border-stone-400 hover:text-white text-sm font-medium px-5 py-2.5 rounded-full transition-colors"
+                >
                   Post for Free
-                </Link>
+                </button>
               </div>
             </div>
 
