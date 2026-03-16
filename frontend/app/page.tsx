@@ -313,13 +313,13 @@ function HomePageInner() {
           <span className="font-semibold text-stone-700 dark:text-stone-200">{sorted.length}</span> listing{sorted.length !== 1 && "s"} found
         </p>
         <div className="flex items-center gap-1 flex-wrap">
-          <span className="text-sm text-stone-400 mr-1 hidden sm:inline">Sort:</span>
+          <span className="text-sm text-stone-400 mr-2 hidden sm:inline">Sort:</span>
           {SORT_OPTIONS.map((opt) => (
             <button
               key={opt.value}
               onClick={() => { setSort(opt.value); setPage(1); }}
               className={cn(
-                "text-sm font-medium px-3 py-1.5 rounded-full transition-all",
+                "text-sm font-medium px-3 py-1.5 rounded-md transition-all",
                 sort === opt.value
                   ? "bg-[#1a2235] dark:bg-amber-700 text-white"
                   : "text-stone-500 dark:text-stone-400 hover:bg-stone-200 dark:hover:bg-white/10 hover:text-stone-700 dark:hover:text-white"

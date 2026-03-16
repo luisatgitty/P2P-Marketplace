@@ -5,9 +5,9 @@ import Link from "next/link";
 import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import {
-  MapPin, Mail, Calendar, Star, Eye, MessageCircle,
-  Edit2, Plus, ShieldCheck, Upload, Package, Bookmark,
-  X, Camera, Trash2, AlertTriangle,
+  MapPin, Mail, Calendar, Eye, EyeOff, MessageCircle,
+  Edit2, Plus, ShieldCheck, Package, Bookmark,
+  Camera, Trash2, AlertTriangle,
 } from "lucide-react";
 import { useUser } from "@/utils/UserContext";
 import { Button } from "@/components/ui/button";
@@ -297,6 +297,9 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false);
   const [loadingEditProfile, setLoadingEditProfile] = useState(false);
   const [deactivating, setDeactivating] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [userListings, setUserListings] = useState<ProfileListingItem[]>([]);
   const [bookmarkListings, setBookmarkListings] = useState<ProfileListingItem[]>([]);
@@ -809,30 +812,57 @@ export default function ProfilePage() {
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div>
                       <label className={lbl}>Current Password</label>
-                      <Input
-                        type="password"
-                        value={form.currentPassword}
-                        onChange={(e) => setForm({ ...form, currentPassword: e.target.value })}
-                        placeholder="Required if changing"
-                      />
+                      <div className="relative">
+                        <Input
+                          type={showCurrentPassword ? "text" : "password"}
+                          value={form.currentPassword}
+                          onChange={(e) => setForm({ ...form, currentPassword: e.target.value })}
+                          placeholder="Required if changing"
+                        />
+                        <button
+                          type="button"
+                          className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm leading-5"
+                          onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                        >
+                          {showCurrentPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                        </button>
+                      </div>
                     </div>
                     <div>
                       <label className={lbl}>New Password</label>
-                      <Input
-                        type="password"
-                        value={form.newPassword}
-                        onChange={(e) => setForm({ ...form, newPassword: e.target.value })}
-                        placeholder="Leave blank to keep"
-                      />
+                      <div className="relative">
+                        <Input
+                          type={showNewPassword ? "text" : "password"}
+                          value={form.newPassword}
+                          onChange={(e) => setForm({ ...form, newPassword: e.target.value })}
+                          placeholder="Leave blank to keep"
+                        />
+                        <button
+                          type="button"
+                          className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm leading-5"
+                          onClick={() => setShowNewPassword(!showNewPassword)}
+                        >
+                          {showNewPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                        </button>
+                      </div>
                     </div>
                     <div>
                       <label className={lbl}>Confirm New Password</label>
-                      <Input
-                        type="password"
-                        value={form.confirmPassword}
-                        onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })}
-                        placeholder="Repeat new password"
-                      />
+                      <div className="relative">
+                        <Input
+                          type={showConfirmPassword ? "text" : "password"}
+                          value={form.confirmPassword}
+                          onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })}
+                          placeholder="Repeat new password"
+                        />
+                        <button
+                          type="button"
+                          className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm leading-5"
+                          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        >
+                          {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -865,58 +895,58 @@ export default function ProfilePage() {
         )}
 
         <div className="bg-white dark:bg-[#1c1f2e] rounded-2xl border border-stone-200 dark:border-[#2a2d3e] shadow-sm overflow-hidden">
-              {/* Tab bar */}
-              {!isViewingExternalProfile && <div className="flex border-b border-stone-200 dark:border-[#2a2d3e]">
-                {(["listings", "bookmarks"] as const).map((t) => (
-                  <button key={t} onClick={() => setProfileTab(t)}
-                    className={cn("flex-1 py-3.5 text-sm font-medium transition-colors",
-                      profileTab === t
-                        ? "text-stone-900 dark:text-stone-100 border-b-2 border-stone-900 dark:border-stone-300"
-                        : "text-stone-400 dark:text-stone-500 hover:text-stone-600 dark:hover:text-stone-300")}>
-                    {t === "listings" ? "📦 My Listings" : "🔖 Bookmarked Items"}
+          {/* Tab bar */}
+          {!isViewingExternalProfile && <div className="flex border-b border-stone-200 dark:border-[#2a2d3e]">
+            {(["listings", "bookmarks"] as const).map((t) => (
+              <button key={t} onClick={() => setProfileTab(t)}
+                className={cn("flex-1 py-3.5 text-sm font-medium transition-colors",
+                  profileTab === t
+                    ? "text-stone-900 dark:text-stone-100 border-b-2 border-stone-900 dark:border-stone-300"
+                    : "text-stone-400 dark:text-stone-500 hover:text-stone-600 dark:hover:text-stone-300")}>
+                {t === "listings" ? "📦 My Listings" : "🔖 Bookmarked Items"}
+              </button>
+            ))}
+          </div>}
+
+          {/* My Listings */}
+          {profileTab === "listings" && (<>
+            <div className="flex items-center justify-between px-4 pt-3 pb-2">
+              <div className="flex gap-1">
+                {(["all", "active", "sold", "booked"] as const).map((t) => (
+                  <button key={t} onClick={() => setListingTab(t)}
+                    className={cn("text-xs font-medium px-3 py-1.5 rounded-full transition-colors capitalize",
+                      listingTab === t
+                        ? "bg-stone-900 dark:bg-stone-200 text-white dark:text-stone-900"
+                        : "text-stone-400 dark:text-stone-500 hover:text-stone-600 dark:hover:text-stone-300 hover:bg-stone-100 dark:hover:bg-[#252837]")}>
+                    {t === "all"
+                      ? `📋 All (${userListings.length})`
+                      : t === "active"
+                      ? `🟢 Active (${activeListings.length})`
+                      : t === "sold"
+                        ? `✅ Sold (${soldListings.length})`
+                        : `📝 Booked (${bookedListings.length})`}
                   </button>
                 ))}
-              </div>}
+              </div>
+              
+            </div>
+            {loadingProfile ? (
+              <div className="text-center py-14 px-6">
+                <p className="font-semibold text-stone-400 text-sm">Loading listings...</p>
+              </div>
+            ) : allListings.length > 0
+              ? <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 p-4">{allListings.map((l) => <ProfileListingCard key={l.id} listing={l} showMeta tab={listingTab} />)}{isVerifiedSeller && <AddListingCard />}</div>
+              : <div className="text-center py-14 px-6"><Package className="w-10 h-10 text-stone-200 dark:text-stone-700 mx-auto mb-3" /><p className="font-semibold text-stone-400 text-sm">No listings yet</p>{isVerifiedSeller && <Link href="/create"><Button size="sm" className="mt-4 rounded-full bg-stone-900 hover:bg-stone-800 text-white text-xs"><Plus className="w-3 h-3" /> Add Listing</Button></Link>}</div>}
+          </>)}
 
-              {/* My Listings */}
-              {profileTab === "listings" && (<>
-                <div className="flex items-center justify-between px-4 pt-3 pb-2">
-                  <div className="flex gap-1">
-                    {(["all", "active", "sold", "booked"] as const).map((t) => (
-                      <button key={t} onClick={() => setListingTab(t)}
-                        className={cn("text-xs font-medium px-3 py-1.5 rounded-full transition-colors capitalize",
-                          listingTab === t
-                            ? "bg-stone-900 dark:bg-stone-200 text-white dark:text-stone-900"
-                            : "text-stone-400 dark:text-stone-500 hover:text-stone-600 dark:hover:text-stone-300 hover:bg-stone-100 dark:hover:bg-[#252837]")}>
-                        {t === "all"
-                          ? `📋 All (${userListings.length})`
-                          : t === "active"
-                          ? `🟢 Active (${activeListings.length})`
-                          : t === "sold"
-                            ? `✅ Sold (${soldListings.length})`
-                            : `📝 Booked (${bookedListings.length})`}
-                      </button>
-                    ))}
-                  </div>
-                  
-                </div>
-                {loadingProfile ? (
-                  <div className="text-center py-14 px-6">
-                    <p className="font-semibold text-stone-400 text-sm">Loading listings...</p>
-                  </div>
-                ) : allListings.length > 0
-                  ? <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 p-4">{allListings.map((l) => <ProfileListingCard key={l.id} listing={l} showMeta tab={listingTab} />)}{isVerifiedSeller && <AddListingCard />}</div>
-                  : <div className="text-center py-14 px-6"><Package className="w-10 h-10 text-stone-200 dark:text-stone-700 mx-auto mb-3" /><p className="font-semibold text-stone-400 text-sm">No listings yet</p>{isVerifiedSeller && <Link href="/create"><Button size="sm" className="mt-4 rounded-full bg-stone-900 hover:bg-stone-800 text-white text-xs"><Plus className="w-3 h-3" /> Add Listing</Button></Link>}</div>}
-              </>)}
-
-              {/* Bookmarked Items */}
-              {!isViewingExternalProfile && profileTab === "bookmarks" && (
-                loadingProfile
-                  ? <div className="text-center py-14"><p className="font-semibold text-stone-400 text-sm">Loading bookmarked items...</p></div>
-                  : bookmarkListings.length > 0
-                  ? <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 p-4">{bookmarkListings.map((l) => <ProfileListingCard key={l.id} listing={l} />)}</div>
-                  : <div className="text-center py-14"><Bookmark className="w-10 h-10 text-stone-200 dark:text-stone-700 mx-auto mb-3" /><p className="font-semibold text-stone-400 text-sm">No bookmarked items yet</p></div>
-              )}
+          {/* Bookmarked Items */}
+          {!isViewingExternalProfile && profileTab === "bookmarks" && (
+            loadingProfile
+              ? <div className="text-center py-14"><p className="font-semibold text-stone-400 text-sm">Loading bookmarked items...</p></div>
+              : bookmarkListings.length > 0
+              ? <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 p-4">{bookmarkListings.map((l) => <ProfileListingCard key={l.id} listing={l} />)}</div>
+              : <div className="text-center py-14"><Bookmark className="w-10 h-10 text-stone-200 dark:text-stone-700 mx-auto mb-3" /><p className="font-semibold text-stone-400 text-sm">No bookmarked items yet</p></div>
+          )}
         </div>
       </div>
 

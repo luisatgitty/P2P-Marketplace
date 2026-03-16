@@ -13,6 +13,7 @@ import {
   FieldDescription,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { Banner, Container } from "@/components/auth/auth-container";
 import { SignupForm } from "@/types/forms";
 
 function VerifyEmailForm() {
@@ -164,10 +165,10 @@ function VerifyEmailForm() {
   };
 
   return (
-    <div className="flex min-h-svh flex-col items-center justify-center p-6">
-      <div className="w-full max-w-sm">
-        <Card>
-          <CardContent className="p-6 md:p-8">
+    <Container>
+      <Card className="overflow-hidden p-0">
+        <CardContent className="grid p-0 md:grid-cols-2">
+          <div className="p-6 md:p-8">
             <FieldGroup>
               <div className="flex flex-col items-center gap-2 text-center mb-4">
                 <h1 className="text-2xl font-bold">Verify your email</h1>
@@ -220,8 +221,8 @@ function VerifyEmailForm() {
                   </p>
                 )}
 
-                <Field className="mt-4">
-                  <Button type="submit" className="w-full" disabled={loading}>
+                <Field className="mt-4 w-xs mx-auto">
+                  <Button type="submit" disabled={loading}>
                     {loading ? "Verifying..." : "Verify Email"}
                   </Button>
                 </Field>
@@ -244,10 +245,11 @@ function VerifyEmailForm() {
                 </button>
               </div>
             </FieldGroup>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
+          </div>
+          <Banner />
+        </CardContent>
+      </Card>
+    </Container>
   );
 }
 

@@ -54,7 +54,7 @@ export default function Footer() {
         <div className="flex flex-col gap-4">
           <div>
             <div className="flex items-center gap-2 mb-3">
-              <Image src="/logo.png" alt="P2P Marketplace" width={40} height={40} />
+              <Image src="/logo.png" alt="P2P Marketplace" width={32} height={32} />
               <span className="text-stone-100 font-semibold text-lg">P2P Marketplace</span>
             </div>
             <p className="text-stone-400 text-sm max-w-xs leading-relaxed">
