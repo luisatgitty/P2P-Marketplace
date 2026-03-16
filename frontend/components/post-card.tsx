@@ -52,16 +52,6 @@ export default function PostCard(props: PostCardProps) {
         <span className={`absolute top-2 left-2 text-[9px] sm:text-[10px] font-extrabold px-1.5 py-0.5 rounded-md tracking-wider ${cfg.cls}`}>
           {cfg.label}
         </span>
-        <button
-          onClick={(e) => { e.preventDefault(); setIsBookmarked((v) => !v); }}
-          className="absolute top-2 right-2 p-1.5 rounded-full bg-white/90 dark:bg-black/60 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-all duration-150 hover:scale-110"
-          aria-label={isBookmarked ? "Remove bookmark" : "Bookmark listing"}
-        >
-          {isBookmarked
-            ? <BookmarkCheck size={13} className="text-amber-600" fill="currentColor" />
-            : <Bookmark size={13} className="text-stone-600 dark:text-stone-300" />
-          }
-        </button>
       </Link>
 
       {/* Content */}

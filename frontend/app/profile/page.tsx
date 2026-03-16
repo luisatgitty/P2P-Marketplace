@@ -12,6 +12,7 @@ import {
 import { useUser } from "@/utils/UserContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { toast } from "sonner";
 import {
   deactivateProfile,
   getProfileData,
@@ -300,7 +301,6 @@ export default function ProfilePage() {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [toast, setToast] = useState<string | null>(null);
   const [userListings, setUserListings] = useState<ProfileListingItem[]>([]);
   const [bookmarkListings, setBookmarkListings] = useState<ProfileListingItem[]>([]);
   const [listingTab, setListingTab] = useState<ListingTab>("active");
@@ -316,16 +316,24 @@ export default function ProfilePage() {
   const [uploadingCover, setUploadingCover] = useState(false);
   const [editSnapshot, setEditSnapshot] = useState<EditableProfileSnapshot | null>(null);
 
+  function showErrorToast(msg: string) {
+    toast.error(msg, { position: "top-center" });
+  }
+
+  function showSuccessToast(msg: string) {
+    toast.success(msg, { position: "top-center" });
+  }
+
   const handleAvatarUpload = async (file: File) => {
     setUploadingAvatar(true);
     try {
       const profileImage = await encodeFileToPayload(file);
       const updatedUser = await updateProfileImages({ profileImage });
       if (user) saveUserData({ ...user, ...updatedUser });
-      showToast("✅ Profile photo updated");
+      showSuccessToast("Profile photo updated");
     } catch (err) {
       const message = typeof err === "string" ? err : (err instanceof Error ? err.message : "Failed to update profile photo");
-      showToast(message);
+      showErrorToast(message);
       throw err;
     } finally {
       setUploadingAvatar(false);
@@ -338,10 +346,10 @@ export default function ProfilePage() {
       const coverImage = await encodeFileToPayload(file);
       const updatedUser = await updateProfileImages({ coverImage });
       if (user) saveUserData({ ...user, ...updatedUser });
-      showToast("✅ Cover photo updated");
+      showSuccessToast("Cover photo updated");
     } catch (err) {
       const message = typeof err === "string" ? err : (err instanceof Error ? err.message : "Failed to update cover photo");
-      showToast(message);
+      showErrorToast(message);
       throw err;
     } finally {
       setUploadingCover(false);
@@ -369,7 +377,7 @@ export default function ProfilePage() {
         const data = await getProvinces();
         setProvinces(data);
       } catch {
-        showToast("Failed to load provinces");
+        showErrorToast("Failed to load provinces");
       }
     };
 
@@ -391,7 +399,7 @@ export default function ProfilePage() {
         const matched = data.find((x) => x.name === form.locationCity);
         setSelectedCityCode(matched?.code ?? "");
       } catch {
-        showToast("Failed to load cities/municipalities");
+        showErrorToast("Failed to load cities/municipalities");
       }
     };
 
@@ -409,7 +417,7 @@ export default function ProfilePage() {
         const data = await getBarangaysByCity(selectedCityCode);
         setBarangays(data);
       } catch {
-        showToast("Failed to load barangays");
+        showErrorToast("Failed to load barangays");
       }
     };
 
@@ -441,7 +449,7 @@ export default function ProfilePage() {
           locationBrgy: payload.user.locationBrgy ?? "",
         }));
       } catch {
-        showToast("Failed to load profile data");
+        showErrorToast("Failed to load profile data");
       } finally {
         setLoadingProfile(false);
       }
@@ -473,11 +481,9 @@ export default function ProfilePage() {
         ? soldListings
         : bookedListings;
 
-  function showToast(msg: string) { setToast(msg); setTimeout(() => setToast(null), 2800); }
-
   async function handleSave() {
     if (form.newPassword && form.newPassword !== form.confirmPassword) {
-      showToast("New password and confirm password do not match");
+      showErrorToast("New password and confirm password do not match");
       return;
     }
 
@@ -508,7 +514,7 @@ export default function ProfilePage() {
 
     if (!hasProfileChanges && !hasPasswordChanges) {
       setEditOpen(false)
-      showToast("No changes detected");
+      showSuccessToast("No changes detected");
       return;
     }
 
@@ -539,10 +545,10 @@ export default function ProfilePage() {
       }));
       setEditSnapshot(currentComparable);
       setEditOpen(false);
-      showToast("✅ Profile updated successfully");
+      showSuccessToast("Profile updated successfully");
     } catch (err) {
       const message = typeof err === "string" ? err : (err instanceof Error ? err.message : "Failed to update profile");
-      showToast(message);
+      showErrorToast(message);
     } finally {
       setSaving(false);
     }
@@ -559,7 +565,7 @@ export default function ProfilePage() {
       await deactivateProfile();
       await clearUserData();
     } catch {
-      showToast("Failed to deactivate account");
+      showErrorToast("Failed to deactivate account");
     } finally {
       setDeactivating(false);
     }
@@ -611,7 +617,7 @@ export default function ProfilePage() {
       setEditOpen(true);
     } catch (err) {
       const message = typeof err === "string" ? err : (err instanceof Error ? err.message : "Failed to load latest profile data");
-      showToast(message);
+      showErrorToast(message);
       setEditOpen(false);
     } finally {
       setLoadingEditProfile(false);
@@ -640,7 +646,7 @@ export default function ProfilePage() {
             {/* Remove cover button */}
             {!isViewingExternalProfile && cover.src && (
               <button
-                onClick={(e) => { e.stopPropagation(); cover.remove(); showToast("Cover photo removed"); }}
+                onClick={(e) => { e.stopPropagation(); cover.remove(); showSuccessToast("Cover photo removed"); }}
                 className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/50 hover:bg-black/70 flex items-center justify-center text-white transition-colors opacity-0 group-hover:opacity-100"
                 title="Remove cover photo"
               >
@@ -691,7 +697,7 @@ export default function ProfilePage() {
                       {avatar.src && (
                         <button
                           className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors border-t border-stone-100 dark:border-[#2a2d3e]"
-                          onClick={() => { avatar.remove(); setShowAvatarMenu(false); showToast("Profile photo removed"); }}
+                          onClick={() => { avatar.remove(); setShowAvatarMenu(false); showSuccessToast("Profile photo removed"); }}
                         >
                           <Trash2 className="w-4 h-4" />
                           Remove Photo
@@ -949,12 +955,6 @@ export default function ProfilePage() {
           )}
         </div>
       </div>
-
-      {toast && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-stone-900 text-white text-sm font-medium px-5 py-3 rounded-full shadow-xl animate-in fade-in slide-in-from-bottom-2 duration-300">
-          {toast}
-        </div>
-      )}
     </div>
   );
 }

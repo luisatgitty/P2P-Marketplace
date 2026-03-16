@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation";
+import { toast } from "sonner"
 import { Eye, EyeOff } from "lucide-react";
 import { useUser } from "@/utils/UserContext";
 import { getSessionMeta, sendPostRequest } from "@/services/authService";
@@ -16,7 +17,6 @@ import { Banner } from "@/components/auth/auth-container";
 export function LoginForm() {
   const router = useRouter();
   const [form, setForm] = useState({ email: "", password: "" })
-  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -44,12 +44,11 @@ export function LoginForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true);
-    setError("");
 
     // Validate email before sending request to backend
     const emailError = isValidEmail(form.email);
     if (emailError) {
-      setError(emailError);
+      toast.error(emailError, { position: "top-center" });
       setLoading(false);
       return;
     }
@@ -63,7 +62,7 @@ export function LoginForm() {
       saveUserData(data.user);
       router.push("/");
     } catch (error: any) {
-      setError(error);
+      toast.error(error.message || "Login failed. Please contact support.", { position: "top-center" });
     } finally {
       setLoading(false);
     }
@@ -118,7 +117,6 @@ export function LoginForm() {
                 </button>
               </div>
             </Field>
-            {error && <p style={{ color: "red", fontSize: "0.875rem" }}>{error}</p>}
             <Field>
               <Button type="submit" disabled={loading}>
                 {loading ? "Logging in..." : "Login"}

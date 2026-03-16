@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, Suspense } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner"
 import { sendPostRequest, getSessionMeta } from "@/services/authService";
 import { useUser } from "@/utils/UserContext";
 import { Button } from "@/components/ui/button";
@@ -27,7 +28,6 @@ function VerifyEmailForm() {
     confirmPassword: "",
   });
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
-  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [otpResendCooldown, setOtpResendCooldown] = useState(0);
   const [otpTimeLeft, setOtpTimeLeft] = useState(0);
@@ -115,15 +115,18 @@ function VerifyEmailForm() {
     }
   };
 
+  const showErrorToast = (message: string) => {
+    toast.error(message, { position: "top-center" });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setError("");
 
     // Validate OTP length
     const otpString = otp.join("");
     if (otpString.length < 6) {
-      setError("Please enter the complete 6-digit OTP");
+      showErrorToast("Please enter the complete 6-digit OTP");
       setLoading(false);
       return;
     }
@@ -141,7 +144,7 @@ function VerifyEmailForm() {
       sessionStorage.removeItem("otp_expires_at");
       router.replace("/");
     } catch (err: any) {
-      setError(err);
+      showErrorToast(err.data?.message || "An unexpected error occurred. Please try again later.");
       setOtp(["", "", "", "", "", ""]);
       inputRefs.current[0]?.focus();
     } finally {
@@ -158,9 +161,8 @@ function VerifyEmailForm() {
       sessionStorage.setItem("otp_expires_at", expiresAt.toString());
       setOtpTimeLeft(10 * 60);
       setOtpResendCooldown(60); // 60 second cooldown
-      setError("");
     } catch (err: any) {
-      setError(err);
+      showErrorToast(err.data?.message || "An unexpected error occurred. Please try again later.");
     }
   };
 
@@ -214,12 +216,6 @@ function VerifyEmailForm() {
                     )}
                   </FieldDescription>
                 </Field>
-
-                {error && (
-                  <p className="text-red-500 text-sm text-center mt-2">
-                    {error}
-                  </p>
-                )}
 
                 <Field className="mt-4 w-xs mx-auto">
                   <Button type="submit" disabled={loading}>

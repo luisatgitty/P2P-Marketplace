@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation";
+import { toast } from "sonner"
 import { Eye, EyeOff } from "lucide-react";
 import { sendPostRequest } from "@/services/authService";
 import { validateSignupForm } from "@/utils/validation";
@@ -22,7 +23,6 @@ export function SignupForm({ className, ...props }: React.ComponentProps<"div">)
     password: "",
     confirmPassword: "",
   });
-  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -51,12 +51,11 @@ export function SignupForm({ className, ...props }: React.ComponentProps<"div">)
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setError("");
 
     // Validate user data before sending request to backend
     const validationErrors = validateSignupForm(form);
     if (validationErrors) {
-      setError(validationErrors);
+      toast.error(validationErrors, { position: "top-center" });
       setLoading(false);
       return;
     }
@@ -76,7 +75,7 @@ export function SignupForm({ className, ...props }: React.ComponentProps<"div">)
       // Redirect to email verification page
       router.push("/verify-email");
     } catch (error: any) {
-      setError(error);
+      toast.error(error.message || "Signup failed. Please contact support.", { position: "top-center" });
     } finally {
       setLoading(false);
     }
@@ -172,7 +171,6 @@ export function SignupForm({ className, ...props }: React.ComponentProps<"div">)
                   </Field>
                 </Field>
               </Field>
-              {error && <p style={{ color: "red", fontSize: "0.875rem" }}>{error}</p>}
               <Field>
                 <Button type="submit" disabled={loading}>
                   {loading ? "Creating Account..." : "Create Account"}

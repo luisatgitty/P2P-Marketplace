@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { toast } from "sonner"
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field";
@@ -13,18 +14,16 @@ export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const [error, setError] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    setError("");
 
     try {
       await sendPostRequest("/auth/forgot-password", { email });``
       setSubmitted(true);
     } catch (error: any) {
-      setError(error.message);
+      toast.error(error.message || "Failed to send reset link. Please contact support.", { position: "top-center" });
     } finally {
       setIsLoading(false);
     }
@@ -61,7 +60,6 @@ export default function ForgotPasswordPage() {
                     required
                   />
                 </Field>
-                {error && <p style={{ color: "red", fontSize: "0.875rem" }}>{error}</p>}
                 <Field>
                   <Button type="submit" disabled={isLoading}>{isLoading ? "Sending Reset Link..." : "Send Reset Link"}</Button>
                 </Field>

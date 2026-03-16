@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { DM_Sans, Geist_Mono, Inter } from "next/font/google";
 import { UserProvider } from "@/utils/UserContext";
 import { ThemeProvider } from "next-themes";
+import { Toaster } from "@/components/ui/sonner"
 import Navbar from "../components/navbar";
 import Footer from "../components/footer";
 import "./globals.css";
@@ -36,6 +37,7 @@ export default function RootLayout({ children }:
           <UserProvider>
             <Navbar />
             {children}
+            <Toaster />
             <Footer />
           </UserProvider>
         </ThemeProvider>

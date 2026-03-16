@@ -13,6 +13,7 @@ import { useUser } from "@/utils/UserContext";
 import { addListingBookmark, getListingDetailById, removeListingBookmark } from "@/services/listingDetailService";
 import { getUserProfileData } from "@/services/profileService";
 import { type PostCardProps } from "@/components/post-card";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 // ── ExtraDetail — mirrors every field the listing form collects ────────────────
@@ -35,7 +36,6 @@ interface ExtraDetail {
   serviceArea?:   string;
   inclusions?:    string[];
 }
-
 
 function getDefaultExtra(listing: PostCardProps): ExtraDetail {
   return {
@@ -222,8 +222,6 @@ export default function ListingDetailPage() {
   const [offerAmount, setOfferAmt]   = useState("");
   const [offerSent,   setOfferSent]  = useState(false);
   const [reportOpen,  setReportOpen] = useState(false);
-  const [shareToast,  setShareToast] = useState(false);
-  const [contactToast, setContactToast] = useState<string | null>(null);
   const [shownContactNumber, setShownContactNumber] = useState<string | null>(null);
   const [deleting,    setDeleting]   = useState(false);
   const [messaging,   setMessaging]  = useState(false);
@@ -291,27 +289,20 @@ export default function ListingDetailPage() {
     ? "/profile"
     : (listing.seller.id ? `/profile?userId=${listing.seller.id}` : "/profile");
 
-  function handleShare() {
-    navigator.clipboard.writeText(window.location.href).catch(() => {});
-    setShareToast(true);
-    setTimeout(() => setShareToast(false), 2500);
-  }
-
-  function showContactToastMessage(message: string) {
-    setContactToast(message);
-    setTimeout(() => setContactToast(null), 2800);
-  }
-
   async function handleShowContactNumber() {
     if (shownContactNumber) {
       setShownContactNumber(null);
       return;
     }
 
+    const showErrorToast = (message: string) => {
+      toast.error(message, { position: "top-center" });
+    };
+
     if (isOwnListing) {
       const myMobileNumber = user?.phoneNumber?.trim();
       if (!myMobileNumber) {
-        showContactToastMessage("You do not have a mobile number yet.");
+        showErrorToast("You do not have a mobile number yet.");
         return;
       }
       setShownContactNumber(myMobileNumber);
@@ -330,7 +321,7 @@ export default function ListingDetailPage() {
 
     if (!listing?.seller?.id || isFetchingContact) {
       if (!listing?.seller?.id) {
-        showContactToastMessage("Seller contact is unavailable.");
+        showErrorToast("Seller contact is unavailable.");
       }
       return;
     }
@@ -340,13 +331,13 @@ export default function ListingDetailPage() {
       const payload = await getUserProfileData(listing.seller.id);
       const sellerMobileNumber = payload.user.phoneNumber?.trim();
       if (!sellerMobileNumber) {
-        showContactToastMessage("Seller does not have a mobile number.");
+        showErrorToast("Seller does not have a mobile number.");
         return;
       }
       setShownContactNumber(sellerMobileNumber);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to retrieve contact number.";
-      showContactToastMessage(message);
+      showErrorToast(message);
     } finally {
       setIsFetchingContact(false);
     }
@@ -609,7 +600,7 @@ export default function ListingDetailPage() {
                       <Bookmark className={cn("w-4 h-4", isBookmarked && "fill-rose-500")} />
                     </button>
                     <button
-                      onClick={handleShare}
+                      onClick={() => toast.info("Link copied to clipboard!", { position: "top-center" })}
                       className="w-9 h-9 rounded-full flex items-center justify-center border border-stone-200 dark:border-[#2a2d3e] text-stone-400 dark:text-stone-500 hover:border-stone-400 dark:hover:border-stone-500 transition-all">
                       <Share2 className="w-4 h-4" />
                     </button>
@@ -865,19 +856,6 @@ export default function ListingDetailPage() {
               Cancel
             </button>
           </div>
-        </div>
-      )}
-
-      {/* ── Share toast ── */}
-      {shareToast && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-stone-900 text-white text-sm font-medium px-5 py-3 rounded-full shadow-xl whitespace-nowrap">
-          🔗 Link copied to clipboard!
-        </div>
-      )}
-
-      {contactToast && (
-        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 bg-stone-900 text-white text-sm font-medium px-5 py-3 rounded-full shadow-xl whitespace-nowrap">
-          {contactToast}
         </div>
       )}
 
