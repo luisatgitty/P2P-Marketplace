@@ -47,6 +47,7 @@ export interface Conversation {
   otherParticipant: ConversationParticipant;
   lastMessage?: string;
   lastMessageAt?: string;
+  otherLastReadMessageId?: string;
   unreadCount: number;
   isSeller: boolean;
 }
@@ -69,6 +70,7 @@ export interface Message {
   id: string;
   conversationId: string;
   senderId: string;
+  receiverId?: string;
   content?: string;
   status: MessageStatus;
   attachments?: MessageAttachment[];

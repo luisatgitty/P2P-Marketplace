@@ -5,13 +5,13 @@ import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import {
-  MapPin, Star, ShieldCheck, MessageCircle, Heart, Share2,
+  MapPin, Star, ShieldCheck, MessageCircle, Bookmark, Share2,
   ChevronLeft, ChevronRight, Flag, Eye, Clock, Package,
   CheckCircle, Phone, Zap, ArrowLeft, Truck, CalendarDays,
 } from "lucide-react";
 import { useUser } from "@/utils/UserContext";
-import { getListingDetailById } from "@/services/listingDetailService";
-import { openOrCreateConversationFromListing } from "@/services/messagingService";
+import { addListingBookmark, getListingDetailById, removeListingBookmark } from "@/services/listingDetailService";
+import { getUserProfileData } from "@/services/profileService";
 import { type PostCardProps } from "@/components/post-card";
 import { cn } from "@/lib/utils";
 
@@ -77,7 +77,7 @@ const TYPE_COLOR: Record<string, string> = {
 // ── Small related card ────────────────────────────────────────────────────────
 function RelatedCard({ listing }: { listing: PostCardProps }) {
   return (
-    <Link href={`/listing/${listing.id}`} className="group flex-shrink-0 w-40">
+    <Link href={`/listing/${listing.id}`} className="group block w-full">
       <div className="bg-white dark:bg-[#1c1f2e] rounded-xl overflow-hidden border border-stone-200 dark:border-[#2a2d3e] hover:-translate-y-1 hover:shadow-md transition-all duration-200">
         <div className="relative aspect-[4/3] overflow-hidden bg-stone-100 dark:bg-[#13151f]">
           <Image
@@ -85,19 +85,19 @@ function RelatedCard({ listing }: { listing: PostCardProps }) {
             className="object-cover group-hover:scale-105 transition-transform duration-300"
             sizes="160px"
           />
-          <span className={cn("absolute top-1.5 left-1.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full", TYPE_COLOR[listing.type])}>
+          <span className={cn("absolute top-1.5 left-1.5 text-[11px] font-bold px-1.5 py-0.5 rounded-full", TYPE_COLOR[listing.type])}>
             {TYPE_LABEL[listing.type]}
           </span>
         </div>
         <div className="p-2.5">
-          <p className="text-stone-800 dark:text-stone-100 font-semibold text-xs leading-tight line-clamp-2">{listing.title}</p>
+          <p className="text-stone-800 dark:text-stone-100 font-semibold text-sm leading-tight line-clamp-2">{listing.title}</p>
           <p className="text-stone-800 dark:text-stone-200 font-bold text-sm mt-1">
             {fmt.format(listing.price)}
             {listing.priceUnit && (
-              <span className="text-[10px] font-normal text-stone-400 dark:text-stone-500">{listing.priceUnit}</span>
-            )}
+              <span className="text-[11px] font-normal text-stone-400 dark:text-stone-500"> {listing.priceUnit}</span>
+            )}  
           </p>
-          <p className="text-stone-400 dark:text-stone-500 text-[10px] mt-0.5 truncate">{listing.location}</p>
+          <p className="text-stone-400 dark:text-stone-500 text-[11px] mt-0.5 truncate">{listing.location}</p>
         </div>
       </div>
     </Link>
@@ -217,14 +217,18 @@ export default function ListingDetailPage() {
   const [related,     setRelated]    = useState<PostCardProps[]>([]);
   const [isLoading,   setIsLoading]  = useState(true);
   const [imgIdx,      setImgIdx]     = useState(0);
-  const [saved,       setSaved]      = useState(false);
+  const [isBookmarked, setIsBookmarked] = useState(false);
   const [offerOpen,   setOfferOpen]  = useState(false);
   const [offerAmount, setOfferAmt]   = useState("");
   const [offerSent,   setOfferSent]  = useState(false);
   const [reportOpen,  setReportOpen] = useState(false);
   const [shareToast,  setShareToast] = useState(false);
+  const [contactToast, setContactToast] = useState<string | null>(null);
+  const [shownContactNumber, setShownContactNumber] = useState<string | null>(null);
   const [deleting,    setDeleting]   = useState(false);
   const [messaging,   setMessaging]  = useState(false);
+  const [isBookmarking, setIsBookmarking] = useState(false);
+  const [isFetchingContact, setIsFetchingContact] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -238,6 +242,8 @@ export default function ListingDetailPage() {
         setListing(payload.listing);
         setExtra(payload.extra);
         setRelated(payload.related ?? []);
+        setIsBookmarked(Boolean(payload.isBookmarked));
+        setShownContactNumber(null);
         setImgIdx(0);
         setOfferAmt(String(Math.round(payload.listing.price * 0.9)));
       } catch {
@@ -281,11 +287,93 @@ export default function ListingDetailPage() {
   const isRent       = listing.type === "rent";
   const isService    = listing.type === "service";
   const images       = extra.images.filter(Boolean);
+  const sellerProfileHref = isOwnListing
+    ? "/profile"
+    : (listing.seller.id ? `/profile?userId=${listing.seller.id}` : "/profile");
 
   function handleShare() {
     navigator.clipboard.writeText(window.location.href).catch(() => {});
     setShareToast(true);
     setTimeout(() => setShareToast(false), 2500);
+  }
+
+  function showContactToastMessage(message: string) {
+    setContactToast(message);
+    setTimeout(() => setContactToast(null), 2800);
+  }
+
+  async function handleShowContactNumber() {
+    if (shownContactNumber) {
+      setShownContactNumber(null);
+      return;
+    }
+
+    if (isOwnListing) {
+      const myMobileNumber = user?.phoneNumber?.trim();
+      if (!myMobileNumber) {
+        showContactToastMessage("You do not have a mobile number yet.");
+        return;
+      }
+      setShownContactNumber(myMobileNumber);
+      return;
+    }
+
+    if (!isValidated) {
+      router.push("/login");
+      return;
+    }
+
+    if ((user?.status ?? "").toLowerCase() !== "verified") {
+      router.push("/become-seller");
+      return;
+    }
+
+    if (!listing?.seller?.id || isFetchingContact) {
+      if (!listing?.seller?.id) {
+        showContactToastMessage("Seller contact is unavailable.");
+      }
+      return;
+    }
+
+    setIsFetchingContact(true);
+    try {
+      const payload = await getUserProfileData(listing.seller.id);
+      const sellerMobileNumber = payload.user.phoneNumber?.trim();
+      if (!sellerMobileNumber) {
+        showContactToastMessage("Seller does not have a mobile number.");
+        return;
+      }
+      setShownContactNumber(sellerMobileNumber);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to retrieve contact number.";
+      showContactToastMessage(message);
+    } finally {
+      setIsFetchingContact(false);
+    }
+  }
+
+  async function handleToggleBookmark() {
+    if (!isValidated) {
+      router.push("/login");
+      return;
+    }
+    if (!listing || isBookmarking) return;
+
+    setIsBookmarking(true);
+    try {
+      if (isBookmarked) {
+        await removeListingBookmark(listing.id);
+        setIsBookmarked(false);
+      } else {
+        await addListingBookmark(listing.id);
+        setIsBookmarked(true);
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to update bookmark.";
+      window.alert(message);
+    } finally {
+      setIsBookmarking(false);
+    }
   }
 
   async function handleMessage() {
@@ -294,8 +382,7 @@ export default function ListingDetailPage() {
 
     setMessaging(true);
     try {
-      const conversationId = await openOrCreateConversationFromListing(listing.id);
-      router.push(`/messages/${conversationId}`);
+      router.push(`/messages/new?listingId=${listing.id}`);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to open conversation.";
       window.alert(message);
@@ -383,10 +470,6 @@ export default function ListingDetailPage() {
                 <span className={cn("absolute top-4 left-4 text-xs font-bold px-3 py-1 rounded-full", TYPE_COLOR[listing.type])}>
                   {TYPE_LABEL[listing.type]}
                 </span>
-
-                {listing.seller.isPro && (
-                  <span className="absolute top-4 left-28 bg-amber-400 text-amber-900 text-xs font-bold px-2.5 py-1 rounded-full">PRO</span>
-                )}
 
                 {/* Condition badge — sell listings only; rent/service have no condition */}
                 {isSell && extra.condition && (
@@ -498,7 +581,7 @@ export default function ListingDetailPage() {
             {related.length > 0 && (
               <div>
                 <h2 className="font-bold text-stone-900 dark:text-stone-50 text-base mb-3">You might also like</h2>
-                <div className="flex gap-3 overflow-x-auto pb-1 no-scroll">
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
                   {related.map((l) => <RelatedCard key={l.id} listing={l} />)}
                 </div>
               </div>
@@ -512,17 +595,18 @@ export default function ListingDetailPage() {
               {/* ── Price + title card ── */}
               <div className="bg-white dark:bg-[#1c1f2e] rounded-2xl border border-stone-200 dark:border-[#2a2d3e] shadow-sm p-5 mb-4">
                 <div className="flex items-start justify-between gap-2 mb-2">
-                  <h1 className="text-xl font-bold text-stone-900 dark:text-stone-50 leading-tight">{listing.title}</h1>
+                  <h1 className="text-lg font-bold text-stone-900 dark:text-stone-50 leading-tight">{listing.title}</h1>
                   <div className="flex gap-1.5 shrink-0">
                     <button
-                      onClick={() => setSaved((v) => !v)}
+                      onClick={handleToggleBookmark}
+                      disabled={isBookmarking}
                       className={cn(
-                        "w-9 h-9 rounded-full flex items-center justify-center border transition-all",
-                        saved
+                        "w-9 h-9 rounded-full flex items-center justify-center border transition-all disabled:opacity-60 disabled:cursor-not-allowed",
+                        isBookmarked
                           ? "border-rose-200 bg-rose-50 dark:bg-rose-900/30 dark:border-rose-800 text-rose-500"
                           : "border-stone-200 dark:border-[#2a2d3e] text-stone-400 dark:text-stone-500 hover:border-rose-200 hover:text-rose-400"
                       )}>
-                      <Heart className={cn("w-4 h-4", saved && "fill-rose-500")} />
+                      <Bookmark className={cn("w-4 h-4", isBookmarked && "fill-rose-500")} />
                     </button>
                     <button
                       onClick={handleShare}
@@ -534,17 +618,12 @@ export default function ListingDetailPage() {
 
                 {/* Price */}
                 <div className="flex items-baseline gap-1.5 mb-1">
-                  <span className="text-3xl font-extrabold text-stone-900 dark:text-stone-50">{fmt.format(listing.price)}</span>
+                  <span className="text-2xl font-extrabold text-stone-900 dark:text-stone-50">{fmt.format(listing.price)}</span>
                   {listing.priceUnit && <span className="text-stone-400 dark:text-stone-500 text-sm">{listing.priceUnit}</span>}
                 </div>
-                {isSell && (
-                  <p className="text-xs text-stone-400 dark:text-stone-500 mb-3">
-                    Price is {extra.offers > 2 ? "firm" : "negotiable"} · {extra.offers} offer{extra.offers !== 1 ? "s" : ""} received
-                  </p>
-                )}
 
                 {/* Location + posted */}
-                <div className="flex flex-wrap items-center gap-3 text-xs text-stone-400 dark:text-stone-500 mb-4">
+                <div className="flex flex-wrap items-center gap-3 text-sm text-stone-400 dark:text-stone-500 mb-4">
                   <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{listing.location}</span>
                   <span className="flex items-center gap-1"><Clock className="w-3 h-3" />Posted {listing.postedAt}</span>
                 </div>
@@ -564,6 +643,12 @@ export default function ListingDetailPage() {
                       className="flex items-center justify-center gap-2 w-full py-3 rounded-full border border-red-200 dark:border-red-800 text-red-500 dark:text-red-400 text-sm font-semibold hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
                     >
                       🗑 {deleting ? "Removing..." : "Remove Listing"}
+                    </button>
+                    <button
+                      onClick={handleShowContactNumber}
+                      className="flex items-center justify-center gap-2 w-full py-2.5 rounded-full text-stone-500 dark:text-stone-400 text-xs font-medium hover:text-stone-700 dark:hover:text-stone-200 transition-colors"
+                    >
+                      <Phone className="w-3.5 h-3.5" /> {shownContactNumber ?? "Show My Number"}
                     </button>
                   </div>
                 ) : (
@@ -597,9 +682,10 @@ export default function ListingDetailPage() {
                       <MessageCircle className="w-4 h-4" /> {messaging ? "Opening chat..." : "Message Seller"}
                     </button>
                     <button
-                      onClick={() => !isValidated && router.push("/login")}
-                      className="flex items-center justify-center gap-2 w-full py-2.5 rounded-full text-stone-500 dark:text-stone-400 text-xs font-medium hover:text-stone-700 dark:hover:text-stone-200 transition-colors">
-                      <Phone className="w-3.5 h-3.5" /> Show Contact Number
+                      onClick={handleShowContactNumber}
+                      disabled={isFetchingContact}
+                      className="flex items-center justify-center gap-2 w-full py-2.5 rounded-full text-stone-500 dark:text-stone-400 text-xs font-medium hover:text-stone-700 dark:hover:text-stone-200 transition-colors disabled:opacity-60 disabled:cursor-not-allowed">
+                      <Phone className="w-3.5 h-3.5" /> {shownContactNumber ?? (isFetchingContact ? "Loading Number..." : "Show Contact Number")}
                     </button>
                   </div>
                 )}
@@ -608,19 +694,18 @@ export default function ListingDetailPage() {
               {/* ── Seller card ── */}
               <div className="bg-white dark:bg-[#1c1f2e] rounded-2xl border border-stone-200 dark:border-[#2a2d3e] shadow-sm p-5 mb-4">
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#3a4a6a] to-[#1e2a40] flex items-center justify-center text-white font-bold text-lg flex-shrink-0">
-                    {listing.seller.name[0].toUpperCase()}
-                  </div>
+                  <Link href={sellerProfileHref} className="block">
+                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#3a4a6a] to-[#1e2a40] flex items-center justify-center text-white font-bold text-lg flex-shrink-0 hover:opacity-90 transition-opacity">
+                      {listing.seller.name[0].toUpperCase()}
+                    </div>
+                  </Link>
                   <div className="min-w-0">
-                    <p className="font-bold text-stone-900 dark:text-stone-50 text-sm">{listing.seller.name}</p>
+                    <p className="font-bold text-stone-900 dark:text-stone-50 text-md">{listing.seller.name}</p>
                     <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
                       {listing.seller.rating && (
                         <span className="flex items-center gap-0.5 text-xs text-amber-500 font-semibold">
                           <Star className="w-3 h-3 fill-amber-400" /> {listing.seller.rating.toFixed(1)}
                         </span>
-                      )}
-                      {listing.seller.isPro && (
-                        <span className="text-[10px] font-bold bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 px-2 py-0.5 rounded-full">PRO</span>
                       )}
                       <span className="flex items-center gap-0.5 text-xs text-teal-600 dark:text-teal-400 font-medium">
                         <ShieldCheck className="w-3 h-3" /> Verified
@@ -637,21 +722,21 @@ export default function ListingDetailPage() {
                   ].map((s) => (
                     <div key={s.label} className="bg-stone-50 dark:bg-[#13151f] rounded-xl py-2.5">
                       <p className="text-sm font-bold text-stone-900 dark:text-stone-50">{s.value}</p>
-                      <p className="text-[10px] text-stone-400 dark:text-stone-500 mt-0.5">{s.label}</p>
+                      <p className="text-[11px] text-stone-400 dark:text-stone-500 mt-0.5">{s.label}</p>
                     </div>
                   ))}
                 </div>
 
                 <Link
-                  href="/profile"
-                  className="flex items-center justify-center gap-2 w-full py-2.5 rounded-full border border-stone-200 dark:border-[#2a2d3e] text-stone-600 dark:text-stone-300 text-xs font-semibold hover:border-stone-400 dark:hover:border-stone-500 hover:bg-stone-50 dark:hover:bg-[#252837] transition-all">
-                  View Seller Profile
+                  href={sellerProfileHref}
+                  className="flex items-center justify-center gap-2 w-full py-2.5 rounded-full border border-stone-200 dark:border-[#2a2d3e] text-stone-600 dark:text-stone-300 text-sm font-semibold hover:border-stone-400 dark:hover:border-stone-500 hover:bg-stone-50 dark:hover:bg-[#252837] transition-all">
+                  {isOwnListing ? "View My Profile" : "View Seller Profile"}
                 </Link>
               </div>
 
               {/* ── Safety tips ── */}
               <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-2xl p-4">
-                <p className="text-xs font-bold text-amber-800 dark:text-amber-300 mb-2">🛡 Safety Tips</p>
+                <p className="text-sm font-bold text-amber-800 dark:text-amber-300 mb-2">🛡 Safety Tips</p>
                 <ul className="flex flex-col gap-1.5">
                   {[
                     "Meet in a safe, public place",
@@ -659,7 +744,7 @@ export default function ListingDetailPage() {
                     "Never pay in advance via GCash",
                     "Report suspicious listings",
                   ].map((tip) => (
-                    <li key={tip} className="flex items-start gap-1.5 text-[11px] text-amber-700 dark:text-amber-400">
+                    <li key={tip} className="flex items-start gap-1.5 text-[12px] text-amber-700 dark:text-amber-400">
                       <span className="text-amber-400 dark:text-amber-500 mt-0.5 shrink-0">•</span>{tip}
                     </li>
                   ))}
@@ -669,7 +754,7 @@ export default function ListingDetailPage() {
               {/* Report link */}
               <button
                 onClick={() => setReportOpen(true)}
-                className="flex items-center gap-1.5 text-xs text-stone-400 dark:text-stone-500 hover:text-red-500 dark:hover:text-red-400 transition-colors mt-3 mx-auto">
+                className="flex items-center gap-1.5 text-sm text-stone-400 dark:text-stone-500 hover:text-red-500 dark:hover:text-red-400 transition-colors mt-3 mx-auto">
                 <Flag className="w-3 h-3" /> Report this listing
               </button>
             </div>
@@ -787,6 +872,12 @@ export default function ListingDetailPage() {
       {shareToast && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-stone-900 text-white text-sm font-medium px-5 py-3 rounded-full shadow-xl whitespace-nowrap">
           🔗 Link copied to clipboard!
+        </div>
+      )}
+
+      {contactToast && (
+        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 bg-stone-900 text-white text-sm font-medium px-5 py-3 rounded-full shadow-xl whitespace-nowrap">
+          {contactToast}
         </div>
       )}
 

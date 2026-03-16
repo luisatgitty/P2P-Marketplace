@@ -29,6 +29,7 @@ func GetConversationsByUser(userId string) ([]model.ConversationFromDb, error) {
 			COALESCE(u.profile_image_url, '') AS other_profile_image_url,
 			COALESCE(c.last_message, '') AS last_message,
 			c.last_message_at,
+			COALESCE(other_cm.last_read_message_id::text, '') AS other_last_read_message_id,
 			COALESCE(unread.unread_count, 0) AS unread_count,
 			(c.seller_id = $1) AS is_seller
 		FROM public.conversation_members cm
@@ -45,6 +46,10 @@ func GetConversationsByUser(userId string) ([]model.ConversationFromDb, error) {
 		) li ON TRUE
 		JOIN public.users u
 			ON u.id = CASE WHEN c.buyer_id = $1 THEN c.seller_id ELSE c.buyer_id END
+		LEFT JOIN public.conversation_members other_cm
+			ON other_cm.conversation_id = c.id
+			AND other_cm.user_id = CASE WHEN c.buyer_id = $1 THEN c.seller_id ELSE c.buyer_id END
+			AND other_cm.deleted_at IS NULL
 		LEFT JOIN LATERAL (
 			SELECT COUNT(*) AS unread_count
 			FROM public.messages m
@@ -89,6 +94,7 @@ func GetConversationById(userId, conversationId string) (model.ConversationFromD
 			COALESCE(u.profile_image_url, '') AS other_profile_image_url,
 			COALESCE(c.last_message, '') AS last_message,
 			c.last_message_at,
+			COALESCE(other_cm.last_read_message_id::text, '') AS other_last_read_message_id,
 			COALESCE(unread.unread_count, 0) AS unread_count,
 			(c.seller_id = $1) AS is_seller
 		FROM public.conversation_members cm
@@ -105,6 +111,10 @@ func GetConversationById(userId, conversationId string) (model.ConversationFromD
 		) li ON TRUE
 		JOIN public.users u
 			ON u.id = CASE WHEN c.buyer_id = $1 THEN c.seller_id ELSE c.buyer_id END
+		LEFT JOIN public.conversation_members other_cm
+			ON other_cm.conversation_id = c.id
+			AND other_cm.user_id = CASE WHEN c.buyer_id = $1 THEN c.seller_id ELSE c.buyer_id END
+			AND other_cm.deleted_at IS NULL
 		LEFT JOIN LATERAL (
 			SELECT COUNT(*) AS unread_count
 			FROM public.messages m
@@ -221,11 +231,11 @@ func GetMessagesByConversation(userId, conversationId string) ([]model.MessageFr
 	return messages, attachments, reactions, nil
 }
 
-func MarkConversationRead(userId, conversationId string) error {
+func MarkConversationRead(userId, conversationId string) (string, error) {
 	db := middleware.DBConn
 	tx := db.Begin()
 	if tx.Error != nil {
-		return fmt.Errorf("Failed to start DB transaction")
+		return "", fmt.Errorf("Failed to start DB transaction")
 	}
 
 	defer func() {
@@ -245,11 +255,11 @@ func MarkConversationRead(userId, conversationId string) error {
 	var membershipCount int
 	if err := tx.Raw(validateMembershipQuery, conversationId, userId).Scan(&membershipCount).Error; err != nil {
 		tx.Rollback()
-		return fmt.Errorf("Failed to validate conversation access")
+		return "", fmt.Errorf("Failed to validate conversation access")
 	}
 	if membershipCount == 0 {
 		tx.Rollback()
-		return fmt.Errorf("Conversation not found")
+		return "", fmt.Errorf("Conversation not found")
 	}
 
 	updateStatusQuery := `
@@ -263,7 +273,7 @@ func MarkConversationRead(userId, conversationId string) error {
 	`
 	if err := tx.Exec(updateStatusQuery, conversationId, userId).Error; err != nil {
 		tx.Rollback()
-		return fmt.Errorf("Failed to mark messages as read")
+		return "", fmt.Errorf("Failed to mark messages as read")
 	}
 
 	var lastReadMessageId string
@@ -291,14 +301,64 @@ func MarkConversationRead(userId, conversationId string) error {
 	`
 	if err := tx.Exec(updateMemberQuery, conversationId, userId, lastReadMessageId).Error; err != nil {
 		tx.Rollback()
-		return fmt.Errorf("Failed to update read pointer")
+		return "", fmt.Errorf("Failed to update read pointer")
 	}
 
 	if err := tx.Commit().Error; err != nil {
-		return fmt.Errorf("Failed to commit read update")
+		return "", fmt.Errorf("Failed to commit read update")
+	}
+
+	return strings.TrimSpace(lastReadMessageId), nil
+}
+
+func MarkMessageDelivered(conversationId, messageId, receiverId string) error {
+	db := middleware.DBConn
+
+	query := `
+		UPDATE public.messages
+		SET status = 'DELIVERED',
+			delivered_at = COALESCE(delivered_at, now()),
+			updated_at = now()
+		WHERE id = $1
+			AND conversation_id = $2
+			AND receiver_id = $3
+			AND status = 'SENT'
+	`
+
+	if err := db.Exec(query, messageId, conversationId, receiverId).Error; err != nil {
+		return fmt.Errorf("Failed to mark message as delivered")
 	}
 
 	return nil
+}
+
+func GetConversationPeerUserId(userId, conversationId string) (string, error) {
+	db := middleware.DBConn
+	var peerId string
+
+	query := `
+		SELECT CASE
+			WHEN c.buyer_id = $1::uuid THEN c.seller_id::text
+			ELSE c.buyer_id::text
+		END AS peer_user_id
+		FROM public.conversations c
+		JOIN public.conversation_members cm
+			ON cm.conversation_id = c.id
+			AND cm.user_id = $1::uuid
+			AND cm.deleted_at IS NULL
+		WHERE c.id = $2::uuid
+		LIMIT 1
+	`
+
+	results := db.Raw(query, userId, conversationId).Scan(&peerId)
+	if results.Error != nil {
+		return "", fmt.Errorf("Failed to load conversation peer")
+	}
+	if results.RowsAffected == 0 {
+		return "", fmt.Errorf("Conversation not found")
+	}
+
+	return strings.TrimSpace(peerId), nil
 }
 
 func CreateMessage(userId, conversationId, content, replyToMessageId string) (model.MessageFromDb, error) {
@@ -363,7 +423,7 @@ func CreateMessage(userId, conversationId, content, replyToMessageId string) (mo
 			now(),
 			now()
 		)
-		RETURNING id, conversation_id, sender_id, COALESCE(content, '') AS content, status::text AS status, is_edited, is_unsent, created_at
+		RETURNING id, conversation_id, sender_id, receiver_id, COALESCE(content, '') AS content, status::text AS status, is_edited, is_unsent, created_at
 	`
 
 	if err := tx.Raw(insertQuery, conversationId, userId, receiverId, replyToMessageId, trimmed).Scan(&created).Error; err != nil {

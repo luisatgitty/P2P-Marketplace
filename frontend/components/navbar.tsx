@@ -7,7 +7,7 @@ import { useUser } from "@/utils/UserContext";
 import { useTheme } from "next-themes";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import {
-  Sun, Moon, MessageCircle, LogOut, User,
+  Sun, Moon, MessageCircle, LogOut, User, Home,
   ChevronDown, Tag, Store, Wrench, LayoutGrid, UserPlus, ShieldCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -54,7 +54,7 @@ function NavTabsInner() {
                 : "text-stone-400 hover:text-white hover:bg-white/10"
             )}
           >
-            <tab.icon size={13} className="shrink-0" />
+            <tab.icon size={14} className="shrink-0" />
             <span className="hidden sm:inline">{tab.label}</span>
           </button>
         );
@@ -152,7 +152,7 @@ export default function Navbar() {
 
               {/* Dropdown panel */}
               {dropdownOpen && (
-                <div className="absolute right-0 mt-2 w-56 bg-[#1e2b3c] border border-white/10 rounded-2xl shadow-2xl overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+                <div className="absolute right-0 mt-2 w-48 bg-[#1e2b3c] border border-white/10 rounded-xl shadow-2xl overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-150">
                   {isValidated ? (
                     <>
                       {/* User info */}
@@ -165,6 +165,14 @@ export default function Navbar() {
                       </div>
 
                       <div className="py-1">
+                        <Link
+                          href="/"
+                          onClick={() => setDropdownOpen(false)}
+                          className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-200 hover:bg-white/10 hover:text-white transition-colors"
+                        >
+                          <Home size={15} className="text-stone-400" />
+                          Home
+                        </Link>
                         <Link
                           href="/profile"
                           onClick={() => setDropdownOpen(false)}
@@ -237,6 +245,14 @@ export default function Navbar() {
                           {theme === "dark" ? "Light Mode" : "Dark Mode"}
                         </button>
                       )}
+                      <Link
+                        href="/"
+                        onClick={() => setDropdownOpen(false)}
+                        className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-200 hover:bg-white/10 hover:text-white transition-colors"
+                      >
+                        <Home size={15} className="text-stone-400" />
+                        Home
+                      </Link>
                       <Link
                         href="/login"
                         onClick={() => setDropdownOpen(false)}

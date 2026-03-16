@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"p2p_marketplace/backend/middleware"
 	"p2p_marketplace/backend/model"
 	"p2p_marketplace/backend/repository"
 
@@ -194,9 +195,19 @@ func GetListingById(c *fiber.Ctx) error {
 		return SendErrorResponse(c, 500, err.Error(), err)
 	}
 
-	related, err := repository.GetRelatedListings(listingId, listing.CategoryID, listing.Type)
+	userId := getOptionalUserIdFromSession(c)
+	related, err := repository.GetRelatedListings(listingId, listing.CategoryID, listing.Type, userId)
 	if err != nil {
 		return SendErrorResponse(c, 500, err.Error(), err)
+	}
+
+	isBookmarked := false
+	if strings.TrimSpace(userId) != "" {
+		bookmarked, err := repository.IsListingBookmarked(userId, listingId)
+		if err != nil {
+			return SendErrorResponse(c, 500, err.Error(), err)
+		}
+		isBookmarked = bookmarked
 	}
 
 	baseURL := c.BaseURL()
@@ -239,6 +250,7 @@ func GetListingById(c *fiber.Ctx) error {
 		"postedAt":  timeAgo(listing.CreatedAt),
 		"imageUrl":  mapPrimaryImage(baseURL, images),
 		"seller": map[string]any{
+			"id":     listing.SellerId,
 			"name":   listing.SellerName,
 			"rating": listing.SellerRating,
 			"isPro":  listing.SellerVerified,
@@ -246,10 +258,112 @@ func GetListingById(c *fiber.Ctx) error {
 	}
 
 	return SendSuccessResponse(c, 200, "Listing fetched successfully", map[string]any{
-		"listing": listingCard,
-		"extra":   extra,
-		"related": mapRelatedListings(baseURL, related),
+		"listing":      listingCard,
+		"extra":        extra,
+		"related":      mapRelatedListings(baseURL, related),
+		"isBookmarked": isBookmarked,
 	})
+}
+
+func AddListingBookmark(c *fiber.Ctx) error {
+	fmt.Println(c.Path())
+
+	listingId := strings.TrimSpace(c.Params("id"))
+	if listingId == "" {
+		return SendErrorResponse(c, 400, "Listing ID is required", nil)
+	}
+
+	userId := fmt.Sprintf("%v", c.Locals("userId"))
+	if strings.TrimSpace(userId) == "" || userId == "%!v(<nil>)" {
+		return SendErrorResponse(c, 401, "User is not authenticated", nil)
+	}
+
+	if err := repository.AddBookmark(userId, listingId); err != nil {
+		return SendErrorResponse(c, 400, err.Error(), err)
+	}
+
+	return SendSuccessResponse(c, 200, "Listing bookmarked successfully", map[string]any{
+		"listingId": listingId,
+	})
+}
+
+func RemoveListingBookmark(c *fiber.Ctx) error {
+	fmt.Println(c.Path())
+
+	listingId := strings.TrimSpace(c.Params("id"))
+	if listingId == "" {
+		return SendErrorResponse(c, 400, "Listing ID is required", nil)
+	}
+
+	userId := fmt.Sprintf("%v", c.Locals("userId"))
+	if strings.TrimSpace(userId) == "" || userId == "%!v(<nil>)" {
+		return SendErrorResponse(c, 401, "User is not authenticated", nil)
+	}
+
+	if err := repository.RemoveBookmark(userId, listingId); err != nil {
+		return SendErrorResponse(c, 400, err.Error(), err)
+	}
+
+	return SendSuccessResponse(c, 200, "Listing bookmark removed successfully", map[string]any{
+		"listingId": listingId,
+	})
+}
+
+func GetListings(c *fiber.Ctx) error {
+	fmt.Println(c.Path())
+
+	userId := getOptionalUserIdFromSession(c)
+	listings, err := repository.GetAllListings(userId)
+	if err != nil {
+		return SendErrorResponse(c, 500, err.Error(), err)
+	}
+
+	baseURL := c.BaseURL()
+	items := make([]map[string]any, 0, len(listings))
+	for _, l := range listings {
+		location := strings.TrimSpace(fmt.Sprintf("%s, %s", l.LocationCity, l.LocationProv))
+		items = append(items, map[string]any{
+			"id":        l.Id,
+			"title":     l.Title,
+			"price":     l.Price,
+			"priceUnit": l.PriceUnit,
+			"type":      strings.ToLower(strings.TrimSpace(l.Type)),
+			"category":  l.Category,
+			"condition": mapConditionDisplay(l.Condition),
+			"location":  location,
+			"postedAt":  timeAgo(l.CreatedAt),
+			"createdAt": l.CreatedAt.UnixMilli(),
+			"imageUrl":  mapPrimaryImage(baseURL, []string{l.ImageUrl}),
+			"seller": map[string]any{
+				"name":   l.SellerName,
+				"rating": l.SellerRating,
+				"isPro":  l.SellerIsPro,
+			},
+		})
+	}
+
+	return SendSuccessResponse(c, 200, "Listings fetched successfully", map[string]any{
+		"listings": items,
+	})
+}
+
+func getOptionalUserIdFromSession(c *fiber.Ctx) string {
+	sessionToken := strings.TrimSpace(c.Cookies("session_token"))
+	if sessionToken == "" {
+		return ""
+	}
+
+	sessionId := middleware.HashToken(sessionToken)
+	session, err := repository.GetSessionById(sessionId)
+	if err != nil {
+		return ""
+	}
+
+	if session.UserId == "" || session.IsRevoked || session.ExpiresAt.Before(time.Now()) {
+		return ""
+	}
+
+	return session.UserId
 }
 
 func parseJSONStringArray(raw string) []string {

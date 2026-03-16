@@ -39,6 +39,7 @@ func SendSuccessResponse(c *fiber.Ctx, retCode int, message string, data any) er
 
 func BuildUserResponse(user model.UserFromDb) map[string]any {
 	return map[string]interface{}{
+		"userId":          user.UserId,
 		"firstName":       user.FirstName,
 		"lastName":        user.LastName,
 		"email":           user.Email,

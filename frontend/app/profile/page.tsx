@@ -3,9 +3,10 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useSearchParams } from "next/navigation";
 import {
   MapPin, Mail, Calendar, Star, Eye, MessageCircle,
-  Edit2, Plus, ShieldCheck, Upload, Package, Heart, 
+  Edit2, Plus, ShieldCheck, Upload, Package, Bookmark,
   X, Camera, Trash2, AlertTriangle,
 } from "lucide-react";
 import { useUser } from "@/utils/UserContext";
@@ -14,6 +15,8 @@ import { Input } from "@/components/ui/input";
 import {
   deactivateProfile,
   getProfileData,
+  getUserProfileData,
+  type ProfilePayload,
   updateProfileImages,
   updateProfileData,
   type ProfileListingItem,
@@ -29,7 +32,7 @@ import { cn } from "@/lib/utils";
 // ─── Types ────────────────────────────────────────────────────────────────────
 type VerificationState = "unverified" | "pending" | "verified" | "rejected";
 type ListingTab = "all" | "active" | "sold" | "booked";
-type ProfileTab = "listings" | "saved";
+type ProfileTab = "listings" | "bookmarks";
 
 const SOLD_STATUSES = new Set(["sold", "rented", "completed"]);
 const BOOKED_STATUSES = new Set(["hidden"]);
@@ -271,8 +274,12 @@ async function encodeFileToPayload(file: File): Promise<EncodedImagePayload> {
 
 // ─── MAIN PAGE ────────────────────────────────────────────────────────────────
 export default function ProfilePage() {
+  const searchParams = useSearchParams();
   const { user, saveUserData, clearUserData } = useUser();
-  const verificationState: VerificationState = resolveVerificationState(user?.status ?? "");
+  const externalUserId = (searchParams.get("userId") ?? "").trim();
+  const isViewingExternalProfile = externalUserId !== "";
+  const [profileUser, setProfileUser] = useState<ProfilePayload["user"] | null>(null);
+  const verificationState: VerificationState = resolveVerificationState(profileUser?.status ?? user?.status ?? "");
 
   const [editOpen, setEditOpen] = useState(false);
   const [form, setForm] = useState<ProfileForm>({
@@ -338,10 +345,20 @@ export default function ProfilePage() {
     }
   };
 
-  const avatar = useImageUpload(user?.profileImageUrl ?? null, handleAvatarUpload);
-  const cover  = useImageUpload(user?.coverImageUrl ?? null, handleCoverUpload);
+  const avatar = useImageUpload(profileUser?.profileImageUrl ?? null, handleAvatarUpload);
+  const cover  = useImageUpload(profileUser?.coverImageUrl ?? null, handleCoverUpload);
 
-  useEffect(() => { if (user) setForm((f) => ({ ...f, firstName: user.firstName, lastName: user.lastName })); }, [user]);
+  useEffect(() => {
+    if (!isViewingExternalProfile && user) {
+      setForm((f) => ({ ...f, firstName: user.firstName, lastName: user.lastName }));
+    }
+  }, [user, isViewingExternalProfile]);
+
+  useEffect(() => {
+    if (isViewingExternalProfile) {
+      setProfileTab("listings");
+    }
+  }, [isViewingExternalProfile]);
 
   useEffect(() => {
     const loadProvinces = async () => {
@@ -400,10 +417,16 @@ export default function ProfilePage() {
     const loadProfile = async () => {
       setLoadingProfile(true);
       try {
-        const payload = await getProfileData();
+        const payload = isViewingExternalProfile
+          ? await getUserProfileData(externalUserId)
+          : await getProfileData();
+
+        setProfileUser(payload.user);
         setUserListings(payload.listings);
-        setBookmarkListings(payload.bookmarks);
-        saveUserData(payload.user);
+        setBookmarkListings(isViewingExternalProfile ? [] : payload.bookmarks);
+        if (!isViewingExternalProfile) {
+          saveUserData(payload.user);
+        }
         setForm((f) => ({
           ...f,
           firstName: payload.user.firstName,
@@ -422,7 +445,7 @@ export default function ProfilePage() {
     };
 
     loadProfile();
-  }, []);
+  }, [isViewingExternalProfile, externalUserId]);
 
   useEffect(() => {
     if (!form.locationProv || provinces.length === 0) return;
@@ -503,6 +526,7 @@ export default function ProfilePage() {
       if (user) {
         saveUserData({ ...user, ...updatedUser });
       }
+      setProfileUser((prev) => ({ ...(prev ?? updatedUser), ...updatedUser }));
 
       setForm((prev) => ({
         ...prev,
@@ -538,15 +562,17 @@ export default function ProfilePage() {
     }
   }
 
-  const initials = `${user?.firstName?.[0] ?? ""}${user?.lastName?.[0] ?? ""}`.toUpperCase() || "?";
-  const fullName = user ? `${user.firstName} ${user.lastName}` : "—";
-  const locationText = [user?.locationCity, user?.locationProv].filter(Boolean).join(", ") || "Location not set";
-  const isVerifiedSeller = (user?.status ?? "").toLowerCase() === "verified";
+  const initials = `${profileUser?.firstName?.[0] ?? ""}${profileUser?.lastName?.[0] ?? ""}`.toUpperCase() || "?";
+  const fullName = profileUser ? `${profileUser.firstName} ${profileUser.lastName}` : "—";
+  const locationText = [profileUser?.locationCity, profileUser?.locationProv].filter(Boolean).join(", ") || "Location not set";
+  const isVerifiedSeller = !isViewingExternalProfile && (profileUser?.status ?? "").toLowerCase() === "verified";
 
   // Shared label style
   const lbl = "text-xs font-medium text-stone-600 dark:text-stone-400 mb-1.5 block";
 
   async function handleEditProfileClick() {
+    if (isViewingExternalProfile) return;
+
     if (editOpen) {
       setEditOpen(false);
       return;
@@ -555,6 +581,7 @@ export default function ProfilePage() {
     setLoadingEditProfile(true);
     try {
       const payload = await getProfileData();
+      setProfileUser(payload.user);
       setUserListings(payload.listings);
       setBookmarkListings(payload.bookmarks);
       saveUserData(payload.user);
@@ -596,17 +623,19 @@ export default function ProfilePage() {
         <div className="bg-white dark:bg-[#1c1f2e] rounded-2xl border border-stone-200 dark:border-[#2a2d3e] shadow-sm overflow-hidden mb-5">
 
           {/* Cover photo */}
-          <div className="relative h-32 bg-linear-to-r from-[#1e2433] via-[#2a3650] to-[#1a2a3a] overflow-hidden group cursor-pointer" onClick={cover.trigger}>
+          <div className={cn("relative h-32 bg-linear-to-r from-[#1e2433] via-[#2a3650] to-[#1a2a3a] overflow-hidden group", !isViewingExternalProfile && "cursor-pointer")} onClick={() => !isViewingExternalProfile && cover.trigger()}>
             {cover.src
               ? <Image src={cover.src} alt="Cover" fill className="object-cover" />
               : <div className="absolute inset-0 opacity-10" style={{ backgroundImage: "radial-gradient(circle, #fff 1px, transparent 1px)", backgroundSize: "28px 28px" }} />}
-            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
-              <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-2 text-white text-sm font-medium bg-black/40 px-4 py-2 rounded-full">
-                <Camera className="w-4 h-4" /> {cover.src ? "Change Cover" : "Upload Cover Photo"}
+            {!isViewingExternalProfile && (
+              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
+                <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-2 text-white text-sm font-medium bg-black/40 px-4 py-2 rounded-full">
+                  <Camera className="w-4 h-4" /> {cover.src ? "Change Cover" : "Upload Cover Photo"}
+                </div>
               </div>
-            </div>
+            )}
             {/* Remove cover button */}
-            {cover.src && (
+            {!isViewingExternalProfile && cover.src && (
               <button
                 onClick={(e) => { e.stopPropagation(); cover.remove(); showToast("Cover photo removed"); }}
                 className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/50 hover:bg-black/70 flex items-center justify-center text-white transition-colors opacity-0 group-hover:opacity-100"
@@ -615,7 +644,7 @@ export default function ProfilePage() {
                 <Trash2 className="w-3.5 h-3.5" />
               </button>
             )}
-            <input ref={cover.inputRef} type="file" accept="image/*" className="hidden" onChange={cover.onFileChange} />
+            {!isViewingExternalProfile && <input ref={cover.inputRef} type="file" accept="image/*" className="hidden" onChange={cover.onFileChange} />}
           </div>
 
           <div className="px-6 pb-5">
@@ -624,24 +653,28 @@ export default function ProfilePage() {
               {/* Avatar with change/remove menu */}
               <div className="relative">
                 <div
-                  className="relative group cursor-pointer w-20 h-20"
-                  onClick={() => setShowAvatarMenu((v) => !v)}
+                  className={cn("relative group w-20 h-20", !isViewingExternalProfile && "cursor-pointer")}
+                  onClick={() => !isViewingExternalProfile && setShowAvatarMenu((v) => !v)}
                 >
                   <div className="w-20 h-20 rounded-full border-4 border-white dark:border-[#1c1f2e] overflow-hidden shadow-md bg-linear-to-br from-[#3a4a6a] to-[#1e2a40] flex items-center justify-center">
                     {avatar.src
                       ? <Image src={avatar.src} alt="Avatar" width={80} height={80} className="object-cover w-full h-full" />
                       : <span className="text-2xl font-bold text-slate-200">{initials}</span>}
                   </div>
-                  <div className="absolute inset-0 rounded-full bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
-                    <Camera className="w-5 h-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
-                  </div>
-                  <div className="absolute bottom-1 right-0 w-6 h-6 bg-stone-800 border-2 border-white dark:border-[#1c1f2e] rounded-full flex items-center justify-center pointer-events-none">
-                    <Edit2 className="w-2.5 h-2.5 text-stone-300" />
-                  </div>
+                  {!isViewingExternalProfile && (
+                    <>
+                      <div className="absolute inset-0 rounded-full bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
+                        <Camera className="w-5 h-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                      </div>
+                      <div className="absolute bottom-1 right-0 w-6 h-6 bg-stone-800 border-2 border-white dark:border-[#1c1f2e] rounded-full flex items-center justify-center pointer-events-none">
+                        <Edit2 className="w-2.5 h-2.5 text-stone-300" />
+                      </div>
+                    </>
+                  )}
                 </div>
 
                 {/* Avatar dropdown menu */}
-                {showAvatarMenu && (
+                {!isViewingExternalProfile && showAvatarMenu && (
                   <>
                     <div className="fixed inset-0 z-10" onClick={() => setShowAvatarMenu(false)} />
                     <div className="absolute top-full left-0 mt-2 z-20 bg-white dark:bg-[#1c1f2e] border border-stone-200 dark:border-[#2a2d3e] rounded-xl shadow-lg overflow-hidden w-44">
@@ -664,11 +697,11 @@ export default function ProfilePage() {
                     </div>
                   </>
                 )}
-                <input ref={avatar.inputRef} type="file" accept="image/*" className="hidden" onChange={avatar.onFileChange} />
+                {!isViewingExternalProfile && <input ref={avatar.inputRef} type="file" accept="image/*" className="hidden" onChange={avatar.onFileChange} />}
               </div>
 
               {/* Action buttons */}
-              <div className="flex items-center gap-2 pb-1">
+              {!isViewingExternalProfile && <div className="flex items-center gap-2 pb-1">
                 <Button variant="outline" size="sm"
                   className="text-xs rounded-full border-stone-200 dark:border-[#2a2d3e] text-stone-600 dark:text-stone-300 hover:border-stone-400 dark:hover:border-stone-500 dark:bg-transparent dark:hover:bg-[#252837]"
                   onClick={handleEditProfileClick}
@@ -676,7 +709,7 @@ export default function ProfilePage() {
                   <Edit2 className="w-3 h-3" />
                   {loadingEditProfile ? "Loading..." : editOpen ? "Cancel" : "Edit Profile"}
                 </Button>
-              </div>
+              </div>}
             </div>
 
             {/* Name + badge */}
@@ -689,14 +722,14 @@ export default function ProfilePage() {
             {/* Meta row */}
             <div className="flex flex-wrap gap-x-5 gap-y-1.5">
               <span className="flex items-center gap-1.5 text-xs text-stone-500 dark:text-stone-400"><MapPin className="w-3.5 h-3.5 text-stone-400 dark:text-stone-500" /> {locationText}</span>
-              <span className="flex items-center gap-1.5 text-xs text-stone-500 dark:text-stone-400"><Mail className="w-3.5 h-3.5 text-stone-400 dark:text-stone-500" /> {user?.email}</span>
+              {!isViewingExternalProfile && <span className="flex items-center gap-1.5 text-xs text-stone-500 dark:text-stone-400"><Mail className="w-3.5 h-3.5 text-stone-400 dark:text-stone-500" /> {profileUser?.email}</span>}
               <span className="flex items-center gap-1.5 text-xs text-stone-500 dark:text-stone-400"><Calendar className="w-3.5 h-3.5 text-stone-400 dark:text-stone-500" /> Last active today</span>
             </div>
           </div>
         </div>
 
         {/* ── Edit profile form ── */}
-        {editOpen && (
+        {!isViewingExternalProfile && editOpen && (
           <div className="bg-white dark:bg-[#1c1f2e] rounded-2xl border border-stone-200 dark:border-[#2a2d3e] shadow-sm mb-5">
             <div className="flex items-center justify-between px-6 py-4 border-b border-stone-200 dark:border-[#2a2d3e]">
               <h2 className="font-bold text-stone-900 dark:text-stone-100 text-sm">Edit Profile</h2>
@@ -833,17 +866,17 @@ export default function ProfilePage() {
 
         <div className="bg-white dark:bg-[#1c1f2e] rounded-2xl border border-stone-200 dark:border-[#2a2d3e] shadow-sm overflow-hidden">
               {/* Tab bar */}
-              <div className="flex border-b border-stone-200 dark:border-[#2a2d3e]">
-                {(["listings", "saved"] as const).map((t) => (
+              {!isViewingExternalProfile && <div className="flex border-b border-stone-200 dark:border-[#2a2d3e]">
+                {(["listings", "bookmarks"] as const).map((t) => (
                   <button key={t} onClick={() => setProfileTab(t)}
                     className={cn("flex-1 py-3.5 text-sm font-medium transition-colors",
                       profileTab === t
                         ? "text-stone-900 dark:text-stone-100 border-b-2 border-stone-900 dark:border-stone-300"
                         : "text-stone-400 dark:text-stone-500 hover:text-stone-600 dark:hover:text-stone-300")}>
-                    {t === "listings" ? "📦 My Listings" : "❤️ Saved Items"}
+                    {t === "listings" ? "📦 My Listings" : "🔖 Bookmarked Items"}
                   </button>
                 ))}
-              </div>
+              </div>}
 
               {/* My Listings */}
               {profileTab === "listings" && (<>
@@ -872,17 +905,17 @@ export default function ProfilePage() {
                     <p className="font-semibold text-stone-400 text-sm">Loading listings...</p>
                   </div>
                 ) : allListings.length > 0
-                  ? <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 p-4">{allListings.map((l) => <ProfileListingCard key={l.id} listing={l} showMeta tab={listingTab} />)}{isVerifiedSeller && <AddListingCard />}</div>
+                  ? <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 p-4">{allListings.map((l) => <ProfileListingCard key={l.id} listing={l} showMeta tab={listingTab} />)}{isVerifiedSeller && <AddListingCard />}</div>
                   : <div className="text-center py-14 px-6"><Package className="w-10 h-10 text-stone-200 dark:text-stone-700 mx-auto mb-3" /><p className="font-semibold text-stone-400 text-sm">No listings yet</p>{isVerifiedSeller && <Link href="/create"><Button size="sm" className="mt-4 rounded-full bg-stone-900 hover:bg-stone-800 text-white text-xs"><Plus className="w-3 h-3" /> Add Listing</Button></Link>}</div>}
               </>)}
 
-              {/* Saved Items */}
-              {profileTab === "saved" && (
+              {/* Bookmarked Items */}
+              {!isViewingExternalProfile && profileTab === "bookmarks" && (
                 loadingProfile
-                  ? <div className="text-center py-14"><p className="font-semibold text-stone-400 text-sm">Loading saved items...</p></div>
+                  ? <div className="text-center py-14"><p className="font-semibold text-stone-400 text-sm">Loading bookmarked items...</p></div>
                   : bookmarkListings.length > 0
-                  ? <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 p-4">{bookmarkListings.map((l) => <ProfileListingCard key={l.id} listing={l} />)}</div>
-                  : <div className="text-center py-14"><Heart className="w-10 h-10 text-stone-200 dark:text-stone-700 mx-auto mb-3" /><p className="font-semibold text-stone-400 text-sm">No saved items yet</p></div>
+                  ? <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 p-4">{bookmarkListings.map((l) => <ProfileListingCard key={l.id} listing={l} />)}</div>
+                  : <div className="text-center py-14"><Bookmark className="w-10 h-10 text-stone-200 dark:text-stone-700 mx-auto mb-3" /><p className="font-semibold text-stone-400 text-sm">No bookmarked items yet</p></div>
               )}
         </div>
       </div>

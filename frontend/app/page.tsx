@@ -4,44 +4,13 @@ import { Suspense, useState, useEffect, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import PostCard, { type PostCardProps } from "@/components/post-card";
+import { getHomeListings, type HomeListing } from "@/services/listingFeedService";
 import { Search, SlidersHorizontal, X, ChevronLeft, ChevronRight, PackageSearch } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
-// ─── Mock data ─────────────────────────────────────────────────────────────────
-const ALL_LISTINGS: (PostCardProps & { category: string; condition: string; createdAt: number })[] = [
-  { id: "1",  title: "Casio G-Shock GA-2100 'CasiOak'",          price: 4800,  type: "sell",    category: "Electronics",     condition: "Like New",     location: "Calamba, Laguna",   postedAt: "2h ago",  imageUrl: "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&q=80", seller: { name: "Juan dela Cruz",  rating: 4.9 }, createdAt: Date.now() - 7200000 },
-  { id: "2",  title: "Studio Unit — Makati CBD (Fully Furnished)", price: 22000, type: "rent",    category: "Real Estate",     condition: "New",          location: "Makati City",       postedAt: "1d ago",  priceUnit: "/ mo", imageUrl: "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=400&q=80", seller: { name: "Maria Santos",    rating: 4.7 }, createdAt: Date.now() - 86400000 },
-  { id: "3",  title: "Aircon Deep Cleaning & Repair Service",     price: 500,   type: "service", category: "Home Services",   condition: "New",          location: "San Pablo, Laguna", postedAt: "3h ago",  priceUnit: "/ unit", imageUrl: "https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=400&q=80", seller: { name: "Pedro Reyes",     rating: 5.0, isPro: true }, createdAt: Date.now() - 10800000 },
-  { id: "4",  title: "MacBook Pro M2 2023 — Space Gray 16\"",     price: 68000, type: "sell",    category: "Electronics",     condition: "Like New",     location: "Quezon City",       postedAt: "5h ago",  imageUrl: "https://images.unsplash.com/photo-1593642632559-0c6d3fc62b89?w=400&q=80", seller: { name: "Ana Reyes",       rating: 4.8 }, createdAt: Date.now() - 18000000 },
-  { id: "5",  title: "Honda Click 125 Scooter Daily Rental",      price: 600,   type: "rent",    category: "Vehicles",        condition: "Well Used",    location: "Santa Rosa, Laguna",postedAt: "6h ago",  priceUnit: "/ day", imageUrl: "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&q=80", seller: { name: "Carlos M.",       rating: 4.6 }, createdAt: Date.now() - 21600000 },
-  { id: "6",  title: "Sony WH-1000XM5 Noise Cancelling Headphones",price: 12500, type: "sell",   category: "Electronics",     condition: "Like New",     location: "Pasig City",        postedAt: "1h ago",  imageUrl: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&q=80", seller: { name: "Leo Fernandez",   rating: 4.7 }, createdAt: Date.now() - 3600000 },
-  { id: "7",  title: "Professional Web Development Services",     price: 8000,  type: "service", category: "IT & Digital",    condition: "New",          location: "Remote / Metro Manila", postedAt: "2d ago", priceUnit: "/ project", imageUrl: "https://images.unsplash.com/photo-1461749280684-dccba630e2f6?w=400&q=80", seller: { name: "Dev Studio PH",   rating: 5.0, isPro: true }, createdAt: Date.now() - 172800000 },
-  { id: "8",  title: "IKEA KALLAX Shelf Unit 4×4 (Walnut Effect)", price: 3200,  type: "sell",   category: "Home & Living",   condition: "Lightly Used", location: "Taguig, Metro Manila", postedAt: "4h ago", imageUrl: "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=400&q=80", seller: { name: "Grace Tan",       rating: 4.5 }, createdAt: Date.now() - 14400000 },
-  { id: "9",  title: "Canon EOS R50 Mirrorless Camera + 18-45mm", price: 41000, type: "sell",    category: "Electronics",     condition: "Like New",     location: "Cebu City",          postedAt: "8h ago", imageUrl: "https://images.unsplash.com/photo-1516035069371-29a1b244cc32?w=400&q=80", seller: { name: "Mike Lim",        rating: 4.9 }, createdAt: Date.now() - 28800000 },
-  { id: "10", title: "2BR House & Lot for Rent — Cavite",         price: 18000, type: "rent",    category: "Real Estate",     condition: "New",          location: "Imus, Cavite",       postedAt: "3d ago",  priceUnit: "/ mo", imageUrl: "https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=400&q=80", seller: { name: "Alma Cruz",       rating: 4.6 }, createdAt: Date.now() - 259200000 },
-  { id: "11", title: "Levi's 511 Slim Fit Jeans — W32 L30",       price: 950,   type: "sell",    category: "Clothing",        condition: "Lightly Used", location: "Antipolo, Rizal",    postedAt: "12h ago", imageUrl: "https://images.unsplash.com/photo-1542272604-787c3835535d?w=400&q=80", seller: { name: "Tricia V.",       rating: 4.4 }, createdAt: Date.now() - 43200000 },
-  { id: "12", title: "Massage & Relaxation Therapy (Home Service)", price: 650,  type: "service", category: "Health & Wellness", condition: "New",         location: "Paranaque City",    postedAt: "5h ago",  priceUnit: "/ session", imageUrl: "https://images.unsplash.com/photo-1540555700478-4be289fbecef?w=400&q=80", seller: { name: "Wellness by Riza", rating: 4.8, isPro: true }, createdAt: Date.now() - 18000000 },
-  { id: "13", title: "Mountain Bike Trek Marlin 7 — 2022",         price: 28000, type: "sell",   category: "Sports & Outdoors", condition: "Well Used",   location: "Baguio City",       postedAt: "1d ago",  imageUrl: "https://images.unsplash.com/photo-1571068316344-75bc76f77890?w=400&q=80", seller: { name: "Jared Ong",       rating: 4.7 }, createdAt: Date.now() - 86400000 },
-  { id: "14", title: "Toyota Vios 1.3 E MT 2019 — Excellent Cond", price: 590000, type: "sell",  category: "Vehicles",        condition: "Well Used",    location: "Batangas City",     postedAt: "2d ago",  imageUrl: "https://images.unsplash.com/photo-1494976388531-d1058494cdd8?w=400&q=80", seller: { name: "Rico Almonte",    rating: 4.9 }, createdAt: Date.now() - 172800000 },
-  { id: "15", title: "Event Sound System Rental (Full Setup)",      price: 4500,  type: "rent",   category: "Events",          condition: "Like New",     location: "Laguna / Batangas", postedAt: "6h ago",  priceUnit: "/ event", imageUrl: "https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?w=400&q=80", seller: { name: "SoundPro Events", rating: 4.8, isPro: true }, createdAt: Date.now() - 21600000 },
-  { id: "16", title: "Nike Air Force 1 '07 White — US9",           price: 3800,  type: "sell",   category: "Clothing",        condition: "New",          location: "Davao City",        postedAt: "9h ago",  imageUrl: "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400&q=80", seller: { name: "Kyla Delos Reyes",rating: 4.6 }, createdAt: Date.now() - 32400000 },
-  { id: "17", title: "Home Tutoring — Math, Science, English K-12", price: 350,  type: "service", category: "Education",       condition: "New",          location: "Quezon City",       postedAt: "1d ago",  priceUnit: "/ hr", imageUrl: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=400&q=80", seller: { name: "Ms. Patricia U.", rating: 5.0, isPro: true }, createdAt: Date.now() - 86400000 },
-  { id: "18", title: "iPad Pro 11\" M2 (2022) WiFi 256GB",          price: 42000, type: "sell",   category: "Electronics",     condition: "Like New",     location: "Mandaluyong City",  postedAt: "7h ago",  imageUrl: "https://images.unsplash.com/photo-1544244015-0df4b3ffc6b0?w=400&q=80", seller: { name: "Ben Torres",      rating: 4.8 }, createdAt: Date.now() - 25200000 },
-  { id: "19", title: "Commercial Space for Rent — Ground Floor",    price: 35000, type: "rent",   category: "Real Estate",     condition: "New",          location: "Lipa City, Batangas", postedAt: "3d ago", priceUnit: "/ mo", imageUrl: "https://images.unsplash.com/photo-1497366216548-37526070297c?w=400&q=80", seller: { name: "Realty Plus PH",  rating: 4.5, isPro: true }, createdAt: Date.now() - 259200000 },
-  { id: "20", title: "Photo & Video Coverage — Weddings & Events",  price: 15000, type: "service", category: "Creative",       condition: "New",          location: "Nationwide / Travel", postedAt: "4d ago", priceUnit: "/ package", imageUrl: "https://images.unsplash.com/photo-1492691527719-9d1e07e534b4?w=400&q=80", seller: { name: "Luz Photoworks",  rating: 5.0, isPro: true }, createdAt: Date.now() - 345600000 },
-  { id: "21", title: "Herman Miller Aeron Chair (Size B, Remastered)", price: 55000, type: "sell", category: "Home & Living",  condition: "Lightly Used", location: "Bgry. Kapitolyo, Pasig", postedAt: "2d ago", imageUrl: "https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=400&q=80", seller: { name: "Office Depot PH", rating: 4.7, isPro: true }, createdAt: Date.now() - 172800000 },
-  { id: "22", title: "Nikon Z30 Creator Kit — Vlogging Bundle",     price: 39500, type: "sell",   category: "Electronics",     condition: "New",          location: "Manila City",       postedAt: "11h ago", imageUrl: "https://images.unsplash.com/photo-1606983340126-99ab4feaa64a?w=400&q=80", seller: { name: "CameraShop MNL",  rating: 4.6 }, createdAt: Date.now() - 39600000 },
-  { id: "23", title: "Catering Services — 50 to 500 Pax",           price: 350,   type: "service", category: "Food & Events",  condition: "New",          location: "Metro Manila",      postedAt: "5d ago",  priceUnit: "/ pax", imageUrl: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400&q=80", seller: { name: "Kusina ni Luz",   rating: 4.9, isPro: true }, createdAt: Date.now() - 432000000 },
-  { id: "24", title: "Folding Camping Tent (4-Person, Waterproof)",  price: 2800,  type: "sell",   category: "Sports & Outdoors", condition: "Lightly Used", location: "Bulacan",          postedAt: "3h ago",  imageUrl: "https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?w=400&q=80", seller: { name: "Outdoors Fanatic", rating: 4.5 }, createdAt: Date.now() - 10800000 },
-  { id: "25", title: "Acoustic Guitar Yamaha F310 + Soft Case",     price: 3500,  type: "sell",   category: "Hobbies",         condition: "Well Used",    location: "Cebu City",         postedAt: "1d ago",  imageUrl: "https://images.unsplash.com/photo-1510915361894-db8b60106cb1?w=400&q=80", seller: { name: "Music Hub PH",    rating: 4.8 }, createdAt: Date.now() - 86400000 },
-  { id: "26", title: "Refrigerator Inverter 2-Door 520L",            price: 28500, type: "sell",   category: "Home & Living",   condition: "Like New",     location: "Valenzuela City",   postedAt: "6h ago",  imageUrl: "https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=400&q=80", seller: { name: "Home Appliances+", rating: 4.6, isPro: true }, createdAt: Date.now() - 21600000 },
-  { id: "27", title: "Motorcycle Rental — Honda ADV 160",            price: 1200,  type: "rent",   category: "Vehicles",        condition: "Like New",     location: "Puerto Princesa, Palawan", postedAt: "2d ago", priceUnit: "/ day", imageUrl: "https://images.unsplash.com/photo-1558981403-c5f9899a28bc?w=400&q=80", seller: { name: "Island Moto Rent",rating: 4.7 }, createdAt: Date.now() - 172800000 },
-  { id: "28", title: "Logo & Branding Design Package",               price: 3500,  type: "service", category: "IT & Digital",   condition: "New",          location: "Remote",            postedAt: "7d ago",  imageUrl: "https://images.unsplash.com/photo-1626785774625-ddcddc3445e9?w=400&q=80", seller: { name: "Creative Studio",  rating: 4.9, isPro: true }, createdAt: Date.now() - 604800000 },
-  { id: "29", title: "PlayStation 5 Disc Edition + 2 Controllers",  price: 26000, type: "sell",   category: "Electronics",     condition: "Like New",     location: "Marikina City",     postedAt: "4h ago",  imageUrl: "https://images.unsplash.com/photo-1607853202273-797f1c22a38e?w=400&q=80", seller: { name: "GameZone PH",     rating: 4.7 }, createdAt: Date.now() - 14400000 },
-  { id: "30", title: "Coworking Space Day Pass — BGC",               price: 450,   type: "rent",   category: "Real Estate",     condition: "New",          location: "BGC, Taguig",       postedAt: "1d ago",  priceUnit: "/ day", imageUrl: "https://images.unsplash.com/photo-1497366811353-6870744d04b2?w=400&q=80", seller: { name: "SpaceWork BGC",   rating: 4.8, isPro: true }, createdAt: Date.now() - 86400000 },
-];
+type ListingWithMeta = HomeListing;
 
 // ─── Constants ─────────────────────────────────────────────────────────────────
 const CATEGORIES = ["All Categories", "Electronics", "Clothing", "Vehicles", "Home & Living", "Real Estate", "Sports & Outdoors", "Health & Wellness", "IT & Digital", "Education", "Food & Events", "Creative", "Hobbies", "Events", "Others"];
@@ -100,6 +69,32 @@ function HomePageInner() {
   const router       = useRouter();
   const typeFromUrl  = (searchParams.get("type") || "all") as string;
 
+  const [allListings, setAllListings] = useState<ListingWithMeta[]>([]);
+  const [loadingListings, setLoadingListings] = useState(true);
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function loadListings() {
+      setLoadingListings(true);
+      try {
+        const data = await getHomeListings();
+        if (!mounted) return;
+        setAllListings(data);
+      } catch {
+        if (!mounted) return;
+        setAllListings([]);
+      } finally {
+        if (mounted) setLoadingListings(false);
+      }
+    }
+
+    loadListings();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
   // ── Filter state (staging = what's in the form, applied = what's actually active)
   const [keyword,  setKeyword]  = useState("");
   const [category, setCategory] = useState("All Categories");
@@ -120,7 +115,7 @@ function HomePageInner() {
   useEffect(() => { setPage(1); }, [typeFromUrl]);
 
   // ── Filter + sort ──────────────────────────────────────────────────────────
-  const filtered = ALL_LISTINGS.filter((item) => {
+  const filtered = allListings.filter((item) => {
     if (typeFromUrl !== "all" && item.type !== typeFromUrl) return false;
     if (applied.keyword  && !item.title.toLowerCase().includes(applied.keyword.toLowerCase())) return false;
     if (applied.category !== "All Categories" && item.category !== applied.category) return false;
@@ -176,11 +171,6 @@ function HomePageInner() {
 
             {/* Left: Headline */}
             <div className="max-w-xl animate-fade-in-up">
-              {tabLabel && (
-                <span className="inline-block text-xs font-semibold bg-amber-700 text-white px-3 py-1 rounded-full mb-3 uppercase tracking-wider">
-                  {tabLabel}
-                </span>
-              )}
               <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-stone-100 leading-tight">
                 Buy, Sell, Rent & Avail<br />
                 <span className="text-stone-400">Services from people near you.</span>
@@ -201,7 +191,7 @@ function HomePageInner() {
             {/* Right: Stats */}
             <div className="flex gap-6 sm:gap-10 shrink-0">
               {[
-                { value: `${ALL_LISTINGS.length.toLocaleString()}+`, label: "Active Listings" },
+                { value: `${allListings.length.toLocaleString()}+`, label: "Active Listings" },
                 { value: "Free",    label: "To post items"   },
                 { value: "PH-Wide", label: "All regions"     },
               ].map((stat, i) => (
@@ -246,7 +236,7 @@ function HomePageInner() {
           {/* Filter row */}
           <div className="flex flex-wrap gap-2 items-end">
             {/* Category */}
-            <div className="relative min-w-[140px] flex-1">
+            <div className="relative min-w-35 flex-1">
               <FilterSelect value={category} onChange={setCategory}>
                 {CATEGORIES.map((c) => <option key={c}>{c}</option>)}
               </FilterSelect>
@@ -256,14 +246,14 @@ function HomePageInner() {
             </div>
 
             {/* Condition */}
-            <div className="relative min-w-[130px] flex-1">
+            <div className="relative min-w-32.5 flex-1">
               <FilterSelect value={condition} onChange={setCond}>
                 {CONDITIONS.map((c) => <option key={c}>{c}</option>)}
               </FilterSelect>
             </div>
 
             {/* Location */}
-            <div className="relative min-w-[130px] flex-1">
+            <div className="relative min-w-32.5 flex-1">
               <FilterSelect value={location} onChange={setLocation}>
                 {LOCATIONS.map((l) => <option key={l}>{l}</option>)}
               </FilterSelect>
@@ -328,7 +318,11 @@ function HomePageInner() {
 
       {/* ──────────────────────── RESULTS GRID ──────────────────────────────── */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
-        {paginated.length > 0 ? (
+        {loadingListings ? (
+          <div className="flex items-center justify-center py-20">
+            <div className="w-8 h-8 border-4 border-amber-700 border-t-transparent rounded-full animate-spin" />
+          </div>
+        ) : paginated.length > 0 ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4">
             {paginated.map((listing) => (
               <PostCard key={listing.id} {...listing} />

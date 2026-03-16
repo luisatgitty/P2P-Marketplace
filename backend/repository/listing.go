@@ -725,6 +725,7 @@ func GetListingDetailById(listingId string) (model.ListingDetailFromDb, error) {
 	selectQuery := `
 		SELECT
 			l.id,
+			l.user_id AS seller_id,
 			l.title,
 			l.price,
 			l.price_unit,
@@ -799,11 +800,11 @@ func GetListingImages(listingId string) ([]string, error) {
 	return images, nil
 }
 
-func GetRelatedListings(listingId, categoryId, listingType string) ([]model.ProfileListingFromDb, error) {
+func GetRelatedListings(listingId, categoryId, listingType, excludeUserId string) ([]model.ProfileListingFromDb, error) {
 	db := middleware.DBConn
 	related := make([]model.ProfileListingFromDb, 0)
 
-	query := `
+	baseQuery := `
 		SELECT
 			l.id,
 			l.title,
@@ -834,13 +835,130 @@ func GetRelatedListings(listingId, categoryId, listingType string) ([]model.Prof
 		) rv ON TRUE
 		WHERE l.id <> $1
 			AND (l.category_id = $2 OR l.listing_type::text = $3)
+	`
+
+	query := baseQuery
+	args := []any{listingId, categoryId, strings.ToUpper(listingType)}
+	if strings.TrimSpace(excludeUserId) != "" {
+		query += "\n\t\t\tAND l.user_id <> $4"
+		args = append(args, excludeUserId)
+	}
+
+	query += `
 		ORDER BY l.created_at DESC
 		LIMIT 8
 	`
 
-	if err := db.Raw(query, listingId, categoryId, strings.ToUpper(listingType)).Scan(&related).Error; err != nil {
+	if err := db.Raw(query, args...).Scan(&related).Error; err != nil {
 		return nil, fmt.Errorf("Failed to retrieve related listings")
 	}
 
 	return related, nil
+}
+
+func IsListingBookmarked(userId, listingId string) (bool, error) {
+	db := middleware.DBConn
+
+	var exists bool
+	query := `
+		SELECT EXISTS(
+			SELECT 1
+			FROM public.bookmarks
+			WHERE user_id = $1 AND listing_id = $2
+		)
+	`
+
+	if err := db.Raw(query, userId, listingId).Scan(&exists).Error; err != nil {
+		return false, fmt.Errorf("Failed to check bookmark status")
+	}
+
+	return exists, nil
+}
+
+func AddBookmark(userId, listingId string) error {
+	db := middleware.DBConn
+
+	query := `
+		INSERT INTO public.bookmarks (user_id, listing_id)
+		VALUES ($1, $2)
+		ON CONFLICT (user_id, listing_id) DO NOTHING
+	`
+
+	if err := db.Exec(query, userId, listingId).Error; err != nil {
+		return fmt.Errorf("Failed to bookmark listing")
+	}
+
+	return nil
+}
+
+func RemoveBookmark(userId, listingId string) error {
+	db := middleware.DBConn
+
+	query := `
+		DELETE FROM public.bookmarks
+		WHERE user_id = $1 AND listing_id = $2
+	`
+
+	if err := db.Exec(query, userId, listingId).Error; err != nil {
+		return fmt.Errorf("Failed to remove bookmark")
+	}
+
+	return nil
+}
+
+func GetAllListings(excludeUserId string) ([]model.HomeListingFromDb, error) {
+	db := middleware.DBConn
+	listings := make([]model.HomeListingFromDb, 0)
+
+	baseQuery := `
+		SELECT
+			l.id,
+			l.title,
+			l.price,
+			COALESCE(l.price_unit, '') AS price_unit,
+			LOWER(l.listing_type::text) AS type,
+			COALESCE(c.name, 'Others') AS category,
+			COALESCE(lsd.condition::text, '') AS condition,
+			COALESCE(l.location_city, '') AS location_city,
+			COALESCE(l.location_province, '') AS location_province,
+			l.created_at,
+			COALESCE(li.image_url, '') AS image_url,
+			TRIM(BOTH ' ' FROM CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, ''))) AS seller_name,
+			COALESCE(rv.avg_rating, 5.0) AS seller_rating,
+			(u.verification_status = 'VERIFIED') AS seller_is_pro
+		FROM public.listings l
+		INNER JOIN public.users u ON u.id = l.user_id
+		LEFT JOIN public.categories c ON c.id = l.category_id
+		LEFT JOIN public.listing_sell_details lsd ON lsd.listing_id = l.id
+		LEFT JOIN LATERAL (
+			SELECT image_url
+			FROM public.listing_images
+			WHERE listing_id = l.id
+			ORDER BY is_primary DESC, id ASC
+			LIMIT 1
+		) li ON TRUE
+		LEFT JOIN LATERAL (
+			SELECT AVG(r.rating)::float AS avg_rating
+			FROM public.reviews r
+			WHERE r.reviewed_user_id = l.user_id
+		) rv ON TRUE
+		WHERE l.status <> 'HIDDEN'
+	`
+
+	query := baseQuery
+	args := make([]any, 0)
+	if strings.TrimSpace(excludeUserId) != "" {
+		query += "\n\t\t\tAND l.user_id <> $1"
+		args = append(args, excludeUserId)
+	}
+
+	query += `
+		ORDER BY l.created_at DESC
+	`
+
+	if err := db.Raw(query, args...).Scan(&listings).Error; err != nil {
+		return nil, fmt.Errorf("Failed to retrieve listings")
+	}
+
+	return listings, nil
 }

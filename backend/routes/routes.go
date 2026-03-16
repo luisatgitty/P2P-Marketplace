@@ -4,6 +4,7 @@ import (
 	"p2p_marketplace/backend/controller"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/websocket/v2"
 )
 
 func AppRoutes(app *fiber.App) {
@@ -13,6 +14,7 @@ func AppRoutes(app *fiber.App) {
 	app.Post("/auth/verify-email", controller.SignUpUser)
 	app.Post("/auth/resend-otp", controller.SendEmailOTP)
 	app.Post("/auth/forgot-password", controller.ForgotPassword)
+	app.Get("/listings", controller.GetListings)
 	app.Get("/listing/:id", controller.GetListingById)
 	app.Get("/locations/provinces", controller.GetProvinces)
 	app.Get("/locations/cities", controller.GetCitiesMunicipalities)
@@ -24,10 +26,13 @@ func AppRoutes(app *fiber.App) {
 	app.Get("/auth/validate-reset-token", controller.ValidateResetToken)
 	app.Post("/auth/reset-password", controller.ResetPassword)
 	app.Post("/listing", controller.AuthenticateUser, controller.CreateListing)
+	app.Post("/listing/:id/bookmark", controller.AuthenticateUser, controller.AddListingBookmark)
+	app.Delete("/listing/:id/bookmark", controller.AuthenticateUser, controller.RemoveListingBookmark)
 	app.Get("/listing/:id/edit", controller.AuthenticateUser, controller.GetListingEditById)
 	app.Put("/listing/:id", controller.AuthenticateUser, controller.UpdateListing)
 	app.Delete("/listing/:id", controller.AuthenticateUser, controller.DeleteListing)
 	app.Get("/profile/me", controller.AuthenticateUser, controller.MeProfile)
+	app.Get("/profile/:id", controller.ProfileById)
 	app.Put("/profile/me", controller.AuthenticateUser, controller.UpdateMeProfile)
 	app.Patch("/profile/me/images", controller.AuthenticateUser, controller.UpdateMeProfileImages)
 	app.Delete("/profile/me", controller.AuthenticateUser, controller.DeactivateMeProfile)
@@ -41,4 +46,5 @@ func AppRoutes(app *fiber.App) {
 	app.Patch("/messages/conversations/:id/messages/:messageId", controller.AuthenticateUser, controller.EditMessage)
 	app.Delete("/messages/conversations/:id/messages/:messageId", controller.AuthenticateUser, controller.DeleteMessage)
 	app.Delete("/messages/conversations/:id", controller.AuthenticateUser, controller.DeleteConversation)
+	app.Get("/ws", controller.AuthenticateUser, controller.UpgradeRealtimeSocket, websocket.New(controller.RealtimeSocket))
 }
