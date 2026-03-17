@@ -422,13 +422,20 @@ export default function ListingDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-stone-100 dark:bg-[#0f1117] pt-16">
+    <div className="min-h-screen bg-stone-100 dark:bg-[#0f1117]">
 
       {/* ── Breadcrumb ── */}
       <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-5 pb-3">
         <div className="flex items-center gap-2 text-xs text-stone-400 dark:text-stone-500">
           <Link href="/" className="hover:text-stone-600 dark:hover:text-stone-300 transition-colors flex items-center gap-1">
             <ArrowLeft className="w-3 h-3" /> Home
+          </Link>
+          <span>/</span>
+          <Link
+            href={`/?type=${listing.type}`}
+            className="hover:text-stone-600 dark:hover:text-stone-300 transition-colors"
+          >
+            {TYPE_LABEL[listing.type]}
           </Link>
           <span>/</span>
           <span className="capitalize text-stone-500 dark:text-stone-400">{listing.category}</span>
