@@ -14,7 +14,6 @@ import (
 )
 
 func ForgotPassword(c *fiber.Ctx) error {
-	fmt.Println(c.Path())
 	var body struct {
 		Email string `json:"email"`
 	}
@@ -62,8 +61,6 @@ func ForgotPassword(c *fiber.Ctx) error {
 }
 
 func ValidateResetToken(c *fiber.Ctx) error {
-	fmt.Println(c.Path())
-
 	// Get token from query parameters included in the reset link
 	token := c.Query("token")
 	// Validate token validity and expiration
@@ -76,10 +73,8 @@ func ValidateResetToken(c *fiber.Ctx) error {
 }
 
 func ResetPassword(c *fiber.Ctx) error {
-	fmt.Println(c.Path())
-	var body model.PwdResetFromBody
-
 	// Parse the request body
+	var body model.PwdResetFromBody
 	if err := c.BodyParser(&body); err != nil {
 		return SendErrorResponse(c, 400, "Invalid request body. Please contact support.", err)
 	}

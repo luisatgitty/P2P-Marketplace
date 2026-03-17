@@ -20,10 +20,10 @@ export default function ForgotPasswordPage() {
     setIsLoading(true);
 
     try {
-      await sendPostRequest("/auth/forgot-password", { email });``
+      await sendPostRequest("/auth/forgot-password", { email });
       setSubmitted(true);
     } catch (error: any) {
-      toast.error(error.message || "Failed to send reset link. Please contact support.", { position: "top-center" });
+      toast.error(error || "Failed to send reset link. Please contact support.", { position: "top-center" });
     } finally {
       setIsLoading(false);
     }

@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Banner, Container } from "@/components/auth/auth-container";
+import { LoadingPage } from "@/components/loading";
 import { Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 
@@ -89,7 +90,7 @@ export default function ResetPasswordPage() {
     }
   };
 
-  if (isLoading) return null;
+  if (isLoading) return (<LoadingPage />);
 
   return (
     <Container>

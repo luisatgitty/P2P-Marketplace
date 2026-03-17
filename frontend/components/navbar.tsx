@@ -76,12 +76,36 @@ function TabsFallback() {
 
 // ─── Main Navbar ───────────────────────────────────────────────────────────────
 export default function Navbar() {
-  const { clearUserData, isValidated, user } = useUser();
+  const { clearUserData, isAuth, user } = useUser();
   const { theme, setTheme } = useTheme();
   const isVerifiedSeller = (user?.status ?? "").toLowerCase() === "verified";
   const [dropdownOpen, setDropdownOpen]     = useState(false);
   const [mounted, setMounted]               = useState(false);
+  const [profileImageSrc, setProfileImageSrc] = useState("/profile-icon.png");
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const raw = (user?.profileImageUrl ?? "").trim();
+    const apiBase = (process.env.NEXT_PUBLIC_API_URL ?? "").replace(/\/$/, "");
+
+    if (!raw) {
+      setProfileImageSrc("/profile-icon.png");
+      return;
+    }
+
+    if (raw.startsWith("http://") || raw.startsWith("https://")) {
+      setProfileImageSrc(raw);
+      return;
+    }
+
+    if (raw.startsWith("/uploads/") || raw.startsWith("uploads/")) {
+      const normalized = raw.startsWith("/") ? raw : `/${raw}`;
+      setProfileImageSrc(apiBase ? `${apiBase}${normalized}` : normalized);
+      return;
+    }
+
+    setProfileImageSrc(raw.startsWith("/") ? raw : `/${raw}`);
+  }, [user?.profileImageUrl]);
 
   // Avoid hydration mismatch for theme
   useEffect(() => setMounted(true), []);
@@ -137,11 +161,12 @@ export default function Navbar() {
               >
                 <div className="w-7 h-7 rounded-full bg-stone-600 overflow-hidden border border-white/20">
                   <Image
-                    src={user?.profileImageUrl || '/profile-icon.png'}
+                    src={profileImageSrc}
                     alt="Profile"
                     width={28}
                     height={28}
                     className="w-full h-full object-cover"
+                    onError={() => setProfileImageSrc("/profile-icon.png")}
                   />
                 </div>
                 <ChevronDown
@@ -153,7 +178,7 @@ export default function Navbar() {
               {/* Dropdown panel */}
               {dropdownOpen && (
                 <div className="absolute right-0 mt-2 w-48 bg-[#1e2b3c] border border-white/10 rounded-xl shadow-2xl overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-150">
-                  {isValidated ? (
+                  {isAuth ? (
                     <>
                       {/* User info */}
                       <div className="px-4 py-3 border-b border-white/10 bg-white/5">

@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation";
 import { toast } from "sonner"
@@ -18,24 +18,9 @@ export function LoginForm() {
   const router = useRouter();
   const [form, setForm] = useState({ email: "", password: "" })
   const [loading, setLoading] = useState(false);
-  const [authChecked, setAuthChecked] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const { saveUserData } = useUser();
-  const STORAGE_KEY = "auth_user";
   
-  // Redirect if user is already authenticated
-  useEffect(() => {
-    const userAuth = localStorage.getItem(STORAGE_KEY);
-      if (userAuth) {
-        router.push("/");
-      } else {
-        setAuthChecked(true); // Only show UI if user is not authenticated
-      }
-    }, []);
-
-  // Don't render anything until auth check is complete
-  if (!authChecked) return null;
-
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     // Use the name attribute as the key
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -62,7 +47,7 @@ export function LoginForm() {
       saveUserData(data.user);
       router.push("/");
     } catch (error: any) {
-      toast.error(error.message || "Login failed. Please contact support.", { position: "top-center" });
+      toast.error(error, { position: "top-center" });
     } finally {
       setLoading(false);
     }

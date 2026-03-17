@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { useRouter } from "next/navigation";
 import { toast } from "sonner"
 import { Eye, EyeOff } from "lucide-react";
@@ -24,24 +24,8 @@ export function SignupForm({ className, ...props }: React.ComponentProps<"div">)
     confirmPassword: "",
   });
   const [loading, setLoading] = useState(false);
-  const [authChecked, setAuthChecked] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const STORAGE_KEY = "auth_user";
-
-  // Redirect to home if user access this page while already authenticated
-    useEffect(() => {
-      // Check local storage for user data to determine if authenticated
-      const userAuth = localStorage.getItem(STORAGE_KEY);
-      if (userAuth) {
-        router.push("/");
-      } else {
-        setAuthChecked(true);
-      }
-    }, []);
-
-  // Don't render anything until auth check is complete
-  if (!authChecked) return null;
 
   // Use the name attribute as the key
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {

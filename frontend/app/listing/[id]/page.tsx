@@ -13,6 +13,7 @@ import { useUser } from "@/utils/UserContext";
 import { addListingBookmark, getListingDetailById, removeListingBookmark } from "@/services/listingDetailService";
 import { getUserProfileData } from "@/services/profileService";
 import { type PostCardProps } from "@/components/post-card";
+import { LoadingPage } from "@/components/loading";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -208,7 +209,7 @@ function ServiceInfoCard({ extra }: { extra: ExtraDetail }) {
 export default function ListingDetailPage() {
   const { id }   = useParams<{ id: string }>();
   const router   = useRouter();
-  const { user, isValidated } = useUser();
+  const { user, isAuth } = useUser();
 
   const [listing,     setListing]    = useState<PostCardProps | null>(null);
   const [extra,       setExtra]      = useState<ExtraDetail>(
@@ -261,11 +262,7 @@ export default function ListingDetailPage() {
   }, [id]);
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-stone-100 dark:bg-[#0f1117]">
-        <p className="text-stone-600 dark:text-stone-400 font-medium">Loading listing...</p>
-      </div>
-    );
+    return (<LoadingPage />);
   }
 
   if (!listing) {
@@ -309,7 +306,7 @@ export default function ListingDetailPage() {
       return;
     }
 
-    if (!isValidated) {
+    if (!isAuth) {
       router.push("/login");
       return;
     }
@@ -344,7 +341,7 @@ export default function ListingDetailPage() {
   }
 
   async function handleToggleBookmark() {
-    if (!isValidated) {
+    if (!isAuth) {
       router.push("/login");
       return;
     }
@@ -368,7 +365,7 @@ export default function ListingDetailPage() {
   }
 
   async function handleMessage() {
-    if (!isValidated) { router.push("/login"); return; }
+    if (!isAuth) { router.push("/login"); return; }
     if (!listing || messaging) return;
 
     setMessaging(true);
@@ -383,7 +380,7 @@ export default function ListingDetailPage() {
   }
 
   function handleBuy() {
-    if (!isValidated) { router.push("/login"); return; }
+    if (!isAuth) { router.push("/login"); return; }
     setOfferOpen(true);
   }
 
@@ -393,7 +390,7 @@ export default function ListingDetailPage() {
   }
 
   async function handleRemoveListing() {
-    if (!isValidated) {
+    if (!isAuth) {
       router.push("/login");
       return;
     }

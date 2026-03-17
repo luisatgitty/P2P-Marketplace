@@ -6,11 +6,11 @@ export function Banner() {
   return (
     <div className="bg-muted relative hidden md:block">
       <Image
-        src="https://plus.unsplash.com/premium_vector-1737082359286-f2b8f1ac7c9d?q=80&w=880"
-        alt="authentication banner"
-        layout="fill"
-        objectFit="cover"
         className="dark:brightness-[0.6]"
+        src="https://plus.unsplash.com/premium_vector-1737082359286-f2b8f1ac7c9d?q=80&w=880"
+        alt="Authentication Banner"
+        style={{ objectFit: 'cover' }}
+        fill
       />
     </div>
   );

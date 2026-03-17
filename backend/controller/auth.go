@@ -14,10 +14,8 @@ import (
 )
 
 func SendEmailOTP(c *fiber.Ctx) error {
-	fmt.Println(c.Path())
-	var body model.UserFromBody
-
 	// Parse the request body
+	var body model.UserFromBody
 	if err := c.BodyParser(&body); err != nil {
 		return SendErrorResponse(c, 400, "Invalid request body. Please contact support.", err)
 	}
@@ -33,19 +31,14 @@ func SendEmailOTP(c *fiber.Ctx) error {
 	}
 
 	// Return success response with email to indicate OTP sent
-	return c.Status(201).JSON(model.ResponseModel{
-		RetCode: "201",
-		Message: "OTP sent successfully. Please check your email.",
-		Data:    map[string]any{"user": body.Email},
-		// Data:    nil,
+	return SendSuccessResponse(c, 201, "OTP sent successfully.", map[string]any{
+		"user": body.Email,
 	})
 }
 
 func SignUpUser(c *fiber.Ctx) error {
-	fmt.Println(c.Path())
-	var body model.UserFromBody
-
 	// Parse the request body
+	var body model.UserFromBody
 	if err := c.BodyParser(&body); err != nil {
 		return SendErrorResponse(c, 400, "Invalid request body. Please contact support.", err)
 	}
@@ -90,18 +83,14 @@ func SignUpUser(c *fiber.Ctx) error {
 	}
 
 	// Return success response with user data
-	return c.Status(201).JSON(model.ResponseModel{
-		RetCode: "201",
-		Message: "User created successfully",
-		Data:    map[string]any{"user": BuildUserResponse(userFromDb)},
+	return SendSuccessResponse(c, 201, "User created successfully", map[string]any{
+		"user": BuildUserResponse(userFromDb),
 	})
 }
 
 func LogInUser(c *fiber.Ctx) error {
-	fmt.Println(c.Path())
-	var body model.UserFromBody
-
 	// Parse the request body
+	var body model.UserFromBody
 	if err := c.BodyParser(&body); err != nil {
 		return SendErrorResponse(c, 400, "Invalid request body. Please contact support.", err)
 	}
@@ -159,20 +148,16 @@ func LogInUser(c *fiber.Ctx) error {
 	// Update user's last login time and reset failed login attempts
 	if err := repository.UpdateUserLastLogin(userFromDb.UserId); err != nil {
 		// This error is not critical. User login proceeds.
-		fmt.Println("Failed to update last login time. Please contact support.", err)
+		fmt.Printf("%v: Failed to update last login time. Please contact support. %v\n", c.Path(), err)
 	}
 
 	// Return success response with user data
-	return c.Status(200).JSON(model.ResponseModel{
-		RetCode: "200",
-		Message: "Logged in successfully",
-		Data:    map[string]any{"user": BuildUserResponse(userFromDb)},
+	return SendSuccessResponse(c, 200, "Logged in successfully", map[string]any{
+		"user": BuildUserResponse(userFromDb),
 	})
 }
 
 func AuthenticateUser(c *fiber.Ctx) error {
-	fmt.Println(c.Path())
-
 	// Check for session token in cookies
 	sessionToken := c.Cookies("session_token")
 	if sessionToken == "" {
@@ -205,8 +190,6 @@ func AuthenticateUser(c *fiber.Ctx) error {
 }
 
 func Me(c *fiber.Ctx) error {
-	fmt.Println(c.Path())
-
 	// Check if user successfully identified
 	userId := c.Locals("userId")
 	if userId == nil {
@@ -222,19 +205,15 @@ func Me(c *fiber.Ctx) error {
 	}
 
 	// Return success response with user data
-	return c.Status(200).JSON(model.ResponseModel{
-		RetCode: "200",
-		Message: "User is authenticated",
-		Data:    map[string]any{"user": BuildUserResponse(userFromDb)},
+	return SendSuccessResponse(c, 200, "User is authenticated", map[string]any{
+		"user": BuildUserResponse(userFromDb),
 	})
 }
 
 func Logout(c *fiber.Ctx) error {
-	fmt.Println(c.Path())
-
 	// Delete session from DB and clear cookie
 	if err := repository.DeleteSession(c); err != nil {
-		fmt.Println("Failed to delete session during logout: ", err)
+		fmt.Printf("%v: Failed to delete session during logout: %v\n", c.Path(), err)
 	}
 
 	// Return success response with expired cookie

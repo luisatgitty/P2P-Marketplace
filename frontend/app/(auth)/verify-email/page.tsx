@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Banner, Container } from "@/components/auth/auth-container";
+import { LoadingPage } from "@/components/loading";
 import { SignupForm } from "@/types/forms";
 
 function VerifyEmailForm() {
@@ -33,12 +34,14 @@ function VerifyEmailForm() {
   const [otpTimeLeft, setOtpTimeLeft] = useState(0);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
+  const signupData = sessionStorage.getItem("pending_signup");
+
   useEffect(() => {
-    const signupData = sessionStorage.getItem("pending_signup");
     if (!signupData) {
       router.replace("/signup"); // Redirect if no pending signup data
       return;
     }
+
     // Set form data from session storage
     setForm(JSON.parse(signupData));
 
@@ -165,6 +168,8 @@ function VerifyEmailForm() {
       showErrorToast(err.data?.message || "An unexpected error occurred. Please try again later.");
     }
   };
+
+  if (!signupData) return (<LoadingPage />);
 
   return (
     <Container>
