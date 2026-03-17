@@ -19,8 +19,6 @@ type psgcItem struct {
 }
 
 func GetProvinces(c *fiber.Ctx) error {
-	fmt.Println(c.Path())
-
 	items, err := fetchPSGCList("https://psgc.gitlab.io/api/provinces/")
 	if err != nil {
 		return SendErrorResponse(c, 500, "Failed to fetch provinces", err)
@@ -30,8 +28,6 @@ func GetProvinces(c *fiber.Ctx) error {
 }
 
 func GetCitiesMunicipalities(c *fiber.Ctx) error {
-	fmt.Println(c.Path())
-
 	provinceCode := strings.TrimSpace(c.Query("provinceCode"))
 	if provinceCode == "" {
 		return SendErrorResponse(c, 400, "provinceCode is required", nil)
@@ -47,8 +43,6 @@ func GetCitiesMunicipalities(c *fiber.Ctx) error {
 }
 
 func GetBarangays(c *fiber.Ctx) error {
-	fmt.Println(c.Path())
-
 	cityCode := strings.TrimSpace(c.Query("cityCode"))
 	if cityCode == "" {
 		return SendErrorResponse(c, 400, "cityCode is required", nil)

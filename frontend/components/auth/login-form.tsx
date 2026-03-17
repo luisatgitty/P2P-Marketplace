@@ -62,7 +62,7 @@ export function LoginForm() {
       saveUserData(data.user);
       router.push("/");
     } catch (error: any) {
-      toast.error(error.message || "Login failed. Please contact support.", { position: "top-center" });
+      toast.error(error, { position: "top-center" });
     } finally {
       setLoading(false);
     }

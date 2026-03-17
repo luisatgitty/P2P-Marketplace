@@ -13,8 +13,6 @@ import (
 )
 
 func MeProfile(c *fiber.Ctx) error {
-	fmt.Println(c.Path())
-
 	userId := fmt.Sprintf("%v", c.Locals("userId"))
 	if strings.TrimSpace(userId) == "" || userId == "%!v(<nil>)" {
 		return SendErrorResponse(c, 401, "User is not authenticated", nil)
@@ -45,8 +43,6 @@ func MeProfile(c *fiber.Ctx) error {
 }
 
 func ProfileById(c *fiber.Ctx) error {
-	fmt.Println(c.Path())
-
 	profileUserId := strings.TrimSpace(c.Params("id"))
 	if profileUserId == "" {
 		return SendErrorResponse(c, 400, "Profile user ID is required", nil)
@@ -72,8 +68,6 @@ func ProfileById(c *fiber.Ctx) error {
 }
 
 func UpdateMeProfile(c *fiber.Ctx) error {
-	fmt.Println(c.Path())
-
 	userId := fmt.Sprintf("%v", c.Locals("userId"))
 	if strings.TrimSpace(userId) == "" || userId == "%!v(<nil>)" {
 		return SendErrorResponse(c, 401, "User is not authenticated", nil)
@@ -131,8 +125,6 @@ func UpdateMeProfile(c *fiber.Ctx) error {
 }
 
 func UpdateMeProfileImages(c *fiber.Ctx) error {
-	fmt.Println(c.Path())
-
 	userId := fmt.Sprintf("%v", c.Locals("userId"))
 	if strings.TrimSpace(userId) == "" || userId == "%!v(<nil>)" {
 		return SendErrorResponse(c, 401, "User is not authenticated", nil)
@@ -162,8 +154,6 @@ func UpdateMeProfileImages(c *fiber.Ctx) error {
 }
 
 func DeactivateMeProfile(c *fiber.Ctx) error {
-	fmt.Println(c.Path())
-
 	userId := fmt.Sprintf("%v", c.Locals("userId"))
 	if strings.TrimSpace(userId) == "" || userId == "%!v(<nil>)" {
 		return SendErrorResponse(c, 401, "User is not authenticated", nil)

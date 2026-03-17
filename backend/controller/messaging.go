@@ -64,8 +64,6 @@ func mapConversationPayload(baseURL string, row model.ConversationFromDb) map[st
 }
 
 func GetConversations(c *fiber.Ctx) error {
-	fmt.Println(c.Path())
-
 	userId, err := getAuthenticatedUserId(c)
 	if err != nil {
 		return SendErrorResponse(c, 401, err.Error(), nil)
@@ -86,8 +84,6 @@ func GetConversations(c *fiber.Ctx) error {
 }
 
 func GetConversation(c *fiber.Ctx) error {
-	fmt.Println(c.Path())
-
 	conversationId := strings.TrimSpace(c.Params("id"))
 	if conversationId == "" {
 		return SendErrorResponse(c, 400, "Conversation ID is required", nil)
@@ -108,8 +104,6 @@ func GetConversation(c *fiber.Ctx) error {
 }
 
 func GetMessages(c *fiber.Ctx) error {
-	fmt.Println(c.Path())
-
 	conversationId := strings.TrimSpace(c.Params("id"))
 	if conversationId == "" {
 		return SendErrorResponse(c, 400, "Conversation ID is required", nil)
@@ -190,8 +184,6 @@ func GetMessages(c *fiber.Ctx) error {
 }
 
 func CreateConversationFromListing(c *fiber.Ctx) error {
-	fmt.Println(c.Path())
-
 	var body model.CreateConversationBody
 	if err := c.BodyParser(&body); err != nil {
 		return SendErrorResponse(c, 400, "Invalid request body. Please contact support.", err)
@@ -214,8 +206,6 @@ func CreateConversationFromListing(c *fiber.Ctx) error {
 }
 
 func SendMessage(c *fiber.Ctx) error {
-	fmt.Println(c.Path())
-
 	conversationId := strings.TrimSpace(c.Params("id"))
 	if conversationId == "" {
 		return SendErrorResponse(c, 400, "Conversation ID is required", nil)
@@ -283,8 +273,6 @@ func SendMessage(c *fiber.Ctx) error {
 }
 
 func ReactToMessage(c *fiber.Ctx) error {
-	fmt.Println(c.Path())
-
 	conversationId := strings.TrimSpace(c.Params("id"))
 	messageId := strings.TrimSpace(c.Params("messageId"))
 	if conversationId == "" || messageId == "" {
@@ -327,8 +315,6 @@ func ReactToMessage(c *fiber.Ctx) error {
 }
 
 func EditMessage(c *fiber.Ctx) error {
-	fmt.Println(c.Path())
-
 	conversationId := strings.TrimSpace(c.Params("id"))
 	messageId := strings.TrimSpace(c.Params("messageId"))
 	if conversationId == "" || messageId == "" {
@@ -372,8 +358,6 @@ func EditMessage(c *fiber.Ctx) error {
 }
 
 func DeleteMessage(c *fiber.Ctx) error {
-	fmt.Println(c.Path())
-
 	conversationId := strings.TrimSpace(c.Params("id"))
 	messageId := strings.TrimSpace(c.Params("messageId"))
 	if conversationId == "" || messageId == "" {
@@ -417,8 +401,6 @@ func DeleteMessage(c *fiber.Ctx) error {
 }
 
 func MarkMessagesRead(c *fiber.Ctx) error {
-	fmt.Println(c.Path())
-
 	conversationId := strings.TrimSpace(c.Params("id"))
 	if conversationId == "" {
 		return SendErrorResponse(c, 400, "Conversation ID is required", nil)
@@ -461,8 +443,6 @@ func MarkMessagesRead(c *fiber.Ctx) error {
 }
 
 func DeleteConversation(c *fiber.Ctx) error {
-	fmt.Println(c.Path())
-
 	conversationId := strings.TrimSpace(c.Params("id"))
 	if conversationId == "" {
 		return SendErrorResponse(c, 400, "Conversation ID is required", nil)

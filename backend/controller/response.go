@@ -18,7 +18,7 @@ var retCodeMessages = map[int]string{
 }
 
 func SendErrorResponse(c *fiber.Ctx, retCode int, message string, err error) error {
-	fmt.Printf("Error: %v\n", err)
+	fmt.Printf("%v: %v\n", c.Path(), message)
 	return c.Status(retCode).JSON(model.ResponseModel{
 		RetCode: fmt.Sprintf("%d", retCode),
 		Message: retCodeMessages[retCode],
@@ -31,6 +31,7 @@ func SendErrorResponse(c *fiber.Ctx, retCode int, message string, err error) err
 }
 
 func SendSuccessResponse(c *fiber.Ctx, retCode int, message string, data any) error {
+	fmt.Printf("%v: %v\n", c.Path(), message)
 	return c.Status(retCode).JSON(model.ResponseModel{
 		RetCode: fmt.Sprintf("%d", retCode),
 		Message: message,

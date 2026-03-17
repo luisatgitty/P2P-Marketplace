@@ -14,8 +14,6 @@ import (
 )
 
 func CreateListing(c *fiber.Ctx) error {
-	fmt.Println(c.Path())
-
 	var body model.CreateListingBody
 	if err := c.BodyParser(&body); err != nil {
 		return SendErrorResponse(c, 400, "Invalid request body. Please contact support.", err)
@@ -57,8 +55,6 @@ func CreateListing(c *fiber.Ctx) error {
 }
 
 func GetListingEditById(c *fiber.Ctx) error {
-	fmt.Println(c.Path())
-
 	listingId := strings.TrimSpace(c.Params("id"))
 	if listingId == "" {
 		return SendErrorResponse(c, 400, "Listing ID is required", nil)
@@ -114,8 +110,6 @@ func GetListingEditById(c *fiber.Ctx) error {
 }
 
 func UpdateListing(c *fiber.Ctx) error {
-	fmt.Println(c.Path())
-
 	listingId := strings.TrimSpace(c.Params("id"))
 	if listingId == "" {
 		return SendErrorResponse(c, 400, "Listing ID is required", nil)
@@ -158,8 +152,6 @@ func UpdateListing(c *fiber.Ctx) error {
 }
 
 func DeleteListing(c *fiber.Ctx) error {
-	fmt.Println(c.Path())
-
 	listingId := strings.TrimSpace(c.Params("id"))
 	if listingId == "" {
 		return SendErrorResponse(c, 400, "Listing ID is required", nil)
@@ -178,8 +170,6 @@ func DeleteListing(c *fiber.Ctx) error {
 }
 
 func GetListingById(c *fiber.Ctx) error {
-	fmt.Println(c.Path())
-
 	listingId := strings.TrimSpace(c.Params("id"))
 	if listingId == "" {
 		return SendErrorResponse(c, 400, "Listing ID is required", nil)
@@ -224,18 +214,19 @@ func GetListingById(c *fiber.Ctx) error {
 		"deliveryMethod": mapDeliveryDisplay(listing.DeliveryMethod),
 	}
 
-	if listing.Type == "rent" {
+	switch listing.Type {
+	case "rent":
 		extra["minPeriod"] = formatMinPeriod(listing.MinRentalPeriod)
 		if listing.AvailableFrom != nil {
 			extra["availability"] = listing.AvailableFrom.Format("Jan 02, 2006")
 		}
 		extra["deposit"] = listing.Deposit
 		extra["amenities"] = included
-	} else if listing.Type == "service" {
+	case "service":
 		extra["turnaround"] = listing.Turnaround
 		extra["serviceArea"] = listing.ServiceArea
 		extra["inclusions"] = included
-	} else {
+	default:
 		extra["inclusions"] = included
 	}
 
@@ -266,8 +257,6 @@ func GetListingById(c *fiber.Ctx) error {
 }
 
 func AddListingBookmark(c *fiber.Ctx) error {
-	fmt.Println(c.Path())
-
 	listingId := strings.TrimSpace(c.Params("id"))
 	if listingId == "" {
 		return SendErrorResponse(c, 400, "Listing ID is required", nil)
@@ -288,8 +277,6 @@ func AddListingBookmark(c *fiber.Ctx) error {
 }
 
 func RemoveListingBookmark(c *fiber.Ctx) error {
-	fmt.Println(c.Path())
-
 	listingId := strings.TrimSpace(c.Params("id"))
 	if listingId == "" {
 		return SendErrorResponse(c, 400, "Listing ID is required", nil)
@@ -310,8 +297,6 @@ func RemoveListingBookmark(c *fiber.Ctx) error {
 }
 
 func GetListings(c *fiber.Ctx) error {
-	fmt.Println(c.Path())
-
 	userId := getOptionalUserIdFromSession(c)
 	listings, err := repository.GetAllListings(userId)
 	if err != nil {

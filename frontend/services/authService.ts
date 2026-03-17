@@ -16,12 +16,12 @@ export async function sendPostRequest(route : string, payload : any, includeCred
     const parsedJson = await res.json();
     if (!res.ok) {
       // Throw the error message to display
-      throw parsedJson.data.message;
+      throw parsedJson.data;
     }
     // Return the user data from database
     return parsedJson.data;
-  } catch {
-    throw "An unexpected error occurred. Please try again later.";
+  } catch (error: any) {
+    throw error.message || "An unexpected error occurred. Please try again later.";
   }
 }
 
@@ -46,11 +46,11 @@ export async function sendGetRequest(route : string, includeCredentials = false)
     const parsedJson = await res.json();
     if (!res.ok) {
       // Throw the error message to display
-      throw parsedJson.data.message;
+      throw parsedJson.data;
     }
     // Return the user data from database
     return parsedJson.data.user;
-  } catch {
-    throw "An unexpected error occurred. Please try again later.";
+  } catch (error: any) {
+    throw error.message || "An unexpected error occurred. Please try again later.";
   }
 }
