@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Check, CheckCheck, MoreHorizontal, SmilePlus, Reply, Copy, Pencil, Trash2, CornerUpLeft, Play } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 import type { Message, MessageAttachment, ReactionType, ReplyPreview } from "@/types/messaging";
 import { REACTIONS } from "@/types/messaging";
 
@@ -173,16 +174,9 @@ function AttachmentGrid({
 
 // ─── Reply Quote ──────────────────────────────────────────────────────────────
 
-function ReplyQuote({
-  replyTo,
-  isMe,
-  currentUserId,
-  otherName,
-}: {
+function ReplyQuote({ replyTo, isMe }: {
   replyTo: ReplyPreview;
   isMe: boolean;
-  currentUserId: string;
-  otherName: string;
 }) {
   return (
     <div
@@ -265,7 +259,6 @@ function ContextMenu({
   onUnsend,
   onDelete,
   onClose,
-  alignRight,
   menuRef,
   style,
 }: {
@@ -278,7 +271,6 @@ function ContextMenu({
   onUnsend: () => void;
   onDelete: () => void;
   onClose:  () => void;
-  alignRight: boolean;
   menuRef: React.RefObject<HTMLDivElement | null>;
   style?: React.CSSProperties;
 }) {
@@ -402,8 +394,15 @@ export default function MessageBubble({
 
   const myReaction = message.reactions?.find((r) => r.userId === currentUserId)?.type ?? null;
 
-  const handleCopy = () => {
-    if (message.content) navigator.clipboard.writeText(message.content).catch(() => {});
+  const handleCopy = async () => {
+    if (!message.content) return;
+
+    try {
+      await navigator.clipboard.writeText(message.content);
+      toast.success("Message copied.", { position: "top-center" });
+    } catch {
+      toast.error("Failed to copy message.", { position: "top-center" });
+    }
   };
 
   const replyPreviewText = (): string => {
@@ -570,10 +569,15 @@ export default function MessageBubble({
             onReply={() => onReply(message)}
             onCopy={handleCopy}
             onEdit={() => onEdit(message.id, message.content ?? "")}
-            onUnsend={() => onDelete(message.id, true)}
-            onDelete={() => onDelete(message.id, false)}
+            onUnsend={() => {
+              onDelete(message.id, true);
+              toast.success("Message unsent.", { position: "top-center" });
+            }}
+            onDelete={() => {
+              onDelete(message.id, false);
+              toast.success("Message deleted.", { position: "top-center" });
+            }}
             onClose={() => setShowMenu(false)}
-            alignRight={isMe}
             menuRef={menuRef}
             style={menuStyle}
           />
@@ -592,8 +596,6 @@ export default function MessageBubble({
           <ReplyQuote
             replyTo={message.replyTo}
             isMe={isMe}
-            currentUserId={currentUserId}
-            otherName={otherName}
           />
         )}
 

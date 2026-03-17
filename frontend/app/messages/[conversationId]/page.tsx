@@ -9,6 +9,7 @@ import Video from "yet-another-react-lightbox/plugins/video";
 import "yet-another-react-lightbox/styles.css";
 import "yet-another-react-lightbox/plugins/thumbnails.css";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner"
 import type { PostCardProps } from "@/components/post-card";
 import type { Conversation, Message, MessageAttachment, ReactionType, ReplyPreview } from "@/types/messaging";
 import { getListingDetailById } from "@/services/listingDetailService";
@@ -29,7 +30,6 @@ import ChatHeader         from "@/components/messages/chat-header";
 import ListingContextCard from "@/components/messages/listing-context-card";
 import MessageBubble      from "@/components/messages/message-bubble";
 import MessageInput       from "@/components/messages/message-input";
-import { toast } from "sonner";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -607,6 +607,7 @@ export default function ConversationPage() {
     }
 
     await deleteConversation(conversationId);
+    toast.success("Conversation deleted", { position: "top-center" });
     router.push("/messages");
   };
 

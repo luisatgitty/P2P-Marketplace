@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Phone, MoreVertical, User, ExternalLink, Flag, Trash2 } from "lucide-react";
+import { ArrowLeft, MoreVertical, User, ExternalLink, Flag, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Conversation } from "@/types/messaging";
 import ListingTypeBadge from "./listing-type-badge";
