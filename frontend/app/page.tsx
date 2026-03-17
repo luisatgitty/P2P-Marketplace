@@ -1,10 +1,10 @@
 "use client";
 
-import { Suspense, useState, useEffect, useCallback } from "react";
+import { Suspense, useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import Link from "next/link";
-import PostCard, { type PostCardProps } from "@/components/post-card";
+import PostCard from "@/components/post-card";
 import { getHomeListings, type HomeListing } from "@/services/listingFeedService";
+import { useUser } from "@/utils/UserContext";
 import { Search, SlidersHorizontal, X, ChevronLeft, ChevronRight, PackageSearch } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -67,6 +67,7 @@ function getPageNumbers(current: number, total: number): (number | "...")[] {
 function HomePageInner() {
   const searchParams = useSearchParams();
   const router       = useRouter();
+  const { user, isValidated } = useUser();
   const typeFromUrl  = (searchParams.get("type") || "all") as string;
 
   const [allListings, setAllListings] = useState<ListingWithMeta[]>([]);
@@ -154,37 +155,51 @@ function HomePageInner() {
     (v, i) => v !== ["", "All Categories", "Any Condition", "Any Location", "", ""][i]
   );
 
-  // ── Tab label for hero ─────────────────────────────────────────────────────
-  const tabLabel = typeFromUrl === "sell" ? "Buy" : typeFromUrl === "rent" ? "Rent" : typeFromUrl === "service" ? "Services" : null;
+  const handlePostForFree = () => {
+    if (!isValidated) {
+      router.push("/login");
+      return;
+    }
+
+    if ((user?.status ?? "").toLowerCase() !== "verified") {
+      router.push("/become-seller");
+      return;
+    }
+
+    router.push("/create");
+  };
 
   return (
     <div className="min-h-screen bg-stone-50 dark:bg-[#111827]">
 
       {/* ──────────────────────────── HERO ──────────────────────────────────── */}
-      <section className="relative bg-[#1a2235] overflow-hidden">
+      <section className="max-h-max relative bg-[#1a2235] overflow-hidden">
         {/* Background texture */}
         <div className="absolute inset-0 opacity-20"
           style={{ backgroundImage: "radial-gradient(circle at 20% 50%, #b45309 0%, transparent 50%), radial-gradient(circle at 80% 20%, #1e40af 0%, transparent 40%)" }}
         />
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 py-12 sm:py-16">
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-7 py-8 sm:py-10">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-8">
 
             {/* Left: Headline */}
             <div className="max-w-xl animate-fade-in-up">
               <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-stone-100 leading-tight">
-                Buy, Sell, Rent & Avail<br />
-                <span className="text-stone-400">Services from people near you.</span>
+                Buy, Sell, Rent & Avail Services<br />
+                <span className="text-stone-400">from people near you.</span>
               </h1>
               <p className="text-stone-400 text-sm sm:text-base mt-3 max-w-md">
-                The Philippines&apos; trusted peer-to-peer marketplace. Find great deals or reach thousands of buyers — for free.
+                The Philippines&apos; trusted peer-to-peer marketplace. Find great deals or reach thousands of buyers for free.
               </p>
               <div className="flex gap-3 mt-6">
                 <a href="#listings" className="bg-amber-700 hover:bg-amber-600 text-white text-sm font-semibold px-5 py-2.5 rounded-full transition-colors">
                   Browse Listings
                 </a>
-                <Link href="/create" className="border border-stone-600 text-stone-300 hover:border-stone-400 hover:text-white text-sm font-medium px-5 py-2.5 rounded-full transition-colors">
+                <button
+                  onClick={handlePostForFree}
+                  className="border border-stone-600 text-stone-300 hover:bg-amber-400 hover:border-amber-400 hover:text-white text-sm font-medium px-5 py-2.5 rounded-full transition-colors"
+                >
                   Post for Free
-                </Link>
+                </button>
               </div>
             </div>
 
@@ -192,14 +207,14 @@ function HomePageInner() {
             <div className="flex gap-6 sm:gap-10 shrink-0">
               {[
                 { value: `${allListings.length.toLocaleString()}+`, label: "Active Listings" },
-                { value: "Free",    label: "To post items"   },
+                { value: "Free",    label: "Listing of items"   },
                 { value: "PH-Wide", label: "All regions"     },
               ].map((stat, i) => (
                 <div key={stat.label} className="flex items-center gap-6 sm:gap-10">
                   {i > 0 && <div className="w-px h-12 bg-stone-700" />}
                   <div className="text-center">
                     <p className="text-xl sm:text-2xl font-bold text-stone-100">{stat.value}</p>
-                    <p className="text-xs text-stone-300 mt-0.5">{stat.label}</p>
+                    <p className="text-sm text-stone-300 mt-0.5">{stat.label}</p>
                   </div>
                 </div>
               ))}
@@ -283,7 +298,7 @@ function HomePageInner() {
               <Button
                 variant="ghost"
                 onClick={handleClear}
-                className="text-stone-500 hover:text-red-500 text-xs rounded-lg px-3 py-2 shrink-0"
+                className="text-stone-500 hover:text-red-500 text-sm rounded-lg px-3 py-2 shrink-0"
               >
                 <X size={13} className="mr-1" /> Clear Filters
               </Button>
@@ -298,13 +313,13 @@ function HomePageInner() {
           <span className="font-semibold text-stone-700 dark:text-stone-200">{sorted.length}</span> listing{sorted.length !== 1 && "s"} found
         </p>
         <div className="flex items-center gap-1 flex-wrap">
-          <span className="text-xs text-stone-400 mr-1 hidden sm:inline">Sort:</span>
+          <span className="text-sm text-stone-400 mr-2 hidden sm:inline">Sort:</span>
           {SORT_OPTIONS.map((opt) => (
             <button
               key={opt.value}
               onClick={() => { setSort(opt.value); setPage(1); }}
               className={cn(
-                "text-xs font-medium px-3 py-1.5 rounded-full transition-all",
+                "text-sm font-medium px-3 py-1.5 rounded-md transition-all",
                 sort === opt.value
                   ? "bg-[#1a2235] dark:bg-amber-700 text-white"
                   : "text-stone-500 dark:text-stone-400 hover:bg-stone-200 dark:hover:bg-white/10 hover:text-stone-700 dark:hover:text-white"
@@ -389,7 +404,7 @@ function HomePageInner() {
 
         {/* Items count text */}
         {sorted.length > 0 && (
-          <p className="text-center text-xs text-stone-400 dark:text-stone-600 mt-3">
+          <p className="text-center text-sm text-stone-400 dark:text-stone-600 mt-3">
             Showing {Math.min((currentPage - 1) * ITEMS_PER_PAGE + 1, sorted.length)}–{Math.min(currentPage * ITEMS_PER_PAGE, sorted.length)} of {sorted.length} listings
           </p>
         )}

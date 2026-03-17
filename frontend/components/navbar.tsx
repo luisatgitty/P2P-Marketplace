@@ -179,7 +179,7 @@ export default function Navbar() {
                           className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-200 hover:bg-white/10 hover:text-white transition-colors"
                         >
                           <User size={15} className="text-stone-400" />
-                          My Profile
+                          Profile
                         </Link>
                         <Link
                           href="/messages"
@@ -233,18 +233,6 @@ export default function Navbar() {
                     </>
                   ) : (
                     <div className="py-1">
-                      {mounted && (
-                        <button
-                          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-                          className="flex items-center gap-3 w-full px-4 py-3 text-sm font-semibold text-stone-200 hover:bg-white/10 hover:text-white transition-colors"
-                        >
-                          {theme === "dark"
-                            ? <Sun size={15} className="text-amber-400" />
-                            : <Moon size={15} className="text-stone-300" />
-                          }
-                          {theme === "dark" ? "Light Mode" : "Dark Mode"}
-                        </button>
-                      )}
                       <Link
                         href="/"
                         onClick={() => setDropdownOpen(false)}
@@ -269,6 +257,18 @@ export default function Navbar() {
                         <UserPlus size={15} />
                         Create Account
                       </Link>
+                      {mounted && (
+                        <button
+                          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                          className="flex items-center gap-3 w-full px-4 py-3 text-sm font-semibold text-stone-200 hover:bg-white/10 hover:text-white transition-colors"
+                        >
+                          {theme === "dark"
+                            ? <Sun size={15} className="text-amber-400" />
+                            : <Moon size={15} className="text-stone-300" />
+                          }
+                          {theme === "dark" ? "Light Mode" : "Dark Mode"}
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>

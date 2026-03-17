@@ -5,13 +5,14 @@ import Link from "next/link";
 import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import {
-  MapPin, Mail, Calendar, Star, Eye, MessageCircle,
-  Edit2, Plus, ShieldCheck, Upload, Package, Bookmark,
-  X, Camera, Trash2, AlertTriangle,
+  MapPin, Mail, Calendar, Eye, EyeOff, MessageCircle,
+  Edit2, Plus, ShieldCheck, Package, Bookmark,
+  Camera, Trash2, AlertTriangle,
 } from "lucide-react";
 import { useUser } from "@/utils/UserContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { toast } from "sonner";
 import {
   deactivateProfile,
   getProfileData,
@@ -297,7 +298,9 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false);
   const [loadingEditProfile, setLoadingEditProfile] = useState(false);
   const [deactivating, setDeactivating] = useState(false);
-  const [toast, setToast] = useState<string | null>(null);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [userListings, setUserListings] = useState<ProfileListingItem[]>([]);
   const [bookmarkListings, setBookmarkListings] = useState<ProfileListingItem[]>([]);
   const [listingTab, setListingTab] = useState<ListingTab>("active");
@@ -313,16 +316,24 @@ export default function ProfilePage() {
   const [uploadingCover, setUploadingCover] = useState(false);
   const [editSnapshot, setEditSnapshot] = useState<EditableProfileSnapshot | null>(null);
 
+  function showErrorToast(msg: string) {
+    toast.error(msg, { position: "top-center" });
+  }
+
+  function showSuccessToast(msg: string) {
+    toast.success(msg, { position: "top-center" });
+  }
+
   const handleAvatarUpload = async (file: File) => {
     setUploadingAvatar(true);
     try {
       const profileImage = await encodeFileToPayload(file);
       const updatedUser = await updateProfileImages({ profileImage });
       if (user) saveUserData({ ...user, ...updatedUser });
-      showToast("✅ Profile photo updated");
+      showSuccessToast("Profile photo updated");
     } catch (err) {
       const message = typeof err === "string" ? err : (err instanceof Error ? err.message : "Failed to update profile photo");
-      showToast(message);
+      showErrorToast(message);
       throw err;
     } finally {
       setUploadingAvatar(false);
@@ -335,10 +346,10 @@ export default function ProfilePage() {
       const coverImage = await encodeFileToPayload(file);
       const updatedUser = await updateProfileImages({ coverImage });
       if (user) saveUserData({ ...user, ...updatedUser });
-      showToast("✅ Cover photo updated");
+      showSuccessToast("Cover photo updated");
     } catch (err) {
       const message = typeof err === "string" ? err : (err instanceof Error ? err.message : "Failed to update cover photo");
-      showToast(message);
+      showErrorToast(message);
       throw err;
     } finally {
       setUploadingCover(false);
@@ -366,7 +377,7 @@ export default function ProfilePage() {
         const data = await getProvinces();
         setProvinces(data);
       } catch {
-        showToast("Failed to load provinces");
+        showErrorToast("Failed to load provinces");
       }
     };
 
@@ -388,7 +399,7 @@ export default function ProfilePage() {
         const matched = data.find((x) => x.name === form.locationCity);
         setSelectedCityCode(matched?.code ?? "");
       } catch {
-        showToast("Failed to load cities/municipalities");
+        showErrorToast("Failed to load cities/municipalities");
       }
     };
 
@@ -406,7 +417,7 @@ export default function ProfilePage() {
         const data = await getBarangaysByCity(selectedCityCode);
         setBarangays(data);
       } catch {
-        showToast("Failed to load barangays");
+        showErrorToast("Failed to load barangays");
       }
     };
 
@@ -438,7 +449,7 @@ export default function ProfilePage() {
           locationBrgy: payload.user.locationBrgy ?? "",
         }));
       } catch {
-        showToast("Failed to load profile data");
+        showErrorToast("Failed to load profile data");
       } finally {
         setLoadingProfile(false);
       }
@@ -470,11 +481,9 @@ export default function ProfilePage() {
         ? soldListings
         : bookedListings;
 
-  function showToast(msg: string) { setToast(msg); setTimeout(() => setToast(null), 2800); }
-
   async function handleSave() {
     if (form.newPassword && form.newPassword !== form.confirmPassword) {
-      showToast("New password and confirm password do not match");
+      showErrorToast("New password and confirm password do not match");
       return;
     }
 
@@ -505,7 +514,7 @@ export default function ProfilePage() {
 
     if (!hasProfileChanges && !hasPasswordChanges) {
       setEditOpen(false)
-      showToast("No changes detected");
+      showSuccessToast("No changes detected");
       return;
     }
 
@@ -536,10 +545,10 @@ export default function ProfilePage() {
       }));
       setEditSnapshot(currentComparable);
       setEditOpen(false);
-      showToast("✅ Profile updated successfully");
+      showSuccessToast("Profile updated successfully");
     } catch (err) {
       const message = typeof err === "string" ? err : (err instanceof Error ? err.message : "Failed to update profile");
-      showToast(message);
+      showErrorToast(message);
     } finally {
       setSaving(false);
     }
@@ -556,7 +565,7 @@ export default function ProfilePage() {
       await deactivateProfile();
       await clearUserData();
     } catch {
-      showToast("Failed to deactivate account");
+      showErrorToast("Failed to deactivate account");
     } finally {
       setDeactivating(false);
     }
@@ -608,7 +617,7 @@ export default function ProfilePage() {
       setEditOpen(true);
     } catch (err) {
       const message = typeof err === "string" ? err : (err instanceof Error ? err.message : "Failed to load latest profile data");
-      showToast(message);
+      showErrorToast(message);
       setEditOpen(false);
     } finally {
       setLoadingEditProfile(false);
@@ -637,7 +646,7 @@ export default function ProfilePage() {
             {/* Remove cover button */}
             {!isViewingExternalProfile && cover.src && (
               <button
-                onClick={(e) => { e.stopPropagation(); cover.remove(); showToast("Cover photo removed"); }}
+                onClick={(e) => { e.stopPropagation(); cover.remove(); showSuccessToast("Cover photo removed"); }}
                 className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/50 hover:bg-black/70 flex items-center justify-center text-white transition-colors opacity-0 group-hover:opacity-100"
                 title="Remove cover photo"
               >
@@ -688,7 +697,7 @@ export default function ProfilePage() {
                       {avatar.src && (
                         <button
                           className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors border-t border-stone-100 dark:border-[#2a2d3e]"
-                          onClick={() => { avatar.remove(); setShowAvatarMenu(false); showToast("Profile photo removed"); }}
+                          onClick={() => { avatar.remove(); setShowAvatarMenu(false); showSuccessToast("Profile photo removed"); }}
                         >
                           <Trash2 className="w-4 h-4" />
                           Remove Photo
@@ -809,30 +818,57 @@ export default function ProfilePage() {
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div>
                       <label className={lbl}>Current Password</label>
-                      <Input
-                        type="password"
-                        value={form.currentPassword}
-                        onChange={(e) => setForm({ ...form, currentPassword: e.target.value })}
-                        placeholder="Required if changing"
-                      />
+                      <div className="relative">
+                        <Input
+                          type={showCurrentPassword ? "text" : "password"}
+                          value={form.currentPassword}
+                          onChange={(e) => setForm({ ...form, currentPassword: e.target.value })}
+                          placeholder="Required if changing"
+                        />
+                        <button
+                          type="button"
+                          className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm leading-5"
+                          onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                        >
+                          {showCurrentPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                        </button>
+                      </div>
                     </div>
                     <div>
                       <label className={lbl}>New Password</label>
-                      <Input
-                        type="password"
-                        value={form.newPassword}
-                        onChange={(e) => setForm({ ...form, newPassword: e.target.value })}
-                        placeholder="Leave blank to keep"
-                      />
+                      <div className="relative">
+                        <Input
+                          type={showNewPassword ? "text" : "password"}
+                          value={form.newPassword}
+                          onChange={(e) => setForm({ ...form, newPassword: e.target.value })}
+                          placeholder="Leave blank to keep"
+                        />
+                        <button
+                          type="button"
+                          className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm leading-5"
+                          onClick={() => setShowNewPassword(!showNewPassword)}
+                        >
+                          {showNewPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                        </button>
+                      </div>
                     </div>
                     <div>
                       <label className={lbl}>Confirm New Password</label>
-                      <Input
-                        type="password"
-                        value={form.confirmPassword}
-                        onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })}
-                        placeholder="Repeat new password"
-                      />
+                      <div className="relative">
+                        <Input
+                          type={showConfirmPassword ? "text" : "password"}
+                          value={form.confirmPassword}
+                          onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })}
+                          placeholder="Repeat new password"
+                        />
+                        <button
+                          type="button"
+                          className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm leading-5"
+                          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        >
+                          {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -865,66 +901,60 @@ export default function ProfilePage() {
         )}
 
         <div className="bg-white dark:bg-[#1c1f2e] rounded-2xl border border-stone-200 dark:border-[#2a2d3e] shadow-sm overflow-hidden">
-              {/* Tab bar */}
-              {!isViewingExternalProfile && <div className="flex border-b border-stone-200 dark:border-[#2a2d3e]">
-                {(["listings", "bookmarks"] as const).map((t) => (
-                  <button key={t} onClick={() => setProfileTab(t)}
-                    className={cn("flex-1 py-3.5 text-sm font-medium transition-colors",
-                      profileTab === t
-                        ? "text-stone-900 dark:text-stone-100 border-b-2 border-stone-900 dark:border-stone-300"
-                        : "text-stone-400 dark:text-stone-500 hover:text-stone-600 dark:hover:text-stone-300")}>
-                    {t === "listings" ? "📦 My Listings" : "🔖 Bookmarked Items"}
+          {/* Tab bar */}
+          {!isViewingExternalProfile && <div className="flex border-b border-stone-200 dark:border-[#2a2d3e]">
+            {(["listings", "bookmarks"] as const).map((t) => (
+              <button key={t} onClick={() => setProfileTab(t)}
+                className={cn("flex-1 py-3.5 text-sm font-medium transition-colors",
+                  profileTab === t
+                    ? "text-stone-900 dark:text-stone-100 border-b-2 border-stone-900 dark:border-stone-300"
+                    : "text-stone-400 dark:text-stone-500 hover:text-stone-600 dark:hover:text-stone-300")}>
+                {t === "listings" ? "📦 My Listings" : "🔖 Bookmarked Items"}
+              </button>
+            ))}
+          </div>}
+
+          {/* My Listings */}
+          {profileTab === "listings" && (<>
+            <div className="flex items-center justify-between px-4 pt-3 pb-2">
+              <div className="flex gap-1">
+                {(["all", "active", "sold", "booked"] as const).map((t) => (
+                  <button key={t} onClick={() => setListingTab(t)}
+                    className={cn("text-xs font-medium px-3 py-1.5 rounded-full transition-colors capitalize",
+                      listingTab === t
+                        ? "bg-stone-900 dark:bg-stone-200 text-white dark:text-stone-900"
+                        : "text-stone-400 dark:text-stone-500 hover:text-stone-600 dark:hover:text-stone-300 hover:bg-stone-100 dark:hover:bg-[#252837]")}>
+                    {t === "all"
+                      ? `📋 All (${userListings.length})`
+                      : t === "active"
+                      ? `🟢 Active (${activeListings.length})`
+                      : t === "sold"
+                        ? `✅ Sold (${soldListings.length})`
+                        : `📝 Booked (${bookedListings.length})`}
                   </button>
                 ))}
-              </div>}
+              </div>
+              
+            </div>
+            {loadingProfile ? (
+              <div className="text-center py-14 px-6">
+                <p className="font-semibold text-stone-400 text-sm">Loading listings...</p>
+              </div>
+            ) : allListings.length > 0
+              ? <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 p-4">{allListings.map((l) => <ProfileListingCard key={l.id} listing={l} showMeta tab={listingTab} />)}{isVerifiedSeller && <AddListingCard />}</div>
+              : <div className="text-center py-14 px-6"><Package className="w-10 h-10 text-stone-200 dark:text-stone-700 mx-auto mb-3" /><p className="font-semibold text-stone-400 text-sm">No listings yet</p>{isVerifiedSeller && <Link href="/create"><Button size="sm" className="mt-4 rounded-full bg-stone-900 hover:bg-stone-800 text-white text-xs"><Plus className="w-3 h-3" /> Add Listing</Button></Link>}</div>}
+          </>)}
 
-              {/* My Listings */}
-              {profileTab === "listings" && (<>
-                <div className="flex items-center justify-between px-4 pt-3 pb-2">
-                  <div className="flex gap-1">
-                    {(["all", "active", "sold", "booked"] as const).map((t) => (
-                      <button key={t} onClick={() => setListingTab(t)}
-                        className={cn("text-xs font-medium px-3 py-1.5 rounded-full transition-colors capitalize",
-                          listingTab === t
-                            ? "bg-stone-900 dark:bg-stone-200 text-white dark:text-stone-900"
-                            : "text-stone-400 dark:text-stone-500 hover:text-stone-600 dark:hover:text-stone-300 hover:bg-stone-100 dark:hover:bg-[#252837]")}>
-                        {t === "all"
-                          ? `📋 All (${userListings.length})`
-                          : t === "active"
-                          ? `🟢 Active (${activeListings.length})`
-                          : t === "sold"
-                            ? `✅ Sold (${soldListings.length})`
-                            : `📝 Booked (${bookedListings.length})`}
-                      </button>
-                    ))}
-                  </div>
-                  
-                </div>
-                {loadingProfile ? (
-                  <div className="text-center py-14 px-6">
-                    <p className="font-semibold text-stone-400 text-sm">Loading listings...</p>
-                  </div>
-                ) : allListings.length > 0
-                  ? <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 p-4">{allListings.map((l) => <ProfileListingCard key={l.id} listing={l} showMeta tab={listingTab} />)}{isVerifiedSeller && <AddListingCard />}</div>
-                  : <div className="text-center py-14 px-6"><Package className="w-10 h-10 text-stone-200 dark:text-stone-700 mx-auto mb-3" /><p className="font-semibold text-stone-400 text-sm">No listings yet</p>{isVerifiedSeller && <Link href="/create"><Button size="sm" className="mt-4 rounded-full bg-stone-900 hover:bg-stone-800 text-white text-xs"><Plus className="w-3 h-3" /> Add Listing</Button></Link>}</div>}
-              </>)}
-
-              {/* Bookmarked Items */}
-              {!isViewingExternalProfile && profileTab === "bookmarks" && (
-                loadingProfile
-                  ? <div className="text-center py-14"><p className="font-semibold text-stone-400 text-sm">Loading bookmarked items...</p></div>
-                  : bookmarkListings.length > 0
-                  ? <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 p-4">{bookmarkListings.map((l) => <ProfileListingCard key={l.id} listing={l} />)}</div>
-                  : <div className="text-center py-14"><Bookmark className="w-10 h-10 text-stone-200 dark:text-stone-700 mx-auto mb-3" /><p className="font-semibold text-stone-400 text-sm">No bookmarked items yet</p></div>
-              )}
+          {/* Bookmarked Items */}
+          {!isViewingExternalProfile && profileTab === "bookmarks" && (
+            loadingProfile
+              ? <div className="text-center py-14"><p className="font-semibold text-stone-400 text-sm">Loading bookmarked items...</p></div>
+              : bookmarkListings.length > 0
+              ? <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 p-4">{bookmarkListings.map((l) => <ProfileListingCard key={l.id} listing={l} />)}</div>
+              : <div className="text-center py-14"><Bookmark className="w-10 h-10 text-stone-200 dark:text-stone-700 mx-auto mb-3" /><p className="font-semibold text-stone-400 text-sm">No bookmarked items yet</p></div>
+          )}
         </div>
       </div>
-
-      {toast && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-stone-900 text-white text-sm font-medium px-5 py-3 rounded-full shadow-xl animate-in fade-in slide-in-from-bottom-2 duration-300">
-          {toast}
-        </div>
-      )}
     </div>
   );
 }

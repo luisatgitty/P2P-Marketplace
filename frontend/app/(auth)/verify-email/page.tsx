@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, Suspense } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner"
 import { sendPostRequest, getSessionMeta } from "@/services/authService";
 import { useUser } from "@/utils/UserContext";
 import { Button } from "@/components/ui/button";
@@ -13,6 +14,7 @@ import {
   FieldDescription,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { Banner, Container } from "@/components/auth/auth-container";
 import { SignupForm } from "@/types/forms";
 
 function VerifyEmailForm() {
@@ -26,7 +28,6 @@ function VerifyEmailForm() {
     confirmPassword: "",
   });
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
-  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [otpResendCooldown, setOtpResendCooldown] = useState(0);
   const [otpTimeLeft, setOtpTimeLeft] = useState(0);
@@ -114,15 +115,18 @@ function VerifyEmailForm() {
     }
   };
 
+  const showErrorToast = (message: string) => {
+    toast.error(message, { position: "top-center" });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setError("");
 
     // Validate OTP length
     const otpString = otp.join("");
     if (otpString.length < 6) {
-      setError("Please enter the complete 6-digit OTP");
+      showErrorToast("Please enter the complete 6-digit OTP");
       setLoading(false);
       return;
     }
@@ -140,7 +144,7 @@ function VerifyEmailForm() {
       sessionStorage.removeItem("otp_expires_at");
       router.replace("/");
     } catch (err: any) {
-      setError(err);
+      showErrorToast(err.data?.message || "An unexpected error occurred. Please try again later.");
       setOtp(["", "", "", "", "", ""]);
       inputRefs.current[0]?.focus();
     } finally {
@@ -157,17 +161,16 @@ function VerifyEmailForm() {
       sessionStorage.setItem("otp_expires_at", expiresAt.toString());
       setOtpTimeLeft(10 * 60);
       setOtpResendCooldown(60); // 60 second cooldown
-      setError("");
     } catch (err: any) {
-      setError(err);
+      showErrorToast(err.data?.message || "An unexpected error occurred. Please try again later.");
     }
   };
 
   return (
-    <div className="flex min-h-svh flex-col items-center justify-center p-6">
-      <div className="w-full max-w-sm">
-        <Card>
-          <CardContent className="p-6 md:p-8">
+    <Container>
+      <Card className="overflow-hidden p-0">
+        <CardContent className="grid p-0 md:grid-cols-2">
+          <div className="p-6 md:p-8">
             <FieldGroup>
               <div className="flex flex-col items-center gap-2 text-center mb-4">
                 <h1 className="text-2xl font-bold">Verify your email</h1>
@@ -214,14 +217,8 @@ function VerifyEmailForm() {
                   </FieldDescription>
                 </Field>
 
-                {error && (
-                  <p className="text-red-500 text-sm text-center mt-2">
-                    {error}
-                  </p>
-                )}
-
-                <Field className="mt-4">
-                  <Button type="submit" className="w-full" disabled={loading}>
+                <Field className="mt-4 w-xs mx-auto">
+                  <Button type="submit" disabled={loading}>
                     {loading ? "Verifying..." : "Verify Email"}
                   </Button>
                 </Field>
@@ -244,10 +241,11 @@ function VerifyEmailForm() {
                 </button>
               </div>
             </FieldGroup>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
+          </div>
+          <Banner />
+        </CardContent>
+      </Card>
+    </Container>
   );
 }
 

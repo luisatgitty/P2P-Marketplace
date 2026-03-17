@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation";
+import { toast } from "sonner"
+import { Eye, EyeOff } from "lucide-react";
 import { sendPostRequest } from "@/services/authService";
 import { validateSignupForm } from "@/utils/validation";
 import type { SignupForm } from "@/types/forms";
@@ -9,7 +11,8 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Field, FieldDescription, FieldGroup, FieldLabel, FieldSeparator } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import { cn } from "@/lib/utils"
+import { Banner } from "@/components/auth/auth-container";
+import Link from "next/link";
 
 export function SignupForm({ className, ...props }: React.ComponentProps<"div">) {
   const router = useRouter();
@@ -20,9 +23,10 @@ export function SignupForm({ className, ...props }: React.ComponentProps<"div">)
     password: "",
     confirmPassword: "",
   });
-  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const STORAGE_KEY = "auth_user";
 
   // Redirect to home if user access this page while already authenticated
@@ -47,12 +51,11 @@ export function SignupForm({ className, ...props }: React.ComponentProps<"div">)
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setError("");
 
     // Validate user data before sending request to backend
     const validationErrors = validateSignupForm(form);
     if (validationErrors) {
-      setError(validationErrors);
+      toast.error(validationErrors, { position: "top-center" });
       setLoading(false);
       return;
     }
@@ -72,14 +75,14 @@ export function SignupForm({ className, ...props }: React.ComponentProps<"div">)
       // Redirect to email verification page
       router.push("/verify-email");
     } catch (error: any) {
-      setError(error);
+      toast.error(error.message || "Signup failed. Please contact support.", { position: "top-center" });
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className={cn("flex flex-col gap-6", className)} {...props}>
+    <div className="flex flex-col gap-6">
       <Card className="overflow-hidden p-0">
         <CardContent className="grid p-0 md:grid-cols-2">
           <form className="p-6 md:p-8" onSubmit={handleSubmit}>
@@ -126,30 +129,48 @@ export function SignupForm({ className, ...props }: React.ComponentProps<"div">)
                 <Field className="grid grid-cols-2 gap-4">
                   <Field>
                     <FieldLabel htmlFor="password">Password</FieldLabel>
-                    <Input
-                      name="password"
-                      type="password"
-                      value={form.password}
-                      onChange={handleChange}
-                      required
-                    />
+                    <div className="relative">
+                      <Input
+                        name="password"
+                        type={showPassword ? "text" : "password"}
+                        value={form.password}
+                        onChange={handleChange}
+                        className="pr-10"
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword((prev) => !prev)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 dark:hover:text-stone-300 transition-colors"
+                        aria-label={showPassword ? "Hide password" : "Show password"}
+                      >
+                        {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
+                    </div>
                   </Field>
                   <Field>
                     <FieldLabel htmlFor="confirmPassword">Confirm Password</FieldLabel>
-                    <Input
-                      name="confirmPassword"
-                      type="password"
-                      value={form.confirmPassword}
-                      onChange={handleChange}
-                      required
-                    />
+                    <div className="relative">
+                      <Input
+                        name="confirmPassword"
+                        type={showConfirmPassword ? "text" : "password"}
+                        value={form.confirmPassword}
+                        onChange={handleChange}
+                        className="pr-10"
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirmPassword((prev) => !prev)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 dark:hover:text-stone-300 transition-colors"
+                        aria-label={showConfirmPassword ? "Hide confirm password" : "Show confirm password"}
+                      >
+                        {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
+                    </div>
                   </Field>
                 </Field>
-                <FieldDescription>
-                  Must be at least 8 characters long.
-                </FieldDescription>
               </Field>
-              {error && <p style={{ color: "red", fontSize: "0.875rem" }}>{error}</p>}
               <Field>
                 <Button type="submit" disabled={loading}>
                   {loading ? "Creating Account..." : "Create Account"}
@@ -177,22 +198,16 @@ export function SignupForm({ className, ...props }: React.ComponentProps<"div">)
                 </Button>
               </Field>
               <FieldDescription className="text-center">
-                Already have an account? <a href="/login">Log in</a>
+                Already have an account? <Link href="/login">Log in</Link>
               </FieldDescription>
             </FieldGroup>
           </form>
-          <div className="bg-muted relative hidden md:block">
-            <img
-              src="/login-background.jpg"
-              alt="Image"
-              className="absolute inset-0 h-full w-full object-cover dark:brightness-[0.2] dark:grayscale"
-            />
-          </div>
+          <Banner />
         </CardContent>
       </Card>
       <FieldDescription className="px-6 text-center">
-        By clicking continue, you agree to our <a href="#">Terms of Service</a>{" "}
-        and <a href="#">Privacy Policy</a>.
+        By creating an account, you agree to our <Link href="#">Terms of Service</Link>{" "}
+        and <Link href="#">Privacy Policy</Link>.
       </FieldDescription>
     </div>
   )
