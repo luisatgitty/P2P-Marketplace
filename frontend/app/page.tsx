@@ -67,7 +67,7 @@ function getPageNumbers(current: number, total: number): (number | "...")[] {
 function HomePageInner() {
   const searchParams = useSearchParams();
   const router       = useRouter();
-  const { user, isValidated } = useUser();
+  const { user, isAuth: isValidated } = useUser();
   const typeFromUrl  = (searchParams.get("type") || "all") as string;
 
   const [allListings, setAllListings] = useState<ListingWithMeta[]>([]);

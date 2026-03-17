@@ -10,9 +10,8 @@ import ConversationsList from "@/components/messages/conversations-list";
 export default function MessagesLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router   = useRouter();
-
   const [activeTab, setActiveTab] = useState<MessageTab>("all");
-
+  
   // On mobile: if we're on a specific conversation, show the chat view full-screen
   const isInConversation = pathname !== "/messages";
 

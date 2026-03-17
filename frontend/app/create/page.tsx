@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { Tag, Home, Wrench, ChevronRight, ShieldCheck, Zap, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useUser } from "@/utils/UserContext";
 
 const TYPES = [
   {
@@ -63,6 +63,11 @@ const TRUST_ITEMS = [
 ];
 
 export default function CreateListingPage() {
+  const { isAuth } = useUser();
+  
+  // Don't render anything until auth check is complete
+  if (!isAuth) return null;
+
   return (
     <div className="min-h-screen bg-stone-50 dark:bg-[#111827]">
 

@@ -3,18 +3,33 @@
 import { createContext, useContext, useState, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { User } from "@/types/forms";
-import { Spinner } from "@/components/ui/spinner"
+import { LoadingPage } from "@/components/loading";
 import { sendDeleteRequest, sendGetRequest } from "@/services/authService";
 
 interface UserContextType {
   user: User | null;
-  isValidated: boolean;
+  isAuth: boolean;
   saveUserData: (userData: User) => void;
   clearUserData: () => void;
 }
 
 const UserContext = createContext<UserContextType | null>(null);
-const PUBLIC_ROUTES = ["/", "/login", "/signup", "/forgot-password", "/reset-password", "/verify-email"];
+const PUBLIC_ROUTES = [
+  "/",
+  "/signup",
+  "/login",
+  "/forgot-password",
+  "/reset-password",
+  "/verify-email",
+  "/listing",
+];
+const AUTH_ROUTES = [
+  "/signup",
+  "/login",
+  "/forgot-password",
+  "/reset-password",
+  "/verify-email",
+];
 const STORAGE_KEY = "auth_user";
 
 function getRealtimeSocketURL(): string {
@@ -35,13 +50,28 @@ function getRealtimeSocketURL(): string {
 export function UserProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
-  const isPublicRoute = PUBLIC_ROUTES.includes(pathname);
   const [user, setUser] = useState<User | null>(null);
-  const [isValidated, setIsValidated] = useState(false);
+  const [isAuth, setIsAuth] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
+  const normalizePath = (path: string): string => {
+    const normalized = path.replace(/\/+$/, "");
+    return normalized === "" ? "/" : normalized;
+  };
+
+  const currentPath = normalizePath(pathname);
+
+  const isRouteRootMatch = (route: string): boolean => {
+    const routeRoot = normalizePath(route);
+    if (routeRoot === "/") return currentPath === "/";
+    return currentPath === routeRoot || currentPath.startsWith(`${routeRoot}/`);
+  };
+
+  const isPublicRoute = PUBLIC_ROUTES.some(isRouteRootMatch);
+  const isAuthRoute = AUTH_ROUTES.some(isRouteRootMatch);
+
   useEffect(() => {
-    if (!isValidated) return;
+    if (!isAuth) return;
 
     let ws: WebSocket | null = null;
     let pingInterval: ReturnType<typeof setInterval> | null = null;
@@ -138,13 +168,13 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       if (reconnectTimeout) clearTimeout(reconnectTimeout);
       ws?.close();
     };
-  }, [isValidated]);
+  }, [isAuth]);
 
   // Save user data during login
   const saveUserData = (userData: User) => {
     console.log("Logged User Data:", userData);
     setUser(userData);
-    setIsValidated(true);
+    setIsAuth(true);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(userData));
   };
 
@@ -156,9 +186,9 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       // Clear user data and validation state regardless of logout success
       // But the session cookie will remain incase of server error
       setUser(null);
-      setIsValidated(false);
+      setIsAuth(false);
       localStorage.removeItem(STORAGE_KEY);
-      router.push("/login");
+      router.replace("/login");
     }
   };
 
@@ -168,25 +198,11 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {
         const userData = JSON.parse(stored) as User;
-        setUser(userData);
-        setIsValidated(true);
-
-        if (userData.userId) {
+        if (userData) {
+          saveUserData(userData);
           setIsLoading(false);
           return;
         }
-
-        try {
-          if (document.cookie.includes("session_token")) {
-            const freshUser = await sendGetRequest("/auth/me", true);
-            saveUserData(freshUser);
-          }
-        } catch {
-          // Keep existing local user as a fallback.
-        } finally {
-          setIsLoading(false);
-        }
-        return;
       }
 
       try {
@@ -197,7 +213,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         }
       } catch {
         setUser(null);
-        setIsValidated(false);
+        setIsAuth(false);
       } finally {
         setIsLoading(false);
       }
@@ -206,25 +222,44 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     validateUser();
   }, []);
 
-  // Handle route protection
+  // Handle route protection on client navigation/history traversal
   useEffect(() => {
-    if (isValidated || isPublicRoute) {
-      setIsLoading(false);
+    if (isLoading) return;
+
+    if (isAuth && isAuthRoute) {
+      router.replace("/");
       return;
     }
-    else router.push("/login");
-  }, [pathname]);
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Spinner className="size-8" />
-      </div>
-    );
-  }
+    if (!isAuth && !isPublicRoute) {
+      router.replace("/login");
+    }
+  }, [isAuth, isAuthRoute, isPublicRoute, isLoading, router]);
+
+  // Guard against BFCache restoring a protected page after logout
+  useEffect(() => {
+    const onPageShow = () => {
+      const storedUser = localStorage.getItem(STORAGE_KEY);
+      const hasSession = document.cookie.includes("session_token");
+
+      if (!storedUser || !hasSession) {
+        setUser(null);
+        setIsAuth(false);
+
+        if (!isPublicRoute) {
+          router.replace("/login");
+        }
+      }
+    };
+
+    window.addEventListener("pageshow", onPageShow);
+    return () => window.removeEventListener("pageshow", onPageShow);
+  }, [isPublicRoute, router]);
+
+  if (isLoading) return (<LoadingPage />);
 
   return (
-    <UserContext.Provider value={{ user, isValidated, saveUserData, clearUserData }}>
+    <UserContext.Provider value={{ user, isAuth, saveUserData, clearUserData }}>
       {children}
     </UserContext.Provider>
   );
