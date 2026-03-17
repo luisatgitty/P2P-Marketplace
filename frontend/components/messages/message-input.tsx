@@ -1,12 +1,19 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Send, Paperclip, Image, Folder, MapPin, X, CornerUpLeft } from "lucide-react";
+import { Send, Paperclip, Image, MapPin, X, CornerUpLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { ReplyPreview } from "@/types/messaging";
+import { toast } from "sonner";
+
+type OutgoingAttachment = {
+  name: string;
+  mimeType: string;
+  data: string;
+};
 
 interface MessageInputProps {
-  onSend:     (content: string) => void;
+  onSend:     (content: string, attachments: OutgoingAttachment[]) => Promise<void>;
   disabled?:  boolean;
   replyTo?:   ReplyPreview | null;
   onCancelReply?: () => void;
@@ -14,7 +21,6 @@ interface MessageInputProps {
 
 const ATTACH_OPTS = [
   { icon: Image,  label: "Photo / Video" },
-  { icon: Folder, label: "File"          },
   { icon: MapPin, label: "Location"      },
 ];
 
@@ -26,8 +32,11 @@ export default function MessageInput({
 }: MessageInputProps) {
   const [value,      setValue]      = useState("");
   const [attachOpen, setAttachOpen] = useState(false);
+  const [stagedMedia, setStagedMedia] = useState<Array<{ id: string; file: File; previewUrl: string; isVideo: boolean }>>([]);
+  const [preparingSend, setPreparingSend] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const attachRef   = useRef<HTMLDivElement>(null);
+  const mediaInputRef = useRef<HTMLInputElement>(null);
 
   // Auto-grow textarea
   useEffect(() => {
@@ -52,20 +61,137 @@ export default function MessageInput({
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  const handleSend = () => {
+  const toBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = typeof reader.result === "string" ? reader.result : "";
+        const commaIndex = result.indexOf(",");
+        if (commaIndex < 0) {
+          reject(new Error("Invalid file payload."));
+          return;
+        }
+        resolve(result.slice(commaIndex + 1));
+      };
+      reader.onerror = () => reject(new Error("Failed to read attachment."));
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleSend = async () => {
     const trimmed = value.trim();
-    if (!trimmed || disabled) return;
-    onSend(trimmed);
-    setValue("");
-    if (textareaRef.current) textareaRef.current.style.height = "auto";
+    if ((!trimmed && stagedMedia.length === 0) || disabled || preparingSend) return;
+
+    setPreparingSend(true);
+    try {
+      const attachments: OutgoingAttachment[] = await Promise.all(
+        stagedMedia.map(async (item) => ({
+          name: item.file.name,
+          mimeType: item.file.type,
+          data: await toBase64(item.file),
+        }))
+      );
+
+      await onSend(trimmed, attachments);
+      setValue("");
+      stagedMedia.forEach((item) => URL.revokeObjectURL(item.previewUrl));
+      setStagedMedia([]);
+      if (textareaRef.current) textareaRef.current.style.height = "auto";
+    } catch (error) {
+      const errMessage = error instanceof Error ? error.message : "Failed to send message.";
+      if (errMessage.toLowerCase().includes("read attachment")) {
+        toast.error(errMessage, { position: "top-center" });
+      }
+    } finally {
+      setPreparingSend(false);
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); }
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void handleSend(); }
     if (e.key === "Escape" && replyTo)     { onCancelReply?.(); }
   };
 
-  const canSend = value.trim().length > 0 && !disabled;
+  const canSend = (value.trim().length > 0 || stagedMedia.length > 0) && !disabled && !preparingSend;
+
+  const appendComposerText = (text: string) => {
+    setValue((prev) => {
+      const trimmed = prev.trim();
+      return trimmed ? `${trimmed}\n${text}` : text;
+    });
+    textareaRef.current?.focus();
+  };
+
+  const handlePickPhotoVideo = () => {
+    setAttachOpen(false);
+    mediaInputRef.current?.click();
+  };
+
+  const handleMediaSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    if (files.length === 0) return;
+
+    const nextItems = files.map((file) => ({
+      id: `${file.name}-${file.lastModified}-${Math.random().toString(36).slice(2, 7)}`,
+      file,
+      previewUrl: URL.createObjectURL(file),
+      isVideo: file.type.startsWith("video/"),
+    }));
+
+    setStagedMedia((prev) => [...prev, ...nextItems]);
+    textareaRef.current?.focus();
+
+    e.target.value = "";
+  };
+
+  const handleRemoveStagedMedia = (id: string) => {
+    setStagedMedia((prev) => {
+      const target = prev.find((item) => item.id === id);
+      if (target) URL.revokeObjectURL(target.previewUrl);
+      return prev.filter((item) => item.id !== id);
+    });
+  };
+
+  useEffect(() => {
+    return () => {
+      stagedMedia.forEach((item) => URL.revokeObjectURL(item.previewUrl));
+    };
+  }, [stagedMedia]);
+
+  const handleShareLocation = () => {
+    setAttachOpen(false);
+
+    if (!navigator.geolocation) {
+      toast.error("Location is not supported on this device/browser.", { position: "top-center" });
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const latitude = position.coords.latitude;
+        const longitude = position.coords.longitude;
+        const mapsLink = `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`;
+        appendComposerText(`📍 My location: ${mapsLink}`);
+      },
+      (error) => {
+        const message =
+          error.code === error.PERMISSION_DENIED
+            ? "Location access was denied. Please allow location permission."
+            : error.code === error.POSITION_UNAVAILABLE
+              ? "Could not determine your current location."
+              : error.code === error.TIMEOUT
+                ? "Location request timed out. Please try again."
+                : "Failed to get your location.";
+
+        toast.error(message, { position: "top-center" });
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0,
+      }
+    );
+  };
 
   return (
     <div className="px-3 pt-3 pb-5 border-t border-border bg-white dark:bg-[#1c1f2e] shrink-0">
@@ -96,7 +222,34 @@ export default function MessageInput({
       )}
 
       {/* ── Input row ──────────────────────────────────────────────────── */}
-      <div className="flex items-end gap-2 bg-white dark:bg-[#1c1f2e] border border-border rounded-2xl pl-4 pr-1 py-1">
+      <div className="bg-white dark:bg-[#1c1f2e] border border-border rounded-2xl px-1 py-1">
+
+        {/* ── Attachment staging area ─────────────────────────────────── */}
+        {stagedMedia.length > 0 && (
+          <div className="pl-3 pr-2 pt-2 pb-1">
+            <div className="flex items-center gap-2 overflow-x-auto no-scroll">
+              {stagedMedia.map((item) => (
+                <div key={item.id} className="relative w-16 h-16 rounded-lg overflow-hidden border border-border shrink-0 bg-stone-100 dark:bg-[#13151f]">
+                  {item.isVideo ? (
+                    <video src={item.previewUrl} className="w-full h-full object-cover" muted playsInline />
+                  ) : (
+                    <img src={item.previewUrl} alt={item.file.name} className="w-full h-full object-cover" />
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveStagedMedia(item.id)}
+                    className="absolute top-1 right-1 w-4.5 h-4.5 rounded-full bg-black/65 text-white flex items-center justify-center hover:bg-black/80 transition-colors"
+                    aria-label={`Remove ${item.file.name}`}
+                  >
+                    <X size={11} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="flex items-end gap-2 pl-3 pr-1 pb-1">
 
         {/* Attach */}
         <div className="relative" ref={attachRef}>
@@ -108,12 +261,21 @@ export default function MessageInput({
             <Paperclip size={17} />
           </button>
 
+          <input
+            ref={mediaInputRef}
+            type="file"
+            accept="image/*,video/*"
+            multiple
+            className="hidden"
+            onChange={handleMediaSelected}
+          />
+
           {attachOpen && (
             <div className="absolute bottom-full mb-2 left-0 bg-white dark:bg-[#1c1f2e] border border-border rounded-xl shadow-xl overflow-hidden animate-in fade-in slide-in-from-bottom-1 duration-100 z-20">
               {ATTACH_OPTS.map(({ icon: Icon, label }) => (
                 <button
                   key={label}
-                  onClick={() => setAttachOpen(false)}
+                  onClick={label === "Photo / Video" ? handlePickPhotoVideo : handleShareLocation}
                   className="flex items-center gap-2.5 w-full px-4 py-2.5 text-xs font-medium text-stone-600 dark:text-stone-300 hover:bg-stone-50 dark:hover:bg-white/5 transition-colors whitespace-nowrap"
                 >
                   <Icon size={14} className="text-stone-400 dark:text-stone-500" />
@@ -142,7 +304,7 @@ export default function MessageInput({
 
         {/* Send */}
         <button
-          onClick={handleSend}
+          onClick={() => void handleSend()}
           disabled={!canSend}
           aria-label="Send message"
           className={cn(
@@ -154,6 +316,7 @@ export default function MessageInput({
         >
           <Send size={15} className={canSend ? "-translate-x-px" : ""} />
         </button>
+        </div>
       </div>
     </div>
   );

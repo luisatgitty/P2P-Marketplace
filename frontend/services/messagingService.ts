@@ -13,6 +13,12 @@ type ApiSuccess<T> = {
   data: T;
 };
 
+export type OutgoingMessageAttachment = {
+  name: string;
+  mimeType: string;
+  data: string;
+};
+
 function emitMessagesUpdate() {
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("messages:updated"));
@@ -70,13 +76,14 @@ export async function getMessages(conversationId: string): Promise<Message[]> {
 export async function sendMessage(
   conversationId: string,
   content: string,
-  _currentUserId: string,
+  attachments: OutgoingMessageAttachment[],
   replyTo?: ReplyPreview | null,
 ): Promise<Message> {
   const data = await apiFetch<{ message: Message }>(`/messages/conversations/${conversationId}/messages`, {
     method: "POST",
     body: JSON.stringify({
       content,
+      attachments,
       replyTo: replyTo?.messageId ? { messageId: replyTo.messageId } : null,
     }),
   });

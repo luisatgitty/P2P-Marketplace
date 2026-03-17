@@ -29,6 +29,7 @@ import ChatHeader         from "@/components/messages/chat-header";
 import ListingContextCard from "@/components/messages/listing-context-card";
 import MessageBubble      from "@/components/messages/message-bubble";
 import MessageInput       from "@/components/messages/message-input";
+import { toast } from "sonner";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -509,7 +510,7 @@ export default function ConversationPage() {
 
   // ── Handlers ─────────────────────────────────────────────────────────────
 
-  const handleSend = async (content: string) => {
+  const handleSend = async (content: string, attachments: Array<{ name: string; mimeType: string; data: string }>) => {
     if (sending) return;
     setSending(true);
     try {
@@ -527,12 +528,13 @@ export default function ConversationPage() {
         router.replace(`/messages/${targetConversationId}`);
       }
 
-      const newMsg = await sendMessage(targetConversationId, content, effectiveCurrentUserId, replyTo);
+      const newMsg = await sendMessage(targetConversationId, content, attachments, replyTo);
       setMessages((prev) => [...prev, newMsg]);
       setReplyTo(null);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to send message.";
-      window.alert(message);
+      toast.error(message, { position: "top-center" });
+      throw err;
     } finally {
       setSending(false);
     }

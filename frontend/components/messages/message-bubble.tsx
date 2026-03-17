@@ -27,6 +27,36 @@ function formatTime(iso: string) {
   return new Date(iso).toLocaleTimeString("en-PH", { hour: "2-digit", minute: "2-digit" });
 }
 
+function renderMessageContent(content: string) {
+  const urlRegex = /(https?:\/\/[^\s]+)/g;
+  const lines = content.split("\n");
+
+  return lines.map((line, lineIndex) => {
+    const parts = line.split(urlRegex);
+    return (
+      <span key={`line-${lineIndex}`}>
+        {parts.map((part, partIndex) => {
+          if (/^https?:\/\//.test(part)) {
+            return (
+              <a
+                key={`part-${lineIndex}-${partIndex}`}
+                href={part}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline underline-offset-2 break-all"
+              >
+                {part}
+              </a>
+            );
+          }
+          return <span key={`part-${lineIndex}-${partIndex}`}>{part}</span>;
+        })}
+        {lineIndex < lines.length - 1 && <br />}
+      </span>
+    );
+  });
+}
+
 // ─── Attachment Grid ──────────────────────────────────────────────────────────
 // Layout rules:
 //   1 file  → full width, 16:9 for video, 4:3 for image
@@ -486,7 +516,7 @@ export default function MessageBubble({
                 hasAttachments ? "pt-1.5 pb-2.5" : "py-2.5"
               )}
             >
-              {message.content}
+              {renderMessageContent(message.content)}
             </p>
           )}
         </div>

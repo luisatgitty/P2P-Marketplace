@@ -58,10 +58,17 @@ type CreateConversationBody struct {
 }
 
 type SendMessageBody struct {
-	Content string `json:"content"`
-	ReplyTo *struct {
+	Content     string                  `json:"content"`
+	Attachments []MessageAttachmentBody `json:"attachments"`
+	ReplyTo     *struct {
 		MessageId string `json:"messageId"`
 	} `json:"replyTo"`
+}
+
+type MessageAttachmentBody struct {
+	Name     string `json:"name"`
+	MimeType string `json:"mimeType"`
+	Data     string `json:"data"`
 }
 
 type EditMessageBody struct {
