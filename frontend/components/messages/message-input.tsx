@@ -252,10 +252,10 @@ export default function MessageInput({
         <div className="flex items-end gap-2 pl-3 pr-1 pb-1">
 
         {/* Attach */}
-        <div className="relative" ref={attachRef}>
+        <div className="relative pr-2 border-r-2 border-stone-300 dark:border-stone-600" ref={attachRef}>
           <button
             onClick={() => setAttachOpen((v) => !v)}
-            className="text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 transition-colors"
+            className="text-stone-400 hover:text-amber-600 dark:hover:text-amber-400 transition-colors shrink-0 cursor-pointer"
             aria-label="Attach file"
           >
             <Paperclip size={17} />

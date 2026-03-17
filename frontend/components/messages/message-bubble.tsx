@@ -207,26 +207,29 @@ function ReactionPicker({
   onSelect,
   currentReaction,
   onClose,
+  menuRef,
+  style,
 }: {
   onSelect: (r: ReactionType | null) => void;
   currentReaction?: ReactionType | null;
   onClose: () => void;
+  menuRef: React.RefObject<HTMLDivElement | null>;
+  style?: React.CSSProperties;
 }) {
-  const ref = useRef<HTMLDivElement>(null);
-
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) onClose();
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) onClose();
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
-  }, [onClose]);
+  }, [menuRef, onClose]);
 
   return (
     <div
-      ref={ref}
+      ref={menuRef}
+      style={style}
       className={cn(
-        "absolute bottom-full mb-1.5 z-50",
+        "fixed z-50",
         "flex items-center gap-1 px-2 py-1.5",
         "bg-white dark:bg-[#1c1f2e] border border-border rounded-full shadow-xl",
         "animate-in fade-in zoom-in-95 duration-100"
@@ -255,6 +258,7 @@ function ReactionPicker({
 function ContextMenu({
   isMe,
   hasContent,
+  canUnsend,
   onReply,
   onCopy,
   onEdit,
@@ -262,9 +266,12 @@ function ContextMenu({
   onDelete,
   onClose,
   alignRight,
+  menuRef,
+  style,
 }: {
   isMe: boolean;
   hasContent: boolean;
+  canUnsend: boolean;
   onReply: () => void;
   onCopy:  () => void;
   onEdit:  () => void;
@@ -272,16 +279,16 @@ function ContextMenu({
   onDelete: () => void;
   onClose:  () => void;
   alignRight: boolean;
+  menuRef: React.RefObject<HTMLDivElement | null>;
+  style?: React.CSSProperties;
 }) {
-  const ref = useRef<HTMLDivElement>(null);
-
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) onClose();
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) onClose();
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
-  }, [onClose]);
+  }, [menuRef, onClose]);
 
   type MenuItem = {
     icon: React.ElementType;
@@ -295,16 +302,16 @@ function ContextMenu({
     { icon: Reply,  label: "Reply",  action: onReply },
     { icon: Copy,   label: "Copy",   action: onCopy,   show: hasContent },
     { icon: Pencil, label: "Edit",   action: onEdit,   show: isMe && hasContent },
-    { icon: Trash2, label: "Unsend", action: onUnsend, show: isMe,  danger: true },
-    { icon: Trash2, label: "Delete", action: onDelete, show: !isMe, danger: true },
+    { icon: Trash2, label: "Unsend", action: onUnsend, show: isMe && canUnsend,  danger: true },
+    { icon: Trash2, label: "Delete", action: onDelete, danger: true },
   ];
 
   return (
     <div
-      ref={ref}
+      ref={menuRef}
+      style={style}
       className={cn(
-        "absolute bottom-full mb-1.5 z-50 w-36",
-        alignRight ? "right-0" : "left-0",
+        "fixed z-50 w-36",
         "bg-white dark:bg-[#1c1f2e] border border-border rounded-xl shadow-xl overflow-hidden",
         "animate-in fade-in slide-in-from-bottom-1 duration-100"
       )}
@@ -384,6 +391,12 @@ export default function MessageBubble({
   const isMe = message.senderId === currentUserId;
   const [showReactionPicker, setShowReactionPicker] = useState(false);
   const [showMenu,           setShowMenu]           = useState(false);
+  const [reactionStyle, setReactionStyle] = useState<React.CSSProperties>({});
+  const [menuStyle, setMenuStyle] = useState<React.CSSProperties>({});
+  const reactionTriggerRef = useRef<HTMLButtonElement>(null);
+  const menuTriggerRef = useRef<HTMLButtonElement>(null);
+  const reactionPickerRef = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
   // Keep hover-actions visible while a popover is open
   const actionsVisible = showReactionPicker || showMenu;
 
@@ -418,6 +431,97 @@ export default function MessageBubble({
 
   const hasAttachments = (message.attachments?.length ?? 0) > 0;
   const hasContent     = !!message.content;
+  const canUnsend = Date.now() - new Date(message.createdAt).getTime() <= 10 * 60 * 1000;
+
+  const getListingCardRect = () => {
+    const el = document.querySelector('[data-listing-context-card="true"]') as HTMLElement | null;
+    return el?.getBoundingClientRect() ?? null;
+  };
+
+  const intersects = (a: { left: number; right: number; top: number; bottom: number }, b: { left: number; right: number; top: number; bottom: number }) => {
+    return a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
+  };
+
+  const computePopoverPosition = (
+    triggerEl: HTMLElement,
+    popoverEl: HTMLElement,
+    preferredVertical: "top" | "bottom",
+    preferredHorizontal: "left" | "right"
+  ): React.CSSProperties => {
+    const vpPad = 8;
+    const gap = 6;
+    const trigger = triggerEl.getBoundingClientRect();
+    const width = popoverEl.offsetWidth;
+    const height = popoverEl.offsetHeight;
+    const listingRect = getListingCardRect();
+
+    const horizontalLeft = preferredHorizontal === "left"
+      ? trigger.left
+      : trigger.right - width;
+
+    const x = Math.min(Math.max(horizontalLeft, vpPad), window.innerWidth - width - vpPad);
+
+    const topY = trigger.top - height - gap;
+    const bottomY = trigger.bottom + gap;
+
+    const topRect = { left: x, right: x + width, top: topY, bottom: topY + height };
+    const bottomRect = { left: x, right: x + width, top: bottomY, bottom: bottomY + height };
+
+    const topOutside = topRect.top < vpPad;
+    const bottomOutside = bottomRect.bottom > window.innerHeight - vpPad;
+    const topBlocked = !!listingRect && intersects(topRect, listingRect);
+    const bottomBlocked = !!listingRect && intersects(bottomRect, listingRect);
+
+    let y = preferredVertical === "top" ? topY : bottomY;
+    if (preferredVertical === "top") {
+      if ((topOutside || topBlocked) && !(bottomOutside || bottomBlocked)) y = bottomY;
+    } else {
+      if ((bottomOutside || bottomBlocked) && !(topOutside || topBlocked)) y = topY;
+    }
+
+    y = Math.min(Math.max(y, vpPad), window.innerHeight - height - vpPad);
+    return { left: x, top: y };
+  };
+
+  useEffect(() => {
+    if (!showReactionPicker) return;
+
+    const update = () => {
+      if (!reactionTriggerRef.current || !reactionPickerRef.current) return;
+      setReactionStyle(
+        computePopoverPosition(reactionTriggerRef.current, reactionPickerRef.current, "top", "left")
+      );
+    };
+
+    const raf = requestAnimationFrame(update);
+    window.addEventListener("resize", update);
+    window.addEventListener("scroll", update, true);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("resize", update);
+      window.removeEventListener("scroll", update, true);
+    };
+  }, [showReactionPicker]);
+
+  useEffect(() => {
+    if (!showMenu) return;
+
+    const update = () => {
+      if (!menuTriggerRef.current || !menuRef.current) return;
+      setMenuStyle(
+        computePopoverPosition(menuTriggerRef.current, menuRef.current, "top", isMe ? "right" : "left")
+      );
+    };
+
+    const raf = requestAnimationFrame(update);
+    window.addEventListener("resize", update);
+    window.addEventListener("scroll", update, true);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("resize", update);
+      window.removeEventListener("scroll", update, true);
+    };
+  }, [isMe, showMenu]);
 
   // ── Hover action buttons ──────────────────────────────────────────────────
   const ActionButtons = () => (
@@ -430,6 +534,7 @@ export default function MessageBubble({
       {/* Reaction trigger */}
       <div className="relative">
         <button
+          ref={reactionTriggerRef}
           onClick={() => { setShowMenu(false); setShowReactionPicker((v) => !v); }}
           className="p-1.5 rounded-full text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-white/10 transition-colors"
           aria-label="React"
@@ -441,6 +546,8 @@ export default function MessageBubble({
             currentReaction={myReaction}
             onSelect={(r) => onReact(message.id, r)}
             onClose={() => setShowReactionPicker(false)}
+            menuRef={reactionPickerRef}
+            style={reactionStyle}
           />
         )}
       </div>
@@ -448,6 +555,7 @@ export default function MessageBubble({
       {/* More options trigger */}
       <div className="relative">
         <button
+          ref={menuTriggerRef}
           onClick={() => { setShowReactionPicker(false); setShowMenu((v) => !v); }}
           className="p-1.5 rounded-full text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-white/10 transition-colors"
           aria-label="More options"
@@ -458,6 +566,7 @@ export default function MessageBubble({
           <ContextMenu
             isMe={isMe}
             hasContent={hasContent}
+            canUnsend={canUnsend}
             onReply={() => onReply(message)}
             onCopy={handleCopy}
             onEdit={() => onEdit(message.id, message.content ?? "")}
@@ -465,6 +574,8 @@ export default function MessageBubble({
             onDelete={() => onDelete(message.id, false)}
             onClose={() => setShowMenu(false)}
             alignRight={isMe}
+            menuRef={menuRef}
+            style={menuStyle}
           />
         )}
       </div>
@@ -516,7 +627,7 @@ export default function MessageBubble({
                 hasAttachments ? "pt-1.5 pb-2.5" : "py-2.5"
               )}
             >
-              {renderMessageContent(message.content)}
+              {renderMessageContent(message.content ?? "")}
             </p>
           )}
         </div>
