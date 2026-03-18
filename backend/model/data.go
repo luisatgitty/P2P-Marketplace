@@ -121,8 +121,9 @@ type ListingImageBody struct {
 }
 
 type ReportListingBody struct {
-	Reason      string `json:"reason"`
-	Description string `json:"description"`
+	ReportedUserId string `json:"reportedUserId"`
+	Reason         string `json:"reason"`
+	Description    string `json:"description"`
 }
 
 type ProfileUserFromDb struct {

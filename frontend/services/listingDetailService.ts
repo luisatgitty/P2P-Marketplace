@@ -102,3 +102,34 @@ export async function submitListingReport(id: string, reason: string, descriptio
     throw "An unexpected error occurred. Please try again later.";
   }
 }
+
+export async function submitUserListingReport(
+  id: string,
+  reportedUserId: string,
+  reason: string,
+  description: string,
+): Promise<void> {
+  try {
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/listing/${id}/report`, {
+      method: "POST",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        reportedUserId,
+        reason,
+        description,
+      }),
+    });
+
+    if (!res.ok) {
+      const parsedJson = await res.json();
+      throw parsedJson?.data?.message || "Failed to submit report.";
+    }
+  } catch (err) {
+    if (typeof err === "string") throw err;
+    if (err instanceof Error) throw err.message;
+    throw "An unexpected error occurred. Please try again later.";
+  }
+}

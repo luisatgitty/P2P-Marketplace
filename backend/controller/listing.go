@@ -321,7 +321,7 @@ func ReportListing(c *fiber.Ctx) error {
 		return SendErrorResponse(c, 400, "Report details must be at most 80 words", nil)
 	}
 
-	reportId, err := repository.CreateListingReport(userId, listingId, body.Reason, body.Description)
+	reportId, err := repository.CreateListingReport(userId, listingId, body.ReportedUserId, body.Reason, body.Description)
 	if err != nil {
 		return SendErrorResponse(c, 400, err.Error(), err)
 	}

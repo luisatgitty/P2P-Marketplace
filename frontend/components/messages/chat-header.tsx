@@ -4,7 +4,11 @@ import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, MoreVertical, User, ExternalLink, Flag, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 import type { Conversation } from "@/types/messaging";
+import { useUser } from "@/utils/UserContext";
+import { submitUserListingReport } from "@/services/listingDetailService";
+import { ReportModal } from "@/components/report-modal";
 import ListingTypeBadge from "./listing-type-badge";
 
 interface ChatHeaderProps {
@@ -14,8 +18,11 @@ interface ChatHeaderProps {
 
 export default function ChatHeader({ conversation, onDelete }: ChatHeaderProps) {
   const router = useRouter();
+  const { isAuth } = useUser();
   const { otherParticipant, listing } = conversation;
   const [menuOpen, setMenuOpen] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
+  const [submittingReport, setSubmittingReport] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const profileHref = otherParticipant.id ? `/profile?userId=${otherParticipant.id}` : "/profile";
 
@@ -32,14 +39,36 @@ export default function ChatHeader({ conversation, onDelete }: ChatHeaderProps) 
 
   const initials = `${otherParticipant.firstName[0]}${otherParticipant.lastName[0]}`.toUpperCase();
 
+  const handleSubmitReport = async (payload: { reason: string; description: string }) => {
+    if (!isAuth) {
+      router.push("/login");
+      return;
+    }
+
+    if (submittingReport) return;
+
+    setSubmittingReport(true);
+    try {
+      await submitUserListingReport(listing.id, otherParticipant.id, payload.reason, payload.description);
+      toast.success("Report submitted. Thank you for helping keep the community safe.", { position: "top-center" });
+      setReportOpen(false);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err || "Failed to submit report.");
+      toast.error(message, { position: "top-center" });
+    } finally {
+      setSubmittingReport(false);
+    }
+  };
+
   const menuItems = [
     { icon: User,         label: "View Profile",   action: () => { router.push(profileHref); setMenuOpen(false); } },
     { icon: ExternalLink, label: "View Listing",   action: () => { router.push(`/listing/${listing.id}`); setMenuOpen(false); } },
-    { icon: Flag,         label: "Report User",    action: () => { setMenuOpen(false); }, danger: false },
+    { icon: Flag,         label: "Report User",    action: () => { setMenuOpen(false); setReportOpen(true); }, danger: false },
     { icon: Trash2,       label: "Delete Chat",    action: () => { onDelete?.(); setMenuOpen(false); }, danger: true },
   ];
 
   return (
+    <>
     <header className="flex items-center gap-3 px-4 pt-4 pb-2 border-b border-border bg-white dark:bg-[#1c1f2e] shrink-0">
 
       {/* Back button (mobile only) */}
@@ -118,5 +147,14 @@ export default function ChatHeader({ conversation, onDelete }: ChatHeaderProps) 
         </div>
       </div>
     </header>
+    <ReportModal
+      open={reportOpen}
+      title="Report User"
+      subtitle="Why are you reporting this user?"
+      submitting={submittingReport}
+      onClose={() => setReportOpen(false)}
+      onSubmit={handleSubmitReport}
+    />
+    </>
   );
 }

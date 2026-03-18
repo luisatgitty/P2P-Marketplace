@@ -7,7 +7,7 @@ import (
 	"p2p_marketplace/backend/middleware"
 )
 
-func CreateListingReport(reporterId, listingId, reason, description string) (string, error) {
+func CreateListingReport(reporterId, listingId, reportedUserId, reason, description string) (string, error) {
 	db := middleware.DBConn
 
 	trimmedReason := strings.TrimSpace(reason)
@@ -16,6 +16,7 @@ func CreateListingReport(reporterId, listingId, reason, description string) (str
 	}
 
 	trimmedDescription := strings.TrimSpace(description)
+	targetReportedUserId := strings.TrimSpace(reportedUserId)
 
 	var listingOwnerId string
 	ownerQuery := `
@@ -31,8 +32,28 @@ func CreateListingReport(reporterId, listingId, reason, description string) (str
 	if ownerResult.RowsAffected == 0 {
 		return "", fmt.Errorf("Listing not found")
 	}
-	if strings.TrimSpace(listingOwnerId) == strings.TrimSpace(reporterId) {
+
+	if targetReportedUserId == "" {
+		targetReportedUserId = strings.TrimSpace(listingOwnerId)
+	}
+
+	if targetReportedUserId == strings.TrimSpace(reporterId) {
 		return "", fmt.Errorf("You cannot report your own listing")
+	}
+
+	duplicateCheckQuery := `
+		SELECT COUNT(*)
+		FROM public.reports
+		WHERE reporter_id = $1
+			AND reported_listing_id = $2
+			AND reported_user_id = $3
+	`
+	var duplicateCount int
+	if err := db.Raw(duplicateCheckQuery, reporterId, listingId, targetReportedUserId).Scan(&duplicateCount).Error; err != nil {
+		return "", fmt.Errorf("Failed to validate report")
+	}
+	if duplicateCount > 0 {
+		return "", fmt.Errorf("Report already exists for this user and listing")
 	}
 
 	var reportId string
@@ -58,7 +79,10 @@ func CreateListingReport(reporterId, listingId, reason, description string) (str
 		RETURNING id
 	`
 
-	if err := db.Raw(insertQuery, reporterId, listingOwnerId, listingId, trimmedReason, trimmedDescription).Scan(&reportId).Error; err != nil {
+	if err := db.Raw(insertQuery, reporterId, targetReportedUserId, listingId, trimmedReason, trimmedDescription).Scan(&reportId).Error; err != nil {
+		if strings.Contains(strings.ToLower(err.Error()), "uniq_reports_reporter_listing_user") || strings.Contains(strings.ToLower(err.Error()), "duplicate key") {
+			return "", fmt.Errorf("Report already exists for this user and listing")
+		}
 		return "", fmt.Errorf("Failed to submit report")
 	}
 
