@@ -14,7 +14,7 @@ export default function ListingContextCard({ listing }: ListingContextCardProps)
     "₱" + n.toLocaleString("en-PH", { minimumFractionDigits: 0 });
 
   return (
-    <div className="mx-3 my-2 flex items-center gap-3 px-2 py-2 rounded-xl bg-stone-50 dark:bg-[#13151f] border border-border shrink-0">
+    <div data-listing-context-card="true" className="mx-3 my-2 flex items-center gap-3 px-2 py-2 rounded-xl bg-stone-50 dark:bg-[#13151f] border border-border shrink-0">
       {/* Listing primary image */}
       <Link
         href={`/listing/${listing.id}`}
@@ -47,7 +47,7 @@ export default function ListingContextCard({ listing }: ListingContextCardProps)
       {/* View link */}
       <Link
         href={`/listing/${listing.id}`}
-        className="p-1.5 rounded-md text-stone-400 dark:text-stone-500 hover:text-amber-600 dark:hover:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors shrink-0"
+        className="p-2 rounded-md text-stone-400 dark:text-stone-500 hover:text-amber-600 dark:hover:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors shrink-0"
         title="View listing"
       >
         <ExternalLink size={14} />

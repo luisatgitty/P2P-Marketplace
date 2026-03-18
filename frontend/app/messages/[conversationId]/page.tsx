@@ -9,6 +9,7 @@ import Video from "yet-another-react-lightbox/plugins/video";
 import "yet-another-react-lightbox/styles.css";
 import "yet-another-react-lightbox/plugins/thumbnails.css";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner"
 import type { PostCardProps } from "@/components/post-card";
 import type { Conversation, Message, MessageAttachment, ReactionType, ReplyPreview } from "@/types/messaging";
 import { getListingDetailById } from "@/services/listingDetailService";
@@ -509,7 +510,7 @@ export default function ConversationPage() {
 
   // ── Handlers ─────────────────────────────────────────────────────────────
 
-  const handleSend = async (content: string) => {
+  const handleSend = async (content: string, attachments: Array<{ name: string; mimeType: string; data: string }>) => {
     if (sending) return;
     setSending(true);
     try {
@@ -527,12 +528,13 @@ export default function ConversationPage() {
         router.replace(`/messages/${targetConversationId}`);
       }
 
-      const newMsg = await sendMessage(targetConversationId, content, effectiveCurrentUserId, replyTo);
+      const newMsg = await sendMessage(targetConversationId, content, attachments, replyTo);
       setMessages((prev) => [...prev, newMsg]);
       setReplyTo(null);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to send message.";
-      window.alert(message);
+      toast.error(message, { position: "top-center" });
+      throw err;
     } finally {
       setSending(false);
     }
@@ -605,6 +607,7 @@ export default function ConversationPage() {
     }
 
     await deleteConversation(conversationId);
+    toast.success("Conversation deleted", { position: "top-center" });
     router.push("/messages");
   };
 

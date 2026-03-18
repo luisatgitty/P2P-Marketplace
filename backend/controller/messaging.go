@@ -215,7 +215,7 @@ func SendMessage(c *fiber.Ctx) error {
 	if err := c.BodyParser(&body); err != nil {
 		return SendErrorResponse(c, 400, "Invalid request body. Please contact support.", err)
 	}
-	if strings.TrimSpace(body.Content) == "" {
+	if strings.TrimSpace(body.Content) == "" && len(body.Attachments) == 0 {
 		return SendErrorResponse(c, 400, "Message content is required", nil)
 	}
 
@@ -229,9 +229,27 @@ func SendMessage(c *fiber.Ctx) error {
 		replyToMessageId = strings.TrimSpace(body.ReplyTo.MessageId)
 	}
 
-	msg, err := repository.CreateMessage(userId, conversationId, body.Content, replyToMessageId)
+	msg, err := repository.CreateMessage(userId, conversationId, body.Content, replyToMessageId, body.Attachments)
 	if err != nil {
 		return SendErrorResponse(c, 400, err.Error(), err)
+	}
+
+	attachments := make([]map[string]any, 0)
+	if len(body.Attachments) > 0 {
+		attRows, attErr := repository.GetMessageAttachmentsByMessageId(msg.Id)
+		if attErr != nil {
+			return SendErrorResponse(c, 500, attErr.Error(), attErr)
+		}
+
+		for _, att := range attRows {
+			attachments = append(attachments, map[string]any{
+				"id":       att.Id,
+				"fileUrl":  toAbsoluteAssetURL(c.BaseURL(), att.FileUrl),
+				"fileType": strings.ToUpper(strings.TrimSpace(att.FileType)),
+				"fileName": att.FileName,
+				"fileSize": att.FileSize,
+			})
+		}
 	}
 
 	payload := map[string]any{
@@ -244,6 +262,9 @@ func SendMessage(c *fiber.Ctx) error {
 		"isEdited":       msg.IsEdited,
 		"isUnsent":       msg.IsUnsent,
 		"createdAt":      msg.CreatedAt.UTC().Format(time.RFC3339),
+	}
+	if len(attachments) > 0 {
+		payload["attachments"] = attachments
 	}
 	if strings.TrimSpace(replyToMessageId) != "" {
 		payload["replyTo"] = map[string]any{

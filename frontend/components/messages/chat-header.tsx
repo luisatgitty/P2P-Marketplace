@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Phone, MoreVertical, User, ExternalLink, Flag, Trash2 } from "lucide-react";
+import { ArrowLeft, MoreVertical, User, ExternalLink, Flag, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Conversation } from "@/types/messaging";
 import ListingTypeBadge from "./listing-type-badge";
@@ -40,7 +40,7 @@ export default function ChatHeader({ conversation, onDelete }: ChatHeaderProps) 
   ];
 
   return (
-    <header className="flex items-center gap-3 px-4 py-3 border-b border-border bg-white dark:bg-[#1c1f2e] shrink-0">
+    <header className="flex items-center gap-3 px-4 pt-4 pb-2 border-b border-border bg-white dark:bg-[#1c1f2e] shrink-0">
 
       {/* Back button (mobile only) */}
       <button
@@ -70,11 +70,7 @@ export default function ChatHeader({ conversation, onDelete }: ChatHeaderProps) 
       </button>
 
       {/* Info */}
-      <button
-        onClick={() => router.push(profileHref)}
-        className="flex-1 min-w-0 text-left"
-        aria-label="Open participant profile"
-      >
+      <div className="flex-1 min-w-0 text-left">
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-sm font-bold text-stone-900 dark:text-stone-50 truncate">
             {otherParticipant.firstName} {otherParticipant.lastName}
@@ -87,7 +83,7 @@ export default function ChatHeader({ conversation, onDelete }: ChatHeaderProps) 
         )}>
           {otherParticipant.isOnline ? "Online" : "Offline"}
         </p>
-      </button>
+      </div>
 
       {/* More menu */}
       <div className="flex items-center gap-0.5 shrink-0">

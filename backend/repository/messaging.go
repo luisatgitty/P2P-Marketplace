@@ -1,12 +1,19 @@
 package repository
 
 import (
+	"crypto/rand"
+	"encoding/base64"
+	"encoding/hex"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
 	"p2p_marketplace/backend/middleware"
 	"p2p_marketplace/backend/model"
+
+	"gorm.io/gorm"
 )
 
 func GetConversationsByUser(userId string) ([]model.ConversationFromDb, error) {
@@ -361,12 +368,12 @@ func GetConversationPeerUserId(userId, conversationId string) (string, error) {
 	return strings.TrimSpace(peerId), nil
 }
 
-func CreateMessage(userId, conversationId, content, replyToMessageId string) (model.MessageFromDb, error) {
+func CreateMessage(userId, conversationId, content, replyToMessageId string, attachments []model.MessageAttachmentBody) (model.MessageFromDb, error) {
 	db := middleware.DBConn
 	var created model.MessageFromDb
 
 	trimmed := strings.TrimSpace(content)
-	if trimmed == "" {
+	if trimmed == "" && len(attachments) == 0 {
 		return created, fmt.Errorf("Message content is required")
 	}
 
@@ -431,6 +438,43 @@ func CreateMessage(userId, conversationId, content, replyToMessageId string) (mo
 		return created, fmt.Errorf("Failed to send message")
 	}
 
+	if len(attachments) > 0 {
+		if err := saveMessageAttachmentsTx(tx, created.Id, attachments); err != nil {
+			tx.Rollback()
+			return created, err
+		}
+	}
+
+	lastMessageText := trimmed
+	if lastMessageText == "" && len(attachments) > 0 {
+		imagesCount := 0
+		videosCount := 0
+		for _, att := range attachments {
+			kind := strings.ToUpper(strings.TrimSpace(messageAttachmentKind(att.MimeType)))
+			if kind == "VIDEO" {
+				videosCount++
+			} else {
+				imagesCount++
+			}
+		}
+		parts := make([]string, 0, 2)
+		if imagesCount > 0 {
+			if imagesCount == 1 {
+				parts = append(parts, "📷 Photo")
+			} else {
+				parts = append(parts, fmt.Sprintf("📷 %d photos", imagesCount))
+			}
+		}
+		if videosCount > 0 {
+			if videosCount == 1 {
+				parts = append(parts, "🎥 Video")
+			} else {
+				parts = append(parts, fmt.Sprintf("🎥 %d videos", videosCount))
+			}
+		}
+		lastMessageText = strings.Join(parts, ", ")
+	}
+
 	updateConversationQuery := `
 		UPDATE public.conversations
 		SET
@@ -441,7 +485,7 @@ func CreateMessage(userId, conversationId, content, replyToMessageId string) (mo
 			updated_at = now()
 		WHERE id = $1
 	`
-	if err := tx.Exec(updateConversationQuery, conversationId, created.Id, trimmed, userId, created.CreatedAt).Error; err != nil {
+	if err := tx.Exec(updateConversationQuery, conversationId, created.Id, lastMessageText, userId, created.CreatedAt).Error; err != nil {
 		tx.Rollback()
 		return created, fmt.Errorf("Failed to update conversation metadata")
 	}
@@ -462,6 +506,119 @@ func CreateMessage(userId, conversationId, content, replyToMessageId string) (mo
 	}
 
 	return created, nil
+}
+
+func GetMessageAttachmentsByMessageId(messageId string) ([]model.MessageAttachmentFromDb, error) {
+	db := middleware.DBConn
+	rows := make([]model.MessageAttachmentFromDb, 0)
+
+	query := `
+		SELECT id, message_id, file_url, file_type::text AS file_type, file_name, file_size
+		FROM public.message_attachments
+		WHERE message_id = $1
+		ORDER BY sort_order ASC, created_at ASC
+	`
+
+	if err := db.Raw(query, messageId).Scan(&rows).Error; err != nil {
+		return nil, fmt.Errorf("Failed to load message attachments")
+	}
+
+	return rows, nil
+}
+
+func saveMessageAttachmentsTx(tx *gorm.DB, messageId string, attachments []model.MessageAttachmentBody) error {
+	baseDir := filepath.Join("uploads", "messages")
+	if err := os.MkdirAll(baseDir, 0755); err != nil {
+		return fmt.Errorf("Failed to create attachment upload directory")
+	}
+
+	insertAttachmentQuery := `
+		INSERT INTO public.message_attachments (message_id, file_url, file_type, file_name, file_size, sort_order)
+		VALUES ($1, $2, $3::attachment_type, $4, $5, $6)
+	`
+
+	for i, item := range attachments {
+		encodedData := strings.TrimSpace(item.Data)
+		if encodedData == "" {
+			return fmt.Errorf("Attachment payload is empty")
+		}
+
+		ext, err := extFromAttachmentMime(item.MimeType)
+		if err != nil {
+			return err
+		}
+
+		decoded, err := base64.StdEncoding.DecodeString(encodedData)
+		if err != nil {
+			return fmt.Errorf("Failed to decode attachment payload")
+		}
+
+		randomName, err := randomHexForMessageAttachment(10)
+		if err != nil {
+			return fmt.Errorf("Failed to generate attachment filename")
+		}
+
+		fileName := strings.TrimSpace(item.Name)
+		if fileName == "" {
+			fileName = fmt.Sprintf("attachment-%d%s", i+1, ext)
+		}
+
+		storedFileName := fmt.Sprintf("%d_%s%s", time.Now().UnixNano(), randomName, ext)
+		filePath := filepath.Join(baseDir, storedFileName)
+		if err := os.WriteFile(filePath, decoded, 0644); err != nil {
+			return fmt.Errorf("Failed to save attachment file")
+		}
+
+		fileURL := fmt.Sprintf("/uploads/messages/%s", storedFileName)
+		fileType := messageAttachmentKind(item.MimeType)
+		if fileType == "" {
+			return fmt.Errorf("Unsupported attachment type")
+		}
+
+		if err := tx.Exec(insertAttachmentQuery, messageId, fileURL, fileType, fileName, len(decoded), i).Error; err != nil {
+			return fmt.Errorf("Failed to save attachment metadata")
+		}
+	}
+
+	return nil
+}
+
+func extFromAttachmentMime(mimeType string) (string, error) {
+	switch strings.ToLower(strings.TrimSpace(mimeType)) {
+	case "image/jpeg", "image/jpg":
+		return ".jpg", nil
+	case "image/png":
+		return ".png", nil
+	case "image/webp":
+		return ".webp", nil
+	case "video/mp4":
+		return ".mp4", nil
+	case "video/webm":
+		return ".webm", nil
+	case "video/quicktime":
+		return ".mov", nil
+	default:
+		return "", fmt.Errorf("Unsupported attachment type")
+	}
+}
+
+func messageAttachmentKind(mimeType string) string {
+	trimmed := strings.ToLower(strings.TrimSpace(mimeType))
+	if strings.HasPrefix(trimmed, "image/") {
+		return "IMAGE"
+	}
+	if strings.HasPrefix(trimmed, "video/") {
+		return "VIDEO"
+	}
+	return ""
+}
+
+func randomHexForMessageAttachment(n int) (string, error) {
+	b := make([]byte, n)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(b), nil
 }
 
 func UpsertMessageReaction(userId, conversationId, messageId string, reaction *string) error {
