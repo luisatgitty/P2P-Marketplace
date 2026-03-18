@@ -5,10 +5,17 @@
 
 import Link from "next/link";
 import { ExternalLink, Star } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import type { ConversationListing } from "@/types/messaging";
-import { markListingAsSold } from "@/services/listingDetailService";
+import {
+  createListingReview,
+  deleteListingReview,
+  getMyListingReview,
+  markListingAsSold,
+  updateListingReview,
+  type ListingReviewPayload,
+} from "@/services/listingDetailService";
 import { ConfirmActionModal } from "@/components/confirm-action-modal";
 
 interface ListingContextCardProps {
@@ -26,11 +33,45 @@ export default function ListingContextCard({ listing, isSeller = false, onMarked
   const [reviewOpen, setReviewOpen] = useState(false);
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState("");
+  const [reviewLoading, setReviewLoading] = useState(false);
+  const [reviewSubmitting, setReviewSubmitting] = useState(false);
+  const [reviewDeleting, setReviewDeleting] = useState(false);
+  const [existingReview, setExistingReview] = useState<ListingReviewPayload | null>(null);
 
   const normalizedStatus = String(listing.status ?? "").trim().toUpperCase();
   const isSold = normalizedStatus === "SOLD";
   const canMarkAsSold = isSeller && listing.listingType === "SELL" && !isSold;
   const canReviewSoldItem = !isSeller && listing.listingType === "SELL" && isSold;
+
+  useEffect(() => {
+    let mounted = true;
+
+    const loadExistingReview = async () => {
+      if (!canReviewSoldItem) {
+        if (mounted) setExistingReview(null);
+        return;
+      }
+
+      setReviewLoading(true);
+      try {
+        const payload = await getMyListingReview(listing.id);
+        if (!mounted) return;
+        setExistingReview(payload);
+      } catch (err) {
+        if (!mounted) return;
+        const message = err instanceof Error ? err.message : String(err || "Failed to load review.");
+        toast.error(message, { position: "top-center" });
+      } finally {
+        if (mounted) setReviewLoading(false);
+      }
+    };
+
+    loadExistingReview();
+
+    return () => {
+      mounted = false;
+    };
+  }, [canReviewSoldItem, listing.id]);
 
   const resetReviewForm = () => {
     setRating(0);
@@ -38,22 +79,78 @@ export default function ListingContextCard({ listing, isSeller = false, onMarked
   };
 
   const handleCloseReviewModal = () => {
+    if (reviewSubmitting || reviewDeleting) return;
     setReviewOpen(false);
     resetReviewForm();
   };
 
+  const handleOpenReviewModal = () => {
+    if (reviewLoading) return;
+
+    setRating(existingReview?.rating ?? 0);
+    setComment(existingReview?.comment ?? "");
+    setReviewOpen(true);
+  };
+
   const handleReviewAction = async () => {
+    if (reviewSubmitting || reviewDeleting) return;
+
     if (rating <= 0) {
       handleCloseReviewModal();
       return;
     }
 
-    try {
-      // TODO: Wire this to backend review endpoint when available.
-      toast.success("Review submitted. Thank you for your feedback.", { position: "top-center" });
+    const trimmedComment = comment.trim();
+    const isEditing = Boolean(existingReview);
+
+    if (
+      isEditing
+      && existingReview
+      && existingReview.rating === rating
+      && existingReview.comment.trim() === trimmedComment
+    ) {
+      toast.info("No changes to update.", { position: "top-center" });
       handleCloseReviewModal();
-    } catch {
-      toast.error("Failed to submit review.", { position: "top-center" });
+      return;
+    }
+
+    setReviewSubmitting(true);
+    try {
+      if (isEditing) {
+        const updated = await updateListingReview(listing.id, rating, trimmedComment);
+        setExistingReview(updated);
+        toast.success("Review updated successfully.", { position: "top-center" });
+      } else {
+        const created = await createListingReview(listing.id, rating, trimmedComment);
+        setExistingReview(created);
+        toast.success("Review submitted. Thank you for your feedback.", { position: "top-center" });
+      }
+      handleCloseReviewModal();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err || "Failed to submit review.");
+      toast.error(message, { position: "top-center" });
+    } finally {
+      setReviewSubmitting(false);
+    }
+  };
+
+  const handleDeleteReview = async () => {
+    if (!existingReview || reviewSubmitting || reviewDeleting) return;
+
+    const confirmed = window.confirm("Delete your review for this item?");
+    if (!confirmed) return;
+
+    setReviewDeleting(true);
+    try {
+      await deleteListingReview(listing.id);
+      setExistingReview(null);
+      toast.success("Review deleted successfully.", { position: "top-center" });
+      handleCloseReviewModal();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err || "Failed to delete review.");
+      toast.error(message, { position: "top-center" });
+    } finally {
+      setReviewDeleting(false);
     }
   };
 
@@ -121,11 +218,12 @@ export default function ListingContextCard({ listing, isSeller = false, onMarked
       {canReviewSoldItem && (
         <button
           type="button"
-          onClick={() => setReviewOpen(true)}
-          className="px-2.5 py-2 rounded-md text-[11px] font-semibold text-white bg-blue-700 hover:bg-blue-600 transition-colors shrink-0"
-          title="Review this item"
+          onClick={handleOpenReviewModal}
+          disabled={reviewLoading}
+          className="px-2.5 py-2 rounded-md text-[11px] font-semibold text-white bg-blue-700 hover:bg-blue-600 transition-colors shrink-0 disabled:opacity-60 disabled:cursor-not-allowed"
+          title={existingReview ? "Edit your review" : "Review this item"}
         >
-          Review
+          {reviewLoading ? "Loading..." : existingReview ? "Edit Review" : "Review"}
         </button>
       )}
 
@@ -169,7 +267,8 @@ export default function ListingContextCard({ listing, isSeller = false, onMarked
                       key={value}
                       type="button"
                       onClick={() => setRating(value)}
-                      className="p-1 rounded-md hover:bg-stone-100 dark:hover:bg-white/5 transition-colors"
+                      disabled={reviewSubmitting || reviewDeleting}
+                      className="p-1 rounded-md hover:bg-stone-100 dark:hover:bg-white/5 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
                       aria-label={`Rate ${value} star${value > 1 ? "s" : ""}`}
                     >
                       <Star
@@ -187,20 +286,33 @@ export default function ListingContextCard({ listing, isSeller = false, onMarked
                 rows={4}
                 value={comment}
                 onChange={(e) => setComment(e.target.value)}
+                disabled={reviewSubmitting || reviewDeleting}
                 placeholder="Share your experience with this transaction..."
-                className="w-full bg-stone-50 dark:bg-[#13151f] border border-stone-200 dark:border-[#2a2d3e] rounded-xl px-3 py-2.5 text-sm text-stone-800 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-600 outline-none focus:border-stone-400 dark:focus:border-stone-500 resize-none"
+                className="w-full bg-stone-50 dark:bg-[#13151f] border border-stone-200 dark:border-[#2a2d3e] rounded-xl px-3 py-2.5 text-sm text-stone-800 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-600 outline-none focus:border-stone-400 dark:focus:border-stone-500 resize-none disabled:opacity-60 disabled:cursor-not-allowed"
               />
             </div>
 
-            <div className="flex justify-end">
+            <div className="flex items-center justify-between gap-2">
+              {existingReview ? (
+                <button
+                  type="button"
+                  onClick={handleDeleteReview}
+                  disabled={reviewSubmitting || reviewDeleting}
+                  className="px-4 py-2 rounded-full text-xs font-semibold border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  {reviewDeleting ? "Deleting..." : "Delete"}
+                </button>
+              ) : <span />}
+
               <button
                 type="button"
                 onClick={handleReviewAction}
+                disabled={reviewSubmitting || reviewDeleting}
                 className={`px-4 py-2 rounded-full text-xs font-semibold transition-colors ${rating > 0
                   ? "bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 hover:opacity-90"
-                  : "border border-stone-200 dark:border-[#2a2d3e] text-stone-600 dark:text-stone-300 hover:bg-stone-50 dark:hover:bg-[#252837]"}`}
+                  : "border border-stone-200 dark:border-[#2a2d3e] text-stone-600 dark:text-stone-300 hover:bg-stone-50 dark:hover:bg-[#252837]"} disabled:opacity-60 disabled:cursor-not-allowed`}
               >
-                {rating > 0 ? "Submit" : "Cancel"}
+                {reviewSubmitting ? (existingReview ? "Updating..." : "Submitting...") : (rating > 0 ? "Submit" : "Cancel")}
               </button>
             </div>
           </div>

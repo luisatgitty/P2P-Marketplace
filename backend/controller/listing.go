@@ -354,6 +354,116 @@ func ReportListing(c *fiber.Ctx) error {
 	})
 }
 
+func GetMyListingReview(c *fiber.Ctx) error {
+	listingId := strings.TrimSpace(c.Params("id"))
+	if listingId == "" {
+		return SendErrorResponse(c, 400, "Listing ID is required", nil)
+	}
+
+	userId := fmt.Sprintf("%v", c.Locals("userId"))
+	if strings.TrimSpace(userId) == "" || userId == "%!v(<nil>)" {
+		return SendErrorResponse(c, 401, "User is not authenticated", nil)
+	}
+
+	review, err := repository.GetMyListingReview(userId, listingId)
+	if err != nil {
+		if strings.EqualFold(strings.TrimSpace(err.Error()), "Review not found") {
+			return SendErrorResponse(c, 404, err.Error(), err)
+		}
+		return SendErrorResponse(c, 400, err.Error(), err)
+	}
+
+	return SendSuccessResponse(c, 200, "Review fetched successfully", map[string]any{
+		"id":      review.Id,
+		"rating":  review.Rating,
+		"comment": strings.TrimSpace(review.Comment),
+	})
+}
+
+func CreateListingReview(c *fiber.Ctx) error {
+	listingId := strings.TrimSpace(c.Params("id"))
+	if listingId == "" {
+		return SendErrorResponse(c, 400, "Listing ID is required", nil)
+	}
+
+	userId := fmt.Sprintf("%v", c.Locals("userId"))
+	if strings.TrimSpace(userId) == "" || userId == "%!v(<nil>)" {
+		return SendErrorResponse(c, 401, "User is not authenticated", nil)
+	}
+
+	var body model.ReviewListingBody
+	if err := c.BodyParser(&body); err != nil {
+		return SendErrorResponse(c, 400, "Invalid request body. Please contact support.", err)
+	}
+
+	if body.Rating < 1 || body.Rating > 5 {
+		return SendErrorResponse(c, 400, "Rating must be between 1 and 5", nil)
+	}
+
+	review, err := repository.CreateListingReview(userId, listingId, body.Rating, body.Comment)
+	if err != nil {
+		return SendErrorResponse(c, 400, err.Error(), err)
+	}
+
+	return SendSuccessResponse(c, 201, "Review submitted successfully", map[string]any{
+		"id":      review.Id,
+		"rating":  review.Rating,
+		"comment": strings.TrimSpace(review.Comment),
+	})
+}
+
+func UpdateListingReview(c *fiber.Ctx) error {
+	listingId := strings.TrimSpace(c.Params("id"))
+	if listingId == "" {
+		return SendErrorResponse(c, 400, "Listing ID is required", nil)
+	}
+
+	userId := fmt.Sprintf("%v", c.Locals("userId"))
+	if strings.TrimSpace(userId) == "" || userId == "%!v(<nil>)" {
+		return SendErrorResponse(c, 401, "User is not authenticated", nil)
+	}
+
+	var body model.ReviewListingBody
+	if err := c.BodyParser(&body); err != nil {
+		return SendErrorResponse(c, 400, "Invalid request body. Please contact support.", err)
+	}
+
+	if body.Rating < 1 || body.Rating > 5 {
+		return SendErrorResponse(c, 400, "Rating must be between 1 and 5", nil)
+	}
+
+	review, err := repository.UpdateListingReview(userId, listingId, body.Rating, body.Comment)
+	if err != nil {
+		return SendErrorResponse(c, 400, err.Error(), err)
+	}
+
+	return SendSuccessResponse(c, 200, "Review updated successfully", map[string]any{
+		"id":      review.Id,
+		"rating":  review.Rating,
+		"comment": strings.TrimSpace(review.Comment),
+	})
+}
+
+func DeleteListingReview(c *fiber.Ctx) error {
+	listingId := strings.TrimSpace(c.Params("id"))
+	if listingId == "" {
+		return SendErrorResponse(c, 400, "Listing ID is required", nil)
+	}
+
+	userId := fmt.Sprintf("%v", c.Locals("userId"))
+	if strings.TrimSpace(userId) == "" || userId == "%!v(<nil>)" {
+		return SendErrorResponse(c, 401, "User is not authenticated", nil)
+	}
+
+	if err := repository.DeleteListingReview(userId, listingId); err != nil {
+		return SendErrorResponse(c, 400, err.Error(), err)
+	}
+
+	return SendSuccessResponse(c, 200, "Review deleted successfully", map[string]any{
+		"listingId": listingId,
+	})
+}
+
 func GetListings(c *fiber.Ctx) error {
 	userId := getOptionalUserIdFromSession(c)
 	listings, err := repository.GetAllListings(userId)

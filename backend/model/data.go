@@ -126,6 +126,20 @@ type ReportListingBody struct {
 	Description    string `json:"description"`
 }
 
+type ReviewListingBody struct {
+	Rating  int    `json:"rating"`
+	Comment string `json:"comment"`
+}
+
+type ListingReviewFromDb struct {
+	Id             string `gorm:"column:id"`
+	Rating         int    `gorm:"column:rating"`
+	Comment        string `gorm:"column:comment"`
+	ReviewerId     string `gorm:"column:reviewer_id"`
+	ReviewedUserId string `gorm:"column:reviewed_user_id"`
+	ListingId      string `gorm:"column:listing_id"`
+}
+
 type ProfileUserFromDb struct {
 	FirstName    string `gorm:"column:first_name"         json:"firstName"`
 	LastName     string `gorm:"column:last_name"          json:"lastName"`
