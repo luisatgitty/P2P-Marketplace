@@ -4,6 +4,25 @@ export interface ProfileListingItem extends PostCardProps {
   status?: "active" | "sold" | "rented" | "completed" | "hidden" | string;
 }
 
+export interface ProfileReviewItem {
+  id: string;
+  rating: number;
+  comment?: string;
+  reviewDate: string;
+  reviewer: {
+    id: string;
+    name: string;
+    profileImageUrl?: string;
+  };
+  listing: {
+    id: string;
+    title: string;
+    price: number;
+    priceUnit?: string;
+    imageUrl: string;
+  };
+}
+
 export interface ProfilePayload {
   user: {
     firstName: string;
@@ -21,6 +40,7 @@ export interface ProfilePayload {
   };
   listings: ProfileListingItem[];
   bookmarks: ProfileListingItem[];
+  reviews: ProfileReviewItem[];
 }
 
 export interface UpdateProfilePayload {

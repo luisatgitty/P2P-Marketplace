@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import {
-  MapPin, Mail, Calendar, Eye, EyeOff, MessageCircle,
+  MapPin, Mail, Calendar, Eye, EyeOff, MessageCircle, Star,
   Edit2, Plus, ShieldCheck, Package, Bookmark,
   Camera, Trash2, AlertTriangle,
 } from "lucide-react";
@@ -22,6 +22,7 @@ import {
   updateProfileImages,
   updateProfileData,
   type ProfileListingItem,
+  type ProfileReviewItem,
 } from "@/services/profileService";
 import {
   getBarangaysByCity,
@@ -34,7 +35,7 @@ import { cn } from "@/lib/utils";
 // ─── Types ────────────────────────────────────────────────────────────────────
 type VerificationState = "unverified" | "pending" | "verified" | "rejected";
 type ListingTab = "all" | "active" | "sold" | "booked";
-type ProfileTab = "listings" | "bookmarks";
+type ProfileTab = "listings" | "bookmarks" | "reviews";
 
 const SOLD_STATUSES = new Set(["sold", "rented", "completed"]);
 const BOOKED_STATUSES = new Set(["hidden"]);
@@ -167,6 +168,79 @@ function AddListingCard() {
         </div>
       </div>
     </Link>
+  );
+}
+
+function ProfileReviewCard({ review }: { review: ProfileReviewItem }) {
+  const fmt = new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP", minimumFractionDigits: 0 });
+  const reviewerName = (review.reviewer.name ?? "").trim() || "Anonymous Reviewer";
+  const initials = reviewerName
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((chunk) => chunk[0]?.toUpperCase() ?? "")
+    .join("") || "?";
+
+  return (
+    <div className="bg-white dark:bg-[#1c1f2e] rounded-2xl border border-stone-200 dark:border-[#2a2d3e] shadow-sm p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          {review.reviewer.profileImageUrl ? (
+            <img
+              src={review.reviewer.profileImageUrl}
+              alt={reviewerName}
+              className="w-10 h-10 rounded-full object-cover border border-stone-200 dark:border-[#2a2d3e] shrink-0"
+            />
+          ) : (
+            <div className="w-10 h-10 rounded-full bg-stone-200 dark:bg-stone-700 text-stone-700 dark:text-stone-100 font-bold text-xs flex items-center justify-center shrink-0">
+              {initials}
+            </div>
+          )}
+          <div className="min-w-0">
+            <p className="text-sm font-bold text-stone-900 dark:text-stone-100 truncate">{reviewerName}</p>
+            <p className="text-[11px] text-stone-400 dark:text-stone-500">{review.reviewDate}</p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-1 shrink-0">
+          {[1, 2, 3, 4, 5].map((value) => (
+            <Star
+              key={value}
+              className={cn(
+                "w-3.5 h-3.5",
+                value <= review.rating
+                  ? "fill-amber-400 text-amber-400"
+                  : "text-stone-300 dark:text-stone-600"
+              )}
+            />
+          ))}
+        </div>
+      </div>
+
+      {review.comment && review.comment.trim() !== "" && (
+        <p className="mt-3 text-sm leading-relaxed text-stone-700 dark:text-stone-200">{review.comment}</p>
+      )}
+
+      <Link
+        href={`/listing/${review.listing.id}`}
+        className="mt-3 flex items-center gap-3 rounded-xl border border-stone-200 dark:border-[#2a2d3e] bg-stone-50 dark:bg-[#13151f] p-2.5 hover:border-stone-300 dark:hover:border-[#3a3e52] transition-colors"
+      >
+        <img
+          src={review.listing.imageUrl}
+          alt={review.listing.title}
+          className="w-14 h-14 rounded-lg object-cover border border-stone-200 dark:border-[#2a2d3e] shrink-0"
+        />
+        <div className="min-w-0 flex-1">
+          <p className="text-xs font-semibold text-stone-800 dark:text-stone-100 line-clamp-2">{review.listing.title}</p>
+          <p className="text-sm font-bold text-amber-700 dark:text-amber-500 mt-0.5">
+            {fmt.format(review.listing.price)}
+            {review.listing.priceUnit && (
+              <span className="text-[11px] font-normal text-stone-400 dark:text-stone-500 ml-1">{review.listing.priceUnit}</span>
+            )}
+          </p>
+        </div>
+      </Link>
+    </div>
   );
 }
 
@@ -311,6 +385,7 @@ export default function ProfilePage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [userListings, setUserListings] = useState<ProfileListingItem[]>([]);
   const [bookmarkListings, setBookmarkListings] = useState<ProfileListingItem[]>([]);
+  const [userReviews, setUserReviews] = useState<ProfileReviewItem[]>([]);
   const [listingTab, setListingTab] = useState<ListingTab>("active");
   const [profileTab, setProfileTab] = useState<ProfileTab>("listings");
   const [showAvatarMenu, setShowAvatarMenu] = useState(false);
@@ -443,6 +518,7 @@ export default function ProfilePage() {
         setProfileUser(payload.user);
         setUserListings(payload.listings);
         setBookmarkListings(isViewingExternalProfile ? [] : payload.bookmarks);
+        setUserReviews(payload.reviews ?? []);
         if (!isViewingExternalProfile) {
           saveUserData(payload.user);
         }
@@ -488,6 +564,9 @@ export default function ProfilePage() {
       : listingTab === "sold"
         ? soldListings
         : bookedListings;
+  const profileTabs: ProfileTab[] = isViewingExternalProfile
+    ? ["listings", "reviews"]
+    : ["listings", "bookmarks", "reviews"];
 
   async function handleSave() {
     if (form.newPassword && form.newPassword !== form.confirmPassword) {
@@ -601,6 +680,7 @@ export default function ProfilePage() {
       setProfileUser(payload.user);
       setUserListings(payload.listings);
       setBookmarkListings(payload.bookmarks);
+      setUserReviews(payload.reviews ?? []);
       saveUserData(payload.user);
 
       const nextSnapshot: EditableProfileSnapshot = {
@@ -910,17 +990,21 @@ export default function ProfilePage() {
 
         <div className="bg-white dark:bg-[#1c1f2e] rounded-2xl border border-stone-200 dark:border-[#2a2d3e] shadow-sm overflow-hidden">
           {/* Tab bar */}
-          {!isViewingExternalProfile && <div className="flex border-b border-stone-200 dark:border-[#2a2d3e]">
-            {(["listings", "bookmarks"] as const).map((t) => (
+          <div className="flex border-b border-stone-200 dark:border-[#2a2d3e]">
+            {profileTabs.map((t) => (
               <button key={t} onClick={() => setProfileTab(t)}
                 className={cn("flex-1 py-3.5 text-sm font-medium transition-colors",
                   profileTab === t
                     ? "text-stone-900 dark:text-stone-100 border-b-2 border-stone-900 dark:border-stone-300"
                     : "text-stone-400 dark:text-stone-500 hover:text-stone-600 dark:hover:text-stone-300")}>
-                {t === "listings" ? "📦 My Listings" : "🔖 Bookmarked Items"}
+                {t === "listings"
+                  ? (isViewingExternalProfile ? "📦 Listings" : "📦 My Listings")
+                  : t === "bookmarks"
+                    ? "🔖 Bookmarked Items"
+                    : (isViewingExternalProfile ? "⭐ Reviews" : "⭐ My Reviews")}
               </button>
             ))}
-          </div>}
+          </div>
 
           {/* My Listings */}
           {profileTab === "listings" && (<>
@@ -960,6 +1044,15 @@ export default function ProfilePage() {
               : bookmarkListings.length > 0
               ? <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 p-4">{bookmarkListings.map((l) => <ProfileListingCard key={l.id} listing={l} />)}</div>
               : <div className="text-center py-14"><Bookmark className="w-10 h-10 text-stone-200 dark:text-stone-700 mx-auto mb-3" /><p className="font-semibold text-stone-400 text-sm">No bookmarked items yet</p></div>
+          )}
+
+          {/* Reviews */}
+          {profileTab === "reviews" && (
+            loadingProfile
+              ? <div className="text-center py-14"><p className="font-semibold text-stone-400 text-sm">Loading reviews...</p></div>
+              : userReviews.length > 0
+                ? <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-4">{userReviews.map((review) => <ProfileReviewCard key={review.id} review={review} />)}</div>
+                : <div className="text-center py-14 px-6"><Star className="w-10 h-10 text-stone-200 dark:text-stone-700 mx-auto mb-3" /><p className="font-semibold text-stone-400 text-sm">No reviews yet</p></div>
           )}
         </div>
       </div>

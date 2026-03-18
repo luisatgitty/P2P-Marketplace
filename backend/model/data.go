@@ -170,6 +170,21 @@ type ProfileListingFromDb struct {
 	Status       string  `gorm:"column:status"        json:"status"`
 }
 
+type ProfileReviewFromDb struct {
+	Id               string `gorm:"column:id"`
+	ReviewerId       string `gorm:"column:reviewer_id"`
+	ReviewerName     string `gorm:"column:reviewer_name"`
+	ReviewerImageUrl string `gorm:"column:reviewer_image_url"`
+	Rating           int    `gorm:"column:rating"`
+	Comment          string `gorm:"column:comment"`
+	ReviewDate       string `gorm:"column:review_date"`
+	ListingId        string `gorm:"column:listing_id"`
+	ListingTitle     string `gorm:"column:listing_title"`
+	ListingPrice     int    `gorm:"column:listing_price"`
+	ListingPriceUnit string `gorm:"column:listing_price_unit"`
+	ListingImageUrl  string `gorm:"column:listing_image_url"`
+}
+
 type HomeListingFromDb struct {
 	Id           string    `gorm:"column:id"`
 	Title        string    `gorm:"column:title"`
