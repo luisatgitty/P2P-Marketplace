@@ -16,6 +16,7 @@ import { type PostCardProps } from "@/components/post-card";
 import ListingTypeBadge from "@/components/listing-type-badge";
 import ListingConditionBadge from "@/components/listing-condition-badge";
 import { LoadingPage } from "@/components/loading";
+import { RequestToRentModal, BookServiceModal } from "@/components/request-modals";
 import { ReportModal } from "@/components/report-modal";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -218,7 +219,9 @@ export default function ListingDetailPage() {
   const [offerOpen,   setOfferOpen]  = useState(false);
   const [offerAmount, setOfferAmt]   = useState("");
   const [offerSent,   setOfferSent]  = useState(false);
-  const [reportOpen,  setReportOpen] = useState(false);
+  const [rentOpen,  setRentOpen]  = useState(false);
+  const [bookOpen,  setBookOpen]  = useState(false);
+          const [reportOpen,  setReportOpen] = useState(false);
   const [submittingReport, setSubmittingReport] = useState(false);
   const [shownContactNumber, setShownContactNumber] = useState<string | null>(null);
   const [deleting,    setDeleting]   = useState(false);
@@ -406,7 +409,9 @@ export default function ListingDetailPage() {
 
   function handleBuy() {
     if (!isAuth) { router.push("/login"); return; }
-    setOfferOpen(true);
+    if (isRent)    { setRentOpen(true);  return; }
+    if (isService) { setBookOpen(true);  return; }
+    setOfferOpen(true); // sell — unchanged
   }
 
   function sendOffer() {
@@ -890,6 +895,24 @@ export default function ListingDetailPage() {
           </div>
         </div>
       )}
+
+      {/* ══ REQUEST TO RENT MODAL ══════════════════════════════════════════════ */}
+      <RequestToRentModal
+        open={rentOpen}
+        onClose={() => setRentOpen(false)}
+        listingTitle={listing.title}
+        listingPrice={listing.price}
+        priceUnit={listing.priceUnit ?? ""}
+      />
+
+      {/* ══ BOOK SERVICE MODAL ════════════════════════════════════════════════ */}
+      <BookServiceModal
+        open={bookOpen}
+        onClose={() => setBookOpen(false)}
+        listingTitle={listing.title}
+        listingPrice={listing.price}
+        priceUnit={listing.priceUnit ?? ""}
+      />
 
       {/* ══ REPORT MODAL ══════════════════════════════════════════════════════ */}
       {reportOpen && (
