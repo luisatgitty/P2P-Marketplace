@@ -181,6 +181,11 @@ func DeactivateMeProfile(c *fiber.Ctx) error {
 }
 
 func mapProfileUser(user model.ProfileUserFromDb, apiURL string) map[string]any {
+	lastLoginAt := ""
+	if user.LastLoginAt != nil {
+		lastLoginAt = user.LastLoginAt.UTC().Format("2006-01-02T15:04:05Z")
+	}
+
 	return map[string]any{
 		"firstName":       user.FirstName,
 		"lastName":        user.LastName,
@@ -194,6 +199,10 @@ func mapProfileUser(user model.ProfileUserFromDb, apiURL string) map[string]any 
 		"coverImageUrl":   resolveAssetURL(apiURL, user.CoverImage),
 		"role":            user.Role,
 		"status":          user.Status,
+		"createdAt":       user.CreatedAt.UTC().Format("2006-01-02T15:04:05Z"),
+		"lastLoginAt":     lastLoginAt,
+		"overallRating":   user.OverallRating,
+		"reviewCount":     user.ReviewCount,
 	}
 }
 

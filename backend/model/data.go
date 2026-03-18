@@ -141,18 +141,22 @@ type ListingReviewFromDb struct {
 }
 
 type ProfileUserFromDb struct {
-	FirstName    string `gorm:"column:first_name"         json:"firstName"`
-	LastName     string `gorm:"column:last_name"          json:"lastName"`
-	Email        string `gorm:"column:email"              json:"email"`
-	PhoneNumber  string `gorm:"column:phone_number"       json:"phoneNumber"`
-	Bio          string `gorm:"column:bio"                json:"bio"`
-	LocationBrgy string `gorm:"column:location_barangay"  json:"locationBrgy"`
-	LocationCity string `gorm:"column:location_city"      json:"locationCity"`
-	LocationProv string `gorm:"column:location_province"  json:"locationProv"`
-	ProfileImage string `gorm:"column:profile_image_url"  json:"profileImageUrl"`
-	CoverImage   string `gorm:"column:cover_image_url"    json:"coverImageUrl"`
-	Role         string `gorm:"column:role"               json:"role"`
-	Status       string `gorm:"column:verification_status" json:"status"`
+	FirstName     string     `gorm:"column:first_name"         json:"firstName"`
+	LastName      string     `gorm:"column:last_name"          json:"lastName"`
+	Email         string     `gorm:"column:email"              json:"email"`
+	PhoneNumber   string     `gorm:"column:phone_number"       json:"phoneNumber"`
+	Bio           string     `gorm:"column:bio"                json:"bio"`
+	LocationBrgy  string     `gorm:"column:location_barangay"  json:"locationBrgy"`
+	LocationCity  string     `gorm:"column:location_city"      json:"locationCity"`
+	LocationProv  string     `gorm:"column:location_province"  json:"locationProv"`
+	ProfileImage  string     `gorm:"column:profile_image_url"  json:"profileImageUrl"`
+	CoverImage    string     `gorm:"column:cover_image_url"    json:"coverImageUrl"`
+	Role          string     `gorm:"column:role"               json:"role"`
+	Status        string     `gorm:"column:verification_status" json:"status"`
+	CreatedAt     time.Time  `gorm:"column:created_at"      json:"createdAt"`
+	LastLoginAt   *time.Time `gorm:"column:last_login_at"  json:"lastLoginAt"`
+	OverallRating float64    `gorm:"column:overall_rating"   json:"overallRating"`
+	ReviewCount   int        `gorm:"column:review_count"          json:"reviewCount"`
 }
 
 type ProfileListingFromDb struct {

@@ -37,6 +37,10 @@ export interface ProfilePayload {
     coverImageUrl?: string;
     role: string;
     status: string;
+    createdAt?: string;
+    lastLoginAt?: string;
+    overallRating?: number;
+    reviewCount?: number;
   };
   listings: ProfileListingItem[];
   bookmarks: ProfileListingItem[];

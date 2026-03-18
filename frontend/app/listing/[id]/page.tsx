@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import {
-  MapPin, Star, ShieldCheck, MessageCircle, Bookmark, Share2,
+  MapPin, Star, MessageCircle, Bookmark, Share2,
   ChevronLeft, ChevronRight, Flag, Eye, Clock, Package,
   CheckCircle, Phone, Zap, ArrowLeft, Truck, CalendarDays,
 } from "lucide-react";
@@ -15,6 +15,7 @@ import { getUserProfileData } from "@/services/profileService";
 import { type PostCardProps } from "@/components/post-card";
 import ListingTypeBadge from "@/components/listing-type-badge";
 import ListingConditionBadge from "@/components/listing-condition-badge";
+import VerificationBadge from "@/components/verification-badge";
 import { LoadingPage } from "@/components/loading";
 import { RequestToRentModal, BookServiceModal } from "@/components/request-modals";
 import { ReportModal } from "@/components/report-modal";
@@ -285,6 +286,8 @@ export default function ListingDetailPage() {
   const listingSellStatus = (listing.sellStatus ?? "").trim().toLowerCase();
   const isSold = isSell && (listingStatus === "sold" || listingSellStatus === "sold");
   const images       = extra.images.filter(Boolean);
+  const sellerRating = Number.isFinite(listing.seller.rating) ? Number(listing.seller.rating) : 0;
+  const hasSellerRating = sellerRating > 0;
   const sellerProfileHref = isOwnListing
     ? "/profile"
     : (listing.seller.id ? `/profile?userId=${listing.seller.id}` : "/profile");
@@ -684,12 +687,6 @@ export default function ListingDetailPage() {
                         >
                           🗑 {deleting ? "Removing..." : "Remove Listing"}
                         </button>
-                        <button
-                          onClick={handleShowContactNumber}
-                          className="flex items-center justify-center gap-2 w-full py-2.5 rounded-full text-stone-500 dark:text-stone-400 text-xs font-medium hover:text-stone-700 dark:hover:text-stone-200 transition-colors"
-                        >
-                          <Phone className="w-3.5 h-3.5" /> {shownContactNumber ?? "Show My Number"}
-                        </button>
                       </>
                     )}
                   </div>
@@ -732,12 +729,6 @@ export default function ListingDetailPage() {
                           className="flex items-center justify-center gap-2 w-full py-3 rounded-full border-2 border-stone-200 dark:border-[#2a2d3e] text-stone-700 dark:text-stone-200 text-sm font-semibold hover:border-stone-400 dark:hover:border-stone-500 hover:bg-stone-50 dark:hover:bg-[#252837] transition-all">
                           <MessageCircle className="w-4 h-4" /> {messaging ? "Opening chat..." : "Message Seller"}
                         </button>
-                        <button
-                          onClick={handleShowContactNumber}
-                          disabled={isFetchingContact}
-                          className="flex items-center justify-center gap-2 w-full py-2.5 rounded-full text-stone-500 dark:text-stone-400 text-xs font-medium hover:text-stone-700 dark:hover:text-stone-200 transition-colors disabled:opacity-60 disabled:cursor-not-allowed">
-                          <Phone className="w-3.5 h-3.5" /> {shownContactNumber ?? (isFetchingContact ? "Loading Number..." : "Show Contact Number")}
-                        </button>
                       </>
                     )}
                   </div>
@@ -745,8 +736,8 @@ export default function ListingDetailPage() {
               </div>
 
               {/* ── Seller card ── */}
-              <div className="bg-white dark:bg-[#1c1f2e] rounded-2xl border border-stone-200 dark:border-[#2a2d3e] shadow-sm p-5 mb-4">
-                <div className="flex items-center gap-3 mb-4">
+              <div className="flex flex-col gap-4 bg-white dark:bg-[#1c1f2e] rounded-2xl border border-stone-200 dark:border-[#2a2d3e] shadow-sm p-5 mb-4">
+                <div className="flex items-center gap-3">
                   <Link href={sellerProfileHref} className="block">
                     <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#3a4a6a] to-[#1e2a40] flex items-center justify-center text-white font-bold text-lg flex-shrink-0 hover:opacity-90 transition-opacity">
                       {listing.seller.name[0].toUpperCase()}
@@ -755,39 +746,39 @@ export default function ListingDetailPage() {
                   <div className="min-w-0">
                     <p className="font-bold text-stone-900 dark:text-stone-50 text-md">{listing.seller.name}</p>
                     <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                      {listing.seller.rating && (
+                      {hasSellerRating ? (
                         <span className="flex items-center gap-0.5 text-xs text-amber-500 font-semibold">
-                          <Star className="w-3 h-3 fill-amber-400" /> {listing.seller.rating.toFixed(1)}
+                          <Star className="w-3 h-3 fill-amber-400" /> {sellerRating.toFixed(1)}
                         </span>
+                      ) : (
+                        <span className="text-xs text-stone-400 dark:text-stone-500 font-medium">No ratings yet</span>
                       )}
-                      <span className="flex items-center gap-0.5 text-xs text-teal-600 dark:text-teal-400 font-medium">
-                        <ShieldCheck className="w-3 h-3" /> Verified
-                      </span>
+                      <VerificationBadge
+                        verified={Boolean(listing.seller.isPro)}
+                        className="text-[10px] px-2 py-0.5"
+                      />
                     </div>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-3 gap-2 mb-4 text-center">
-                  {[
-                    { label: "Listings", value: "24"   },
-                    { label: "Response", value: "< 1h" },
-                    { label: "Sales",    value: "98%"  },
-                  ].map((s) => (
-                    <div key={s.label} className="bg-stone-50 dark:bg-[#13151f] rounded-xl py-2.5">
-                      <p className="text-sm font-bold text-stone-900 dark:text-stone-50">{s.value}</p>
-                      <p className="text-[11px] text-stone-400 dark:text-stone-500 mt-0.5">{s.label}</p>
-                    </div>
-                  ))}
-                </div>
-
+                {/* View Profile Button */}
                 <Link
                   href={sellerProfileHref}
-                  className="flex items-center justify-center gap-2 w-full py-2.5 rounded-full border border-stone-200 dark:border-[#2a2d3e] text-stone-600 dark:text-stone-300 text-sm font-semibold hover:border-stone-400 dark:hover:border-stone-500 hover:bg-stone-50 dark:hover:bg-[#252837] transition-all">
+                  className="flex items-center justify-center w-full py-2.5 rounded-full border border-stone-200 dark:border-[#2a2d3e] text-stone-600 dark:text-stone-300 text-sm font-semibold hover:border-stone-400 dark:hover:border-stone-500 hover:bg-stone-50 dark:hover:bg-[#252837] transition-all"
+                  style={{ background: "linear-gradient(135deg, #1e2433 0%, #3a4a6a 100%)" }}>
                   {isOwnListing ? "View My Profile" : "View Seller Profile"}
                 </Link>
+
+                {/* Contact Button */}
+                <button
+                  onClick={handleShowContactNumber}
+                  disabled={isFetchingContact}
+                  className="flex items-center justify-center gap-2 w-full py-3 rounded-full border border-stone-200 dark:border-[#2a2d3e] text-sm font-bold text-white transition-all hover:opacity-90 active:scale-[0.98]">
+                  <Phone className="w-3.5 h-3.5" /> {shownContactNumber ?? (isFetchingContact ? "Loading Number..." : "Show Contact Number")}
+                </button>
               </div>
 
-              {/* ── Safety tips ── */}
+              {/* ── Safety Tips ── */}
               <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-2xl p-4">
                 <p className="text-sm font-bold text-amber-800 dark:text-amber-300 mb-2">🛡 Safety Tips</p>
                 <ul className="flex flex-col gap-1.5">

@@ -13,6 +13,7 @@ import { useUser } from "@/utils/UserContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import ListingTypeBadge from "@/components/listing-type-badge";
+import VerificationBadge from "@/components/verification-badge";
 import { toast } from "sonner";
 import {
   deactivateProfile,
@@ -80,34 +81,60 @@ function resolveVerificationState(status: string): VerificationState {
   return "unverified";
 }
 
-function VerificationBadge({ state }: { state: VerificationState }) {
-  if (state === "verified") return (
-    <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700">
-      <ShieldCheck className="w-3 h-3" /> Verified
-    </span>
-  );
-  return (
-    <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-800">
-      <ShieldCheck className="w-3 h-3" /> Unverified
-    </span>
-  );
+function formatMemberSince(createdAt?: string): string {
+  if (!createdAt) return "Member since —";
+
+  const date = new Date(createdAt);
+  if (Number.isNaN(date.getTime())) return "Member since —";
+
+  return `Member since ${date.toLocaleDateString("en-PH", {
+    month: "short",
+    year: "numeric",
+  })}`;
+}
+
+function formatLastActive(lastLoginAt?: string): string {
+  if (!lastLoginAt) return "Last active —";
+
+  const date = new Date(lastLoginAt);
+  if (Number.isNaN(date.getTime())) return "Last active —";
+
+  const diffMs = Math.max(0, Date.now() - date.getTime());
+  const minute = 60 * 1000;
+  const hour = 60 * minute;
+  const day = 24 * hour;
+
+  if (diffMs < minute) return "Last active just now";
+  if (diffMs < hour) {
+    const minutes = Math.floor(diffMs / minute);
+    return `Last active ${minutes} minute${minutes === 1 ? "" : "s"} ago`;
+  }
+  if (diffMs < day) {
+    const hours = Math.floor(diffMs / hour);
+    return `Last active ${hours} hour${hours === 1 ? "" : "s"} ago`;
+  }
+  if (diffMs < 7 * day) {
+    const days = Math.floor(diffMs / day);
+    return `Last active ${days} day${days === 1 ? "" : "s"} ago`;
+  }
+
+  return `Last active ${date.toLocaleDateString("en-PH", {
+    month: "short",
+    day: "2-digit",
+    year: "numeric",
+  })}`;
+}
+
+function formatOverallRating(rating?: number, reviewCount?: number): string {
+  const count = reviewCount ?? 0;
+  if (count <= 0) return "No ratings yet";
+
+  const safeRating = Number.isFinite(rating) ? Number(rating) : 0;
+  return `${safeRating.toFixed(1)} (${count})`;
 }
 
 // ─── Profile listing card ─────────────────────────────────────────────────────
 function ProfileListingCard({ listing, showMeta = false, tab }: { listing: ProfileListingItem; showMeta?: boolean; tab?: ListingTab }) {
-  const statusColor: Record<ListingTab, string> = { all: "text-stone-500", active: "text-teal-600", sold: "text-red-500", booked: "text-stone-400" };
-  const statusLabel: Record<ListingTab, string> = { all: "All", active: "Active", sold: "Sold", booked: "Booked" };
-  const normalizedStatus = (listing.status ?? "").toLowerCase();
-  const statusByListing = SOLD_STATUSES.has(normalizedStatus)
-    ? { label: "Sold", color: statusColor.sold }
-    : BOOKED_STATUSES.has(normalizedStatus)
-      ? { label: "Booked", color: statusColor.booked }
-      : { label: "Active", color: statusColor.active };
-  const statusMeta = tab === "all"
-    ? statusByListing
-    : tab
-      ? { label: statusLabel[tab], color: statusColor[tab] }
-      : null;
   const fmt = new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP", minimumFractionDigits: 0 });
   return (
     <Link href={`/listing/${listing.id}`} className="block group">
@@ -124,11 +151,6 @@ function ProfileListingCard({ listing, showMeta = false, tab }: { listing: Profi
               soldClassName="text-[10px] font-semibold px-2 rounded-full"
             />
           </div>
-          {showMeta && statusMeta && (
-            <span className={cn("absolute top-2 right-2 text-[10px] font-semibold bg-white/90 dark:bg-black/70 px-2 py-0.5 rounded-full", statusMeta.color)}>
-              ● {statusMeta.label}
-            </span>
-          )}
         </div>
         <div className="p-3">
           <p className="text-stone-800 dark:text-stone-100 font-semibold text-sm leading-tight truncate">{listing.title}</p>
@@ -661,6 +683,10 @@ export default function ProfilePage() {
   const initials = `${profileUser?.firstName?.[0] ?? ""}${profileUser?.lastName?.[0] ?? ""}`.toUpperCase() || "?";
   const fullName = profileUser ? `${profileUser.firstName} ${profileUser.lastName}` : "—";
   const locationText = [profileUser?.locationCity, profileUser?.locationProv].filter(Boolean).join(", ") || "Location not set";
+  const memberSinceText = formatMemberSince(profileUser?.createdAt);
+  const lastActiveText = formatLastActive(profileUser?.lastLoginAt);
+  const overallRatingText = formatOverallRating(profileUser?.overallRating, profileUser?.reviewCount);
+  const hasOverallRating = (profileUser?.reviewCount ?? 0) > 0;
   const isVerifiedSeller = !isViewingExternalProfile && (profileUser?.status ?? "").toLowerCase() === "verified";
 
   // Shared label style
@@ -814,13 +840,14 @@ export default function ProfilePage() {
               <h1 className="text-xl font-bold text-stone-900 dark:text-stone-100">{fullName}</h1>
               <VerificationBadge state={verificationState} />
             </div>
-            <p className="text-xs text-stone-400 dark:text-stone-500 mb-3">Member since Jan 2024</p>
+            <p className="text-xs text-stone-400 dark:text-stone-500 mb-3">{memberSinceText}</p>
 
             {/* Meta row */}
             <div className="flex flex-wrap gap-x-5 gap-y-1.5">
               <span className="flex items-center gap-1.5 text-xs text-stone-500 dark:text-stone-400"><MapPin className="w-3.5 h-3.5 text-stone-400 dark:text-stone-500" /> {locationText}</span>
               {!isViewingExternalProfile && <span className="flex items-center gap-1.5 text-xs text-stone-500 dark:text-stone-400"><Mail className="w-3.5 h-3.5 text-stone-400 dark:text-stone-500" /> {profileUser?.email}</span>}
-              <span className="flex items-center gap-1.5 text-xs text-stone-500 dark:text-stone-400"><Calendar className="w-3.5 h-3.5 text-stone-400 dark:text-stone-500" /> Last active today</span>
+              <span className="flex items-center gap-1.5 text-xs text-stone-500 dark:text-stone-400"><Calendar className="w-3.5 h-3.5 text-stone-400 dark:text-stone-500" /> {lastActiveText}</span>
+              <span className="flex items-center gap-1.5 text-xs text-stone-500 dark:text-stone-400"><Star className={cn("w-3.5 h-3.5", hasOverallRating ? "fill-amber-400 text-amber-400" : "text-stone-400 dark:text-stone-500")} /> {overallRatingText}</span>
             </div>
           </div>
         </div>
@@ -998,10 +1025,10 @@ export default function ProfilePage() {
                     ? "text-stone-900 dark:text-stone-100 border-b-2 border-stone-900 dark:border-stone-300"
                     : "text-stone-400 dark:text-stone-500 hover:text-stone-600 dark:hover:text-stone-300")}>
                 {t === "listings"
-                  ? (isViewingExternalProfile ? "📦 Listings" : "📦 My Listings")
+                  ? "📦 Listing"
                   : t === "bookmarks"
-                    ? "🔖 Bookmarked Items"
-                    : (isViewingExternalProfile ? "⭐ Reviews" : "⭐ My Reviews")}
+                    ? "🔖 Bookmark"
+                    : "⭐ Review"}
               </button>
             ))}
           </div>
@@ -1032,9 +1059,23 @@ export default function ProfilePage() {
               <div className="text-center py-14 px-6">
                 <p className="font-semibold text-stone-400 text-sm">Loading listings...</p>
               </div>
-            ) : allListings.length > 0
-              ? <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 p-4">{allListings.map((l) => <ProfileListingCard key={l.id} listing={l} showMeta tab={listingTab} />)}{isVerifiedSeller && <AddListingCard />}</div>
-              : <div className="text-center py-14 px-6"><Package className="w-10 h-10 text-stone-200 dark:text-stone-700 mx-auto mb-3" /><p className="font-semibold text-stone-400 text-sm">No listings yet</p>{isVerifiedSeller && <Link href="/create"><Button size="sm" className="mt-4 rounded-full bg-stone-900 hover:bg-stone-800 text-white text-xs"><Plus className="w-3 h-3" /> Add Listing</Button></Link>}</div>}
+            ) : (allListings.length > 0) ? (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 p-4">
+                {allListings.map((l) => <ProfileListingCard key={l.id} listing={l} showMeta tab={listingTab} />)}{isVerifiedSeller && <AddListingCard />}
+              </div>
+            ) : (
+              <div className="text-center py-14 px-6">
+                <Package className="w-10 h-10 text-stone-200 dark:text-stone-700 mx-auto mb-3" />
+                <p className="font-semibold text-stone-400 text-sm">No listings yet</p>
+                {isVerifiedSeller && (
+                  <Link href="/create">
+                    <Button size="sm" className="mt-4 rounded-full bg-stone-900 hover:bg-stone-800 text-white text-xs">
+                      <Plus className="w-3 h-3" /> Add Listing
+                    </Button>
+                  </Link>
+                )}
+              </div>
+            )}
           </>)}
 
           {/* Bookmarked Items */}

@@ -31,8 +31,19 @@ func GetProfileUserById(userId string) (model.ProfileUserFromDb, error) {
 			profile_image_url,
 			cover_image_url,
 			role,
-			verification_status
+			verification_status,
+			created_at,
+			last_login_at,
+			COALESCE(rv.avg_rating, 0) AS overall_rating,
+			COALESCE(rv.review_count, 0) AS review_count
 		FROM public.users
+		LEFT JOIN LATERAL (
+			SELECT
+				AVG(r.rating)::float AS avg_rating,
+				COUNT(*)::int AS review_count
+			FROM public.reviews r
+			WHERE r.reviewed_user_id = users.id
+		) rv ON TRUE
 		WHERE id=$1
 	`
 
