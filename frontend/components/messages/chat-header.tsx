@@ -10,7 +10,7 @@ import { useUser } from "@/utils/UserContext";
 import { markListingAsSold, submitUserListingReport } from "@/services/listingDetailService";
 import { ReportModal } from "@/components/report-modal";
 import { ConfirmActionModal } from "@/components/confirm-action-modal";
-import ListingTypeBadge from "./listing-type-badge";
+import ListingTypeBadge from "@/components/listing-type-badge";
 
 interface ChatHeaderProps {
   conversation: Conversation;
@@ -127,7 +127,7 @@ export default function ChatHeader({ conversation, onDelete, onMarkedSold }: Cha
           <span className="text-sm font-bold text-stone-900 dark:text-stone-50 truncate">
             {otherParticipant.firstName} {otherParticipant.lastName}
           </span>
-          <ListingTypeBadge type={listing.listingType} />
+          <ListingTypeBadge type={listing.listingType} status={listing.status} />
         </div>
         <p className={cn(
           "text-[11px] font-medium",

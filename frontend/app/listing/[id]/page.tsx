@@ -13,6 +13,8 @@ import { useUser } from "@/utils/UserContext";
 import { addListingBookmark, getListingDetailById, removeListingBookmark, submitListingReport } from "@/services/listingDetailService";
 import { getUserProfileData } from "@/services/profileService";
 import { type PostCardProps } from "@/components/post-card";
+import ListingTypeBadge from "@/components/listing-type-badge";
+import ListingConditionBadge from "@/components/listing-condition-badge";
 import { LoadingPage } from "@/components/loading";
 import { ReportModal } from "@/components/report-modal";
 import { toast } from "sonner";
@@ -54,26 +56,12 @@ function getDefaultExtra(listing: PostCardProps): ExtraDetail {
 // ── Formatting ─────────────────────────────────────────────────────────────────
 const fmt = new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP", minimumFractionDigits: 0 });
 
-// ── Condition badge colours — keys match the form's condition values exactly ───
-const CONDITION_COLORS: Record<string, string> = {
-  "Brand New": "bg-teal-100 dark:bg-teal-900/40 text-teal-700 dark:text-teal-300",
-  "Like New":  "bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300",
-  "Good":      "bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300",
-  "Fair":      "bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-300",
-  "For Parts": "bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400",
-};
-
 // ── Type badge — keys match PostCardProps.type ("sell" | "rent" | "service") ───
 // FIX: was keyed as "sale" which never matched the actual type value "sell"
 const TYPE_LABEL: Record<string, string> = {
   sell:    "For Sale",
   rent:    "For Rent",
   service: "Service",
-};
-const TYPE_COLOR: Record<string, string> = {
-  sell:    "bg-stone-800 text-stone-100",
-  rent:    "bg-teal-700 text-white",
-  service: "bg-violet-700 text-white",
 };
 
 // ── Small related card ────────────────────────────────────────────────────────
@@ -87,9 +75,16 @@ function RelatedCard({ listing }: { listing: PostCardProps }) {
             className="object-cover group-hover:scale-105 transition-transform duration-300"
             sizes="160px"
           />
-          <span className={cn("absolute top-1.5 left-1.5 text-[11px] font-bold px-1.5 py-0.5 rounded-full", TYPE_COLOR[listing.type])}>
-            {TYPE_LABEL[listing.type]}
-          </span>
+          <div className="absolute top-1.5 left-1.5">
+            <ListingTypeBadge
+              type={listing.type}
+              status={listing.status}
+              sellStatus={listing.sellStatus}
+              variant="solid"
+              className="text-[11px] font-bold"
+              soldClassName="text-[11px] font-bold"
+            />
+          </div>
         </div>
         <div className="p-2.5">
           <p className="text-stone-800 dark:text-stone-100 font-semibold text-sm leading-tight line-clamp-2">{listing.title}</p>
@@ -492,18 +487,25 @@ export default function ListingDetailPage() {
                 />
 
                 {/* Type badge */}
-                <span className={cn("absolute top-4 left-4 text-xs font-bold px-3 py-1 rounded-full", TYPE_COLOR[listing.type])}>
-                  {TYPE_LABEL[listing.type]}
-                </span>
+                <div className="absolute top-4 left-4">
+                  <ListingTypeBadge
+                    type={listing.type}
+                    status={listing.status}
+                    sellStatus={listing.sellStatus}
+                    variant="solid"
+                    className="text-xs font-bold px-3 py-1 rounded-full"
+                    soldClassName="text-xs font-bold px-3 py-1 rounded-full"
+                  />
+                </div>
 
                 {/* Condition badge — sell listings only; rent/service have no condition */}
                 {isSell && extra.condition && (
-                  <span className={cn(
-                    "absolute top-4 right-4 text-xs font-semibold px-3 py-1 rounded-full",
-                    CONDITION_COLORS[extra.condition] ?? CONDITION_COLORS["Good"]
-                  )}>
-                    {extra.condition}
-                  </span>
+                  <div className="absolute top-4 right-4">
+                    <ListingConditionBadge
+                      condition={extra.condition}
+                      className="text-xs font-semibold px-3 py-1"
+                    />
+                  </div>
                 )}
 
                 {/* Nav arrows */}

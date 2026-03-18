@@ -12,6 +12,7 @@ import {
 import { useUser } from "@/utils/UserContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import ListingTypeBadge from "@/components/listing-type-badge";
 import { toast } from "sonner";
 import {
   deactivateProfile,
@@ -93,8 +94,6 @@ function VerificationBadge({ state }: { state: VerificationState }) {
 
 // ─── Profile listing card ─────────────────────────────────────────────────────
 function ProfileListingCard({ listing, showMeta = false, tab }: { listing: ProfileListingItem; showMeta?: boolean; tab?: ListingTab }) {
-  const badgeClass = { sell: "bg-stone-800 text-stone-100", rent: "bg-teal-700 text-white", service: "bg-violet-700 text-white" }[listing.type];
-  const badgeLabel = { sell: "For Sale", rent: "For Rent", service: "Service" }[listing.type];
   const statusColor: Record<ListingTab, string> = { all: "text-stone-500", active: "text-teal-600", sold: "text-red-500", booked: "text-stone-400" };
   const statusLabel: Record<ListingTab, string> = { all: "All", active: "Active", sold: "Sold", booked: "Booked" };
   const normalizedStatus = (listing.status ?? "").toLowerCase();
@@ -114,7 +113,16 @@ function ProfileListingCard({ listing, showMeta = false, tab }: { listing: Profi
       <div className="bg-white dark:bg-[#1c1f2e] rounded-2xl overflow-hidden border border-stone-200 dark:border-[#2a2d3e] hover:-translate-y-1 hover:shadow-md transition-all duration-200">
         <div className="relative aspect-4/3 bg-stone-100 dark:bg-[#13151f] overflow-hidden">
           <img src={listing.imageUrl} alt={listing.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-          <span className={cn("absolute top-2 left-2 text-[10px] font-semibold px-2 py-0.5 rounded-full", badgeClass)}>{badgeLabel}</span>
+          <div className="absolute top-2 left-2">
+            <ListingTypeBadge
+              type={listing.type}
+              status={listing.status}
+              sellStatus={listing.sellStatus}
+              variant="solid"
+              className="text-[10px] font-semibold px-2 rounded-full"
+              soldClassName="text-[10px] font-semibold px-2 rounded-full"
+            />
+          </div>
           {showMeta && statusMeta && (
             <span className={cn("absolute top-2 right-2 text-[10px] font-semibold bg-white/90 dark:bg-black/70 px-2 py-0.5 rounded-full", statusMeta.color)}>
               ● {statusMeta.label}
