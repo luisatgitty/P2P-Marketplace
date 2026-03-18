@@ -313,6 +313,21 @@ func MarkListingAsSold(c *fiber.Ctx) error {
 		return SendErrorResponse(c, 400, err.Error(), err)
 	}
 
+	participantIds, participantErr := repository.GetParticipantUserIdsByListing(listingId)
+	if participantErr == nil {
+		for _, targetUserId := range participantIds {
+			middleware.RealtimeHub.SendToUser(targetUserId, map[string]any{
+				"type": "listing:status",
+				"data": map[string]any{
+					"listingId":   listingId,
+					"status":      "SOLD",
+					"sellStatus":  "SOLD",
+					"updatedById": userId,
+				},
+			})
+		}
+	}
+
 	return SendSuccessResponse(c, 200, "Listing marked as sold successfully", map[string]any{
 		"listingId": listingId,
 		"status":    "SOLD",

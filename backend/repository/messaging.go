@@ -368,6 +368,45 @@ func GetConversationPeerUserId(userId, conversationId string) (string, error) {
 	return strings.TrimSpace(peerId), nil
 }
 
+func GetParticipantUserIdsByListing(listingId string) ([]string, error) {
+	db := middleware.DBConn
+	rows := make([]struct {
+		BuyerId  string `gorm:"column:buyer_id"`
+		SellerId string `gorm:"column:seller_id"`
+	}, 0)
+
+	query := `
+		SELECT
+			buyer_id::text AS buyer_id,
+			seller_id::text AS seller_id
+		FROM public.conversations
+		WHERE listing_id = $1
+	`
+
+	if err := db.Raw(query, listingId).Scan(&rows).Error; err != nil {
+		return nil, fmt.Errorf("Failed to retrieve conversation participants")
+	}
+
+	unique := make(map[string]struct{})
+	for _, row := range rows {
+		buyerId := strings.TrimSpace(row.BuyerId)
+		sellerId := strings.TrimSpace(row.SellerId)
+		if buyerId != "" {
+			unique[buyerId] = struct{}{}
+		}
+		if sellerId != "" {
+			unique[sellerId] = struct{}{}
+		}
+	}
+
+	ids := make([]string, 0, len(unique))
+	for userId := range unique {
+		ids = append(ids, userId)
+	}
+
+	return ids, nil
+}
+
 func CreateMessage(userId, conversationId, content, replyToMessageId string, attachments []model.MessageAttachmentBody) (model.MessageFromDb, error) {
 	db := middleware.DBConn
 	var created model.MessageFromDb

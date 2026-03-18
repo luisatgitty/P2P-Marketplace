@@ -138,6 +138,12 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
           if (parsed.type === "message:unsend") {
             window.dispatchEvent(new CustomEvent("realtime:message-unsend", { detail: parsed.data }));
             window.dispatchEvent(new Event("messages:updated"));
+            return;
+          }
+
+          if (parsed.type === "listing:status") {
+            window.dispatchEvent(new CustomEvent("realtime:listing-status", { detail: parsed.data }));
+            window.dispatchEvent(new Event("messages:updated"));
           }
         } catch {
           // Ignore malformed realtime payloads.
