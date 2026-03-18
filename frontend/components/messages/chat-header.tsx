@@ -2,29 +2,34 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, MoreVertical, User, ExternalLink, Flag, Trash2 } from "lucide-react";
+import { ArrowLeft, MoreVertical, User, ExternalLink, Flag, Trash2, CheckCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import type { Conversation } from "@/types/messaging";
 import { useUser } from "@/utils/UserContext";
-import { submitUserListingReport } from "@/services/listingDetailService";
+import { markListingAsSold, submitUserListingReport } from "@/services/listingDetailService";
 import { ReportModal } from "@/components/report-modal";
+import { ConfirmActionModal } from "@/components/confirm-action-modal";
 import ListingTypeBadge from "./listing-type-badge";
 
 interface ChatHeaderProps {
   conversation: Conversation;
   onDelete?: () => void;
+  onMarkedSold?: () => void;
 }
 
-export default function ChatHeader({ conversation, onDelete }: ChatHeaderProps) {
+export default function ChatHeader({ conversation, onDelete, onMarkedSold }: ChatHeaderProps) {
   const router = useRouter();
   const { isAuth } = useUser();
   const { otherParticipant, listing } = conversation;
   const [menuOpen, setMenuOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
+  const [markSoldOpen, setMarkSoldOpen] = useState(false);
   const [submittingReport, setSubmittingReport] = useState(false);
+  const [markingSold, setMarkingSold] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const profileHref = otherParticipant.id ? `/profile?userId=${otherParticipant.id}` : "/profile";
+  const canMarkAsSold = conversation.isSeller && listing.listingType === "SELL" && listing.status !== "SOLD";
 
   // Close menu on outside click
   useEffect(() => {
@@ -63,9 +68,27 @@ export default function ChatHeader({ conversation, onDelete }: ChatHeaderProps) 
   const menuItems = [
     { icon: User,         label: "View Profile",   action: () => { router.push(profileHref); setMenuOpen(false); } },
     { icon: ExternalLink, label: "View Listing",   action: () => { router.push(`/listing/${listing.id}`); setMenuOpen(false); } },
+    ...(canMarkAsSold ? [{ icon: CheckCircle, label: "Mark as Sold", action: () => { setMenuOpen(false); setMarkSoldOpen(true); }, danger: false }] : []),
     { icon: Flag,         label: "Report User",    action: () => { setMenuOpen(false); setReportOpen(true); }, danger: false },
     { icon: Trash2,       label: "Delete Chat",    action: () => { onDelete?.(); setMenuOpen(false); }, danger: true },
   ];
+
+  const handleConfirmMarkSold = async () => {
+    if (!canMarkAsSold || markingSold) return;
+
+    setMarkingSold(true);
+    try {
+      await markListingAsSold(listing.id);
+      toast.success("Listing marked as sold.", { position: "top-center" });
+      setMarkSoldOpen(false);
+      onMarkedSold?.();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err || "Failed to mark listing as sold.");
+      toast.error(message, { position: "top-center" });
+    } finally {
+      setMarkingSold(false);
+    }
+  };
 
   return (
     <>
@@ -154,6 +177,15 @@ export default function ChatHeader({ conversation, onDelete }: ChatHeaderProps) 
       submitting={submittingReport}
       onClose={() => setReportOpen(false)}
       onSubmit={handleSubmitReport}
+    />
+    <ConfirmActionModal
+      open={markSoldOpen}
+      title="Mark item as sold"
+      message="Please confirm that this For Sale item has already been sold. This action will mark the listing as SOLD."
+      confirmLabel="Confirm"
+      loading={markingSold}
+      onConfirm={handleConfirmMarkSold}
+      onClose={() => setMarkSoldOpen(false)}
     />
     </>
   );

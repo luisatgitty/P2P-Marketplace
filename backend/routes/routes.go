@@ -26,6 +26,7 @@ func AppRoutes(app *fiber.App) {
 	app.Get("/auth/validate-reset-token", controller.ValidateResetToken)
 	app.Post("/auth/reset-password", controller.ResetPassword)
 	app.Post("/listing", controller.AuthenticateUser, controller.CreateListing)
+	app.Patch("/listing/:id/mark-sold", controller.AuthenticateUser, controller.MarkListingAsSold)
 	app.Post("/listing/:id/report", controller.AuthenticateUser, controller.ReportListing)
 	app.Post("/listing/:id/bookmark", controller.AuthenticateUser, controller.AddListingBookmark)
 	app.Delete("/listing/:id/bookmark", controller.AuthenticateUser, controller.RemoveListingBookmark)

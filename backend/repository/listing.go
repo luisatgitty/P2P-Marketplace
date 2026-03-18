@@ -718,6 +718,89 @@ func DeleteListing(userId, listingId string) error {
 	return nil
 }
 
+func MarkListingAsSold(userId, listingId string) error {
+	db := middleware.DBConn
+	tx := db.Begin()
+	if tx.Error != nil {
+		return tx.Error
+	}
+
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	var ownerId string
+	var listingType string
+	var sellStatus string
+
+	checkQuery := `
+		SELECT
+			l.user_id::text AS owner_id,
+			LOWER(l.listing_type::text) AS listing_type,
+			COALESCE(lsd.sell_status, 'AVAILABLE') AS sell_status
+		FROM public.listings l
+		LEFT JOIN public.listing_sell_details lsd
+			ON lsd.listing_id = l.id
+		WHERE l.id = $1
+		LIMIT 1
+	`
+
+	row := tx.Raw(checkQuery, listingId).Row()
+	if err := row.Scan(&ownerId, &listingType, &sellStatus); err != nil {
+		tx.Rollback()
+		return fmt.Errorf("Listing not found")
+	}
+
+	if strings.TrimSpace(ownerId) != strings.TrimSpace(userId) {
+		tx.Rollback()
+		return fmt.Errorf("Only the seller can mark this listing as sold")
+	}
+
+	if listingType != "sell" {
+		tx.Rollback()
+		return fmt.Errorf("Only For Sale listings can be marked as sold")
+	}
+
+	if strings.EqualFold(strings.TrimSpace(sellStatus), "SOLD") {
+		tx.Rollback()
+		return fmt.Errorf("Listing is already marked as sold")
+	}
+
+	updateSellStatusQuery := `
+		UPDATE public.listing_sell_details
+		SET sell_status = 'SOLD'
+		WHERE listing_id = $1
+	`
+	result := tx.Exec(updateSellStatusQuery, listingId)
+	if result.Error != nil {
+		tx.Rollback()
+		return fmt.Errorf("Failed to update sell status")
+	}
+	if result.RowsAffected == 0 {
+		tx.Rollback()
+		return fmt.Errorf("Sell details not found")
+	}
+
+	updateListingQuery := `
+		UPDATE public.listings
+		SET status = 'SOLD',
+			updated_at = now()
+		WHERE id = $1
+	`
+	if err := tx.Exec(updateListingQuery, listingId).Error; err != nil {
+		tx.Rollback()
+		return fmt.Errorf("Failed to update listing status")
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func GetListingDetailById(listingId string) (model.ListingDetailFromDb, error) {
 	db := middleware.DBConn
 	var listing model.ListingDetailFromDb

@@ -296,6 +296,27 @@ func RemoveListingBookmark(c *fiber.Ctx) error {
 	})
 }
 
+func MarkListingAsSold(c *fiber.Ctx) error {
+	listingId := strings.TrimSpace(c.Params("id"))
+	if listingId == "" {
+		return SendErrorResponse(c, 400, "Listing ID is required", nil)
+	}
+
+	userId := fmt.Sprintf("%v", c.Locals("userId"))
+	if strings.TrimSpace(userId) == "" || userId == "%!v(<nil>)" {
+		return SendErrorResponse(c, 401, "User is not authenticated", nil)
+	}
+
+	if err := repository.MarkListingAsSold(userId, listingId); err != nil {
+		return SendErrorResponse(c, 400, err.Error(), err)
+	}
+
+	return SendSuccessResponse(c, 200, "Listing marked as sold successfully", map[string]any{
+		"listingId": listingId,
+		"status":    "SOLD",
+	})
+}
+
 func ReportListing(c *fiber.Ctx) error {
 	listingId := strings.TrimSpace(c.Params("id"))
 	if listingId == "" {

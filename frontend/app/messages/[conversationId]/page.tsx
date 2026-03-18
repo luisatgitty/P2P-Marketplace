@@ -618,6 +618,19 @@ export default function ConversationPage() {
     }
   };
 
+  const handleMarkedSold = () => {
+    setConversation((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        listing: {
+          ...prev.listing,
+          status: "SOLD",
+        },
+      };
+    });
+  };
+
   // ── Loading ───────────────────────────────────────────────────────────────
   if (loading) {
     return <ConversationSkeleton />;
@@ -640,8 +653,8 @@ export default function ConversationPage() {
     <>
       <div className="flex flex-col h-full overflow-hidden bg-white dark:bg-[#0f1117]">
 
-        <ChatHeader conversation={conversation} onDelete={handleDeleteConversation} />
-        <ListingContextCard listing={conversation.listing} />
+        <ChatHeader conversation={conversation} onDelete={handleDeleteConversation} onMarkedSold={handleMarkedSold} />
+        <ListingContextCard listing={conversation.listing} isSeller={conversation.isSeller} onMarkedSold={handleMarkedSold} />
 
         {/* Messages area */}
         <div className="flex-1 overflow-y-auto no-scroll px-4 py-3">

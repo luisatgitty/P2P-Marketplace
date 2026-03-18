@@ -133,3 +133,21 @@ export async function submitUserListingReport(
     throw "An unexpected error occurred. Please try again later.";
   }
 }
+
+export async function markListingAsSold(id: string): Promise<void> {
+  try {
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/listing/${id}/mark-sold`, {
+      method: "PATCH",
+      credentials: "include",
+    });
+
+    if (!res.ok) {
+      const parsedJson = await res.json();
+      throw parsedJson?.data?.message || "Failed to mark listing as sold.";
+    }
+  } catch (err) {
+    if (typeof err === "string") throw err;
+    if (err instanceof Error) throw err.message;
+    throw "An unexpected error occurred. Please try again later.";
+  }
+}
