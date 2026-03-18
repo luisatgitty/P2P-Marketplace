@@ -120,6 +120,11 @@ type ListingImageBody struct {
 	Data     string `json:"data"`
 }
 
+type ReportListingBody struct {
+	Reason      string `json:"reason"`
+	Description string `json:"description"`
+}
+
 type ProfileUserFromDb struct {
 	FirstName    string `gorm:"column:first_name"         json:"firstName"`
 	LastName     string `gorm:"column:last_name"          json:"lastName"`

@@ -10,7 +10,7 @@ import {
   CheckCircle, Phone, Zap, ArrowLeft, Truck, CalendarDays,
 } from "lucide-react";
 import { useUser } from "@/utils/UserContext";
-import { addListingBookmark, getListingDetailById, removeListingBookmark } from "@/services/listingDetailService";
+import { addListingBookmark, getListingDetailById, removeListingBookmark, submitListingReport } from "@/services/listingDetailService";
 import { getUserProfileData } from "@/services/profileService";
 import { type PostCardProps } from "@/components/post-card";
 import { LoadingPage } from "@/components/loading";
@@ -225,6 +225,7 @@ export default function ListingDetailPage() {
   const [reportOpen,  setReportOpen] = useState(false);
   const [reportReason, setReportReason] = useState<string | null>(null);
   const [reportDetails, setReportDetails] = useState("");
+  const [submittingReport, setSubmittingReport] = useState(false);
   const [shownContactNumber, setShownContactNumber] = useState<string | null>(null);
   const [deleting,    setDeleting]   = useState(false);
   const [messaging,   setMessaging]  = useState(false);
@@ -296,10 +297,26 @@ export default function ListingDetailPage() {
     setReportDetails("");
   }
 
-  function handleSubmitReport() {
+  async function handleSubmitReport() {
     if (!reportReason) return;
-    toast.success("Report submitted. Thank you for helping keep the community safe.", { position: "top-center" });
-    handleCloseReportModal();
+    if (!isAuth) {
+      router.push("/login");
+      return;
+    }
+
+    if (submittingReport) return;
+
+    setSubmittingReport(true);
+    try {
+      await submitListingReport(id, reportReason, reportDetails);
+      toast.success("Report submitted. Thank you for helping keep the community safe.", { position: "top-center" });
+      handleCloseReportModal();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err || "Failed to submit report.");
+      toast.error(message, { position: "top-center" });
+    } finally {
+      setSubmittingReport(false);
+    }
   }
 
   async function handleShowContactNumber() {
@@ -906,9 +923,10 @@ export default function ListingDetailPage() {
             {reportReason ? (
               <button
                 onClick={handleSubmitReport}
-                className="w-full py-2.5 rounded-full bg-red-600 hover:bg-red-500 text-white text-sm font-semibold transition-colors"
+                disabled={submittingReport}
+                className="w-full py-2.5 rounded-full bg-red-600 hover:bg-red-500 text-white text-sm font-semibold transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                Submit
+                {submittingReport ? "Submitting..." : "Submit"}
               </button>
             ) : (
               <button

@@ -296,6 +296,41 @@ func RemoveListingBookmark(c *fiber.Ctx) error {
 	})
 }
 
+func ReportListing(c *fiber.Ctx) error {
+	listingId := strings.TrimSpace(c.Params("id"))
+	if listingId == "" {
+		return SendErrorResponse(c, 400, "Listing ID is required", nil)
+	}
+
+	userId := fmt.Sprintf("%v", c.Locals("userId"))
+	if strings.TrimSpace(userId) == "" || userId == "%!v(<nil>)" {
+		return SendErrorResponse(c, 401, "User is not authenticated", nil)
+	}
+
+	var body model.ReportListingBody
+	if err := c.BodyParser(&body); err != nil {
+		return SendErrorResponse(c, 400, "Invalid request body. Please contact support.", err)
+	}
+
+	if strings.TrimSpace(body.Reason) == "" {
+		return SendErrorResponse(c, 400, "Report reason is required", nil)
+	}
+
+	descriptionWords := strings.Fields(strings.TrimSpace(body.Description))
+	if len(descriptionWords) > 80 {
+		return SendErrorResponse(c, 400, "Report details must be at most 80 words", nil)
+	}
+
+	reportId, err := repository.CreateListingReport(userId, listingId, body.Reason, body.Description)
+	if err != nil {
+		return SendErrorResponse(c, 400, err.Error(), err)
+	}
+
+	return SendSuccessResponse(c, 201, "Report submitted successfully", map[string]any{
+		"reportId": reportId,
+	})
+}
+
 func GetListings(c *fiber.Ctx) error {
 	userId := getOptionalUserIdFromSession(c)
 	listings, err := repository.GetAllListings(userId)
