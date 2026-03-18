@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useCallback, useContext, useState, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { User } from "@/types/forms";
 import { LoadingPage } from "@/components/loading";
@@ -9,6 +9,7 @@ import { sendDeleteRequest, sendGetRequest } from "@/services/authService";
 interface UserContextType {
   user: User | null;
   isAuth: boolean;
+  isUserOnline: (userId?: string | null) => boolean;
   saveUserData: (userData: User) => void;
   clearUserData: () => void;
 }
@@ -53,6 +54,27 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isAuth, setIsAuth] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [presenceByUserId, setPresenceByUserId] = useState<Record<string, boolean>>({});
+
+  const applyPresenceUpdate = useCallback((userId?: string, isOnline?: boolean) => {
+    const normalizedUserId = (userId ?? "").trim();
+    if (!normalizedUserId) return;
+
+    setPresenceByUserId((prev) => {
+      const nextValue = Boolean(isOnline);
+      if (prev[normalizedUserId] === nextValue) return prev;
+      return {
+        ...prev,
+        [normalizedUserId]: nextValue,
+      };
+    });
+  }, []);
+
+  const isUserOnline = useCallback((userId?: string | null) => {
+    const normalizedUserId = (userId ?? "").trim();
+    if (!normalizedUserId) return false;
+    return Boolean(presenceByUserId[normalizedUserId]);
+  }, [presenceByUserId]);
 
   const normalizePath = (path: string): string => {
     const normalized = path.replace(/\/+$/, "");
@@ -102,7 +124,33 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
           const parsed = JSON.parse(evt.data) as { type?: string; data?: any };
 
           if (parsed.type === "presence:update") {
+            const presenceData = parsed.data as { userId?: string; isOnline?: boolean };
+            applyPresenceUpdate(presenceData?.userId, presenceData?.isOnline);
             window.dispatchEvent(new CustomEvent("realtime:presence", { detail: parsed.data }));
+            window.dispatchEvent(new Event("messages:updated"));
+            return;
+          }
+
+          if (parsed.type === "presence:snapshot") {
+            const onlineUserIds = Array.isArray((parsed.data as { onlineUserIds?: unknown })?.onlineUserIds)
+              ? ((parsed.data as { onlineUserIds?: unknown[] }).onlineUserIds ?? [])
+              : [];
+
+            const next: Record<string, boolean> = {};
+            for (const value of onlineUserIds) {
+              const id = typeof value === "string" ? value.trim() : "";
+              if (id) next[id] = true;
+            }
+
+            setPresenceByUserId(next);
+
+            window.dispatchEvent(new Event("messages:updated"));
+            return;
+          }
+
+          if (parsed.type === "presence:connected") {
+            const connectedUserId = (parsed.data as { userId?: string })?.userId;
+            applyPresenceUpdate(connectedUserId, true);
             window.dispatchEvent(new Event("messages:updated"));
             return;
           }
@@ -174,7 +222,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       if (reconnectTimeout) clearTimeout(reconnectTimeout);
       ws?.close();
     };
-  }, [isAuth]);
+  }, [applyPresenceUpdate, isAuth]);
 
   // Save user data during login
   const saveUserData = (userData: User) => {
@@ -193,6 +241,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       // But the session cookie will remain incase of server error
       setUser(null);
       setIsAuth(false);
+      setPresenceByUserId({});
       localStorage.removeItem(STORAGE_KEY);
       router.replace("/login");
     }
@@ -220,6 +269,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       } catch {
         setUser(null);
         setIsAuth(false);
+        setPresenceByUserId({});
       } finally {
         setIsLoading(false);
       }
@@ -265,7 +315,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   if (isLoading) return (<LoadingPage />);
 
   return (
-    <UserContext.Provider value={{ user, isAuth, saveUserData, clearUserData }}>
+    <UserContext.Provider value={{ user, isAuth, isUserOnline, saveUserData, clearUserData }}>
       {children}
     </UserContext.Provider>
   );

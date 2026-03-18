@@ -850,6 +850,7 @@ func GetListingDetailById(listingId string) (model.ListingDetailFromDb, error) {
 			COALESCE(lsrv.turnaround_time, '') AS turnaround_time,
 			COALESCE(lsrv.service_area, '') AS service_area,
 			TRIM(BOTH ' ' FROM CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, ''))) AS seller_name,
+			COALESCE(u.profile_image_url, '') AS seller_profile_image_url,
 			COALESCE(rv.avg_rating, 0) AS seller_rating,
 			(u.verification_status = 'VERIFIED') AS seller_verified
 		FROM public.listings l

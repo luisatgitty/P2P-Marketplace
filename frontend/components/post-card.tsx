@@ -20,6 +20,7 @@ export interface PostCardProps {
   seller: {
     id?: string;
     name: string;
+    profileImageUrl?: string;
     rating: number;
     isPro?: boolean;
   };

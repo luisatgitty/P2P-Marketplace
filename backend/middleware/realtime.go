@@ -74,6 +74,20 @@ func (h *PresenceHub) IsOnline(userId string) bool {
 	return len(conns) > 0
 }
 
+func (h *PresenceHub) OnlineUserIDs() []string {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+
+	ids := make([]string, 0, len(h.users))
+	for userId, conns := range h.users {
+		if len(conns) > 0 {
+			ids = append(ids, userId)
+		}
+	}
+
+	return ids
+}
+
 func (h *PresenceHub) SendToUser(userId string, payload any) {
 	h.mu.RLock()
 	conns := h.users[userId]

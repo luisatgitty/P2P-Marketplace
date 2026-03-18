@@ -380,7 +380,7 @@ async function encodeFileToPayload(file: File): Promise<EncodedImagePayload> {
 // ─── MAIN PAGE ────────────────────────────────────────────────────────────────
 export default function ProfilePage() {
   const searchParams = useSearchParams();
-  const { user, saveUserData, clearUserData } = useUser();
+  const { user, isUserOnline, saveUserData, clearUserData } = useUser();
   const externalUserId = (searchParams.get("userId") ?? "").trim();
   const isViewingExternalProfile = externalUserId !== "";
   const [profileUser, setProfileUser] = useState<ProfilePayload["user"] | null>(null);
@@ -688,6 +688,8 @@ export default function ProfilePage() {
   const overallRatingText = formatOverallRating(profileUser?.overallRating, profileUser?.reviewCount);
   const hasOverallRating = (profileUser?.reviewCount ?? 0) > 0;
   const isVerifiedSeller = !isViewingExternalProfile && (profileUser?.status ?? "").toLowerCase() === "verified";
+  const profileTargetUserId = isViewingExternalProfile ? externalUserId : (user?.userId ?? "");
+  const isProfileOnline = profileTargetUserId ? isUserOnline(profileTargetUserId) : false;
 
   // Shared label style
   const lbl = "text-xs font-medium text-stone-600 dark:text-stone-400 mb-1.5 block";
@@ -784,6 +786,9 @@ export default function ProfilePage() {
                       ? <Image src={avatar.src} alt="Avatar" width={80} height={80} className="object-cover w-full h-full" />
                       : <span className="text-2xl font-bold text-slate-200">{initials}</span>}
                   </div>
+                  {isProfileOnline && (
+                    <span className="absolute bottom-1.5 right-1.5 w-4 h-4 rounded-full bg-emerald-500 border-3 border-white dark:border-[#1c1f2e]" />
+                  )}
                   {!isViewingExternalProfile && (
                     <>
                       <div className="absolute inset-0 rounded-full bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">

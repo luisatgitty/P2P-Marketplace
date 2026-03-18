@@ -207,7 +207,7 @@ function ServiceInfoCard({ extra }: { extra: ExtraDetail }) {
 export default function ListingDetailPage() {
   const { id }   = useParams<{ id: string }>();
   const router   = useRouter();
-  const { user, isAuth } = useUser();
+  const { user, isAuth, isUserOnline } = useUser();
 
   const [listing,     setListing]    = useState<PostCardProps | null>(null);
   const [extra,       setExtra]      = useState<ExtraDetail>(
@@ -291,6 +291,7 @@ export default function ListingDetailPage() {
   const sellerProfileHref = isOwnListing
     ? "/profile"
     : (listing.seller.id ? `/profile?userId=${listing.seller.id}` : "/profile");
+  const sellerOnline = listing.seller.id ? isUserOnline(listing.seller.id) : false;
 
   function handleCloseReportModal() {
     setReportOpen(false);
@@ -739,8 +740,23 @@ export default function ListingDetailPage() {
               <div className="flex flex-col gap-4 bg-white dark:bg-[#1c1f2e] rounded-2xl border border-stone-200 dark:border-[#2a2d3e] shadow-sm p-5 mb-4">
                 <div className="flex items-center gap-3">
                   <Link href={sellerProfileHref} className="block">
-                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#3a4a6a] to-[#1e2a40] flex items-center justify-center text-white font-bold text-lg flex-shrink-0 hover:opacity-90 transition-opacity">
-                      {listing.seller.name[0].toUpperCase()}
+                    <div className="relative">
+                      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#3a4a6a] to-[#1e2a40] flex items-center justify-center text-white font-bold text-lg flex-shrink-0 overflow-hidden hover:opacity-90 transition-opacity">
+                        {listing.seller.profileImageUrl ? (
+                          <Image
+                            src={listing.seller.profileImageUrl}
+                            alt={listing.seller.name}
+                            width={48}
+                            height={48}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          listing.seller.name[0].toUpperCase()
+                        )}
+                      </div>
+                      {sellerOnline && (
+                        <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-emerald-500 border-2 border-white dark:border-[#1c1f2e]" />
+                      )}
                     </div>
                   </Link>
                   <div className="min-w-0">

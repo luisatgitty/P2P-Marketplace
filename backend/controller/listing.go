@@ -243,10 +243,11 @@ func GetListingById(c *fiber.Ctx) error {
 		"postedAt":   timeAgo(listing.CreatedAt),
 		"imageUrl":   mapPrimaryImage(baseURL, images),
 		"seller": map[string]any{
-			"id":     listing.SellerId,
-			"name":   listing.SellerName,
-			"rating": listing.SellerRating,
-			"isPro":  listing.SellerVerified,
+			"id":              listing.SellerId,
+			"name":            listing.SellerName,
+			"profileImageUrl": mapPrimaryImage(baseURL, []string{listing.SellerProfileImage}),
+			"rating":          listing.SellerRating,
+			"isPro":           listing.SellerVerified,
 		},
 	}
 
