@@ -1,6 +1,7 @@
 {
   "files.exclude": {
     ".vscode": true,
+    ".github": true,
     "go.sum": true,
     "frontend/.next": true,
     "frontend/package-lock.json": true,

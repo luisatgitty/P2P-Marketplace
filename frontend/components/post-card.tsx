@@ -1,104 +1,80 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
 import Link from "next/link";
-
-export type ListingType = "sale" | "rent" | "service";
+import { Bookmark, BookmarkCheck, Star, MapPin, Clock } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export interface PostCardProps {
   id: string;
   title: string;
   price: number;
   priceUnit?: string;
-  type: ListingType;
+  type: "sell" | "rent" | "service";
+  category?: string;
+  condition?: string;
   location: string;
   postedAt: string;
   imageUrl: string;
   seller: {
+    id?: string;
     name: string;
-    rating?: number;
-    avatarUrl?: string;
+    rating: number;
     isPro?: boolean;
   };
-  isSaved?: boolean;
 }
 
-const badgeConfig = {
-  sale:    { label: "For Sale",  className: "bg-stone-800 text-stone-100",  avatarBg: "bg-stone-200",  avatarText: "text-stone-500"  },
-  rent:    { label: "For Rent",  className: "bg-teal-700 text-white",       avatarBg: "bg-teal-100",   avatarText: "text-teal-600"   },
-  service: { label: "Service",   className: "bg-violet-700 text-white",     avatarBg: "bg-violet-100", avatarText: "text-violet-600" },
+const TYPE_CONFIG: Record<PostCardProps["type"], { label: string; cls: string }> = {
+  sell:    { label: "FOR SALE",  cls: "bg-blue-600 text-white"    },
+  rent:    { label: "FOR RENT",  cls: "bg-emerald-600 text-white" },
+  service: { label: "SERVICE",   cls: "bg-violet-600 text-white"  },
 };
 
-const HeartIcon = ({ filled }: { filled: boolean }) => (
-  <svg className="w-4 h-4" fill={filled ? "#f43f5e" : "none"} stroke={filled ? "#f43f5e" : "currentColor"} viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-      d="M4.318 6.318a4.5 4.5 0 0 1 6.364 0L12 7.636l1.318-1.318a4.5 4.5 0 0 1 6.364 6.364L12 20.364l-7.682-7.682a4.5 4.5 0 0 1 0-6.364z" />
-  </svg>
-);
+export default function PostCard(props: PostCardProps) {
+  const { id, title, price, priceUnit, type, category, location, postedAt, imageUrl, seller } = props;
+  const [isBookmarked, setIsBookmarked] = useState(false);
+  const cfg = TYPE_CONFIG[type];
 
-const UserIcon = () => (
-  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
-    <path d="M12 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10zm0 2c-5.33 0-8 2.67-8 4v1h16v-1c0-1.33-2.67-4-8-4z" />
-  </svg>
-);
-
-export default function PostCard({ id, title, price, priceUnit, type, location, postedAt, imageUrl, seller, isSaved = false }: PostCardProps) {
-  const [saved, setSaved] = useState(isSaved);
-  const badge = badgeConfig[type];
-
-  const formattedPrice = new Intl.NumberFormat("en-PH", {
-    style: "currency", currency: "PHP", minimumFractionDigits: 0,
-  }).format(price);
+  const formatPrice = (p: number) =>
+    "₱" + p.toLocaleString("en-PH", { minimumFractionDigits: 0 });
 
   return (
-    <Link href={`/listing/${id}`} className="block">
-      <div className="card-hover bg-white rounded-2xl overflow-hidden border border-stone-200 cursor-pointer group">
-        <div className="card-img relative overflow-hidden aspect-4/3 bg-stone-100">
-          <Image src={imageUrl} alt={title} fill sizes="(max-width: 640px) 50vw, 25vw" className="object-cover transition-transform duration-300" />
-          <span className={`absolute top-2 left-2 text-xs font-medium px-2 py-0.5 rounded-full ${badge.className}`}>{badge.label}</span>
-          {seller.isPro && <span className="absolute bottom-2 left-2 bg-amber-400 text-amber-900 text-xs font-semibold px-2 py-0.5 rounded-full">PRO</span>}
-          <button onClick={(e) => { e.preventDefault(); setSaved(p => !p); }}
-            className="absolute top-2 right-2 w-7 h-7 bg-white rounded-full flex items-center justify-center shadow-sm text-stone-400 hover:scale-110 transition-transform">
-            <HeartIcon filled={saved} />
-          </button>
-        </div>
-        <div className="p-3">
-          <p className="text-stone-800 font-semibold text-sm leading-tight truncate">{title}</p>
-          <div className="flex items-baseline gap-1 mt-0.5">
-            <p className="text-stone-800 font-bold text-base">{formattedPrice}</p>
-            {priceUnit && <span className="text-xs text-stone-400">{priceUnit}</span>}
-          </div>
-          <div className="flex items-center justify-between mt-1.5">
-            <span className="text-xs text-stone-400 truncate max-w-[65%]">{location}</span>
-            <span className="text-xs text-stone-400">{postedAt}</span>
-          </div>
-          <div className="flex items-center gap-1.5 mt-2.5 pt-2.5 border-t border-stone-100">
-            <div className={`w-5 h-5 rounded-full shrink-0 flex items-center justify-center ${badge.avatarBg} ${badge.avatarText}`}>
-              <UserIcon />
-            </div>
-            <span className="text-xs text-stone-500 truncate">{seller.name}</span>
-            {seller.rating && <span className="ml-auto text-xs text-amber-500 font-medium">★ {seller.rating.toFixed(1)}</span>}
-          </div>
-        </div>
-      </div>
-    </Link>
-  );
-}
+    <article className="group relative flex flex-col bg-white dark:bg-[#1e2a3a] rounded-xl border border-stone-200 dark:border-white/10 overflow-hidden shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
 
-export function PostCardSkeleton() {
-  return (
-    <div className="bg-white rounded-2xl overflow-hidden border border-stone-200 animate-pulse">
-      <div className="aspect-4/3 bg-stone-200" />
-      <div className="p-3 space-y-2">
-        <div className="h-3 bg-stone-200 rounded-full w-3/4" />
-        <div className="h-4 bg-stone-200 rounded-full w-1/3" />
-        <div className="h-3 bg-stone-200 rounded-full w-1/2" />
-        <div className="flex items-center gap-2 mt-3 pt-3 border-t border-stone-100">
-          <div className="w-5 h-5 rounded-full bg-stone-200" />
-          <div className="h-3 bg-stone-200 rounded-full w-24" />
+      {/* Image */}
+      <Link href={`/listing/${id}`} className="relative aspect-square overflow-hidden bg-stone-100 dark:bg-[#151f2e] shrink-0 block">
+        <img
+          src={imageUrl}
+          alt={title}
+          loading="lazy"
+          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+        />
+        <span className={`absolute top-2 left-2 text-[9px] sm:text-[10px] font-extrabold px-1.5 py-0.5 rounded-md tracking-wider ${cfg.cls}`}>
+          {cfg.label}
+        </span>
+      </Link>
+
+      {/* Content */}
+      <Link href={`/listing/${id}`} className="flex flex-col gap-1 p-2.5 sm:p-3 flex-1">
+        <h3 className="text-xs sm:text-sm font-semibold text-stone-800 dark:text-stone-100 line-clamp-2 leading-snug">
+          {title}
+        </h3>
+        <p className="text-sm sm:text-base font-bold text-amber-700 dark:text-amber-500 leading-none mt-0.5">
+          {formatPrice(price)}
+          {priceUnit && <span className="text-[11px] font-normal text-stone-400 dark:text-stone-500 ml-1">{priceUnit}</span>}
+        </p>
+        <div className="flex-1" />
+        <div className="flex items-center justify-between gap-1 text-[10px] sm:text-[11px] text-stone-400 dark:text-stone-500">
+          <div className="flex items-center gap-0.5 min-w-0">
+            <MapPin size={11} className="shrink-0" />
+            <span className="truncate">{location}</span>
+          </div>
+          <div className="flex items-center gap-0.5 shrink-0">
+            <Clock size={11} />
+            <span>{postedAt}</span>
+          </div>
         </div>
-      </div>
-    </div>
+      </Link>
+    </article>
   );
 }

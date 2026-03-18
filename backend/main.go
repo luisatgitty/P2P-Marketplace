@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 
 	"p2p_marketplace/backend/middleware"
 	"p2p_marketplace/backend/routes"
@@ -17,6 +18,7 @@ func init() {
 	// Initialize database connection
 	if middleware.ConnectDB() {
 		fmt.Println("DB CONNECTION FAILED!")
+		os.Exit(1)
 	} else {
 		fmt.Println("DB CONNECTION SUCCESSFUL!")
 	}
@@ -25,7 +27,8 @@ func init() {
 func main() {
 	// Initialize Fiber app with custom configuration
 	app := fiber.New(fiber.Config{
-		AppName: middleware.GetEnv("PROJ_NAME"),
+		AppName:   os.Getenv("PROJ_NAME"),
+		BodyLimit: 20 * 1024 * 1024,
 	})
 
 	// CORS configuration
@@ -36,9 +39,14 @@ func main() {
 		AllowCredentials: true,
 	}))
 
+	// Serve uploaded files
+	uploadDir := "./backend/uploads"
+	if _, err := os.Stat(uploadDir); err != nil {
+		uploadDir = "./uploads"
+	}
+	app.Static("/uploads", uploadDir)
+
 	// Register routes
 	routes.AppRoutes(app)
-
-	// Start server
-	app.Listen(fmt.Sprintf(":%s", middleware.GetEnv("PROJ_PORT")))
+	app.Listen(fmt.Sprintf(":%s", os.Getenv("PROJ_PORT")))
 }
