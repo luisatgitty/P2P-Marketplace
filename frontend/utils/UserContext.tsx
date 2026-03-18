@@ -31,7 +31,20 @@ const AUTH_ROUTES = [
   "/reset-password",
   "/verify-email",
 ];
+const ADMIN_ROUTES = ["/admin"];
 const STORAGE_KEY = "auth_user";
+
+function setRoleCookie(role?: string) {
+  if (typeof document === "undefined") return;
+
+  const normalized = (role ?? "").trim().toUpperCase();
+  if (!normalized) {
+    document.cookie = "app_role=; path=/; max-age=0; samesite=lax";
+    return;
+  }
+
+  document.cookie = `app_role=${encodeURIComponent(normalized)}; path=/; samesite=lax`;
+}
 
 function getRealtimeSocketURL(): string {
   const apiUrl = process.env.NEXT_PUBLIC_API_URL?.trim();
@@ -91,6 +104,8 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
   const isPublicRoute = PUBLIC_ROUTES.some(isRouteRootMatch);
   const isAuthRoute = AUTH_ROUTES.some(isRouteRootMatch);
+  const isAdminRoute = ADMIN_ROUTES.some(isRouteRootMatch);
+  const isAdminRole = ["ADMIN", "SUPERADMIN"].includes((user?.role ?? "").toUpperCase());
 
   useEffect(() => {
     if (!isAuth) return;
@@ -229,6 +244,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     console.log("Logged User Data:", userData);
     setUser(userData);
     setIsAuth(true);
+    setRoleCookie(userData.role);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(userData));
   };
 
@@ -242,6 +258,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       setUser(null);
       setIsAuth(false);
       setPresenceByUserId({});
+      setRoleCookie("");
       localStorage.removeItem(STORAGE_KEY);
       router.replace("/login");
     }
@@ -270,6 +287,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         setUser(null);
         setIsAuth(false);
         setPresenceByUserId({});
+        setRoleCookie("");
       } finally {
         setIsLoading(false);
       }
@@ -283,6 +301,16 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     if (isLoading) return;
 
     if (isAuth && isAuthRoute) {
+      router.replace(isAdminRole ? "/admin" : "/");
+      return;
+    }
+
+    if (isAuth && isAdminRole && !isAdminRoute) {
+      router.replace("/admin");
+      return;
+    }
+
+    if (isAuth && !isAdminRole && isAdminRoute) {
       router.replace("/");
       return;
     }
@@ -290,7 +318,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     if (!isAuth && !isPublicRoute) {
       router.replace("/login");
     }
-  }, [isAuth, isAuthRoute, isPublicRoute, isLoading, router]);
+  }, [isAdminRole, isAdminRoute, isAuth, isAuthRoute, isPublicRoute, isLoading, router]);
 
   // Guard against BFCache restoring a protected page after logout
   useEffect(() => {
@@ -301,6 +329,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       if (!storedUser || !hasSession) {
         setUser(null);
         setIsAuth(false);
+        setRoleCookie("");
 
         if (!isPublicRoute) {
           router.replace("/login");
