@@ -45,13 +45,20 @@ export function LoginForm() {
       const data = await sendPostRequest("/auth/login", { ...form, ipAddress, userAgent }, true);
       console.log("Logged in user:", data.user);
       saveUserData(data.user);
-      router.push("/");
-    } catch (error: any) {
-      toast.error(error, { position: "top-center" });
-    } finally {
-      setLoading(false);
+
+      // Role-based redirect
+      const role = data.user?.role;
+      if (role === "SUPERADMIN") {
+        router.push("/admin");
+      } else {
+        router.push("/");
+      }
+      } catch (error: any) {
+        toast.error(error, { position: "top-center" });
+      } finally {
+        setLoading(false);
+      }
     }
-  }
   
   return (
     <Card className="overflow-hidden p-0">
