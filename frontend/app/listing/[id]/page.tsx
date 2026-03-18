@@ -283,6 +283,9 @@ export default function ListingDetailPage() {
   const isSell       = listing.type === "sell";
   const isRent       = listing.type === "rent";
   const isService    = listing.type === "service";
+  const listingStatus = (listing.status ?? "").trim().toLowerCase();
+  const listingSellStatus = (listing.sellStatus ?? "").trim().toLowerCase();
+  const isSold = isSell && (listingStatus === "sold" || listingSellStatus === "sold");
   const images       = extra.images.filter(Boolean);
   const sellerProfileHref = isOwnListing
     ? "/profile"
@@ -653,62 +656,83 @@ export default function ListingDetailPage() {
                 {/* ── CTA buttons ── */}
                 {isOwnListing ? (
                   <div className="flex flex-col gap-2">
-                    {/* FIX: was href="/create" — now correctly routes to the edit form */}
-                    <Link
-                      href={`/listing/${id}/edit`}
-                      className="flex items-center justify-center gap-2 w-full py-3 rounded-full bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 text-sm font-bold hover:opacity-90 transition-opacity">
-                      ✏️ Edit Listing
-                    </Link>
-                    <button
-                      onClick={handleRemoveListing}
-                      disabled={deleting}
-                      className="flex items-center justify-center gap-2 w-full py-3 rounded-full border border-red-200 dark:border-red-800 text-red-500 dark:text-red-400 text-sm font-semibold hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-                    >
-                      🗑 {deleting ? "Removing..." : "Remove Listing"}
-                    </button>
-                    <button
-                      onClick={handleShowContactNumber}
-                      className="flex items-center justify-center gap-2 w-full py-2.5 rounded-full text-stone-500 dark:text-stone-400 text-xs font-medium hover:text-stone-700 dark:hover:text-stone-200 transition-colors"
-                    >
-                      <Phone className="w-3.5 h-3.5" /> {shownContactNumber ?? "Show My Number"}
-                    </button>
+                    {isSold ? (
+                      <button
+                        disabled
+                        className="flex items-center justify-center gap-2 w-full py-3 rounded-full bg-emerald-600/90 text-white text-sm font-bold cursor-not-allowed opacity-95"
+                      >
+                        <CheckCircle className="w-4 h-4" /> Sold
+                      </button>
+                    ) : (
+                      <>
+                        <Link
+                          href={`/listing/${id}/edit`}
+                          className="flex items-center justify-center gap-2 w-full py-3 rounded-full bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 text-sm font-bold hover:opacity-90 transition-opacity">
+                          ✏️ Edit Listing
+                        </Link>
+                        <button
+                          onClick={handleRemoveListing}
+                          disabled={deleting}
+                          className="flex items-center justify-center gap-2 w-full py-3 rounded-full border border-red-200 dark:border-red-800 text-red-500 dark:text-red-400 text-sm font-semibold hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                        >
+                          🗑 {deleting ? "Removing..." : "Remove Listing"}
+                        </button>
+                        <button
+                          onClick={handleShowContactNumber}
+                          className="flex items-center justify-center gap-2 w-full py-2.5 rounded-full text-stone-500 dark:text-stone-400 text-xs font-medium hover:text-stone-700 dark:hover:text-stone-200 transition-colors"
+                        >
+                          <Phone className="w-3.5 h-3.5" /> {shownContactNumber ?? "Show My Number"}
+                        </button>
+                      </>
+                    )}
                   </div>
                 ) : (
                   <div className="flex flex-col gap-2">
-                    {isSell && (
+                    {isSold ? (
                       <button
-                        onClick={handleBuy}
-                        className="flex items-center justify-center gap-2 w-full py-3 rounded-full text-sm font-bold text-white transition-all hover:opacity-90 active:scale-[0.98]"
-                        style={{ background: "linear-gradient(135deg, #1e2433 0%, #3a4a6a 100%)" }}>
-                        <Zap className="w-4 h-4" /> Make an Offer
+                        disabled
+                        className="flex items-center justify-center gap-2 w-full py-3 rounded-full bg-emerald-600/90 text-white text-sm font-bold cursor-not-allowed opacity-95"
+                      >
+                        <CheckCircle className="w-4 h-4" /> Sold
                       </button>
+                    ) : (
+                      <>
+                        {isSell && (
+                          <button
+                            onClick={handleBuy}
+                            className="flex items-center justify-center gap-2 w-full py-3 rounded-full text-sm font-bold text-white transition-all hover:opacity-90 active:scale-[0.98]"
+                            style={{ background: "linear-gradient(135deg, #1e2433 0%, #3a4a6a 100%)" }}>
+                            <Zap className="w-4 h-4" /> Make an Offer
+                          </button>
+                        )}
+                        {isRent && (
+                          <button
+                            onClick={handleBuy}
+                            className="flex items-center justify-center gap-2 w-full py-3 rounded-full text-sm font-bold text-white bg-teal-700 hover:bg-teal-600 transition-colors active:scale-[0.98]">
+                            <Package className="w-4 h-4" /> Request to Rent
+                          </button>
+                        )}
+                        {isService && (
+                          <button
+                            onClick={handleBuy}
+                            className="flex items-center justify-center gap-2 w-full py-3 rounded-full text-sm font-bold text-white bg-violet-700 hover:bg-violet-600 transition-colors active:scale-[0.98]">
+                            <CheckCircle className="w-4 h-4" /> Book Service
+                          </button>
+                        )}
+                        <button
+                          onClick={handleMessage}
+                          disabled={messaging}
+                          className="flex items-center justify-center gap-2 w-full py-3 rounded-full border-2 border-stone-200 dark:border-[#2a2d3e] text-stone-700 dark:text-stone-200 text-sm font-semibold hover:border-stone-400 dark:hover:border-stone-500 hover:bg-stone-50 dark:hover:bg-[#252837] transition-all">
+                          <MessageCircle className="w-4 h-4" /> {messaging ? "Opening chat..." : "Message Seller"}
+                        </button>
+                        <button
+                          onClick={handleShowContactNumber}
+                          disabled={isFetchingContact}
+                          className="flex items-center justify-center gap-2 w-full py-2.5 rounded-full text-stone-500 dark:text-stone-400 text-xs font-medium hover:text-stone-700 dark:hover:text-stone-200 transition-colors disabled:opacity-60 disabled:cursor-not-allowed">
+                          <Phone className="w-3.5 h-3.5" /> {shownContactNumber ?? (isFetchingContact ? "Loading Number..." : "Show Contact Number")}
+                        </button>
+                      </>
                     )}
-                    {isRent && (
-                      <button
-                        onClick={handleBuy}
-                        className="flex items-center justify-center gap-2 w-full py-3 rounded-full text-sm font-bold text-white bg-teal-700 hover:bg-teal-600 transition-colors active:scale-[0.98]">
-                        <Package className="w-4 h-4" /> Request to Rent
-                      </button>
-                    )}
-                    {isService && (
-                      <button
-                        onClick={handleBuy}
-                        className="flex items-center justify-center gap-2 w-full py-3 rounded-full text-sm font-bold text-white bg-violet-700 hover:bg-violet-600 transition-colors active:scale-[0.98]">
-                        <CheckCircle className="w-4 h-4" /> Book Service
-                      </button>
-                    )}
-                    <button
-                      onClick={handleMessage}
-                      disabled={messaging}
-                      className="flex items-center justify-center gap-2 w-full py-3 rounded-full border-2 border-stone-200 dark:border-[#2a2d3e] text-stone-700 dark:text-stone-200 text-sm font-semibold hover:border-stone-400 dark:hover:border-stone-500 hover:bg-stone-50 dark:hover:bg-[#252837] transition-all">
-                      <MessageCircle className="w-4 h-4" /> {messaging ? "Opening chat..." : "Message Seller"}
-                    </button>
-                    <button
-                      onClick={handleShowContactNumber}
-                      disabled={isFetchingContact}
-                      className="flex items-center justify-center gap-2 w-full py-2.5 rounded-full text-stone-500 dark:text-stone-400 text-xs font-medium hover:text-stone-700 dark:hover:text-stone-200 transition-colors disabled:opacity-60 disabled:cursor-not-allowed">
-                      <Phone className="w-3.5 h-3.5" /> {shownContactNumber ?? (isFetchingContact ? "Loading Number..." : "Show Contact Number")}
-                    </button>
                   </div>
                 )}
               </div>
@@ -880,18 +904,29 @@ export default function ListingDetailPage() {
       {/* ── Mobile sticky bar ── */}
       {!isOwnListing && (
         <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white dark:bg-[#1c1f2e] border-t border-stone-200 dark:border-[#2a2d3e] px-4 py-3 flex gap-3 shadow-lg">
-          <button
-            onClick={handleMessage}
-            className="flex-1 flex items-center justify-center gap-2 py-3 rounded-full border-2 border-stone-200 dark:border-[#2a2d3e] text-stone-700 dark:text-stone-200 text-sm font-semibold">
-            <MessageCircle className="w-4 h-4" /> Message
-          </button>
-          <button
-            onClick={handleBuy}
-            className="flex-1 flex items-center justify-center gap-2 py-3 rounded-full text-white text-sm font-bold"
-            style={{ background: "linear-gradient(135deg, #1e2433, #3a4a6a)" }}>
-            <Zap className="w-4 h-4" />
-            {isSell ? "Offer" : isRent ? "Rent" : "Book"}
-          </button>
+          {isSold ? (
+            <button
+              disabled
+              className="flex-1 flex items-center justify-center gap-2 py-3 rounded-full bg-emerald-600/90 text-white text-sm font-bold cursor-not-allowed opacity-95"
+            >
+              <CheckCircle className="w-4 h-4" /> Sold
+            </button>
+          ) : (
+            <>
+              <button
+                onClick={handleMessage}
+                className="flex-1 flex items-center justify-center gap-2 py-3 rounded-full border-2 border-stone-200 dark:border-[#2a2d3e] text-stone-700 dark:text-stone-200 text-sm font-semibold">
+                <MessageCircle className="w-4 h-4" /> Message
+              </button>
+              <button
+                onClick={handleBuy}
+                className="flex-1 flex items-center justify-center gap-2 py-3 rounded-full text-white text-sm font-bold"
+                style={{ background: "linear-gradient(135deg, #1e2433, #3a4a6a)" }}>
+                <Zap className="w-4 h-4" />
+                {isSell ? "Offer" : isRent ? "Rent" : "Book"}
+              </button>
+            </>
+          )}
         </div>
       )}
     </div>

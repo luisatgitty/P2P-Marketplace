@@ -11,6 +11,8 @@ export interface PostCardProps {
   price: number;
   priceUnit?: string;
   type: "sell" | "rent" | "service";
+  status?: string;
+  sellStatus?: string;
   category?: string;
   condition?: string;
   location: string;

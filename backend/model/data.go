@@ -162,6 +162,7 @@ type HomeListingFromDb struct {
 	Price        int       `gorm:"column:price"`
 	PriceUnit    string    `gorm:"column:price_unit"`
 	Type         string    `gorm:"column:type"`
+	Status       string    `gorm:"column:status"`
 	Category     string    `gorm:"column:category"`
 	Condition    string    `gorm:"column:condition"`
 	LocationCity string    `gorm:"column:location_city"`
@@ -188,6 +189,7 @@ type ListingDetailFromDb struct {
 	CreatedAt       time.Time  `gorm:"column:created_at"`
 	ViewCount       int        `gorm:"column:view_count"`
 	Status          string     `gorm:"column:status"`
+	SellStatus      string     `gorm:"column:sell_status"`
 	Highlights      string     `gorm:"column:highlights"`
 	Included        string     `gorm:"column:included"`
 	Condition       string     `gorm:"column:condition"`
