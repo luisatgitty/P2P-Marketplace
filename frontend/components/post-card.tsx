@@ -1,9 +1,8 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
-import { Bookmark, BookmarkCheck, Star, MapPin, Clock } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { MapPin, Clock } from "lucide-react";
+import ListingTypeBadge from "@/components/listing-type-badge";
 
 export interface PostCardProps {
   id: string;
@@ -11,6 +10,8 @@ export interface PostCardProps {
   price: number;
   priceUnit?: string;
   type: "sell" | "rent" | "service";
+  status?: string;
+  sellStatus?: string;
   category?: string;
   condition?: string;
   location: string;
@@ -19,21 +20,14 @@ export interface PostCardProps {
   seller: {
     id?: string;
     name: string;
+    profileImageUrl?: string;
     rating: number;
     isPro?: boolean;
   };
 }
 
-const TYPE_CONFIG: Record<PostCardProps["type"], { label: string; cls: string }> = {
-  sell:    { label: "FOR SALE",  cls: "bg-blue-600 text-white"    },
-  rent:    { label: "FOR RENT",  cls: "bg-emerald-600 text-white" },
-  service: { label: "SERVICE",   cls: "bg-violet-600 text-white"  },
-};
-
 export default function PostCard(props: PostCardProps) {
-  const { id, title, price, priceUnit, type, category, location, postedAt, imageUrl, seller } = props;
-  const [isBookmarked, setIsBookmarked] = useState(false);
-  const cfg = TYPE_CONFIG[type];
+  const { id, title, price, priceUnit, type, status, sellStatus, location, postedAt, imageUrl } = props;
 
   const formatPrice = (p: number) =>
     "₱" + p.toLocaleString("en-PH", { minimumFractionDigits: 0 });
@@ -49,9 +43,16 @@ export default function PostCard(props: PostCardProps) {
           loading="lazy"
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
         />
-        <span className={`absolute top-2 left-2 text-[9px] sm:text-[10px] font-extrabold px-1.5 py-0.5 rounded-md tracking-wider ${cfg.cls}`}>
-          {cfg.label}
-        </span>
+        <div className="absolute top-2 left-2">
+          <ListingTypeBadge
+            type={type}
+            status={status}
+            sellStatus={sellStatus}
+            variant="solid"
+            className="text-[9px] sm:text-[10px] font-extrabold rounded-md"
+            soldClassName="text-[9px] sm:text-[10px] font-extrabold rounded-md"
+          />
+        </div>
       </Link>
 
       {/* Content */}

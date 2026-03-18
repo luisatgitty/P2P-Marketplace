@@ -5,7 +5,7 @@
 import { useState, useEffect, useCallback, JSX } from "react";
 import { useRouter } from "next/navigation";
 
-const API = "http://127.0.0.1:5566";
+const API = `${process.env.NEXT_PUBLIC_API_URL}`;
 
 // ── Types (matching DB schema exactly) ────────────────────────────────────────
 interface User {

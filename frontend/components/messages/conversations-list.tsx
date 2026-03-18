@@ -136,7 +136,6 @@ export default function ConversationsList({ activeTab }: ConversationsListProps)
                 key={conv.id}
                 conversation={conv}
                 isActive={conv.id === activeConvId}
-                showTypeBadge={activeTab === "all"}
               />
             ))}
           </div>

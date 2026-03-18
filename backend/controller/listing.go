@@ -231,20 +231,23 @@ func GetListingById(c *fiber.Ctx) error {
 	}
 
 	listingCard := map[string]any{
-		"id":        listing.Id,
-		"title":     listing.Title,
-		"price":     listing.Price,
-		"priceUnit": listing.PriceUnit,
-		"type":      listing.Type,
-		"category":  listing.Category,
-		"location":  strings.TrimSpace(fmt.Sprintf("%s, %s", listing.LocationCity, listing.LocationProv)),
-		"postedAt":  timeAgo(listing.CreatedAt),
-		"imageUrl":  mapPrimaryImage(baseURL, images),
+		"id":         listing.Id,
+		"title":      listing.Title,
+		"price":      listing.Price,
+		"priceUnit":  listing.PriceUnit,
+		"type":       listing.Type,
+		"status":     strings.ToLower(strings.TrimSpace(listing.Status)),
+		"sellStatus": strings.ToLower(strings.TrimSpace(listing.SellStatus)),
+		"category":   listing.Category,
+		"location":   strings.TrimSpace(fmt.Sprintf("%s, %s", listing.LocationCity, listing.LocationProv)),
+		"postedAt":   timeAgo(listing.CreatedAt),
+		"imageUrl":   mapPrimaryImage(baseURL, images),
 		"seller": map[string]any{
-			"id":     listing.SellerId,
-			"name":   listing.SellerName,
-			"rating": listing.SellerRating,
-			"isPro":  listing.SellerVerified,
+			"id":              listing.SellerId,
+			"name":            listing.SellerName,
+			"profileImageUrl": mapPrimaryImage(baseURL, []string{listing.SellerProfileImage}),
+			"rating":          listing.SellerRating,
+			"isPro":           listing.SellerVerified,
 		},
 	}
 
@@ -296,6 +299,187 @@ func RemoveListingBookmark(c *fiber.Ctx) error {
 	})
 }
 
+func MarkListingAsSold(c *fiber.Ctx) error {
+	listingId := strings.TrimSpace(c.Params("id"))
+	if listingId == "" {
+		return SendErrorResponse(c, 400, "Listing ID is required", nil)
+	}
+
+	userId := fmt.Sprintf("%v", c.Locals("userId"))
+	if strings.TrimSpace(userId) == "" || userId == "%!v(<nil>)" {
+		return SendErrorResponse(c, 401, "User is not authenticated", nil)
+	}
+
+	if err := repository.MarkListingAsSold(userId, listingId); err != nil {
+		return SendErrorResponse(c, 400, err.Error(), err)
+	}
+
+	participantIds, participantErr := repository.GetParticipantUserIdsByListing(listingId)
+	if participantErr == nil {
+		for _, targetUserId := range participantIds {
+			middleware.RealtimeHub.SendToUser(targetUserId, map[string]any{
+				"type": "listing:status",
+				"data": map[string]any{
+					"listingId":   listingId,
+					"status":      "SOLD",
+					"sellStatus":  "SOLD",
+					"updatedById": userId,
+				},
+			})
+		}
+	}
+
+	return SendSuccessResponse(c, 200, "Listing marked as sold successfully", map[string]any{
+		"listingId": listingId,
+		"status":    "SOLD",
+	})
+}
+
+func ReportListing(c *fiber.Ctx) error {
+	listingId := strings.TrimSpace(c.Params("id"))
+	if listingId == "" {
+		return SendErrorResponse(c, 400, "Listing ID is required", nil)
+	}
+
+	userId := fmt.Sprintf("%v", c.Locals("userId"))
+	if strings.TrimSpace(userId) == "" || userId == "%!v(<nil>)" {
+		return SendErrorResponse(c, 401, "User is not authenticated", nil)
+	}
+
+	var body model.ReportListingBody
+	if err := c.BodyParser(&body); err != nil {
+		return SendErrorResponse(c, 400, "Invalid request body. Please contact support.", err)
+	}
+
+	if strings.TrimSpace(body.Reason) == "" {
+		return SendErrorResponse(c, 400, "Report reason is required", nil)
+	}
+
+	descriptionWords := strings.Fields(strings.TrimSpace(body.Description))
+	if len(descriptionWords) > 80 {
+		return SendErrorResponse(c, 400, "Report details must be at most 80 words", nil)
+	}
+
+	reportId, err := repository.CreateListingReport(userId, listingId, body.ReportedUserId, body.Reason, body.Description)
+	if err != nil {
+		return SendErrorResponse(c, 400, err.Error(), err)
+	}
+
+	return SendSuccessResponse(c, 201, "Report submitted successfully", map[string]any{
+		"reportId": reportId,
+	})
+}
+
+func GetMyListingReview(c *fiber.Ctx) error {
+	listingId := strings.TrimSpace(c.Params("id"))
+	if listingId == "" {
+		return SendErrorResponse(c, 400, "Listing ID is required", nil)
+	}
+
+	userId := fmt.Sprintf("%v", c.Locals("userId"))
+	if strings.TrimSpace(userId) == "" || userId == "%!v(<nil>)" {
+		return SendErrorResponse(c, 401, "User is not authenticated", nil)
+	}
+
+	review, err := repository.GetMyListingReview(userId, listingId)
+	if err != nil {
+		if strings.EqualFold(strings.TrimSpace(err.Error()), "Review not found") {
+			return SendErrorResponse(c, 404, err.Error(), err)
+		}
+		return SendErrorResponse(c, 400, err.Error(), err)
+	}
+
+	return SendSuccessResponse(c, 200, "Review fetched successfully", map[string]any{
+		"id":      review.Id,
+		"rating":  review.Rating,
+		"comment": strings.TrimSpace(review.Comment),
+	})
+}
+
+func CreateListingReview(c *fiber.Ctx) error {
+	listingId := strings.TrimSpace(c.Params("id"))
+	if listingId == "" {
+		return SendErrorResponse(c, 400, "Listing ID is required", nil)
+	}
+
+	userId := fmt.Sprintf("%v", c.Locals("userId"))
+	if strings.TrimSpace(userId) == "" || userId == "%!v(<nil>)" {
+		return SendErrorResponse(c, 401, "User is not authenticated", nil)
+	}
+
+	var body model.ReviewListingBody
+	if err := c.BodyParser(&body); err != nil {
+		return SendErrorResponse(c, 400, "Invalid request body. Please contact support.", err)
+	}
+
+	if body.Rating < 1 || body.Rating > 5 {
+		return SendErrorResponse(c, 400, "Rating must be between 1 and 5", nil)
+	}
+
+	review, err := repository.CreateListingReview(userId, listingId, body.Rating, body.Comment)
+	if err != nil {
+		return SendErrorResponse(c, 400, err.Error(), err)
+	}
+
+	return SendSuccessResponse(c, 201, "Review submitted successfully", map[string]any{
+		"id":      review.Id,
+		"rating":  review.Rating,
+		"comment": strings.TrimSpace(review.Comment),
+	})
+}
+
+func UpdateListingReview(c *fiber.Ctx) error {
+	listingId := strings.TrimSpace(c.Params("id"))
+	if listingId == "" {
+		return SendErrorResponse(c, 400, "Listing ID is required", nil)
+	}
+
+	userId := fmt.Sprintf("%v", c.Locals("userId"))
+	if strings.TrimSpace(userId) == "" || userId == "%!v(<nil>)" {
+		return SendErrorResponse(c, 401, "User is not authenticated", nil)
+	}
+
+	var body model.ReviewListingBody
+	if err := c.BodyParser(&body); err != nil {
+		return SendErrorResponse(c, 400, "Invalid request body. Please contact support.", err)
+	}
+
+	if body.Rating < 1 || body.Rating > 5 {
+		return SendErrorResponse(c, 400, "Rating must be between 1 and 5", nil)
+	}
+
+	review, err := repository.UpdateListingReview(userId, listingId, body.Rating, body.Comment)
+	if err != nil {
+		return SendErrorResponse(c, 400, err.Error(), err)
+	}
+
+	return SendSuccessResponse(c, 200, "Review updated successfully", map[string]any{
+		"id":      review.Id,
+		"rating":  review.Rating,
+		"comment": strings.TrimSpace(review.Comment),
+	})
+}
+
+func DeleteListingReview(c *fiber.Ctx) error {
+	listingId := strings.TrimSpace(c.Params("id"))
+	if listingId == "" {
+		return SendErrorResponse(c, 400, "Listing ID is required", nil)
+	}
+
+	userId := fmt.Sprintf("%v", c.Locals("userId"))
+	if strings.TrimSpace(userId) == "" || userId == "%!v(<nil>)" {
+		return SendErrorResponse(c, 401, "User is not authenticated", nil)
+	}
+
+	if err := repository.DeleteListingReview(userId, listingId); err != nil {
+		return SendErrorResponse(c, 400, err.Error(), err)
+	}
+
+	return SendSuccessResponse(c, 200, "Review deleted successfully", map[string]any{
+		"listingId": listingId,
+	})
+}
+
 func GetListings(c *fiber.Ctx) error {
 	userId := getOptionalUserIdFromSession(c)
 	listings, err := repository.GetAllListings(userId)
@@ -313,6 +497,7 @@ func GetListings(c *fiber.Ctx) error {
 			"price":     l.Price,
 			"priceUnit": l.PriceUnit,
 			"type":      strings.ToLower(strings.TrimSpace(l.Type)),
+			"status":    strings.ToLower(strings.TrimSpace(l.Status)),
 			"category":  l.Category,
 			"condition": mapConditionDisplay(l.Condition),
 			"location":  location,
@@ -452,6 +637,7 @@ func mapRelatedListings(baseURL string, listings []model.ProfileListingFromDb) [
 			"price":     l.Price,
 			"priceUnit": l.PriceUnit,
 			"type":      l.Type,
+			"status":    strings.ToLower(strings.TrimSpace(l.Status)),
 			"category":  l.Category,
 			"location":  l.Location,
 			"postedAt":  l.PostedAt,

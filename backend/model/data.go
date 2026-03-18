@@ -120,19 +120,43 @@ type ListingImageBody struct {
 	Data     string `json:"data"`
 }
 
+type ReportListingBody struct {
+	ReportedUserId string `json:"reportedUserId"`
+	Reason         string `json:"reason"`
+	Description    string `json:"description"`
+}
+
+type ReviewListingBody struct {
+	Rating  int    `json:"rating"`
+	Comment string `json:"comment"`
+}
+
+type ListingReviewFromDb struct {
+	Id             string `gorm:"column:id"`
+	Rating         int    `gorm:"column:rating"`
+	Comment        string `gorm:"column:comment"`
+	ReviewerId     string `gorm:"column:reviewer_id"`
+	ReviewedUserId string `gorm:"column:reviewed_user_id"`
+	ListingId      string `gorm:"column:listing_id"`
+}
+
 type ProfileUserFromDb struct {
-	FirstName    string `gorm:"column:first_name"         json:"firstName"`
-	LastName     string `gorm:"column:last_name"          json:"lastName"`
-	Email        string `gorm:"column:email"              json:"email"`
-	PhoneNumber  string `gorm:"column:phone_number"       json:"phoneNumber"`
-	Bio          string `gorm:"column:bio"                json:"bio"`
-	LocationBrgy string `gorm:"column:location_barangay"  json:"locationBrgy"`
-	LocationCity string `gorm:"column:location_city"      json:"locationCity"`
-	LocationProv string `gorm:"column:location_province"  json:"locationProv"`
-	ProfileImage string `gorm:"column:profile_image_url"  json:"profileImageUrl"`
-	CoverImage   string `gorm:"column:cover_image_url"    json:"coverImageUrl"`
-	Role         string `gorm:"column:role"               json:"role"`
-	Status       string `gorm:"column:verification_status" json:"status"`
+	FirstName     string     `gorm:"column:first_name"         json:"firstName"`
+	LastName      string     `gorm:"column:last_name"          json:"lastName"`
+	Email         string     `gorm:"column:email"              json:"email"`
+	PhoneNumber   string     `gorm:"column:phone_number"       json:"phoneNumber"`
+	Bio           string     `gorm:"column:bio"                json:"bio"`
+	LocationBrgy  string     `gorm:"column:location_barangay"  json:"locationBrgy"`
+	LocationCity  string     `gorm:"column:location_city"      json:"locationCity"`
+	LocationProv  string     `gorm:"column:location_province"  json:"locationProv"`
+	ProfileImage  string     `gorm:"column:profile_image_url"  json:"profileImageUrl"`
+	CoverImage    string     `gorm:"column:cover_image_url"    json:"coverImageUrl"`
+	Role          string     `gorm:"column:role"               json:"role"`
+	Status        string     `gorm:"column:verification_status" json:"status"`
+	CreatedAt     time.Time  `gorm:"column:created_at"      json:"createdAt"`
+	LastLoginAt   *time.Time `gorm:"column:last_login_at"  json:"lastLoginAt"`
+	OverallRating float64    `gorm:"column:overall_rating"   json:"overallRating"`
+	ReviewCount   int        `gorm:"column:review_count"          json:"reviewCount"`
 }
 
 type ProfileListingFromDb struct {
@@ -150,12 +174,28 @@ type ProfileListingFromDb struct {
 	Status       string  `gorm:"column:status"        json:"status"`
 }
 
+type ProfileReviewFromDb struct {
+	Id               string `gorm:"column:id"`
+	ReviewerId       string `gorm:"column:reviewer_id"`
+	ReviewerName     string `gorm:"column:reviewer_name"`
+	ReviewerImageUrl string `gorm:"column:reviewer_image_url"`
+	Rating           int    `gorm:"column:rating"`
+	Comment          string `gorm:"column:comment"`
+	ReviewDate       string `gorm:"column:review_date"`
+	ListingId        string `gorm:"column:listing_id"`
+	ListingTitle     string `gorm:"column:listing_title"`
+	ListingPrice     int    `gorm:"column:listing_price"`
+	ListingPriceUnit string `gorm:"column:listing_price_unit"`
+	ListingImageUrl  string `gorm:"column:listing_image_url"`
+}
+
 type HomeListingFromDb struct {
 	Id           string    `gorm:"column:id"`
 	Title        string    `gorm:"column:title"`
 	Price        int       `gorm:"column:price"`
 	PriceUnit    string    `gorm:"column:price_unit"`
 	Type         string    `gorm:"column:type"`
+	Status       string    `gorm:"column:status"`
 	Category     string    `gorm:"column:category"`
 	Condition    string    `gorm:"column:condition"`
 	LocationCity string    `gorm:"column:location_city"`
@@ -168,32 +208,34 @@ type HomeListingFromDb struct {
 }
 
 type ListingDetailFromDb struct {
-	Id              string     `gorm:"column:id"`
-	SellerId        string     `gorm:"column:seller_id"`
-	Title           string     `gorm:"column:title"`
-	Price           int        `gorm:"column:price"`
-	PriceUnit       string     `gorm:"column:price_unit"`
-	Type            string     `gorm:"column:type"`
-	Category        string     `gorm:"column:category"`
-	CategoryID      string     `gorm:"column:category_id"`
-	Description     string     `gorm:"column:description"`
-	LocationCity    string     `gorm:"column:location_city"`
-	LocationProv    string     `gorm:"column:location_province"`
-	CreatedAt       time.Time  `gorm:"column:created_at"`
-	ViewCount       int        `gorm:"column:view_count"`
-	Status          string     `gorm:"column:status"`
-	Highlights      string     `gorm:"column:highlights"`
-	Included        string     `gorm:"column:included"`
-	Condition       string     `gorm:"column:condition"`
-	DeliveryMethod  string     `gorm:"column:delivery_method"`
-	MinRentalPeriod int        `gorm:"column:min_rental_period"`
-	AvailableFrom   *time.Time `gorm:"column:available_from"`
-	Deposit         string     `gorm:"column:deposit"`
-	Turnaround      string     `gorm:"column:turnaround_time"`
-	ServiceArea     string     `gorm:"column:service_area"`
-	SellerName      string     `gorm:"column:seller_name"`
-	SellerRating    float64    `gorm:"column:seller_rating"`
-	SellerVerified  bool       `gorm:"column:seller_verified"`
+	Id                 string     `gorm:"column:id"`
+	SellerId           string     `gorm:"column:seller_id"`
+	Title              string     `gorm:"column:title"`
+	Price              int        `gorm:"column:price"`
+	PriceUnit          string     `gorm:"column:price_unit"`
+	Type               string     `gorm:"column:type"`
+	Category           string     `gorm:"column:category"`
+	CategoryID         string     `gorm:"column:category_id"`
+	Description        string     `gorm:"column:description"`
+	LocationCity       string     `gorm:"column:location_city"`
+	LocationProv       string     `gorm:"column:location_province"`
+	CreatedAt          time.Time  `gorm:"column:created_at"`
+	ViewCount          int        `gorm:"column:view_count"`
+	Status             string     `gorm:"column:status"`
+	SellStatus         string     `gorm:"column:sell_status"`
+	Highlights         string     `gorm:"column:highlights"`
+	Included           string     `gorm:"column:included"`
+	Condition          string     `gorm:"column:condition"`
+	DeliveryMethod     string     `gorm:"column:delivery_method"`
+	MinRentalPeriod    int        `gorm:"column:min_rental_period"`
+	AvailableFrom      *time.Time `gorm:"column:available_from"`
+	Deposit            string     `gorm:"column:deposit"`
+	Turnaround         string     `gorm:"column:turnaround_time"`
+	ServiceArea        string     `gorm:"column:service_area"`
+	SellerName         string     `gorm:"column:seller_name"`
+	SellerProfileImage string     `gorm:"column:seller_profile_image_url"`
+	SellerRating       float64    `gorm:"column:seller_rating"`
+	SellerVerified     bool       `gorm:"column:seller_verified"`
 }
 
 type ListingEditFromDb struct {

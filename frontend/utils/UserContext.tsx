@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useCallback, useContext, useState, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { User } from "@/types/forms";
 import { LoadingPage } from "@/components/loading";
@@ -9,6 +9,7 @@ import { sendDeleteRequest, sendGetRequest } from "@/services/authService";
 interface UserContextType {
   user: User | null;
   isAuth: boolean;
+  isUserOnline: (userId?: string | null) => boolean;
   saveUserData: (userData: User) => void;
   clearUserData: () => void;
 }
@@ -30,7 +31,20 @@ const AUTH_ROUTES = [
   "/reset-password",
   "/verify-email",
 ];
+const ADMIN_ROUTES = ["/admin"];
 const STORAGE_KEY = "auth_user";
+
+function setRoleCookie(role?: string) {
+  if (typeof document === "undefined") return;
+
+  const normalized = (role ?? "").trim().toUpperCase();
+  if (!normalized) {
+    document.cookie = "app_role=; path=/; max-age=0; samesite=lax";
+    return;
+  }
+
+  document.cookie = `app_role=${encodeURIComponent(normalized)}; path=/; samesite=lax`;
+}
 
 function getRealtimeSocketURL(): string {
   const apiUrl = process.env.NEXT_PUBLIC_API_URL?.trim();
@@ -53,6 +67,27 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isAuth, setIsAuth] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [presenceByUserId, setPresenceByUserId] = useState<Record<string, boolean>>({});
+
+  const applyPresenceUpdate = useCallback((userId?: string, isOnline?: boolean) => {
+    const normalizedUserId = (userId ?? "").trim();
+    if (!normalizedUserId) return;
+
+    setPresenceByUserId((prev) => {
+      const nextValue = Boolean(isOnline);
+      if (prev[normalizedUserId] === nextValue) return prev;
+      return {
+        ...prev,
+        [normalizedUserId]: nextValue,
+      };
+    });
+  }, []);
+
+  const isUserOnline = useCallback((userId?: string | null) => {
+    const normalizedUserId = (userId ?? "").trim();
+    if (!normalizedUserId) return false;
+    return Boolean(presenceByUserId[normalizedUserId]);
+  }, [presenceByUserId]);
 
   const normalizePath = (path: string): string => {
     const normalized = path.replace(/\/+$/, "");
@@ -69,6 +104,8 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
   const isPublicRoute = PUBLIC_ROUTES.some(isRouteRootMatch);
   const isAuthRoute = AUTH_ROUTES.some(isRouteRootMatch);
+  const isAdminRoute = ADMIN_ROUTES.some(isRouteRootMatch);
+  const isAdminRole = ["ADMIN", "SUPERADMIN"].includes((user?.role ?? "").toUpperCase());
 
   useEffect(() => {
     if (!isAuth) return;
@@ -102,7 +139,33 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
           const parsed = JSON.parse(evt.data) as { type?: string; data?: any };
 
           if (parsed.type === "presence:update") {
+            const presenceData = parsed.data as { userId?: string; isOnline?: boolean };
+            applyPresenceUpdate(presenceData?.userId, presenceData?.isOnline);
             window.dispatchEvent(new CustomEvent("realtime:presence", { detail: parsed.data }));
+            window.dispatchEvent(new Event("messages:updated"));
+            return;
+          }
+
+          if (parsed.type === "presence:snapshot") {
+            const onlineUserIds = Array.isArray((parsed.data as { onlineUserIds?: unknown })?.onlineUserIds)
+              ? ((parsed.data as { onlineUserIds?: unknown[] }).onlineUserIds ?? [])
+              : [];
+
+            const next: Record<string, boolean> = {};
+            for (const value of onlineUserIds) {
+              const id = typeof value === "string" ? value.trim() : "";
+              if (id) next[id] = true;
+            }
+
+            setPresenceByUserId(next);
+
+            window.dispatchEvent(new Event("messages:updated"));
+            return;
+          }
+
+          if (parsed.type === "presence:connected") {
+            const connectedUserId = (parsed.data as { userId?: string })?.userId;
+            applyPresenceUpdate(connectedUserId, true);
             window.dispatchEvent(new Event("messages:updated"));
             return;
           }
@@ -138,6 +201,12 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
           if (parsed.type === "message:unsend") {
             window.dispatchEvent(new CustomEvent("realtime:message-unsend", { detail: parsed.data }));
             window.dispatchEvent(new Event("messages:updated"));
+            return;
+          }
+
+          if (parsed.type === "listing:status") {
+            window.dispatchEvent(new CustomEvent("realtime:listing-status", { detail: parsed.data }));
+            window.dispatchEvent(new Event("messages:updated"));
           }
         } catch {
           // Ignore malformed realtime payloads.
@@ -168,13 +237,14 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       if (reconnectTimeout) clearTimeout(reconnectTimeout);
       ws?.close();
     };
-  }, [isAuth]);
+  }, [applyPresenceUpdate, isAuth]);
 
   // Save user data during login
   const saveUserData = (userData: User) => {
     console.log("Logged User Data:", userData);
     setUser(userData);
     setIsAuth(true);
+    setRoleCookie(userData.role);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(userData));
   };
 
@@ -187,6 +257,8 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       // But the session cookie will remain incase of server error
       setUser(null);
       setIsAuth(false);
+      setPresenceByUserId({});
+      setRoleCookie("");
       localStorage.removeItem(STORAGE_KEY);
       router.replace("/login");
     }
@@ -214,6 +286,8 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       } catch {
         setUser(null);
         setIsAuth(false);
+        setPresenceByUserId({});
+        setRoleCookie("");
       } finally {
         setIsLoading(false);
       }
@@ -227,6 +301,16 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     if (isLoading) return;
 
     if (isAuth && isAuthRoute) {
+      router.replace(isAdminRole ? "/admin" : "/");
+      return;
+    }
+
+    if (isAuth && isAdminRole && !isAdminRoute) {
+      router.replace("/admin");
+      return;
+    }
+
+    if (isAuth && !isAdminRole && isAdminRoute) {
       router.replace("/");
       return;
     }
@@ -234,7 +318,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     if (!isAuth && !isPublicRoute) {
       router.replace("/login");
     }
-  }, [isAuth, isAuthRoute, isPublicRoute, isLoading, router]);
+  }, [isAdminRole, isAdminRoute, isAuth, isAuthRoute, isPublicRoute, isLoading, router]);
 
   // Guard against BFCache restoring a protected page after logout
   useEffect(() => {
@@ -245,6 +329,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       if (!storedUser || !hasSession) {
         setUser(null);
         setIsAuth(false);
+        setRoleCookie("");
 
         if (!isPublicRoute) {
           router.replace("/login");
@@ -259,7 +344,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   if (isLoading) return (<LoadingPage />);
 
   return (
-    <UserContext.Provider value={{ user, isAuth, saveUserData, clearUserData }}>
+    <UserContext.Provider value={{ user, isAuth, isUserOnline, saveUserData, clearUserData }}>
       {children}
     </UserContext.Provider>
   );

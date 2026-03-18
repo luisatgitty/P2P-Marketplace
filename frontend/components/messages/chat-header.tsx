@@ -2,22 +2,34 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, MoreVertical, User, ExternalLink, Flag, Trash2 } from "lucide-react";
+import { ArrowLeft, MoreVertical, User, ExternalLink, Flag, Trash2, CheckCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 import type { Conversation } from "@/types/messaging";
-import ListingTypeBadge from "./listing-type-badge";
+import { useUser } from "@/utils/UserContext";
+import { markListingAsSold, submitUserListingReport } from "@/services/listingDetailService";
+import { ReportModal } from "@/components/report-modal";
+import { ConfirmActionModal } from "@/components/confirm-action-modal";
+import ListingTypeBadge from "@/components/listing-type-badge";
 
 interface ChatHeaderProps {
   conversation: Conversation;
   onDelete?: () => void;
+  onMarkedSold?: () => void;
 }
 
-export default function ChatHeader({ conversation, onDelete }: ChatHeaderProps) {
+export default function ChatHeader({ conversation, onDelete, onMarkedSold }: ChatHeaderProps) {
   const router = useRouter();
+  const { isAuth } = useUser();
   const { otherParticipant, listing } = conversation;
   const [menuOpen, setMenuOpen] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
+  const [markSoldOpen, setMarkSoldOpen] = useState(false);
+  const [submittingReport, setSubmittingReport] = useState(false);
+  const [markingSold, setMarkingSold] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const profileHref = otherParticipant.id ? `/profile?userId=${otherParticipant.id}` : "/profile";
+  const canMarkAsSold = conversation.isSeller && listing.listingType === "SELL" && listing.status !== "SOLD";
 
   // Close menu on outside click
   useEffect(() => {
@@ -32,14 +44,54 @@ export default function ChatHeader({ conversation, onDelete }: ChatHeaderProps) 
 
   const initials = `${otherParticipant.firstName[0]}${otherParticipant.lastName[0]}`.toUpperCase();
 
+  const handleSubmitReport = async (payload: { reason: string; description: string }) => {
+    if (!isAuth) {
+      router.push("/login");
+      return;
+    }
+
+    if (submittingReport) return;
+
+    setSubmittingReport(true);
+    try {
+      await submitUserListingReport(listing.id, otherParticipant.id, payload.reason, payload.description);
+      toast.success("Report submitted. Thank you for helping keep the community safe.", { position: "top-center" });
+      setReportOpen(false);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err || "Failed to submit report.");
+      toast.error(message, { position: "top-center" });
+    } finally {
+      setSubmittingReport(false);
+    }
+  };
+
   const menuItems = [
     { icon: User,         label: "View Profile",   action: () => { router.push(profileHref); setMenuOpen(false); } },
     { icon: ExternalLink, label: "View Listing",   action: () => { router.push(`/listing/${listing.id}`); setMenuOpen(false); } },
-    { icon: Flag,         label: "Report User",    action: () => { setMenuOpen(false); }, danger: false },
+    ...(canMarkAsSold ? [{ icon: CheckCircle, label: "Mark as Sold", action: () => { setMenuOpen(false); setMarkSoldOpen(true); }, danger: false }] : []),
+    { icon: Flag,         label: "Report User",    action: () => { setMenuOpen(false); setReportOpen(true); }, danger: false },
     { icon: Trash2,       label: "Delete Chat",    action: () => { onDelete?.(); setMenuOpen(false); }, danger: true },
   ];
 
+  const handleConfirmMarkSold = async () => {
+    if (!canMarkAsSold || markingSold) return;
+
+    setMarkingSold(true);
+    try {
+      await markListingAsSold(listing.id);
+      toast.success("Listing marked as sold.", { position: "top-center" });
+      setMarkSoldOpen(false);
+      onMarkedSold?.();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err || "Failed to mark listing as sold.");
+      toast.error(message, { position: "top-center" });
+    } finally {
+      setMarkingSold(false);
+    }
+  };
+
   return (
+    <>
     <header className="flex items-center gap-3 px-4 pt-4 pb-2 border-b border-border bg-white dark:bg-[#1c1f2e] shrink-0">
 
       {/* Back button (mobile only) */}
@@ -75,7 +127,7 @@ export default function ChatHeader({ conversation, onDelete }: ChatHeaderProps) 
           <span className="text-sm font-bold text-stone-900 dark:text-stone-50 truncate">
             {otherParticipant.firstName} {otherParticipant.lastName}
           </span>
-          <ListingTypeBadge type={listing.listingType} />
+          <ListingTypeBadge type={listing.listingType} status={listing.status} />
         </div>
         <p className={cn(
           "text-[11px] font-medium",
@@ -118,5 +170,23 @@ export default function ChatHeader({ conversation, onDelete }: ChatHeaderProps) 
         </div>
       </div>
     </header>
+    <ReportModal
+      open={reportOpen}
+      title="Report User"
+      subtitle="Why are you reporting this user?"
+      submitting={submittingReport}
+      onClose={() => setReportOpen(false)}
+      onSubmit={handleSubmitReport}
+    />
+    <ConfirmActionModal
+      open={markSoldOpen}
+      title="Mark item as sold"
+      message="Please confirm that this For Sale item has already been sold. This action will mark the listing as SOLD."
+      confirmLabel="Confirm"
+      loading={markingSold}
+      onConfirm={handleConfirmMarkSold}
+      onClose={() => setMarkSoldOpen(false)}
+    />
+    </>
   );
 }

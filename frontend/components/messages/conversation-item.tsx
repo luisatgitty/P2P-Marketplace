@@ -56,14 +56,11 @@ function relativeTime(iso?: string): string {
 interface ConversationItemProps {
   conversation: Conversation;
   isActive: boolean;
-  /** Show the listing-type badge (used when "All" tab is active) */
-  showTypeBadge: boolean;
 }
 
 export default function ConversationItem({
   conversation,
   isActive,
-  showTypeBadge,
 }: ConversationItemProps) {
   const { id, otherParticipant, listing, lastMessage, lastMessageAt, unreadCount } = conversation;
   const hasUnread = unreadCount > 0;

@@ -3,8 +3,7 @@ import { DM_Sans, Geist_Mono, Inter } from "next/font/google";
 import { UserProvider } from "@/utils/UserContext";
 import { ThemeProvider } from "next-themes";
 import { Toaster } from "@/components/ui/sonner"
-import Navbar from "../components/navbar";
-import Footer from "../components/footer";
+import AppChrome from "@/components/app-chrome";
 import "./globals.css";
 
 const geistMono = Geist_Mono({
@@ -35,10 +34,10 @@ export default function RootLayout({ children }:
       <body className={`${inter.variable} ${dmSans.variable} antialiased`}>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <UserProvider>
-            <Navbar />
+            <AppChrome slot="top" />
             {children}
             <Toaster />
-            <Footer />
+            <AppChrome slot="bottom" />
           </UserProvider>
         </ThemeProvider>
       </body>
