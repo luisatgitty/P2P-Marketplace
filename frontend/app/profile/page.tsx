@@ -37,6 +37,7 @@ import { cn } from "@/lib/utils";
 type VerificationState = "unverified" | "pending" | "verified" | "rejected";
 type ListingTab = "all" | "active" | "sold" | "booked";
 type ProfileTab = "listings" | "bookmarks" | "reviews";
+type ReviewTab = "received" | "personal";
 
 const SOLD_STATUSES = new Set(["sold", "rented", "completed"]);
 const BOOKED_STATUSES = new Set(["hidden"]);
@@ -406,9 +407,11 @@ export default function ProfilePage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [userListings, setUserListings] = useState<ProfileListingItem[]>([]);
   const [bookmarkListings, setBookmarkListings] = useState<ProfileListingItem[]>([]);
-  const [userReviews, setUserReviews] = useState<ProfileReviewItem[]>([]);
+  const [receivedReviews, setReceivedReviews] = useState<ProfileReviewItem[]>([]);
+  const [personalReviews, setPersonalReviews] = useState<ProfileReviewItem[]>([]);
   const [listingTab, setListingTab] = useState<ListingTab>("active");
   const [profileTab, setProfileTab] = useState<ProfileTab>("listings");
+  const [reviewTab, setReviewTab] = useState<ReviewTab>("received");
   const [showAvatarMenu, setShowAvatarMenu] = useState(false);
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [provinces, setProvinces] = useState<LocationOption[]>([]);
@@ -539,7 +542,8 @@ export default function ProfilePage() {
         setProfileUser(payload.user);
         setUserListings(payload.listings);
         setBookmarkListings(isViewingExternalProfile ? [] : payload.bookmarks);
-        setUserReviews(payload.reviews ?? []);
+        setReceivedReviews(payload.receivedReviews ?? payload.reviews ?? []);
+        setPersonalReviews(payload.personalReviews ?? []);
         if (!isViewingExternalProfile) {
           saveUserData(payload.user);
         }
@@ -707,7 +711,8 @@ export default function ProfilePage() {
       setProfileUser(payload.user);
       setUserListings(payload.listings);
       setBookmarkListings(payload.bookmarks);
-      setUserReviews(payload.reviews ?? []);
+      setReceivedReviews(payload.receivedReviews ?? payload.reviews ?? []);
+      setPersonalReviews(payload.personalReviews ?? []);
       saveUserData(payload.user);
 
       const nextSnapshot: EditableProfileSnapshot = {
@@ -1093,11 +1098,46 @@ export default function ProfilePage() {
 
           {/* Reviews */}
           {profileTab === "reviews" && (
-            loadingProfile
-              ? <div className="text-center py-14"><p className="font-semibold text-stone-400 text-sm">Loading reviews...</p></div>
-              : userReviews.length > 0
-                ? <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-4">{userReviews.map((review) => <ProfileReviewCard key={review.id} review={review} />)}</div>
-                : <div className="text-center py-14 px-6"><Star className="w-10 h-10 text-stone-200 dark:text-stone-700 mx-auto mb-3" /><p className="font-semibold text-stone-400 text-sm">No reviews yet</p></div>
+            <>
+              <div className="flex items-center justify-between px-4 pt-3 pb-2">
+                <div className="flex gap-1">
+                  {([
+                    { key: "received", label: `Reviews by Others (${receivedReviews.length})` },
+                    { key: "personal", label: `Personal Reviews (${personalReviews.length})` },
+                  ] as const).map((tabItem) => (
+                    <button
+                      key={tabItem.key}
+                      onClick={() => setReviewTab(tabItem.key)}
+                      className={cn(
+                        "text-xs font-medium px-3 py-1.5 rounded-full transition-colors",
+                        reviewTab === tabItem.key
+                          ? "bg-stone-900 dark:bg-stone-200 text-white dark:text-stone-900"
+                          : "text-stone-400 dark:text-stone-500 hover:text-stone-600 dark:hover:text-stone-300 hover:bg-stone-100 dark:hover:bg-[#252837]"
+                      )}
+                    >
+                      {tabItem.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {loadingProfile ? (
+                <div className="text-center py-14"><p className="font-semibold text-stone-400 text-sm">Loading reviews...</p></div>
+              ) : (reviewTab === "received" ? receivedReviews : personalReviews).length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-4">
+                  {(reviewTab === "received" ? receivedReviews : personalReviews).map((review) => (
+                    <ProfileReviewCard key={`${reviewTab}-${review.id}`} review={review} />
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-14 px-6">
+                  <Star className="w-10 h-10 text-stone-200 dark:text-stone-700 mx-auto mb-3" />
+                  <p className="font-semibold text-stone-400 text-sm">
+                    {reviewTab === "received" ? "No reviews by others yet" : "No personal reviews yet"}
+                  </p>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>

@@ -45,6 +45,8 @@ export interface ProfilePayload {
   listings: ProfileListingItem[];
   bookmarks: ProfileListingItem[];
   reviews: ProfileReviewItem[];
+  receivedReviews?: ProfileReviewItem[];
+  personalReviews?: ProfileReviewItem[];
 }
 
 export interface UpdateProfilePayload {

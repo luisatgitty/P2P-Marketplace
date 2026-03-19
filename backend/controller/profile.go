@@ -33,7 +33,12 @@ func MeProfile(c *fiber.Ctx) error {
 		return SendErrorResponse(c, 500, err.Error(), err)
 	}
 
-	reviews, err := repository.GetUserReviews(userId)
+	receivedReviews, err := repository.GetUserReceivedReviews(userId)
+	if err != nil {
+		return SendErrorResponse(c, 500, err.Error(), err)
+	}
+
+	personalReviews, err := repository.GetUserPersonalReviews(userId)
 	if err != nil {
 		return SendErrorResponse(c, 500, err.Error(), err)
 	}
@@ -41,10 +46,12 @@ func MeProfile(c *fiber.Ctx) error {
 	apiURL := c.BaseURL()
 
 	return SendSuccessResponse(c, 200, "Profile fetched successfully", map[string]any{
-		"user":      mapProfileUser(user, apiURL),
-		"listings":  mapProfileListings(listings, apiURL),
-		"bookmarks": mapProfileListings(bookmarks, apiURL),
-		"reviews":   mapProfileReviews(reviews, apiURL),
+		"user":            mapProfileUser(user, apiURL),
+		"listings":        mapProfileListings(listings, apiURL),
+		"bookmarks":       mapProfileListings(bookmarks, apiURL),
+		"reviews":         mapProfileReviews(receivedReviews, apiURL),
+		"receivedReviews": mapProfileReviews(receivedReviews, apiURL),
+		"personalReviews": mapProfileReviews(personalReviews, apiURL),
 	})
 }
 
@@ -64,7 +71,12 @@ func ProfileById(c *fiber.Ctx) error {
 		return SendErrorResponse(c, 500, err.Error(), err)
 	}
 
-	reviews, err := repository.GetUserReviews(profileUserId)
+	receivedReviews, err := repository.GetUserReceivedReviews(profileUserId)
+	if err != nil {
+		return SendErrorResponse(c, 500, err.Error(), err)
+	}
+
+	personalReviews, err := repository.GetUserPersonalReviews(profileUserId)
 	if err != nil {
 		return SendErrorResponse(c, 500, err.Error(), err)
 	}
@@ -72,10 +84,12 @@ func ProfileById(c *fiber.Ctx) error {
 	apiURL := c.BaseURL()
 
 	return SendSuccessResponse(c, 200, "Profile fetched successfully", map[string]any{
-		"user":      mapProfileUser(user, apiURL),
-		"listings":  mapProfileListings(listings, apiURL),
-		"bookmarks": []map[string]any{},
-		"reviews":   mapProfileReviews(reviews, apiURL),
+		"user":            mapProfileUser(user, apiURL),
+		"listings":        mapProfileListings(listings, apiURL),
+		"bookmarks":       []map[string]any{},
+		"reviews":         mapProfileReviews(receivedReviews, apiURL),
+		"receivedReviews": mapProfileReviews(receivedReviews, apiURL),
+		"personalReviews": mapProfileReviews(personalReviews, apiURL),
 	})
 }
 
