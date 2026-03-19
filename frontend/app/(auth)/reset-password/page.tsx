@@ -50,7 +50,7 @@ export default function ResetPasswordPage() {
         }
         setIsLoading(false);
       } catch {
-        showErrorToast("An unexpected error occurred. Please try again later.");
+        showErrorToast("Failed to validate reset link. Please contact support.");
         setIsLoading(false);
       }
     };
@@ -84,7 +84,7 @@ export default function ResetPasswordPage() {
 
       router.replace("/login");
     } catch {
-      showErrorToast("An unexpected error occurred. Please try again later.");
+      showErrorToast("Failed to reset password. Please contact support.");
     } finally {
       setIsSubmitting(false);
     }

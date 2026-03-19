@@ -59,7 +59,10 @@ export function SignupForm({ className, ...props }: React.ComponentProps<"div">)
       // Redirect to email verification page
       router.push("/verify-email");
     } catch (error: any) {
-      toast.error(error.message || "Signup failed. Please contact support.", { position: "top-center" });
+      if (error === "Failed to fetch") {
+        error = "Signup failed. Please contact support.";
+      }
+      toast.error(error, { position: "top-center" });
     } finally {
       setLoading(false);
     }
