@@ -74,29 +74,6 @@ function HomePageInner() {
   const [allListings, setAllListings] = useState<ListingWithMeta[]>([]);
   const [loadingListings, setLoadingListings] = useState(true);
 
-  useEffect(() => {
-    let mounted = true;
-
-    async function loadListings() {
-      setLoadingListings(true);
-      try {
-        const data = await getHomeListings();
-        if (!mounted) return;
-        setAllListings(data);
-      } catch {
-        if (!mounted) return;
-        setAllListings([]);
-      } finally {
-        if (mounted) setLoadingListings(false);
-      }
-    }
-
-    loadListings();
-    return () => {
-      mounted = false;
-    };
-  }, []);
-
   // ── Filter state (staging = what's in the form, applied = what's actually active)
   const [keyword,  setKeyword]  = useState("");
   const [category, setCategory] = useState("All Categories");
@@ -125,29 +102,42 @@ function HomePageInner() {
   // Reset page when type tab changes from URL
   useEffect(() => { setPage(1); }, [typeFromUrl]);
 
-  // ── Filter + sort ──────────────────────────────────────────────────────────
-  const filtered = allListings.filter((item) => {
-    if (typeFromUrl !== "all" && item.type !== typeFromUrl) return false;
-    if (applied.keyword  && !item.title.toLowerCase().includes(applied.keyword.toLowerCase())) return false;
-    if (applied.category !== "All Categories" && item.category !== applied.category) return false;
-    if (applied.condition !== "Any Condition" && item.condition !== applied.condition) return false;
-    if (applied.city !== "City/Municipality" && !item.location.toLowerCase().includes(applied.city.toLowerCase())) return false;
-    if (applied.city === "City/Municipality" && applied.province !== "Province" && !item.location.toLowerCase().includes(applied.province.toLowerCase())) return false;
-    if (applied.priceMin !== "" && item.price < Number(applied.priceMin)) return false;
-    if (applied.priceMax !== "" && item.price > Number(applied.priceMax)) return false;
-    return true;
-  });
+  const totalPages = Math.max(1, Math.ceil(allListings.length / ITEMS_PER_PAGE));
+  const paginated  = allListings.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
-  const sorted = [...filtered].sort((a, b) => {
-    if (sort === "latest")    return b.createdAt - a.createdAt;
-    if (sort === "cheapest")  return a.price - b.price;
-    if (sort === "expensive") return b.price - a.price;
-    if (sort === "top-rated") return b.seller.rating - a.seller.rating;
-    return 0;
-  });
+  useEffect(() => {
+    let mounted = true;
 
-  const totalPages = Math.max(1, Math.ceil(sorted.length / ITEMS_PER_PAGE));
-  const paginated  = sorted.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+    const loadListings = async () => {
+      setLoadingListings(true);
+      try {
+        const data = await getHomeListings({
+          type: typeFromUrl,
+          keyword: applied.keyword,
+          category: applied.category,
+          condition: applied.condition,
+          province: applied.province,
+          city: applied.city,
+          priceMin: applied.priceMin,
+          priceMax: applied.priceMax,
+          sort,
+        });
+
+        if (!mounted) return;
+        setAllListings(data);
+      } catch {
+        if (!mounted) return;
+        setAllListings([]);
+      } finally {
+        if (mounted) setLoadingListings(false);
+      }
+    };
+
+    loadListings();
+    return () => {
+      mounted = false;
+    };
+  }, [applied, sort, typeFromUrl]);
 
   // ── Actions ────────────────────────────────────────────────────────────────
   const handleSearch = () => {
@@ -404,7 +394,7 @@ function HomePageInner() {
       {/* ──────────────────────── SORT BAR ──────────────────────────────────── */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-stone-200 dark:border-white/10">
         <p className="text-sm text-stone-500 dark:text-stone-400 shrink-0">
-          <span className="font-semibold text-stone-700 dark:text-stone-200">{sorted.length}</span> listing{sorted.length !== 1 && "s"} found
+          <span className="font-semibold text-stone-700 dark:text-stone-200">{allListings.length}</span> listing{allListings.length !== 1 && "s"} found
         </p>
         <div className="flex items-center gap-1 flex-wrap">
           <span className="text-sm text-stone-400 mr-2 hidden sm:inline">Sort:</span>
@@ -497,9 +487,9 @@ function HomePageInner() {
         )}
 
         {/* Items count text */}
-        {sorted.length > 0 && (
+        {allListings.length > 0 && (
           <p className="text-center text-sm text-stone-400 dark:text-stone-600 mt-3">
-            Showing {Math.min((currentPage - 1) * ITEMS_PER_PAGE + 1, sorted.length)}–{Math.min(currentPage * ITEMS_PER_PAGE, sorted.length)} of {sorted.length} listings
+            Showing {Math.min((currentPage - 1) * ITEMS_PER_PAGE + 1, allListings.length)}–{Math.min(currentPage * ITEMS_PER_PAGE, allListings.length)} of {allListings.length} listings
           </p>
         )}
       </main>

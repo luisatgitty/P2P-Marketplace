@@ -3,6 +3,7 @@ package controller
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -482,7 +483,54 @@ func DeleteListingReview(c *fiber.Ctx) error {
 
 func GetListings(c *fiber.Ctx) error {
 	userId := getOptionalUserIdFromSession(c)
-	listings, err := repository.GetAllListings(userId)
+
+	parseOptionalInt := func(raw string) (*int, error) {
+		trimmed := strings.TrimSpace(raw)
+		if trimmed == "" {
+			return nil, nil
+		}
+
+		parsed, err := strconv.Atoi(trimmed)
+		if err != nil {
+			return nil, err
+		}
+
+		return &parsed, nil
+	}
+
+	priceMin, err := parseOptionalInt(c.Query("priceMin"))
+	if err != nil {
+		return SendErrorResponse(c, 400, "priceMin must be a valid number", err)
+	}
+
+	priceMax, err := parseOptionalInt(c.Query("priceMax"))
+	if err != nil {
+		return SendErrorResponse(c, 400, "priceMax must be a valid number", err)
+	}
+
+	if priceMin != nil && *priceMin < 0 {
+		return SendErrorResponse(c, 400, "priceMin cannot be negative", nil)
+	}
+	if priceMax != nil && *priceMax < 0 {
+		return SendErrorResponse(c, 400, "priceMax cannot be negative", nil)
+	}
+	if priceMin != nil && priceMax != nil && *priceMin > *priceMax {
+		return SendErrorResponse(c, 400, "priceMin cannot be greater than priceMax", nil)
+	}
+
+	filters := model.ListingsFilter{
+		Type:      strings.TrimSpace(c.Query("type")),
+		Keyword:   strings.TrimSpace(c.Query("keyword")),
+		Category:  strings.TrimSpace(c.Query("category")),
+		Condition: strings.TrimSpace(c.Query("condition")),
+		Province:  strings.TrimSpace(c.Query("province")),
+		City:      strings.TrimSpace(c.Query("city")),
+		PriceMin:  priceMin,
+		PriceMax:  priceMax,
+		Sort:      strings.TrimSpace(c.Query("sort")),
+	}
+
+	listings, err := repository.GetAllListings(userId, filters)
 	if err != nil {
 		return SendErrorResponse(c, 500, err.Error(), err)
 	}

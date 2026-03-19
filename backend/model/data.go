@@ -207,6 +207,18 @@ type HomeListingFromDb struct {
 	SellerIsPro  bool      `gorm:"column:seller_is_pro"`
 }
 
+type ListingsFilter struct {
+	Type      string
+	Keyword   string
+	Category  string
+	Condition string
+	Province  string
+	City      string
+	PriceMin  *int
+	PriceMax  *int
+	Sort      string
+}
+
 type ListingDetailFromDb struct {
 	Id                 string     `gorm:"column:id"`
 	SellerId           string     `gorm:"column:seller_id"`
