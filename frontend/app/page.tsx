@@ -4,18 +4,18 @@ import { Suspense, useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import PostCard from "@/components/post-card";
 import { getHomeListings, type HomeListing } from "@/services/listingFeedService";
+import { getProvinces, getCitiesByProvince, type LocationOption } from "@/services/locationService";
 import { useUser } from "@/utils/UserContext";
 import { Search, SlidersHorizontal, X, ChevronLeft, ChevronRight, PackageSearch } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 type ListingWithMeta = HomeListing;
 
 // ─── Constants ─────────────────────────────────────────────────────────────────
 const CATEGORIES = ["All Categories", "Electronics", "Clothing", "Vehicles", "Home & Living", "Real Estate", "Sports & Outdoors", "Health & Wellness", "IT & Digital", "Education", "Food & Events", "Creative", "Hobbies", "Events", "Others"];
-const CONDITIONS = ["Any Condition", "New", "Like New", "Lightly Used", "Well Used", "Heavily Used"];
-const LOCATIONS  = ["Any Location", "Metro Manila", "Makati City", "Quezon City", "Taguig", "Pasig City", "Laguna", "Cavite", "Batangas", "Cebu City", "Davao City"];
 
 const SORT_OPTIONS = [
   { value: "recommended", label: "Recommended" },
@@ -29,17 +29,18 @@ const ITEMS_PER_PAGE = 25;
 
 // ─── Select styled helper ───────────────────────────────────────────────────────
 function FilterSelect({
-  value, onChange, children, className,
+  value, onChange, children, className, ...props
 }: {
   value: string;
   onChange: (v: string) => void;
   children: React.ReactNode;
   className?: string;
-}) {
+} & Omit<React.SelectHTMLAttributes<HTMLSelectElement>, "value" | "onChange" | "children" | "className">) {
   return (
     <select
       value={value}
       onChange={(e) => onChange(e.target.value)}
+      {...props}
       className={cn(
         "w-full rounded-lg border border-stone-200 dark:border-white/10 bg-white dark:bg-[#1e2a3a] text-stone-700 dark:text-stone-300 text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500 transition-colors appearance-none",
         className
@@ -100,13 +101,22 @@ function HomePageInner() {
   const [keyword,  setKeyword]  = useState("");
   const [category, setCategory] = useState("All Categories");
   const [condition, setCond]    = useState("Any Condition");
-  const [location, setLocation] = useState("Any Location");
+  const [provinceCode, setProvinceCode] = useState("");
+  const [cityCode, setCityCode] = useState("");
+  const [provinceName, setProvinceName] = useState("Province");
+  const [cityName, setCityName] = useState("City/Municipality");
   const [priceMin, setPriceMin] = useState("");
   const [priceMax, setPriceMax] = useState("");
+  const [provinceOptions, setProvinceOptions] = useState<LocationOption[]>([]);
+  const [cityOptions, setCityOptions] = useState<LocationOption[]>([]);
+  const [loadingProvinces, setLoadingProvinces] = useState(false);
+  const [loadingCities, setLoadingCities] = useState(false);
+  const [hasFetchedProvinces, setHasFetchedProvinces] = useState(false);
+  const [fetchedCitiesProvinceCode, setFetchedCitiesProvinceCode] = useState("");
 
   const [applied, setApplied] = useState({
     keyword: "", category: "All Categories", condition: "Any Condition",
-    location: "Any Location", priceMin: "", priceMax: "",
+    province: "Province", city: "City/Municipality", priceMin: "", priceMax: "",
   });
 
   const [sort,        setSort]    = useState("recommended");
@@ -121,7 +131,8 @@ function HomePageInner() {
     if (applied.keyword  && !item.title.toLowerCase().includes(applied.keyword.toLowerCase())) return false;
     if (applied.category !== "All Categories" && item.category !== applied.category) return false;
     if (applied.condition !== "Any Condition" && item.condition !== applied.condition) return false;
-    if (applied.location !== "Any Location" && !item.location.toLowerCase().includes(applied.location.toLowerCase())) return false;
+    if (applied.city !== "City/Municipality" && !item.location.toLowerCase().includes(applied.city.toLowerCase())) return false;
+    if (applied.city === "City/Municipality" && applied.province !== "Province" && !item.location.toLowerCase().includes(applied.province.toLowerCase())) return false;
     if (applied.priceMin !== "" && item.price < Number(applied.priceMin)) return false;
     if (applied.priceMax !== "" && item.price > Number(applied.priceMax)) return false;
     return true;
@@ -140,19 +151,55 @@ function HomePageInner() {
 
   // ── Actions ────────────────────────────────────────────────────────────────
   const handleSearch = () => {
-    setApplied({ keyword, category, condition, location, priceMin, priceMax });
+    setApplied({ keyword, category, condition, province: provinceName, city: cityName, priceMin, priceMax });
     setPage(1);
   };
 
   const handleClear = () => {
     setKeyword(""); setCategory("All Categories"); setCond("Any Condition");
-    setLocation("Any Location"); setPriceMin(""); setPriceMax("");
-    setApplied({ keyword: "", category: "All Categories", condition: "Any Condition", location: "Any Location", priceMin: "", priceMax: "" });
+    setProvinceCode(""); setCityCode("");
+    setProvinceName("Province"); setCityName("City/Municipality");
+    setCityOptions([]); setFetchedCitiesProvinceCode("");
+    setPriceMin(""); setPriceMax("");
+    setApplied({ keyword: "", category: "All Categories", condition: "Any Condition", province: "Province", city: "City/Municipality", priceMin: "", priceMax: "" });
     setPage(1);
   };
 
+  const loadProvincesOnDemand = async () => {
+    if (hasFetchedProvinces || loadingProvinces) return;
+
+    setLoadingProvinces(true);
+    try {
+      const data = await getProvinces();
+      setProvinceOptions(data);
+      setHasFetchedProvinces(true);
+    } catch (err) {
+      const message = typeof err === "string" ? err : "Failed to load provinces";
+      toast.error(message, { position: "top-center" });
+    } finally {
+      setLoadingProvinces(false);
+    }
+  };
+
+  const loadCitiesOnDemand = async () => {
+    if (!provinceCode || loadingCities) return;
+    if (fetchedCitiesProvinceCode === provinceCode) return;
+
+    setLoadingCities(true);
+    try {
+      const data = await getCitiesByProvince(provinceCode);
+      setCityOptions(data);
+      setFetchedCitiesProvinceCode(provinceCode);
+    } catch (err) {
+      const message = typeof err === "string" ? err : "Failed to load cities/municipalities";
+      toast.error(message, { position: "top-center" });
+    } finally {
+      setLoadingCities(false);
+    }
+  };
+
   const hasActiveFilters = Object.values(applied).some(
-    (v, i) => v !== ["", "All Categories", "Any Condition", "Any Location", "", ""][i]
+    (v, i) => v !== ["", "All Categories", "Any Condition", "Province", "City/Municipality", "", ""][i]
   );
 
   const handlePostForFree = () => {
@@ -260,17 +307,64 @@ function HomePageInner() {
               </div>
             </div>
 
-            {/* Condition */}
+            {/* Province */}
             <div className="relative min-w-32.5 flex-1">
-              <FilterSelect value={condition} onChange={setCond}>
-                {CONDITIONS.map((c) => <option key={c}>{c}</option>)}
+              <FilterSelect
+                value={provinceCode}
+                onChange={(code) => {
+                  const selected = provinceOptions.find((p) => p.code === code);
+                  setProvinceCode(code);
+                  setProvinceName(selected?.name ?? "Province");
+                  setCityCode("");
+                  setCityName("City/Municipality");
+                  setCityOptions([]);
+                  setFetchedCitiesProvinceCode("");
+                }}
+                disabled={loadingProvinces}
+                onMouseDown={(e) => {
+                  if (!hasFetchedProvinces) {
+                    e.preventDefault();
+                    void loadProvincesOnDemand();
+                  }
+                }}
+                className={cn(loadingProvinces && "cursor-wait")}
+              >
+                <option value="">{loadingProvinces ? "Loading provinces..." : "Province"}</option>
+                {provinceOptions.map((item) => <option key={item.code} value={item.code}>{item.name}</option>)}
               </FilterSelect>
             </div>
 
-            {/* Location */}
+            {/* City/Municipality */}
             <div className="relative min-w-32.5 flex-1">
-              <FilterSelect value={location} onChange={setLocation}>
-                {LOCATIONS.map((l) => <option key={l}>{l}</option>)}
+              <FilterSelect
+                value={cityCode}
+                onChange={(code) => {
+                  const selected = cityOptions.find((c) => c.code === code);
+                  setCityCode(code);
+                  setCityName(selected?.name ?? "City/Municipality");
+                }}
+                disabled={!provinceCode || loadingCities}
+                onMouseDown={(e) => {
+                  if (!provinceCode) {
+                    e.preventDefault();
+                    return;
+                  }
+
+                  if (fetchedCitiesProvinceCode !== provinceCode) {
+                    e.preventDefault();
+                    void loadCitiesOnDemand();
+                  }
+                }}
+                className={cn((!provinceCode || loadingCities) && "cursor-wait")}
+              >
+                <option value="">
+                  {!provinceCode
+                    ? "Select province first"
+                    : loadingCities
+                      ? "Loading cities/municipalities..."
+                      : "City/Municipality"}
+                </option>
+                {cityOptions.map((item) => <option key={item.code} value={item.code}>{item.name}</option>)}
               </FilterSelect>
             </div>
 
