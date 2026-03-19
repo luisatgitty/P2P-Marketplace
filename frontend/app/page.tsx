@@ -319,10 +319,10 @@ function HomePageInner() {
               key={opt.value}
               onClick={() => { setSort(opt.value); setPage(1); }}
               className={cn(
-                "text-sm font-medium px-3 py-1.5 rounded-md transition-all",
+                "tab-page-base",
                 sort === opt.value
-                  ? "bg-[#1a2235] dark:bg-amber-700 text-white"
-                  : "text-stone-500 dark:text-stone-400 hover:bg-stone-200 dark:hover:bg-white/10 hover:text-stone-700 dark:hover:text-white"
+                  ? "tab-active"
+                  : "tab-inactive"
               )}
             >
               {opt.label}

@@ -49,13 +49,8 @@ function NavTabsInner() {
           <button
             key={tab.value}
             onClick={() => handleTabClick(tab.value)}
-            className={cn(
-              "flex items-center gap-1.5 px-2.5 sm:px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all duration-150 select-none",
-              isActive
-                ? "bg-amber-700 text-white shadow-sm"
-                : "text-stone-400 hover:text-white hover:bg-white/10"
-            )}
-          >
+            className={cn("tab-nav-base", 
+              isActive ? "tab-active" : "tab-inactive")}>
             <tab.icon size={14} className="shrink-0" />
             <span className="hidden sm:inline">{tab.label}</span>
           </button>

@@ -5,8 +5,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import {
-  MapPin, Mail, Calendar, Eye, EyeOff, MessageCircle, Star,
-  Edit2, Plus, ShieldCheck, Package, Bookmark,
+  MapPin, Mail, Calendar, Eye, EyeOff, Star,
+  Edit2, Plus, Package, Bookmark,
   Camera, Trash2, AlertTriangle,
 } from "lucide-react";
 import { useUser } from "@/utils/UserContext";
@@ -1046,17 +1046,17 @@ export default function ProfilePage() {
           {profileTab === "listings" && (<>
             <div className="flex items-center justify-between px-4 pt-3 pb-2">
               <div className="flex gap-1">
-                {(["all", "active", "sold", "booked"] as const).map((t) => (
-                  <button key={t} onClick={() => setListingTab(t)}
-                    className={cn("text-xs font-medium px-3 py-1.5 rounded-full transition-colors capitalize",
-                      listingTab === t
-                        ? "bg-stone-900 dark:bg-stone-200 text-white dark:text-stone-900"
-                        : "text-stone-400 dark:text-stone-500 hover:text-stone-600 dark:hover:text-stone-300 hover:bg-stone-100 dark:hover:bg-[#252837]")}>
-                    {t === "all"
+                {(["all", "active", "sold", "booked"] as const).map((tab) => (
+                  <button key={tab} onClick={() => setListingTab(tab)}
+                    className={cn("tab-page-base",
+                      listingTab === tab
+                        ? "tab-active"
+                        : "tab-inactive")}>
+                    {tab === "all"
                       ? `All (${userListings.length})`
-                      : t === "active"
+                      : tab === "active"
                       ? `Active (${activeListings.length})`
-                      : t === "sold"
+                      : tab === "sold"
                         ? `Sold (${soldListings.length})`
                         : `Booked (${bookedListings.length})`}
                   </button>
@@ -1109,10 +1109,10 @@ export default function ProfilePage() {
                       key={tabItem.key}
                       onClick={() => setReviewTab(tabItem.key)}
                       className={cn(
-                        "text-xs font-medium px-3 py-1.5 rounded-full transition-colors",
+                        "tab-page-base",
                         reviewTab === tabItem.key
-                          ? "bg-stone-900 dark:bg-stone-200 text-white dark:text-stone-900"
-                          : "text-stone-400 dark:text-stone-500 hover:text-stone-600 dark:hover:text-stone-300 hover:bg-stone-100 dark:hover:bg-[#252837]"
+                          ? "tab-active"
+                          : "tab-inactive"
                       )}
                     >
                       {tabItem.label}
