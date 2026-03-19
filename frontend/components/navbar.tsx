@@ -7,6 +7,7 @@ import { useUser } from "@/utils/UserContext";
 import { useTheme } from "next-themes";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { getConversations } from "@/services/messagingService";
+import { LogoutModal } from "@/components/auth/logout-modal";
 import {
   Sun, Moon, MessageCircle, LogOut, User, Home,
   ChevronDown, Tag, Store, Wrench, LayoutGrid, UserPlus, ShieldCheck,
@@ -73,15 +74,21 @@ function TabsFallback() {
 
 // ─── Main Navbar ───────────────────────────────────────────────────────────────
 export default function Navbar() {
-  const { clearUserData, isAuth, user } = useUser();
+  const { isAuth, user } = useUser();
   const { theme, setTheme } = useTheme();
   const pathname = usePathname();
   const isVerifiedSeller = (user?.status ?? "").toLowerCase() === "verified";
-  const [dropdownOpen, setDropdownOpen]     = useState(false);
-  const [mounted, setMounted]               = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [logoutModalOpen, setLogoutModalOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const [profileImageSrc, setProfileImageSrc] = useState("/profile-icon.png");
   const [hasUnreadMessages, setHasUnreadMessages] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const handleLogOut = () => {
+    setLogoutModalOpen(true);
+    setDropdownOpen(false);
+  }
 
   const refreshUnreadState = useCallback(async () => {
     if (!isAuth) {
@@ -118,7 +125,7 @@ export default function Navbar() {
       return;
     }
 
-    setProfileImageSrc(raw.startsWith("/") ? raw : `/${raw}`);
+    setProfileImageSrc(raw);
   }, [user?.profileImageUrl]);
 
   // Avoid hydration mismatch for theme
@@ -157,6 +164,12 @@ export default function Navbar() {
 
   return (
     <>
+      <LogoutModal
+        open={logoutModalOpen}
+        onClose={() => setLogoutModalOpen(false)}
+        userImageSrc={profileImageSrc}
+      />
+
       {/* Amber accent stripe */}
       <div className="fixed top-0 left-0 right-0 z-50 h-1 bg-amber-800" />
 
@@ -301,7 +314,7 @@ export default function Navbar() {
                         </button>
                       )}
                       <button
-                        onClick={() => { clearUserData(); setDropdownOpen(false); }}
+                        onClick={handleLogOut}
                         className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors"
                       >
                         <LogOut size={15} />

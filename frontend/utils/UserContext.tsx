@@ -11,7 +11,7 @@ interface UserContextType {
   isAuth: boolean;
   isUserOnline: (userId?: string | null) => boolean;
   saveUserData: (userData: User) => void;
-  clearUserData: () => void;
+  clearUserData: () => Promise<void>;
 }
 
 const UserContext = createContext<UserContextType | null>(null);
