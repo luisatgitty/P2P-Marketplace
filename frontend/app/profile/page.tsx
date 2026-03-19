@@ -155,13 +155,12 @@ function ProfileListingCard({ listing, showMeta = false, tab }: { listing: Profi
         <div className="p-3">
           <p className="text-stone-800 dark:text-stone-100 font-semibold text-sm leading-tight truncate">{listing.title}</p>
           <div className="flex items-baseline gap-1 mt-0.5">
-            <p className="text-stone-800 dark:text-stone-100 font-bold text-[15px]">{fmt.format(listing.price)}</p>
+            <p className="text-stone-800 dark:text-stone-100 font-bold text-sm">{fmt.format(listing.price)}</p>
             {listing.priceUnit && <span className="text-xs text-stone-400 dark:text-stone-500">{listing.priceUnit}</span>}
           </div>
           {showMeta ? (
             <div className="flex items-center gap-3 mt-2 text-[11px] text-stone-400 dark:text-stone-500">
               <span className="flex items-center gap-1"><Eye className="w-3 h-3" /> 142 views</span>
-              <span className="flex items-center gap-1"><MessageCircle className="w-3 h-3" /> 3 inquiries</span>
             </div>
           ) : (
             <div className="flex items-center justify-between mt-1.5">
@@ -1049,12 +1048,12 @@ export default function ProfilePage() {
                         ? "bg-stone-900 dark:bg-stone-200 text-white dark:text-stone-900"
                         : "text-stone-400 dark:text-stone-500 hover:text-stone-600 dark:hover:text-stone-300 hover:bg-stone-100 dark:hover:bg-[#252837]")}>
                     {t === "all"
-                      ? `📋 All (${userListings.length})`
+                      ? `All (${userListings.length})`
                       : t === "active"
-                      ? `🟢 Active (${activeListings.length})`
+                      ? `Active (${activeListings.length})`
                       : t === "sold"
-                        ? `✅ Sold (${soldListings.length})`
-                        : `📝 Booked (${bookedListings.length})`}
+                        ? `Sold (${soldListings.length})`
+                        : `Booked (${bookedListings.length})`}
                   </button>
                 ))}
               </div>
