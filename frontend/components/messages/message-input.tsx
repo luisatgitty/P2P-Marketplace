@@ -249,10 +249,10 @@ export default function MessageInput({
           </div>
         )}
 
-        <div className="flex items-end gap-2 pl-3 pr-1 pb-1">
+        <div className="flex items-end gap-2 pl-2">
 
         {/* Attach */}
-        <div className="relative pr-2 border-r-2 border-stone-300 dark:border-stone-600" ref={attachRef}>
+        <div className="relative border-stone-300 dark:border-stone-600" ref={attachRef}>
           <button
             onClick={() => setAttachOpen((v) => !v)}
             className="text-stone-400 hover:text-amber-600 dark:hover:text-amber-400 transition-colors shrink-0 cursor-pointer"
@@ -260,6 +260,8 @@ export default function MessageInput({
           >
             <Paperclip size={17} />
           </button>
+          {/* Separator */}
+          
 
           <input
             ref={mediaInputRef}
@@ -286,13 +288,15 @@ export default function MessageInput({
           )}
         </div>
 
+        <div className="w-0.5 h-7 bg-stone-300 dark:bg-stone-600 self-center" />
+
         {/* Textarea */}
         <textarea
           ref={textareaRef}
           value={value}
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder={replyTo ? `Reply to ${replyTo.senderName}…` : "Type a message… (Enter to send)"}
+          placeholder={replyTo ? `Reply to ${replyTo.senderName}…` : "Type a message…"}
           rows={1}
           disabled={disabled}
           className={cn(

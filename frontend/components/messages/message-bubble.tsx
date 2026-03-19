@@ -389,6 +389,10 @@ export default function MessageBubble({
   const menuTriggerRef = useRef<HTMLButtonElement>(null);
   const reactionPickerRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const rowRef = useRef<HTMLDivElement>(null);
+  const bubbleRef = useRef<HTMLDivElement>(null);
+  const actionButtonsRef = useRef<HTMLDivElement>(null);
+  const [actionButtonsOffsetY, setActionButtonsOffsetY] = useState(0);
   // Keep hover-actions visible while a popover is open
   const actionsVisible = showReactionPicker || showMenu;
 
@@ -522,11 +526,49 @@ export default function MessageBubble({
     };
   }, [isMe, showMenu]);
 
+  useEffect(() => {
+    const updateActionsY = () => {
+      if (!rowRef.current || !bubbleRef.current || !actionButtonsRef.current) return;
+
+      const rowRect = rowRef.current.getBoundingClientRect();
+      const bubbleRect = bubbleRef.current.getBoundingClientRect();
+      const actionsRect = actionButtonsRef.current.getBoundingClientRect();
+
+      const bubbleCenterY = bubbleRect.top + bubbleRect.height / 2;
+      const nextOffset = Math.max(0, bubbleCenterY - rowRect.top - actionsRect.height / 2);
+      setActionButtonsOffsetY(nextOffset);
+    };
+
+    const raf = requestAnimationFrame(updateActionsY);
+    const resizeObserver = new ResizeObserver(updateActionsY);
+
+    if (rowRef.current) resizeObserver.observe(rowRef.current);
+    if (bubbleRef.current) resizeObserver.observe(bubbleRef.current);
+    if (actionButtonsRef.current) resizeObserver.observe(actionButtonsRef.current);
+
+    window.addEventListener("resize", updateActionsY);
+
+    return () => {
+      cancelAnimationFrame(raf);
+      resizeObserver.disconnect();
+      window.removeEventListener("resize", updateActionsY);
+    };
+  }, [
+    showTime,
+    isMe,
+    message.replyTo,
+    message.reactions?.length,
+    message.content,
+    message.attachments?.length,
+  ]);
+
   // ── Hover action buttons ──────────────────────────────────────────────────
   const ActionButtons = () => (
     <div
+      ref={actionButtonsRef}
+      style={{ marginTop: actionButtonsOffsetY }}
       className={cn(
-        "flex items-center gap-0.5 self-center pb-6 shrink-0 transition-opacity duration-100",
+        "flex items-center gap-0.5 self-start shrink-0 transition-opacity duration-100",
         actionsVisible ? "opacity-100" : "opacity-0 group-hover:opacity-100"
       )}
     >
@@ -587,7 +629,7 @@ export default function MessageBubble({
   );
 
   return (
-    <div className={cn("group flex items-center gap-1 my-0.5", isMe ? "flex-row-reverse" : "flex-row")}>
+    <div ref={rowRef} className={cn("group flex items-start gap-1 my-0.5", isMe ? "flex-row-reverse" : "flex-row")}>
       {/* Bubble column */}
       <div className={cn("flex flex-col max-w-[72%] sm:max-w-[62%]", isMe ? "items-end" : "items-start")}>
 
@@ -601,6 +643,7 @@ export default function MessageBubble({
 
         {/* Bubble */}
         <div
+          ref={bubbleRef}
           className={cn(
             "w-full overflow-hidden",
             // If there's a reply quote, connect the top corners to it
