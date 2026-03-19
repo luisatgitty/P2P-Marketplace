@@ -5,46 +5,63 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useUser } from "@/utils/UserContext";
 import {
-  LayoutDashboard, Users, Package, Flag, ShieldCheck,
-  Settings, UserCog, LogOut, Menu, X, Bell, ChevronRight,
+  LayoutDashboard,
+  Users,
+  Package,
+  Flag,
+  ShieldCheck,
+  Settings,
+  UserCog,
+  LogOut,
+  Menu,
+  X,
+  Bell,
+  ChevronRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // ── Replace with real auth context once wired ──────────────────────────────────
 const SESSION = {
-  name:   "Super Admin",
-  email:  "superadmin@p2pmarket.ph",
-  role:   "SUPER_ADMIN" as "USER" | "ADMIN" | "SUPER_ADMIN",
+  name: "Super Admin",
+  email: "superadmin@p2pmarket.ph",
+  role: "SUPER_ADMIN" as "USER" | "ADMIN" | "SUPER_ADMIN",
   avatar: "SA",
 };
 
 // ── Badge counts — wire to real API later ──────────────────────────────────────
 const BADGES: Record<string, number> = {
-  "/admin/reports":       23,
+  "/admin/reports": 23,
   "/admin/verifications": 12,
 };
 
 interface NavItem {
-  href:  string;
+  href: string;
   label: string;
-  Icon:  React.ElementType;
+  Icon: React.ElementType;
   roles?: Array<"ADMIN" | "SUPER_ADMIN">;
 }
 
 const NAV: NavItem[] = [
-  { href: "/admin/dashboard",     label: "Dashboard",         Icon: LayoutDashboard                          },
-  { href: "/admin/users",         label: "Users",             Icon: Users                                    },
-  { href: "/admin/listings",      label: "Listings",          Icon: Package                                  },
-  { href: "/admin/reports",       label: "Reports",           Icon: Flag                                     },
-  { href: "/admin/verifications", label: "Verifications",     Icon: ShieldCheck                              },
-  { href: "/admin/settings",      label: "Settings",          Icon: Settings                                 },
-  { href: "/admin/admins",        label: "Admin Management",  Icon: UserCog, roles: ["SUPER_ADMIN"]          },
+  { href: "/admin/dashboard", label: "Dashboard", Icon: LayoutDashboard },
+  { href: "/admin/users", label: "Users", Icon: Users },
+  { href: "/admin/listings", label: "Listings", Icon: Package },
+  { href: "/admin/reports", label: "Reports", Icon: Flag },
+  { href: "/admin/verifications", label: "Verifications", Icon: ShieldCheck },
+  { href: "/admin/settings", label: "Settings", Icon: Settings },
+  {
+    href: "/admin/admins",
+    label: "Admin Management",
+    Icon: UserCog,
+    roles: ["SUPER_ADMIN"],
+  },
 ];
 
 function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
   const { clearUserData } = useUser();
-  const filtered = NAV.filter(item => !item.roles || item.roles.includes(SESSION.role as any));
+  const filtered = NAV.filter(
+    (item) => !item.roles || item.roles.includes(SESSION.role as any),
+  );
 
   return (
     <div className="flex flex-col h-full">
@@ -55,7 +72,9 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
             <span className="text-[11px] font-black text-white">P2P</span>
           </div>
           <div className="min-w-0">
-            <p className="text-sm font-bold text-white leading-none">P2P Marketplace</p>
+            <p className="text-sm font-bold text-white leading-none">
+              P2P Marketplace
+            </p>
             <p className="text-[10px] text-slate-400 mt-0.5">Admin Panel</p>
           </div>
         </div>
@@ -67,8 +86,8 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
           Menu
         </p>
         {filtered.map(({ href, label, Icon }) => {
-          const active  = pathname === href || pathname.startsWith(href + "/");
-          const badge   = BADGES[href];
+          const active = pathname === href || pathname.startsWith(href + "/");
+          const badge = BADGES[href];
           return (
             <Link
               key={href}
@@ -102,8 +121,12 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
             {SESSION.avatar}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-bold text-white truncate">{SESSION.name}</p>
-            <p className="text-[10px] text-slate-400 truncate">{SESSION.email}</p>
+            <p className="text-xs font-bold text-white truncate">
+              {SESSION.name}
+            </p>
+            <p className="text-[10px] text-slate-400 truncate">
+              {SESSION.email}
+            </p>
           </div>
         </div>
         <button
@@ -119,17 +142,22 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   );
 }
 
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
+export default function AdminLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
 
   // Current page title from nav
-  const currentNav = NAV.find(n => pathname === n.href || pathname.startsWith(n.href + "/"));
+  const currentNav = NAV.find(
+    (n) => pathname === n.href || pathname.startsWith(n.href + "/"),
+  );
 
   return (
     // Fixed full-screen overlay — sits above the root layout's Navbar/Footer
     <div className="fixed inset-0 z-[100] flex bg-stone-100 dark:bg-[#0f1117] overflow-hidden">
-
       {/* ── Desktop sidebar ──────────────────────────────────────────────── */}
       <div className="hidden lg:flex flex-col w-60 flex-shrink-0 bg-[#1e2433] h-full">
         <SidebarContent />
@@ -142,11 +170,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           onClick={() => setOpen(false)}
         />
       )}
-      <div className={cn(
-        "fixed inset-y-0 left-0 z-50 w-64 bg-[#1e2433] flex flex-col",
-        "transition-transform duration-300 ease-in-out lg:hidden",
-        open ? "translate-x-0" : "-translate-x-full",
-      )}>
+      <div
+        className={cn(
+          "fixed inset-y-0 left-0 z-50 w-64 bg-[#1e2433] flex flex-col",
+          "transition-transform duration-300 ease-in-out lg:hidden",
+          open ? "translate-x-0" : "-translate-x-full",
+        )}
+      >
         <button
           type="button"
           onClick={() => setOpen(false)}
@@ -159,7 +189,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
       {/* ── Main area ────────────────────────────────────────────────────── */}
       <div className="flex-1 flex flex-col overflow-hidden">
-
         {/* Top bar */}
         <header className="flex-shrink-0 h-14 bg-white dark:bg-[#1c1f2e] border-b border-stone-200 dark:border-[#2a2d3e] flex items-center justify-between px-4 sm:px-6">
           <div className="flex items-center gap-3">
@@ -193,9 +222,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </header>
 
         {/* Scrollable content */}
-        <main className="flex-1 overflow-y-auto">
-          {children}
-        </main>
+        <main className="flex-1 overflow-y-auto">{children}</main>
       </div>
     </div>
   );
