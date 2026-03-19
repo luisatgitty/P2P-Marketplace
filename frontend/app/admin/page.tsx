@@ -4,6 +4,7 @@
 
 import { useState, useEffect, useCallback, JSX } from "react";
 import { useRouter } from "next/navigation";
+import { useUser } from "@/utils/UserContext";
 
 const API = `${process.env.NEXT_PUBLIC_API_URL}`;
 
@@ -98,6 +99,7 @@ const apiFetch = (path: string, options: RequestInit = {}) =>
 // ── Main ──────────────────────────────────────────────────────────────────────
 export default function SuperAdminDashboard() {
   const router = useRouter();
+  const { clearUserData } = useUser();
   const [activeTab, setActiveTab]         = useState<Tab>("overview");
   const [currentUser, setCurrentUser]     = useState<User | null>(null);
   const [stats, setStats]                 = useState<Stats | null>(null);
@@ -243,8 +245,7 @@ export default function SuperAdminDashboard() {
   };
 
   const handleLogout = async () => {
-    await apiFetch("/auth/logout", { method: "DELETE" });
-    router.push("/login");
+    clearUserData();
   };
 
   // ── Filtered ──────────────────────────────────────────────────────────────
