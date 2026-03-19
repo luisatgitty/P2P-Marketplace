@@ -179,7 +179,7 @@ function HomePageInner() {
           style={{ backgroundImage: "radial-gradient(circle at 20% 50%, #b45309 0%, transparent 50%), radial-gradient(circle at 80% 20%, #1e40af 0%, transparent 40%)" }}
         />
         <div className="relative max-w-7xl mx-auto px-4 sm:px-7 py-8 sm:py-10">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-8">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-8">
 
             {/* Left: Headline */}
             <div className="max-w-xl animate-fade-in-up">
@@ -338,7 +338,7 @@ function HomePageInner() {
             <div className="w-8 h-8 border-4 border-amber-700 border-t-transparent rounded-full animate-spin" />
           </div>
         ) : paginated.length > 0 ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4">
             {paginated.map((listing) => (
               <PostCard key={listing.id} {...listing} />
             ))}
