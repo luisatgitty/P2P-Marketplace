@@ -23,6 +23,7 @@ const PUBLIC_ROUTES = [
   "/reset-password",
   "/verify-email",
   "/listing",
+  "/not-found",
 ];
 const AUTH_ROUTES = [
   "/signup",
@@ -32,6 +33,20 @@ const AUTH_ROUTES = [
   "/verify-email",
 ];
 const ADMIN_ROUTES = ["/admin"];
+const KNOWN_APP_ROUTES = [
+  "/",
+  "/signup",
+  "/login",
+  "/forgot-password",
+  "/reset-password",
+  "/verify-email",
+  "/listing",
+  "/create",
+  "/messages",
+  "/profile",
+  "/admin",
+  "/not-found",
+];
 const STORAGE_KEY = "auth_user";
 
 function setRoleCookie(role?: string) {
@@ -105,6 +120,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const isPublicRoute = PUBLIC_ROUTES.some(isRouteRootMatch);
   const isAuthRoute = AUTH_ROUTES.some(isRouteRootMatch);
   const isAdminRoute = ADMIN_ROUTES.some(isRouteRootMatch);
+  const isKnownAppRoute = KNOWN_APP_ROUTES.some(isRouteRootMatch);
   const isAdminRole = ["ADMIN", "SUPERADMIN"].includes((user?.role ?? "").toUpperCase());
 
   useEffect(() => {
@@ -316,9 +332,13 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     }
 
     if (!isAuth && !isPublicRoute) {
+      if (!isKnownAppRoute) {
+        router.replace("/not-found");
+        return;
+      }
       router.replace("/login");
     }
-  }, [isAdminRole, isAdminRoute, isAuth, isAuthRoute, isPublicRoute, isLoading, router]);
+  }, [isAdminRole, isAdminRoute, isAuth, isAuthRoute, isKnownAppRoute, isPublicRoute, isLoading, router]);
 
   // Guard against BFCache restoring a protected page after logout
   useEffect(() => {

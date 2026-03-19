@@ -9,9 +9,25 @@ export function proxy(request: NextRequest) {
     "/reset-password",
     "/verify-email",
     "/listing",
+    "/not-found",
   ];
 
   const ADMIN_ROUTES = ["/admin"];
+
+  const KNOWN_APP_ROUTES = [
+    "/",
+    "/signup",
+    "/login",
+    "/forgot-password",
+    "/reset-password",
+    "/verify-email",
+    "/listing",
+    "/create",
+    "/messages",
+    "/profile",
+    "/admin",
+    "/not-found",
+  ];
 
   const AUTH_ROUTES = [
     "/signup",
@@ -34,6 +50,12 @@ export function proxy(request: NextRequest) {
   const isPublicRoute = PUBLIC_ROUTES.some(matchesRoute);
   const isAuthRoute = AUTH_ROUTES.some(matchesRoute);
   const isAdminRoute = ADMIN_ROUTES.some(matchesRoute);
+  const isKnownAppRoute = KNOWN_APP_ROUTES.some(matchesRoute);
+
+  // Unknown app route → not found page.
+  if (!isKnownAppRoute) {
+    return NextResponse.redirect(new URL("/not-found", request.url));
+  }
 
   // Guests can only access public routes
   if (!hasSessionToken && !isPublicRoute) {
