@@ -255,6 +255,27 @@ type AdminListingTypeBreakdownItem struct {
 	Pct   float64 `json:"pct"`
 }
 
+type AdminUserListItemFromDb struct {
+	Id              string     `gorm:"column:id" json:"id"`
+	FirstName       string     `gorm:"column:first_name" json:"first_name"`
+	LastName        string     `gorm:"column:last_name" json:"last_name"`
+	Email           string     `gorm:"column:email" json:"email"`
+	Phone           string     `gorm:"column:phone" json:"phone"`
+	Role            string     `gorm:"column:role" json:"role"`
+	Verification    string     `gorm:"column:verification" json:"verification"`
+	IsActive        bool       `gorm:"column:is_active" json:"is_active"`
+	IsEmailVerified bool       `gorm:"column:is_email_verified" json:"is_email_verified"`
+	FailedLogin     int        `gorm:"column:failed_login" json:"failed_login"`
+	Listings        int        `gorm:"column:listings" json:"listings"`
+	LastLogin       *time.Time `gorm:"column:last_login" json:"last_login"`
+	Joined          time.Time  `gorm:"column:joined" json:"joined"`
+	Location        string     `gorm:"column:location" json:"location"`
+}
+
+type AdminSetUserActiveBody struct {
+	IsActive *bool `json:"isActive"`
+}
+
 type ListingDetailFromDb struct {
 	Id                 string     `gorm:"column:id"`
 	SellerId           string     `gorm:"column:seller_id"`

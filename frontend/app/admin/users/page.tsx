@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import {
   Search,
@@ -14,9 +14,15 @@ import {
   ExternalLink,
   Filter,
   X,
-  Download,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
+import {
+  getAdminUsers,
+  setAdminUserActive,
+  deleteAdminUser,
+  type AdminUserRecord,
+} from "@/services/adminUsersService";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 type Role = "USER" | "ADMIN" | "SUPER_ADMIN";
@@ -48,223 +54,17 @@ interface AdminUser {
   location: string;
 }
 
-// ── Placeholder data ───────────────────────────────────────────────────────────
-const USERS: AdminUser[] = [
-  {
-    id: "u1",
-    first_name: "Juan Miguel",
-    last_name: "Dela Cruz",
-    email: "juan@email.com",
-    phone: "09171234001",
-    role: "USER",
-    verification: "VERIFIED",
-    is_active: true,
-    is_email_verified: true,
-    failed_login: 0,
-    listings: 12,
-    last_login: "Mar 19, 2026",
-    joined: "Jan 15, 2026",
-    location: "San Pablo, Laguna",
-  },
-  {
-    id: "u2",
-    first_name: "Maria Cristina",
-    last_name: "Santos",
-    email: "maria@email.com",
-    phone: "09181234002",
-    role: "USER",
-    verification: "PENDING",
-    is_active: true,
-    is_email_verified: true,
-    failed_login: 0,
-    listings: 5,
-    last_login: "Mar 18, 2026",
-    joined: "Jan 20, 2026",
-    location: "San Pablo, Laguna",
-  },
-  {
-    id: "u3",
-    first_name: "Pedro Jose",
-    last_name: "Reyes",
-    email: "pedro@email.com",
-    phone: "09191234003",
-    role: "USER",
-    verification: "VERIFIED",
-    is_active: true,
-    is_email_verified: true,
-    failed_login: 0,
-    listings: 8,
-    last_login: "Mar 17, 2026",
-    joined: "Dec 10, 2025",
-    location: "San Pablo, Laguna",
-  },
-  {
-    id: "u4",
-    first_name: "Ana Liza",
-    last_name: "Bautista",
-    email: "ana@email.com",
-    phone: "09201234004",
-    role: "USER",
-    verification: "UNVERIFIED",
-    is_active: true,
-    is_email_verified: true,
-    failed_login: 0,
-    listings: 3,
-    last_login: "Mar 16, 2026",
-    joined: "Feb 5, 2026",
-    location: "San Pablo, Laguna",
-  },
-  {
-    id: "u5",
-    first_name: "Carlos Rafael",
-    last_name: "Mendoza",
-    email: "carlos@email.com",
-    phone: "09211234005",
-    role: "USER",
-    verification: "VERIFIED",
-    is_active: false,
-    is_email_verified: true,
-    failed_login: 5,
-    listings: 7,
-    last_login: "Mar 10, 2026",
-    joined: "Nov 8, 2025",
-    location: "San Pablo, Laguna",
-  },
-  {
-    id: "u6",
-    first_name: "Luisa Mae",
-    last_name: "Garcia",
-    email: "luisa@email.com",
-    phone: null,
-    role: "USER",
-    verification: "REJECTED",
-    is_active: true,
-    is_email_verified: false,
-    failed_login: 0,
-    listings: 0,
-    last_login: "Mar 14, 2026",
-    joined: "Mar 1, 2026",
-    location: "Calamba, Laguna",
-  },
-  {
-    id: "u7",
-    first_name: "Ramon",
-    last_name: "Torres",
-    email: "ramon@email.com",
-    phone: "09221234007",
-    role: "USER",
-    verification: "PENDING",
-    is_active: true,
-    is_email_verified: true,
-    failed_login: 0,
-    listings: 2,
-    last_login: "Mar 19, 2026",
-    joined: "Mar 10, 2026",
-    location: "Makati City",
-  },
-  {
-    id: "u8",
-    first_name: "Benita",
-    last_name: "Cruz",
-    email: "benita@email.com",
-    phone: "09231234008",
-    role: "USER",
-    verification: "VERIFIED",
-    is_active: true,
-    is_email_verified: true,
-    failed_login: 0,
-    listings: 19,
-    last_login: "Mar 18, 2026",
-    joined: "Oct 5, 2025",
-    location: "Quezon City",
-  },
-  {
-    id: "u9",
-    first_name: "Admin",
-    last_name: "One",
-    email: "admin1@email.com",
-    phone: "09241234009",
-    role: "ADMIN",
-    verification: "VERIFIED",
-    is_active: true,
-    is_email_verified: true,
-    failed_login: 0,
-    listings: 0,
-    last_login: "Mar 19, 2026",
-    joined: "Sep 1, 2025",
-    location: "San Pablo, Laguna",
-  },
-  {
-    id: "u10",
-    first_name: "Rowena",
-    last_name: "Pascual",
-    email: "rowena@email.com",
-    phone: "09251234010",
-    role: "USER",
-    verification: "VERIFIED",
-    is_active: true,
-    is_email_verified: true,
-    failed_login: 0,
-    listings: 6,
-    last_login: "Mar 17, 2026",
-    joined: "Dec 20, 2025",
-    location: "Batangas City",
-  },
-  {
-    id: "u11",
-    first_name: "Jerome",
-    last_name: "Diaz",
-    email: "jerome@email.com",
-    phone: "09261234011",
-    role: "USER",
-    verification: "UNVERIFIED",
-    is_active: false,
-    is_email_verified: false,
-    failed_login: 3,
-    listings: 0,
-    last_login: null,
-    joined: "Mar 18, 2026",
-    location: "Unknown",
-  },
-  {
-    id: "u12",
-    first_name: "Cynthia",
-    last_name: "Lim",
-    email: "cynthia@email.com",
-    phone: "09271234012",
-    role: "USER",
-    verification: "VERIFIED",
-    is_active: true,
-    is_email_verified: true,
-    failed_login: 0,
-    listings: 24,
-    last_login: "Mar 19, 2026",
-    joined: "Aug 12, 2025",
-    location: "Caloocan City",
-  },
-];
-
-// ── Badge helpers ──────────────────────────────────────────────────────────────
-function RoleBadge({ role }: { role: Role }) {
-  const map = {
-    USER: "bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300",
-    ADMIN:
-      "bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-300",
-    SUPER_ADMIN:
-      "bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300",
-  };
-  const label = { USER: "User", ADMIN: "Admin", SUPER_ADMIN: "Super Admin" };
-  return (
-    <span
-      className={cn(
-        "text-[10px] font-bold px-2 py-0.5 rounded-full",
-        map[role],
-      )}
-    >
-      {label[role]}
-    </span>
-  );
+function formatDateTime(value?: string | null): string {
+  if (!value) return "Never";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Never";
+  return date.toLocaleDateString("en-PH", {
+    month: "short",
+    day: "2-digit",
+    year: "numeric",
+  });
 }
+
 
 function VerifBadge({ status }: { status: VerifStatus }) {
   const map = {
@@ -335,7 +135,6 @@ function SortIcon({
 
 export default function UsersPage() {
   const [search, setSearch] = useState("");
-  const [roleFilter, setRoleFilter] = useState<string>("ALL");
   const [verifFilter, setVerif] = useState<string>("ALL");
   const [statusFilter, setStatus] = useState<string>("ALL");
   const [sort, setSort] = useState<{ field: SortField; dir: SortDir }>({
@@ -344,8 +143,34 @@ export default function UsersPage() {
   });
   const [page, setPage] = useState(1);
   const [openMenu, setOpenMenu] = useState<string | null>(null);
-  const [users, setUsers] = useState<AdminUser[]>(USERS);
+  const [users, setUsers] = useState<AdminUser[]>([]);
+  const [loadingUsers, setLoadingUsers] = useState(true);
+  const [actionLoadingUserId, setActionLoadingUserId] = useState<string | null>(null);
   const PER_PAGE = 8;
+
+  useEffect(() => {
+    let mounted = true;
+
+    const loadUsers = async () => {
+      setLoadingUsers(true);
+      try {
+        const data = await getAdminUsers();
+        if (!mounted) return;
+        setUsers((data ?? []) as AdminUserRecord[]);
+      } catch (err) {
+        if (!mounted) return;
+        const message = typeof err === "string" ? err : "Failed to load users";
+        toast.error(message, { position: "top-center" });
+      } finally {
+        if (mounted) setLoadingUsers(false);
+      }
+    };
+
+    void loadUsers();
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   function toggleSort(field: SortField) {
     setSort((s) =>
@@ -366,7 +191,6 @@ export default function UsersPage() {
             .includes(search.toLowerCase()) ||
           u.email.toLowerCase().includes(search.toLowerCase()),
       );
-    if (roleFilter !== "ALL") data = data.filter((u) => u.role === roleFilter);
     if (verifFilter !== "ALL")
       data = data.filter((u) => u.verification === verifFilter);
     if (statusFilter !== "ALL")
@@ -383,33 +207,62 @@ export default function UsersPage() {
         va = a.listings;
         vb = b.listings;
       } else if (sort.field === "joined") {
-        va = a.joined;
-        vb = b.joined;
+        va = new Date(a.joined).getTime();
+        vb = new Date(b.joined).getTime();
+      } else if (sort.field === "last_login") {
+        va = a.last_login ? new Date(a.last_login).getTime() : 0;
+        vb = b.last_login ? new Date(b.last_login).getTime() : 0;
       } else {
-        va = a.role;
-        vb = b.role;
+        va = "";
+        vb = "";
       }
       return sort.dir === "asc" ? (va > vb ? 1 : -1) : va < vb ? 1 : -1;
     });
     return data;
-  }, [users, search, roleFilter, verifFilter, statusFilter, sort]);
+  }, [users, search, verifFilter, statusFilter, sort]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
   const paged = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
 
-  function handleToggleActive(id: string) {
-    setUsers((u) =>
-      u.map((user) =>
-        user.id === id ? { ...user, is_active: !user.is_active } : user,
-      ),
-    );
-    setOpenMenu(null);
+  async function handleToggleActive(id: string) {
+    const target = users.find((u) => u.id === id);
+    if (!target) return;
+
+    const nextIsActive = !target.is_active;
+    setActionLoadingUserId(id);
+    try {
+      await setAdminUserActive(id, nextIsActive);
+      setUsers((u) =>
+        u.map((user) =>
+          user.id === id ? { ...user, is_active: nextIsActive } : user,
+        ),
+      );
+      toast.success(`User ${nextIsActive ? "activated" : "deactivated"} successfully`, { position: "top-center" });
+    } catch (err) {
+      const message = typeof err === "string" ? err : "Failed to update user status";
+      toast.error(message, { position: "top-center" });
+    } finally {
+      setActionLoadingUserId(null);
+      setOpenMenu(null);
+    }
   }
-  function handleDelete(id: string) {
+
+  async function handleDelete(id: string) {
     if (!window.confirm("Permanently delete this user? This cannot be undone."))
       return;
-    setUsers((u) => u.filter((user) => user.id !== id));
-    setOpenMenu(null);
+
+    setActionLoadingUserId(id);
+    try {
+      await deleteAdminUser(id);
+      setUsers((u) => u.filter((user) => user.id !== id));
+      toast.success("User deleted successfully", { position: "top-center" });
+    } catch (err) {
+      const message = typeof err === "string" ? err : "Failed to delete user";
+      toast.error(message, { position: "top-center" });
+    } finally {
+      setActionLoadingUserId(null);
+      setOpenMenu(null);
+    }
   }
 
   const TH = ({ label, field }: { label: string; field: SortField }) => (
@@ -432,13 +285,7 @@ export default function UsersPage() {
           <h2 className="text-xl font-extrabold text-stone-900 dark:text-stone-50">
             Users
           </h2>
-          <p className="text-sm text-stone-500 dark:text-stone-400 mt-0.5">
-            {users.length} total accounts registered
-          </p>
         </div>
-        <button className="flex items-center gap-2 px-4 py-2.5 rounded-full border border-stone-200 dark:border-[#2a2d3e] text-sm font-semibold text-stone-600 dark:text-stone-300 hover:bg-stone-50 dark:hover:bg-[#252837] transition-colors flex-shrink-0">
-          <Download className="w-4 h-4" /> Export CSV
-        </button>
       </div>
 
       {/* Search + filters */}
@@ -461,17 +308,6 @@ export default function UsersPage() {
           {/* Filters */}
           <div className="flex gap-2 flex-wrap">
             {[
-              {
-                label: "Role",
-                value: roleFilter,
-                setter: setRoleFilter,
-                options: [
-                  ["ALL", "All Roles"],
-                  ["USER", "User"],
-                  ["ADMIN", "Admin"],
-                  ["SUPER_ADMIN", "Super Admin"],
-                ],
-              },
               {
                 label: "Verification",
                 value: verifFilter,
@@ -514,13 +350,11 @@ export default function UsersPage() {
               </div>
             ))}
             {(search ||
-              roleFilter !== "ALL" ||
               verifFilter !== "ALL" ||
               statusFilter !== "ALL") && (
               <button
                 onClick={() => {
                   setSearch("");
-                  setRoleFilter("ALL");
                   setVerif("ALL");
                   setStatus("ALL");
                   setPage(1);
@@ -535,7 +369,7 @@ export default function UsersPage() {
 
         {/* Results count */}
         <p className="text-xs text-stone-400 dark:text-stone-500 mt-2.5">
-          Showing {paged.length} of {filtered.length} users
+          {loadingUsers ? "Loading users..." : `Showing ${paged.length} of ${filtered.length} users`}
         </p>
       </div>
 
@@ -546,7 +380,6 @@ export default function UsersPage() {
             <thead className="border-b border-stone-200 dark:border-[#2a2d3e] bg-stone-50 dark:bg-[#13151f]">
               <tr>
                 <TH label="Name" field="name" />
-                <TH label="Role" field="role" />
                 <TH label="Verification" field="verification" />
                 <th className="text-left py-3 px-4 text-[11px] font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest whitespace-nowrap">
                   Status
@@ -562,7 +395,16 @@ export default function UsersPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-stone-100 dark:divide-[#2a2d3e]">
-              {paged.length === 0 ? (
+              {loadingUsers ? (
+                <tr>
+                  <td
+                    colSpan={8}
+                    className="py-16 text-center text-sm text-stone-400 dark:text-stone-500"
+                  >
+                    Loading users...
+                  </td>
+                </tr>
+              ) : paged.length === 0 ? (
                 <tr>
                   <td
                     colSpan={8}
@@ -579,14 +421,14 @@ export default function UsersPage() {
                   >
                     <td className="py-3.5 px-4">
                       <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#3a4a6a] to-[#1e2a40] flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0">
+                        <div className="w-8 h-8 rounded-full bg-linear-to-br from-[#3a4a6a] to-[#1e2a40] flex items-center justify-center text-white text-[10px] font-bold shrink-0">
                           {user.first_name.charAt(0)}
                         </div>
                         <div className="min-w-0">
-                          <p className="text-xs font-bold text-stone-800 dark:text-stone-100 truncate max-w-[160px]">
+                          <p className="text-xs font-bold text-stone-800 dark:text-stone-100 truncate max-w-40">
                             {user.first_name} {user.last_name}
                           </p>
-                          <p className="text-[11px] text-stone-400 dark:text-stone-500 truncate max-w-[160px]">
+                          <p className="text-[11px] text-stone-400 dark:text-stone-500 truncate max-w-40">
                             {user.email}
                           </p>
                           {user.phone && (
@@ -598,9 +440,6 @@ export default function UsersPage() {
                       </div>
                     </td>
                     <td className="py-3.5 px-4 whitespace-nowrap">
-                      <RoleBadge role={user.role} />
-                    </td>
-                    <td className="py-3.5 px-4 whitespace-nowrap">
                       <VerifBadge status={user.verification} />
                     </td>
                     <td className="py-3.5 px-4 whitespace-nowrap">
@@ -610,10 +449,10 @@ export default function UsersPage() {
                       {user.listings}
                     </td>
                     <td className="py-3.5 px-4 text-xs text-stone-500 dark:text-stone-400 whitespace-nowrap">
-                      {user.joined}
+                      {formatDateTime(user.joined)}
                     </td>
                     <td className="py-3.5 px-4 text-xs text-stone-500 dark:text-stone-400 whitespace-nowrap">
-                      {user.last_login ?? (
+                      {user.last_login ? formatDateTime(user.last_login) : (
                         <span className="text-stone-300 dark:text-stone-600">
                           Never
                         </span>
@@ -636,6 +475,7 @@ export default function UsersPage() {
                                 prev === user.id ? null : user.id,
                               )
                             }
+                            disabled={actionLoadingUserId === user.id}
                             className="w-7 h-7 rounded-lg flex items-center justify-center text-stone-400 hover:bg-stone-100 dark:hover:bg-[#252837] hover:text-stone-700 dark:hover:text-stone-200 transition-colors"
                           >
                             <MoreHorizontal className="w-4 h-4" />
@@ -646,7 +486,7 @@ export default function UsersPage() {
                                 className="fixed inset-0 z-10"
                                 onClick={() => setOpenMenu(null)}
                               />
-                              <div className="absolute right-0 top-8 z-20 bg-white dark:bg-[#1c1f2e] border border-stone-200 dark:border-[#2a2d3e] rounded-xl shadow-xl overflow-hidden min-w-[160px]">
+                              <div className="absolute right-0 top-8 z-20 bg-white dark:bg-[#1c1f2e] border border-stone-200 dark:border-[#2a2d3e] rounded-xl shadow-xl overflow-hidden min-w-40">
                                 <button
                                   onClick={() => handleToggleActive(user.id)}
                                   className="flex items-center gap-2.5 w-full px-4 py-2.5 text-xs text-stone-700 dark:text-stone-200 hover:bg-stone-50 dark:hover:bg-[#252837] transition-colors"

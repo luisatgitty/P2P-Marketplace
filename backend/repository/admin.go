@@ -3,6 +3,7 @@ package repository
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"p2p_marketplace/backend/middleware"
 	"p2p_marketplace/backend/model"
@@ -164,4 +165,104 @@ func GetAdminListingTypeBreakdown() ([]model.AdminListingTypeBreakdownItem, int,
 	}
 
 	return items, total, nil
+}
+
+func GetAdminUsers() ([]model.AdminUserListItemFromDb, error) {
+	db := middleware.DBConn
+	users := make([]model.AdminUserListItemFromDb, 0)
+
+	query := `
+		SELECT
+			u.id::text AS id,
+			u.first_name,
+			u.last_name,
+			u.email,
+			COALESCE(u.phone_number, '') AS phone,
+			u.role::text AS role,
+			u.verification_status::text AS verification,
+			u.is_active,
+			u.is_email_verified,
+			u.failed_login_attempts AS failed_login,
+			COALESCE(lc.listings, 0)::int AS listings,
+			u.last_login_at AS last_login,
+			u.created_at AS joined,
+			TRIM(BOTH ', ' FROM CONCAT_WS(', ', NULLIF(TRIM(u.location_city), ''), NULLIF(TRIM(u.location_province), ''))) AS location
+		FROM public.users u
+		LEFT JOIN (
+			SELECT user_id, COUNT(*)::int AS listings
+			FROM public.listings
+			GROUP BY user_id
+		) lc ON lc.user_id = u.id
+		WHERE u.deleted_at IS NULL
+			AND u.role = 'USER'
+		ORDER BY u.created_at DESC
+	`
+
+	if err := db.Raw(query).Scan(&users).Error; err != nil {
+		return nil, fmt.Errorf("Failed to fetch users")
+	}
+
+	return users, nil
+}
+
+func SetAdminUserActive(userId string, isActive bool) error {
+	db := middleware.DBConn
+
+	updateQuery := `
+		UPDATE public.users
+		SET
+			is_active = $1,
+			updated_at = now(),
+			failed_login_attempts = CASE WHEN $1 THEN 0 ELSE failed_login_attempts END,
+			account_locked_until = CASE WHEN $1 THEN NULL ELSE account_locked_until END
+		WHERE id = $2
+			AND deleted_at IS NULL
+			AND role = 'USER'
+	`
+
+	result := db.Exec(updateQuery, isActive, userId)
+	if result.Error != nil {
+		return fmt.Errorf("Failed to update user status")
+	}
+	if result.RowsAffected == 0 {
+		return fmt.Errorf("User not found")
+	}
+
+	if !isActive {
+		if err := DeleteUserSessions(userId); err != nil {
+			return fmt.Errorf("Failed to revoke user sessions")
+		}
+	}
+
+	return nil
+}
+
+func DeleteAdminUser(userId string) error {
+	db := middleware.DBConn
+
+	updateQuery := `
+		UPDATE public.users
+		SET
+			is_active = FALSE,
+			deleted_at = $1,
+			updated_at = $1
+		WHERE id = $2
+			AND deleted_at IS NULL
+			AND role = 'USER'
+	`
+
+	now := time.Now()
+	result := db.Exec(updateQuery, now, userId)
+	if result.Error != nil {
+		return fmt.Errorf("Failed to delete user")
+	}
+	if result.RowsAffected == 0 {
+		return fmt.Errorf("User not found")
+	}
+
+	if err := DeleteUserSessions(userId); err != nil {
+		return fmt.Errorf("Failed to revoke user sessions")
+	}
+
+	return nil
 }
