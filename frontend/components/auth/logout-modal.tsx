@@ -79,7 +79,7 @@ export function LogoutModal({ open, onClose, userImageSrc }: LogoutModalProps) {
               </p>
             </div>
 
-            <div className="bg-white px-6 py-5 flex flex-col gap-3">
+            <div className="bg-white dark:bg-[#1c1f2e] px-6 py-5 flex flex-col gap-3">
               {/* Session info chip */}
               <div className="flex items-center gap-3 bg-stone-50 dark:bg-[#13151f] border border-stone-200 dark:border-[#2a2d3e] rounded-xl px-3.5 py-2.5">
                 {/* Avatar */}

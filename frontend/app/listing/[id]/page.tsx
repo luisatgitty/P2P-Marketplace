@@ -478,7 +478,7 @@ export default function ListingDetailPage() {
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 pb-20">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 pb-8">
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6">
 
           {/* ══ LEFT COLUMN ══════════════════════════════════════════════════ */}

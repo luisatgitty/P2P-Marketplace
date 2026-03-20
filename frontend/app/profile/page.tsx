@@ -154,7 +154,7 @@ function ProfileListingCard({ listing, showMeta = false, tab }: { listing: Profi
           </div>
         </div>
         <div className="p-3">
-          <p className="text-stone-800 dark:text-stone-100 font-semibold text-sm leading-tight truncate">{listing.title}</p>
+          <p className="text-stone-800 dark:text-stone-100 font-semibold text-sm leading-tight line-clamp-2">{listing.title}</p>
           <div className="flex items-baseline gap-1 mt-0.5">
             <p className="text-stone-800 dark:text-stone-100 font-bold text-sm">{fmt.format(listing.price)}</p>
             {listing.priceUnit && <span className="text-xs text-stone-400 dark:text-stone-500">{listing.priceUnit}</span>}
@@ -745,11 +745,11 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-stone-100 dark:bg-[#0f1117]">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 pb-20">
+    <div className="min-h-fit bg-stone-100 dark:bg-[#0f1117]">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
 
         {/* ── Profile header card ── */}
-        <div className="bg-white dark:bg-[#1c1f2e] rounded-2xl border border-stone-200 dark:border-[#2a2d3e] shadow-sm overflow-hidden mb-5">
+        <div className="bg-white dark:bg-[#1c1f2e] rounded-2xl border border-stone-200 dark:border-[#2a2d3e] shadow-sm overflow-hidden mb-4">
 
           {/* Cover photo */}
           <div className={cn("relative h-32 bg-linear-to-r from-[#1e2433] via-[#2a3650] to-[#1a2a3a] overflow-hidden group", !isViewingExternalProfile && "cursor-pointer")} onClick={() => !isViewingExternalProfile && cover.trigger()}>
