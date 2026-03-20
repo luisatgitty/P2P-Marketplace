@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
 import {
   Users,
   Package,
@@ -19,50 +20,67 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
+import { getAdminDashboardStats, type AdminDashboardStats } from "@/services/adminService";
 
 // ── Placeholder data ───────────────────────────────────────────────────────────
-const STATS = [
+type Trend = "up" | "down" | "neutral";
+
+const STAT_CARD_META = [
   {
+    key: "totalUsers",
     label: "Total Users",
-    value: "1,247",
-    sub: "+89 this week",
-    trend: "up",
     Icon: Users,
     color: "text-blue-600 dark:text-blue-400",
     bg: "bg-blue-50 dark:bg-blue-950/30",
     href: "/admin/users",
   },
   {
+    key: "activeListings",
     label: "Active Listings",
-    value: "3,891",
-    sub: "+127 this week",
-    trend: "up",
     Icon: Package,
     color: "text-teal-600 dark:text-teal-400",
     bg: "bg-teal-50 dark:bg-teal-950/30",
     href: "/admin/listings",
   },
   {
+    key: "pendingReports",
     label: "Pending Reports",
-    value: "23",
-    sub: "8 flagged today",
-    trend: "up",
     Icon: Flag,
     color: "text-red-600 dark:text-red-400",
     bg: "bg-red-50 dark:bg-red-950/30",
     href: "/admin/reports",
   },
   {
+    key: "pendingVerifications",
     label: "Pending Verifications",
-    value: "12",
-    sub: "3 submitted today",
-    trend: "neutral",
     Icon: ShieldCheck,
     color: "text-amber-600 dark:text-amber-400",
     bg: "bg-amber-50 dark:bg-amber-950/20",
     href: "/admin/verifications",
   },
-];
+] as const;
+
+const EMPTY_STATS: AdminDashboardStats = {
+  totalUsers: 0,
+  newUsersThisWeek: 0,
+  newUsersLastWeek: 0,
+  activeListings: 0,
+  newListingsThisWeek: 0,
+  newListingsLastWeek: 0,
+  pendingReports: 0,
+  pendingReportsToday: 0,
+  pendingReportsYesterday: 0,
+  pendingVerifications: 0,
+  pendingVerificationsToday: 0,
+  pendingVerificationsYesterday: 0,
+};
+
+function getTrend(current: number, previous: number): Trend {
+  if (current > previous) return "up";
+  if (current < previous) return "down";
+  return "neutral";
+}
 
 const LISTING_TYPES = [
   {
@@ -239,6 +257,65 @@ function ReportBadge({ status }: { status: string }) {
 }
 
 export default function DashboardPage() {
+  const [stats, setStats] = useState<AdminDashboardStats>(EMPTY_STATS);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const loadStats = async () => {
+      try {
+        const data = await getAdminDashboardStats();
+        if (!mounted) return;
+        setStats({ ...EMPTY_STATS, ...data });
+      } catch (err) {
+        if (!mounted) return;
+        const message = typeof err === "string" ? err : "Failed to load dashboard stats";
+        toast.error(message, { position: "top-center" });
+      }
+    };
+
+    void loadStats();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const statCards = useMemo(() => {
+    const usersTrend = getTrend(stats.newUsersThisWeek, stats.newUsersLastWeek);
+    const listingsTrend = getTrend(stats.newListingsThisWeek, stats.newListingsLastWeek);
+    const reportsTrend = getTrend(stats.pendingReportsToday, stats.pendingReportsYesterday);
+    const verificationsTrend = getTrend(stats.pendingVerificationsToday, stats.pendingVerificationsYesterday);
+
+    const dynamic = {
+      totalUsers: {
+        value: stats.totalUsers.toLocaleString(),
+        sub: `${stats.newUsersThisWeek.toLocaleString()} this week`,
+        trend: usersTrend,
+      },
+      activeListings: {
+        value: stats.activeListings.toLocaleString(),
+        sub: `${stats.newListingsThisWeek.toLocaleString()} this week`,
+        trend: listingsTrend,
+      },
+      pendingReports: {
+        value: stats.pendingReports.toLocaleString(),
+        sub: `${stats.pendingReportsToday.toLocaleString()} flagged today`,
+        trend: reportsTrend,
+      },
+      pendingVerifications: {
+        value: stats.pendingVerifications.toLocaleString(),
+        sub: `${stats.pendingVerificationsToday.toLocaleString()} submitted today`,
+        trend: verificationsTrend,
+      },
+    } as const;
+
+    return STAT_CARD_META.map((card) => ({
+      ...card,
+      ...dynamic[card.key],
+    }));
+  }, [stats]);
+
   return (
     <div className="p-5 sm:p-6 space-y-6">
       {/* ── Page header ── */}
@@ -253,7 +330,7 @@ export default function DashboardPage() {
 
       {/* ── Stat cards ── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        {STATS.map(({ label, value, sub, trend, Icon, color, bg, href }) => (
+        {statCards.map(({ label, value, sub, trend, Icon, color, bg, href }) => (
           <Link
             key={label}
             href={href}
@@ -262,7 +339,7 @@ export default function DashboardPage() {
             <div className="flex items-start justify-between mb-3">
               <div
                 className={cn(
-                  "w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0",
+                  "w-10 h-10 rounded-xl flex items-center justify-center shrink-0",
                   bg,
                 )}
               >
@@ -477,7 +554,7 @@ export default function DashboardPage() {
           <div className="space-y-3">
             {RECENT_USERS.map(({ id, name, email, verification, joined }) => (
               <div key={id} className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#3a4a6a] to-[#1e2a40] flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0">
+                <div className="w-8 h-8 rounded-full bg-linear-to-br from-[#3a4a6a] to-[#1e2a40] flex items-center justify-center text-white text-[10px] font-bold shrink-0">
                   {name.charAt(0)}
                 </div>
                 <div className="flex-1 min-w-0">
@@ -511,7 +588,7 @@ export default function DashboardPage() {
             {RECENT_REPORTS.map(
               ({ id, reporter, target, reason, status, ago }) => (
                 <div key={id} className="flex items-start gap-2.5">
-                  <div className="w-7 h-7 rounded-full bg-red-100 dark:bg-red-950/40 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <div className="w-7 h-7 rounded-full bg-red-100 dark:bg-red-950/40 flex items-center justify-center shrink-0 mt-0.5">
                     <Flag className="w-3 h-3 text-red-500" />
                   </div>
                   <div className="flex-1 min-w-0">

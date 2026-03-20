@@ -219,6 +219,21 @@ type ListingsFilter struct {
 	Sort      string
 }
 
+type AdminDashboardStatsFromDb struct {
+	TotalUsers                    int `gorm:"column:total_users" json:"totalUsers"`
+	NewUsersThisWeek              int `gorm:"column:new_users_this_week" json:"newUsersThisWeek"`
+	NewUsersLastWeek              int `gorm:"column:new_users_last_week" json:"newUsersLastWeek"`
+	ActiveListings                int `gorm:"column:active_listings" json:"activeListings"`
+	NewListingsThisWeek           int `gorm:"column:new_listings_this_week" json:"newListingsThisWeek"`
+	NewListingsLastWeek           int `gorm:"column:new_listings_last_week" json:"newListingsLastWeek"`
+	PendingReports                int `gorm:"column:pending_reports" json:"pendingReports"`
+	PendingReportsToday           int `gorm:"column:pending_reports_today" json:"pendingReportsToday"`
+	PendingReportsYesterday       int `gorm:"column:pending_reports_yesterday" json:"pendingReportsYesterday"`
+	PendingVerifications          int `gorm:"column:pending_verifications" json:"pendingVerifications"`
+	PendingVerificationsToday     int `gorm:"column:pending_verifications_today" json:"pendingVerificationsToday"`
+	PendingVerificationsYesterday int `gorm:"column:pending_verifications_yesterday" json:"pendingVerificationsYesterday"`
+}
+
 type ListingDetailFromDb struct {
 	Id                 string     `gorm:"column:id"`
 	SellerId           string     `gorm:"column:seller_id"`
