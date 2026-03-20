@@ -40,7 +40,7 @@ export function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
   const hasSessionToken = Boolean(request.cookies.get("session_token")?.value);
   const roleCookie = (request.cookies.get("app_role")?.value ?? "").toUpperCase();
-  const isAdminRole = roleCookie === "ADMIN" || roleCookie === "SUPERADMIN";
+  const isAdminRole = roleCookie === "ADMIN" || roleCookie === "SUPER_ADMIN";
 
   const matchesRoute = (route: string): boolean => {
     if (route === "/") return pathname === "/";

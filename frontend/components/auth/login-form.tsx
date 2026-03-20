@@ -48,7 +48,7 @@ export function LoginForm() {
 
       // Role-based redirect
       const role = data.user?.role;
-      if (role === "SUPERADMIN" || role === "ADMIN") router.push("/admin");
+      if (role === "SUPER_ADMIN" || role === "ADMIN") router.push("/admin");
       else router.push("/");
 
     } catch (error: any) {

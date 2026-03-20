@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useUser } from "@/utils/UserContext";
 import {
@@ -58,7 +59,7 @@ const NAV: NavItem[] = [
 
 function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
-  const { clearUserData } = useUser();
+  const { user, clearUserData } = useUser();
   const filtered = NAV.filter(
     (item) => !item.roles || item.roles.includes(SESSION.role as any),
   );
@@ -68,23 +69,24 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
       {/* Logo */}
       <div className="px-5 py-5 border-b border-white/10 flex-shrink-0">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-amber-500 flex items-center justify-center flex-shrink-0">
-            <span className="text-[11px] font-black text-white">P2P</span>
-          </div>
+          <Image
+            src="/logo.png"
+            alt="P2P Marketplace"
+            width={32}
+            height={32}
+            className="rounded-md shrink-0"
+          />
           <div className="min-w-0">
             <p className="text-sm font-bold text-white leading-none">
               P2P Marketplace
             </p>
-            <p className="text-[10px] text-slate-400 mt-0.5">Admin Panel</p>
+            <p className="text-xs text-slate-400 mt-0.5">Admin Panel</p>
           </div>
         </div>
       </div>
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
-        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.15em] px-2 mb-2">
-          Menu
-        </p>
         {filtered.map(({ href, label, Icon }) => {
           const active = pathname === href || pathname.startsWith(href + "/");
           const badge = BADGES[href];
@@ -117,15 +119,21 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
       {/* Bottom: user info + logout */}
       <div className="flex-shrink-0 border-t border-white/10 p-4">
         <div className="flex items-center gap-3 mb-3">
-          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center text-white text-[11px] font-bold flex-shrink-0">
-            {SESSION.avatar}
+          <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[11px] font-bold flex-shrink-0">
+            <Image
+              src={user?.profileImageUrl || "/profile-icon.png"}
+              alt="Profile"
+              width={28}
+              height={28}
+              className="w-full h-full object-cover"
+            />
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-xs font-bold text-white truncate">
-              {SESSION.name}
+              {user?.firstName} {user?.lastName}
             </p>
             <p className="text-[10px] text-slate-400 truncate">
-              {SESSION.email}
+              {user?.email}
             </p>
           </div>
         </div>
@@ -189,38 +197,6 @@ export default function AdminLayout({
 
       {/* ── Main area ────────────────────────────────────────────────────── */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Top bar */}
-        <header className="flex-shrink-0 h-14 bg-white dark:bg-[#1c1f2e] border-b border-stone-200 dark:border-[#2a2d3e] flex items-center justify-between px-4 sm:px-6">
-          <div className="flex items-center gap-3">
-            {/* Mobile hamburger */}
-            <button
-              type="button"
-              onClick={() => setOpen(true)}
-              className="lg:hidden w-8 h-8 rounded-lg flex items-center justify-center text-stone-500 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-[#252837] transition-colors"
-            >
-              <Menu className="w-5 h-5" />
-            </button>
-            <h1 className="text-sm font-bold text-stone-900 dark:text-stone-50">
-              {currentNav?.label ?? "Admin Panel"}
-            </h1>
-          </div>
-
-          <div className="flex items-center gap-2">
-            {/* Notification bell */}
-            <button
-              type="button"
-              className="relative w-8 h-8 rounded-lg flex items-center justify-center text-stone-400 dark:text-stone-500 hover:bg-stone-100 dark:hover:bg-[#252837] transition-colors"
-            >
-              <Bell className="w-4.5 h-4.5 w-[18px] h-[18px]" />
-              <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-red-500" />
-            </button>
-            {/* Avatar */}
-            <div className="w-7 h-7 rounded-full bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center text-white text-[10px] font-bold">
-              {SESSION.avatar}
-            </div>
-          </div>
-        </header>
-
         {/* Scrollable content */}
         <main className="flex-1 overflow-y-auto">{children}</main>
       </div>
