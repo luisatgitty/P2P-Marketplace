@@ -276,6 +276,25 @@ type AdminSetUserActiveBody struct {
 	IsActive *bool `json:"isActive"`
 }
 
+type AdminAccountListItemFromDb struct {
+	Id        string     `gorm:"column:id" json:"id"`
+	FirstName string     `gorm:"column:first_name" json:"first_name"`
+	LastName  string     `gorm:"column:last_name" json:"last_name"`
+	Email     string     `gorm:"column:email" json:"email"`
+	Role      string     `gorm:"column:role" json:"role"`
+	IsActive  bool       `gorm:"column:is_active" json:"is_active"`
+	CreatedAt time.Time  `gorm:"column:created_at" json:"created_at"`
+	LastLogin *time.Time `gorm:"column:last_login" json:"last_login"`
+}
+
+type AdminCreateAdminBody struct {
+	FirstName string `json:"firstName"`
+	LastName  string `json:"lastName"`
+	Email     string `json:"email"`
+	Role      string `json:"role"`
+	Password  string `json:"password"`
+}
+
 type AdminListingListItemFromDb struct {
 	Id       string    `gorm:"column:id" json:"id"`
 	Title    string    `gorm:"column:title" json:"title"`

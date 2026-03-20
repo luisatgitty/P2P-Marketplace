@@ -267,6 +267,163 @@ func DeleteAdminUser(userId string) error {
 	return nil
 }
 
+func GetAdminAccounts() ([]model.AdminAccountListItemFromDb, error) {
+	db := middleware.DBConn
+	admins := make([]model.AdminAccountListItemFromDb, 0)
+
+	query := `
+		SELECT
+			u.id::text AS id,
+			u.first_name,
+			u.last_name,
+			u.email,
+			u.role::text AS role,
+			u.is_active,
+			u.created_at,
+			u.last_login_at AS last_login
+		FROM public.users u
+		WHERE u.deleted_at IS NULL
+			AND u.role IN ('ADMIN', 'SUPER_ADMIN')
+		ORDER BY
+			CASE WHEN u.role = 'SUPER_ADMIN' THEN 0 ELSE 1 END ASC,
+			u.created_at ASC
+	`
+
+	if err := db.Raw(query).Scan(&admins).Error; err != nil {
+		return nil, fmt.Errorf("Failed to fetch admin accounts")
+	}
+
+	for i := range admins {
+		admins[i].Role = strings.ToUpper(strings.TrimSpace(admins[i].Role))
+	}
+
+	return admins, nil
+}
+
+func CreateAdminAccount(body model.AdminCreateAdminBody) (model.AdminAccountListItemFromDb, error) {
+	db := middleware.DBConn
+	created := model.AdminAccountListItemFromDb{}
+
+	userInput := model.UserFromBody{
+		FirstName: body.FirstName,
+		LastName:  body.LastName,
+		Email:     body.Email,
+		Password:  body.Password,
+	}
+	if err := middleware.ValidateSignUpInput(&userInput); err != nil {
+		return created, err
+	}
+	if err := middleware.ValidatePasswordLength(userInput.Password); err != nil {
+		return created, err
+	}
+
+	role := strings.ToUpper(strings.TrimSpace(body.Role))
+	if role != "ADMIN" && role != "SUPER_ADMIN" {
+		return created, fmt.Errorf("Invalid role")
+	}
+
+	if err := IsUserExist(userInput.Email); err != nil {
+		return created, err
+	}
+
+	hashedPassword := middleware.HashPassword(userInput.Password)
+
+	insertQuery := `
+		INSERT INTO public.users (
+			first_name,
+			last_name,
+			email,
+			password_hash,
+			role,
+			is_email_verified,
+			is_active,
+			created_at,
+			updated_at
+		)
+		VALUES (
+			$1, $2, $3, $4, $5::user_role, TRUE, TRUE, now(), now()
+		)
+		RETURNING
+			id::text AS id,
+			first_name,
+			last_name,
+			email,
+			role::text AS role,
+			is_active,
+			created_at,
+			last_login_at AS last_login
+	`
+
+	if err := db.Raw(insertQuery, userInput.FirstName, userInput.LastName, userInput.Email, hashedPassword, role).Scan(&created).Error; err != nil {
+		if strings.Contains(strings.ToLower(err.Error()), "duplicate") || strings.Contains(strings.ToLower(err.Error()), "unique") {
+			return created, fmt.Errorf("User with email %s already exists", userInput.Email)
+		}
+		return created, fmt.Errorf("Failed to create admin account")
+	}
+
+	created.Role = strings.ToUpper(strings.TrimSpace(created.Role))
+	return created, nil
+}
+
+func DeleteAdminAccount(userId string) error {
+	db := middleware.DBConn
+
+	var targetRole string
+	roleResult := db.Raw(`
+		SELECT role::text
+		FROM public.users
+		WHERE id = $1
+			AND deleted_at IS NULL
+			AND role IN ('ADMIN', 'SUPER_ADMIN')
+		LIMIT 1
+	`, userId).Scan(&targetRole)
+	if roleResult.Error != nil {
+		return fmt.Errorf("Failed to validate admin account")
+	}
+	if roleResult.RowsAffected == 0 {
+		return fmt.Errorf("Admin account not found")
+	}
+
+	if strings.EqualFold(strings.TrimSpace(targetRole), "SUPER_ADMIN") {
+		var superAdminCount int
+		if err := db.Raw(`
+			SELECT COUNT(*)::int
+			FROM public.users
+			WHERE deleted_at IS NULL
+				AND role = 'SUPER_ADMIN'
+		`).Scan(&superAdminCount).Error; err != nil {
+			return fmt.Errorf("Failed to validate super admin count")
+		}
+		if superAdminCount <= 1 {
+			return fmt.Errorf("Cannot delete the last super admin account")
+		}
+	}
+
+	result := db.Exec(`
+		UPDATE public.users
+		SET
+			is_active = FALSE,
+			deleted_at = now(),
+			updated_at = now()
+		WHERE id = $1
+			AND deleted_at IS NULL
+			AND role IN ('ADMIN', 'SUPER_ADMIN')
+	`, userId)
+
+	if result.Error != nil {
+		return fmt.Errorf("Failed to remove admin account")
+	}
+	if result.RowsAffected == 0 {
+		return fmt.Errorf("Admin account not found")
+	}
+
+	if err := DeleteUserSessions(userId); err != nil {
+		return fmt.Errorf("Failed to revoke admin sessions")
+	}
+
+	return nil
+}
+
 func GetAdminListings() ([]model.AdminListingListItemFromDb, error) {
 	db := middleware.DBConn
 	listings := make([]model.AdminListingListItemFromDb, 0)

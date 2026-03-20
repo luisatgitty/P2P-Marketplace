@@ -29,6 +29,25 @@ func requireAdmin(c *fiber.Ctx) (string, error) {
 	return userId, nil
 }
 
+func requireSuperAdmin(c *fiber.Ctx) (string, error) {
+	userId := fmt.Sprintf("%v", c.Locals("userId"))
+	if strings.TrimSpace(userId) == "" || userId == "%!v(<nil>)" {
+		return "", SendErrorResponse(c, 401, "User is not authenticated", nil)
+	}
+
+	user, err := repository.GetUserById(userId)
+	if err != nil {
+		return "", SendErrorResponse(c, 401, "User is not authenticated", err)
+	}
+
+	role := strings.ToUpper(strings.TrimSpace(user.Role))
+	if role != "SUPER_ADMIN" {
+		return "", SendErrorResponse(c, 403, "Forbidden", nil)
+	}
+
+	return userId, nil
+}
+
 func GetAdminDashboardStats(c *fiber.Ctx) error {
 	_, authErr := requireAdmin(c)
 	if authErr != nil {
@@ -230,5 +249,79 @@ func SetAdminReportStatus(c *fiber.Ctx) error {
 	return SendSuccessResponse(c, 200, "Report status updated successfully", map[string]any{
 		"reportId": reportId,
 		"status":   normalizedStatus,
+	})
+}
+
+func GetAdminAccounts(c *fiber.Ctx) error {
+	_, authErr := requireSuperAdmin(c)
+	if authErr != nil {
+		return authErr
+	}
+
+	admins, err := repository.GetAdminAccounts()
+	if err != nil {
+		return SendErrorResponse(c, 500, err.Error(), err)
+	}
+
+	return SendSuccessResponse(c, 200, "Admin accounts fetched successfully", map[string]any{
+		"admins": admins,
+	})
+}
+
+func CreateAdminAccount(c *fiber.Ctx) error {
+	_, authErr := requireSuperAdmin(c)
+	if authErr != nil {
+		return authErr
+	}
+
+	var body model.AdminCreateAdminBody
+	if err := c.BodyParser(&body); err != nil {
+		return SendErrorResponse(c, 400, "Invalid request body", err)
+	}
+
+	admin, err := repository.CreateAdminAccount(body)
+	if err != nil {
+		message := strings.TrimSpace(err.Error())
+		if strings.Contains(strings.ToLower(message), "already exists") {
+			return SendErrorResponse(c, 409, message, err)
+		}
+		if strings.Contains(strings.ToLower(message), "invalid") || strings.Contains(strings.ToLower(message), "required") || strings.Contains(strings.ToLower(message), "must") {
+			return SendErrorResponse(c, 400, message, err)
+		}
+		return SendErrorResponse(c, 500, message, err)
+	}
+
+	return SendSuccessResponse(c, 201, "Admin account created successfully", map[string]any{
+		"admin": admin,
+	})
+}
+
+func DeleteAdminAccount(c *fiber.Ctx) error {
+	adminUserId, authErr := requireSuperAdmin(c)
+	if authErr != nil {
+		return authErr
+	}
+
+	targetUserId := strings.TrimSpace(c.Params("id"))
+	if targetUserId == "" {
+		return SendErrorResponse(c, 400, "Admin ID is required", nil)
+	}
+	if targetUserId == adminUserId {
+		return SendErrorResponse(c, 400, "You cannot remove your own account", nil)
+	}
+
+	if err := repository.DeleteAdminAccount(targetUserId); err != nil {
+		message := strings.TrimSpace(err.Error())
+		if strings.EqualFold(message, "Admin account not found") {
+			return SendErrorResponse(c, 404, message, err)
+		}
+		if strings.Contains(strings.ToLower(message), "last super admin") {
+			return SendErrorResponse(c, 400, message, err)
+		}
+		return SendErrorResponse(c, 500, message, err)
+	}
+
+	return SendSuccessResponse(c, 200, "Admin account removed successfully", map[string]any{
+		"adminId": targetUserId,
 	})
 }
