@@ -30,7 +30,20 @@ func GetAdminDashboardStats(c *fiber.Ctx) error {
 		return SendErrorResponse(c, 500, err.Error(), err)
 	}
 
+	weeklyNewUsers, err := repository.GetAdminWeeklyNewUsers()
+	if err != nil {
+		return SendErrorResponse(c, 500, err.Error(), err)
+	}
+
+	listingTypeBreakdown, listingTypeTotalActive, err := repository.GetAdminListingTypeBreakdown()
+	if err != nil {
+		return SendErrorResponse(c, 500, err.Error(), err)
+	}
+
 	return SendSuccessResponse(c, 200, "Admin dashboard stats fetched successfully", map[string]any{
-		"stats": stats,
+		"stats":                  stats,
+		"weeklyNewUsers":         weeklyNewUsers,
+		"listingTypeBreakdown":   listingTypeBreakdown,
+		"listingTypeTotalActive": listingTypeTotalActive,
 	})
 }

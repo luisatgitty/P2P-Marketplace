@@ -21,7 +21,12 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { getAdminDashboardStats, type AdminDashboardStats } from "@/services/adminService";
+import {
+  getAdminDashboardStats,
+  type AdminDashboardStats,
+  type AdminListingTypeBreakdown,
+  type AdminWeeklyNewUsers,
+} from "@/services/adminService";
 
 // ── Placeholder data ───────────────────────────────────────────────────────────
 type Trend = "up" | "down" | "neutral";
@@ -82,31 +87,67 @@ function getTrend(current: number, previous: number): Trend {
   return "neutral";
 }
 
-const LISTING_TYPES = [
-  {
+const LISTING_TYPE_META: Record<AdminListingTypeBreakdown["type"], {
+  label: string;
+  color: string;
+  text: string;
+  Icon: typeof ShoppingBag;
+}> = {
+  SELL: {
     label: "For Sale",
-    count: 2341,
-    pct: 60.2,
     color: "bg-stone-700 dark:bg-stone-300",
     text: "text-stone-700 dark:text-stone-300",
     Icon: ShoppingBag,
   },
-  {
+  RENT: {
     label: "For Rent",
-    count: 891,
-    pct: 22.9,
     color: "bg-teal-600",
     text: "text-teal-600 dark:text-teal-400",
     Icon: Home,
   },
-  {
+  SERVICE: {
     label: "Services",
-    count: 659,
-    pct: 16.9,
     color: "bg-violet-600",
     text: "text-violet-600 dark:text-violet-400",
     Icon: Wrench,
   },
+};
+
+const EMPTY_WEEKLY_NEW_USERS: AdminWeeklyNewUsers[] = [
+  {
+    day: "Mon",
+    count: 0,
+  },
+  {
+    day: "Tue",
+    count: 0,
+  },
+  {
+    day: "Wed",
+    count: 0,
+  },
+  {
+    day: "Thu",
+    count: 0,
+  },
+  {
+    day: "Fri",
+    count: 0,
+  },
+  {
+    day: "Sat",
+    count: 0,
+  },
+  {
+    day: "Sun",
+    count: 0,
+  },
+];
+
+const EMPTY_LISTING_TYPE_BREAKDOWN: AdminListingTypeBreakdown[] = [
+  { type: "SELL", count: 0, pct: 0 },
+  { type: "RENT", count: 0, pct: 0 },
+  { type: "SERVICE", count: 0, pct: 0 },
 ];
 
 const USER_ROLES = [
@@ -114,17 +155,6 @@ const USER_ROLES = [
   { label: "Admins", count: 17, pct: 1.4, color: "bg-violet-500" },
   { label: "Super Admins", count: 1, pct: 0.1, color: "bg-amber-500" },
 ];
-
-const WEEKLY_NEW_USERS = [
-  { day: "Mon", count: 42 },
-  { day: "Tue", count: 38 },
-  { day: "Wed", count: 67 },
-  { day: "Thu", count: 51 },
-  { day: "Fri", count: 89 },
-  { day: "Sat", count: 73 },
-  { day: "Sun", count: 47 },
-];
-const MAX_WEEKLY = Math.max(...WEEKLY_NEW_USERS.map((d) => d.count));
 
 const RECENT_USERS = [
   {
@@ -258,6 +288,9 @@ function ReportBadge({ status }: { status: string }) {
 
 export default function DashboardPage() {
   const [stats, setStats] = useState<AdminDashboardStats>(EMPTY_STATS);
+  const [weeklyNewUsers, setWeeklyNewUsers] = useState<AdminWeeklyNewUsers[]>(EMPTY_WEEKLY_NEW_USERS);
+  const [listingTypeBreakdown, setListingTypeBreakdown] = useState<AdminListingTypeBreakdown[]>(EMPTY_LISTING_TYPE_BREAKDOWN);
+  const [listingTypeTotalActive, setListingTypeTotalActive] = useState(0);
 
   useEffect(() => {
     let mounted = true;
@@ -266,7 +299,10 @@ export default function DashboardPage() {
       try {
         const data = await getAdminDashboardStats();
         if (!mounted) return;
-        setStats({ ...EMPTY_STATS, ...data });
+        setStats({ ...EMPTY_STATS, ...data.stats });
+        setWeeklyNewUsers(data.weeklyNewUsers.length > 0 ? data.weeklyNewUsers : EMPTY_WEEKLY_NEW_USERS);
+        setListingTypeBreakdown(data.listingTypeBreakdown.length > 0 ? data.listingTypeBreakdown : EMPTY_LISTING_TYPE_BREAKDOWN);
+        setListingTypeTotalActive(data.listingTypeTotalActive);
       } catch (err) {
         if (!mounted) return;
         const message = typeof err === "string" ? err : "Failed to load dashboard stats";
@@ -315,6 +351,17 @@ export default function DashboardPage() {
       ...dynamic[card.key],
     }));
   }, [stats]);
+
+  const maxWeekly = Math.max(1, ...weeklyNewUsers.map((d) => d.count));
+  const totalWeeklyRegistrations = weeklyNewUsers.reduce((sum, item) => sum + item.count, 0);
+  const weeklyTrend = getTrend(stats.newUsersThisWeek, stats.newUsersLastWeek);
+  const weeklyChangePct = stats.newUsersLastWeek <= 0
+    ? (stats.newUsersThisWeek > 0 ? 100 : 0)
+    : ((stats.newUsersThisWeek - stats.newUsersLastWeek) / stats.newUsersLastWeek) * 100;
+  const listingTypeRows = listingTypeBreakdown.map((item) => ({
+    ...item,
+    ...LISTING_TYPE_META[item.type],
+  }));
 
   return (
     <div className="p-5 sm:p-6 space-y-6">
@@ -392,15 +439,20 @@ export default function DashboardPage() {
                 New Users — This Week
               </p>
               <p className="text-xs text-stone-400 dark:text-stone-500 mt-0.5">
-                407 total registrations
+                {totalWeeklyRegistrations.toLocaleString()} total registrations
               </p>
             </div>
-            <span className="text-xs font-bold text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-950/30 px-2.5 py-1 rounded-full">
-              ↑ 18.4%
+            <span className={cn(
+              "text-xs font-bold px-2.5 py-1 rounded-full",
+              weeklyTrend === "up" && "text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-950/30",
+              weeklyTrend === "down" && "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30",
+              weeklyTrend === "neutral" && "text-stone-500 dark:text-stone-400 bg-stone-100 dark:bg-stone-800/60",
+            )}>
+              {weeklyTrend === "up" ? "↑" : weeklyTrend === "down" ? "↓" : "→"} {Math.abs(weeklyChangePct).toFixed(1)}%
             </span>
           </div>
           <div className="flex items-end gap-2 h-32">
-            {WEEKLY_NEW_USERS.map(({ day, count }) => (
+            {weeklyNewUsers.map(({ day, count }) => (
               <div
                 key={day}
                 className="flex-1 flex flex-col items-center gap-1.5"
@@ -411,7 +463,7 @@ export default function DashboardPage() {
                 <div
                   className="w-full rounded-t-md bg-[#1e2433] dark:bg-stone-300 transition-all duration-300"
                   style={{
-                    height: `${(count / MAX_WEEKLY) * 100}%`,
+                    height: `${(count / maxWeekly) * 100}%`,
                     minHeight: 6,
                   }}
                 />
@@ -429,10 +481,10 @@ export default function DashboardPage() {
             Listings by Type
           </p>
           <p className="text-xs text-stone-400 dark:text-stone-500 mb-5">
-            3,891 total active
+            {listingTypeTotalActive.toLocaleString()} total active
           </p>
           <div className="space-y-4">
-            {LISTING_TYPES.map(({ label, count, pct, color, text, Icon }) => (
+            {listingTypeRows.map(({ type, label, count, pct, color, text, Icon }) => (
               <div key={label}>
                 <div className="flex items-center justify-between mb-1.5">
                   <div className="flex items-center gap-2">
@@ -455,7 +507,7 @@ export default function DashboardPage() {
                   />
                 </div>
                 <p className="text-[10px] text-stone-400 dark:text-stone-500 mt-0.5 text-right">
-                  {pct}%
+                  {pct.toFixed(1)}%
                 </p>
               </div>
             ))}

@@ -234,6 +234,23 @@ type AdminDashboardStatsFromDb struct {
 	PendingVerificationsYesterday int `gorm:"column:pending_verifications_yesterday" json:"pendingVerificationsYesterday"`
 }
 
+type AdminWeeklyNewUsersFromDb struct {
+	Day      string `gorm:"column:day" json:"day"`
+	Count    int    `gorm:"column:count" json:"count"`
+	DayOrder int    `gorm:"column:day_order" json:"-"`
+}
+
+type AdminListingTypeCountFromDb struct {
+	ListingType string `gorm:"column:listing_type" json:"listingType"`
+	Count       int    `gorm:"column:count" json:"count"`
+}
+
+type AdminListingTypeBreakdownItem struct {
+	Type  string  `json:"type"`
+	Count int     `json:"count"`
+	Pct   float64 `json:"pct"`
+}
+
 type ListingDetailFromDb struct {
 	Id                 string     `gorm:"column:id"`
 	SellerId           string     `gorm:"column:seller_id"`
