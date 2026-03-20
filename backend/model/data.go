@@ -276,6 +276,20 @@ type AdminSetUserActiveBody struct {
 	IsActive *bool `json:"isActive"`
 }
 
+type AdminListingListItemFromDb struct {
+	Id       string    `gorm:"column:id" json:"id"`
+	Title    string    `gorm:"column:title" json:"title"`
+	Type     string    `gorm:"column:type" json:"type"`
+	Category string    `gorm:"column:category" json:"category"`
+	Price    int       `gorm:"column:price" json:"price"`
+	Unit     string    `gorm:"column:unit" json:"unit"`
+	Location string    `gorm:"column:location" json:"location"`
+	Status   string    `gorm:"column:status" json:"status"`
+	Seller   string    `gorm:"column:seller" json:"seller"`
+	Views    int       `gorm:"column:views" json:"views"`
+	Created  time.Time `gorm:"column:created" json:"created"`
+}
+
 type ListingDetailFromDb struct {
 	Id                 string     `gorm:"column:id"`
 	SellerId           string     `gorm:"column:seller_id"`

@@ -46,6 +46,8 @@ func AppRoutes(app *fiber.App) {
 	app.Get("/admin/users", controller.AuthenticateUser, controller.GetAdminUsers)
 	app.Patch("/admin/users/:id/active", controller.AuthenticateUser, controller.SetAdminUserActive)
 	app.Delete("/admin/users/:id", controller.AuthenticateUser, controller.DeleteAdminUser)
+	app.Get("/admin/listings", controller.AuthenticateUser, controller.GetAdminListings)
+	app.Delete("/admin/listings/:id", controller.AuthenticateUser, controller.DeleteAdminListing)
 	app.Get("/messages/conversations", controller.AuthenticateUser, controller.GetConversations)
 	app.Post("/messages/conversations/from-listing", controller.AuthenticateUser, controller.CreateConversationFromListing)
 	app.Get("/messages/conversations/:id", controller.AuthenticateUser, controller.GetConversation)

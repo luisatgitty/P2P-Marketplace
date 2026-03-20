@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import {
   Search,
@@ -8,7 +8,6 @@ import {
   ChevronDown,
   ChevronsUpDown,
   MoreHorizontal,
-  EyeOff,
   Trash2,
   ExternalLink,
   Filter,
@@ -18,6 +17,12 @@ import {
   Wrench,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
+import {
+  getAdminListings,
+  deleteAdminListing,
+  type AdminListingRecord,
+} from "@/services/adminListingsService";
 
 type ListingType = "SELL" | "RENT" | "SERVICE";
 type ListingStatus = "AVAILABLE" | "SOLD" | "RENTED" | "COMPLETED" | "HIDDEN";
@@ -45,164 +50,16 @@ interface AdminListing {
   created: string;
 }
 
-const LISTINGS: AdminListing[] = [
-  {
-    id: "l1",
-    title: "iPhone 15 Pro Max 256GB",
-    type: "SELL",
-    category: "Electronics",
-    price: 55000,
-    unit: "Negotiable",
-    location: "San Pablo, Laguna",
-    status: "AVAILABLE",
-    seller: "Juan dela Cruz",
-    views: 347,
-    created: "Mar 10, 2026",
-  },
-  {
-    id: "l2",
-    title: "Honda Beat Street 2023",
-    type: "SELL",
-    category: "Vehicles",
-    price: 68000,
-    unit: "Negotiable",
-    location: "San Pablo, Laguna",
-    status: "AVAILABLE",
-    seller: "Carlos Mendoza",
-    views: 214,
-    created: "Mar 12, 2026",
-  },
-  {
-    id: "l3",
-    title: 'Samsung 55" Neo QLED 4K',
-    type: "SELL",
-    category: "Electronics",
-    price: 35000,
-    unit: "Fixed Price",
-    location: "San Pablo, Laguna",
-    status: "SOLD",
-    seller: "Juan dela Cruz",
-    views: 189,
-    created: "Mar 5, 2026",
-  },
-  {
-    id: "l4",
-    title: "Fully Furnished Studio Unit",
-    type: "RENT",
-    category: "Studio Units",
-    price: 8500,
-    unit: "/ month",
-    location: "San Pablo, Laguna",
-    status: "AVAILABLE",
-    seller: "Maria Santos",
-    views: 301,
-    created: "Feb 28, 2026",
-  },
-  {
-    id: "l5",
-    title: "Honda Click 125i 2022",
-    type: "RENT",
-    category: "Vehicles",
-    price: 500,
-    unit: "/ day",
-    location: "San Pablo, Laguna",
-    status: "AVAILABLE",
-    seller: "Carlos Mendoza",
-    views: 88,
-    created: "Mar 8, 2026",
-  },
-  {
-    id: "l6",
-    title: "Canon EOS 800D DSLR Kit",
-    type: "RENT",
-    category: "Equipment & Tools",
-    price: 900,
-    unit: "/ day",
-    location: "San Pablo, Laguna",
-    status: "RENTED",
-    seller: "Ana Bautista",
-    views: 145,
-    created: "Mar 11, 2026",
-  },
-  {
-    id: "l7",
-    title: "Aircon Cleaning & Repair",
-    type: "SERVICE",
-    category: "Home Repair & Cleaning",
-    price: 500,
-    unit: "/ unit",
-    location: "San Pablo, Laguna",
-    status: "AVAILABLE",
-    seller: "Pedro Reyes",
-    views: 289,
-    created: "Mar 1, 2026",
-  },
-  {
-    id: "l8",
-    title: "Licensed Plumber — Repairs",
-    type: "SERVICE",
-    category: "Home Repair & Cleaning",
-    price: 800,
-    unit: "/ visit",
-    location: "San Pablo, Laguna",
-    status: "AVAILABLE",
-    seller: "Pedro Reyes",
-    views: 176,
-    created: "Mar 3, 2026",
-  },
-  {
-    id: "l9",
-    title: "Wedding Photography Package",
-    type: "SERVICE",
-    category: "Photography & Video",
-    price: 12000,
-    unit: "/ project",
-    location: "San Pablo, Laguna",
-    status: "AVAILABLE",
-    seller: "Ana Bautista",
-    views: 354,
-    created: "Mar 7, 2026",
-  },
-  {
-    id: "l10",
-    title: "Home Tutoring — Math & Science",
-    type: "SERVICE",
-    category: "Tutoring & Lessons",
-    price: 300,
-    unit: "/ hour",
-    location: "San Pablo, Laguna",
-    status: "HIDDEN",
-    seller: "Carlos Mendoza",
-    views: 143,
-    created: "Mar 9, 2026",
-  },
-  {
-    id: "l11",
-    title: "5kVA Generator Rental",
-    type: "RENT",
-    category: "Equipment & Tools",
-    price: 2500,
-    unit: "/ day",
-    location: "San Pablo, Laguna",
-    status: "AVAILABLE",
-    seller: "Maria Santos",
-    views: 112,
-    created: "Mar 13, 2026",
-  },
-  {
-    id: "l12",
-    title: "Air-Conditioned Function Hall",
-    type: "RENT",
-    category: "Event Venues",
-    price: 12000,
-    unit: "/ day",
-    location: "San Pablo, Laguna",
-    status: "AVAILABLE",
-    seller: "Maria Santos",
-    views: 238,
-    created: "Feb 20, 2026",
-  },
-];
+function formatDateTime(value?: string | null): string {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+  return date.toLocaleDateString("en-PH", {
+    month: "short",
+    day: "2-digit",
+    year: "numeric",
+  });
+}
 
 const TYPE_CONFIG: Record<
   ListingType,
@@ -262,14 +119,47 @@ export default function ListingsPage() {
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("ALL");
   const [statusFilter, setStatusFilter] = useState("ALL");
+  const [categoryFilter, setCategoryFilter] = useState("ALL");
   const [sort, setSort] = useState<{ field: SortField; dir: SortDir }>({
     field: "created",
     dir: "desc",
   });
   const [page, setPage] = useState(1);
   const [openMenu, setOpenMenu] = useState<string | null>(null);
-  const [listings, setListings] = useState<AdminListing[]>(LISTINGS);
+  const [listings, setListings] = useState<AdminListing[]>([]);
+  const [loadingListings, setLoadingListings] = useState(true);
+  const [actionLoadingListingId, setActionLoadingListingId] = useState<string | null>(null);
   const PER_PAGE = 8;
+
+  useEffect(() => {
+    let mounted = true;
+
+    const loadListings = async () => {
+      setLoadingListings(true);
+      try {
+        const data = await getAdminListings();
+        if (!mounted) return;
+        setListings((data ?? []) as AdminListingRecord[]);
+      } catch (err) {
+        if (!mounted) return;
+        const message = typeof err === "string" ? err : "Failed to load listings";
+        toast.error(message, { position: "top-center" });
+      } finally {
+        if (mounted) setLoadingListings(false);
+      }
+    };
+
+    void loadListings();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const categoryOptions = useMemo(() => {
+    const unique = Array.from(new Set(listings.map((l) => l.category.trim()).filter(Boolean)));
+    unique.sort((a, b) => a.localeCompare(b));
+    return unique;
+  }, [listings]);
 
   function toggleSort(field: SortField) {
     setSort((s) =>
@@ -291,6 +181,8 @@ export default function ListingsPage() {
     if (typeFilter !== "ALL") data = data.filter((l) => l.type === typeFilter);
     if (statusFilter !== "ALL")
       data = data.filter((l) => l.status === statusFilter);
+    if (categoryFilter !== "ALL")
+      data = data.filter((l) => l.category === categoryFilter);
     data.sort((a, b) => {
       let va: any, vb: any;
       if (sort.field === "title") {
@@ -305,32 +197,39 @@ export default function ListingsPage() {
       } else if (sort.field === "seller") {
         va = a.seller;
         vb = b.seller;
+      } else if (sort.field === "type") {
+        va = a.type;
+        vb = b.type;
+      } else if (sort.field === "status") {
+        va = a.status;
+        vb = b.status;
       } else {
-        va = a.created;
-        vb = b.created;
+        va = new Date(a.created).getTime();
+        vb = new Date(b.created).getTime();
       }
       return sort.dir === "asc" ? (va > vb ? 1 : -1) : va < vb ? 1 : -1;
     });
     return data;
-  }, [listings, search, typeFilter, statusFilter, sort]);
+  }, [listings, search, typeFilter, statusFilter, categoryFilter, sort]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
   const paged = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
 
-  function handleHide(id: string) {
-    setListings((ls) =>
-      ls.map((l) =>
-        l.id === id
-          ? { ...l, status: l.status === "HIDDEN" ? "AVAILABLE" : "HIDDEN" }
-          : l,
-      ),
-    );
-    setOpenMenu(null);
-  }
-  function handleRemove(id: string) {
+  async function handleRemove(id: string) {
     if (!window.confirm("Remove this listing permanently?")) return;
-    setListings((ls) => ls.filter((l) => l.id !== id));
-    setOpenMenu(null);
+
+    setActionLoadingListingId(id);
+    try {
+      await deleteAdminListing(id);
+      setListings((ls) => ls.filter((l) => l.id !== id));
+      toast.success("Listing removed successfully", { position: "top-center" });
+    } catch (err) {
+      const message = typeof err === "string" ? err : "Failed to remove listing";
+      toast.error(message, { position: "top-center" });
+    } finally {
+      setActionLoadingListingId(null);
+      setOpenMenu(null);
+    }
   }
 
   const TH = ({ label, field }: { label: string; field: SortField }) => (
@@ -351,9 +250,6 @@ export default function ListingsPage() {
         <h2 className="text-xl font-extrabold text-stone-900 dark:text-stone-50">
           Listings
         </h2>
-        <p className="text-sm text-stone-500 dark:text-stone-400 mt-0.5">
-          {listings.length} total listings in the database
-        </p>
       </div>
 
       {/* Filters */}
@@ -394,6 +290,14 @@ export default function ListingsPage() {
                   ["HIDDEN", "Hidden"],
                 ],
               },
+              {
+                value: categoryFilter,
+                setter: setCategoryFilter,
+                options: [
+                  ["ALL", "All Categories"],
+                  ...categoryOptions.map((category) => [category, category] as [string, string]),
+                ],
+              },
             ].map(({ value, setter, options }, i) => (
               <div key={i} className="relative">
                 <Filter className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-stone-400 pointer-events-none" />
@@ -429,7 +333,7 @@ export default function ListingsPage() {
           </div>
         </div>
         <p className="text-xs text-stone-400 dark:text-stone-500 mt-2.5">
-          Showing {paged.length} of {filtered.length} listings
+          {loadingListings ? "Loading listings..." : `Showing ${paged.length} of ${filtered.length} listings`}
         </p>
       </div>
 
@@ -459,7 +363,16 @@ export default function ListingsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-stone-100 dark:divide-[#2a2d3e]">
-              {paged.length === 0 ? (
+              {loadingListings ? (
+                <tr>
+                  <td
+                    colSpan={9}
+                    className="py-16 text-center text-sm text-stone-400 dark:text-stone-500"
+                  >
+                    Loading listings...
+                  </td>
+                </tr>
+              ) : paged.length === 0 ? (
                 <tr>
                   <td
                     colSpan={9}
@@ -477,7 +390,7 @@ export default function ListingsPage() {
                       key={listing.id}
                       className="hover:bg-stone-50 dark:hover:bg-[#252837] transition-colors"
                     >
-                      <td className="py-3.5 px-4 max-w-[200px]">
+                      <td className="py-3.5 px-4 max-w-50">
                         <p className="text-xs font-bold text-stone-800 dark:text-stone-100 truncate">
                           {listing.title}
                         </p>
@@ -524,7 +437,7 @@ export default function ListingsPage() {
                         {listing.seller}
                       </td>
                       <td className="py-3.5 px-4 text-xs text-stone-500 dark:text-stone-400 whitespace-nowrap">
-                        {listing.created}
+                        {formatDateTime(listing.created)}
                       </td>
                       <td className="py-3.5 px-4">
                         <div className="flex items-center justify-end gap-1.5">
@@ -543,6 +456,7 @@ export default function ListingsPage() {
                                   p === listing.id ? null : listing.id,
                                 )
                               }
+                              disabled={actionLoadingListingId === listing.id}
                               className="w-7 h-7 rounded-lg flex items-center justify-center text-stone-400 hover:bg-stone-100 dark:hover:bg-[#252837] hover:text-stone-700 dark:hover:text-stone-200 transition-colors"
                             >
                               <MoreHorizontal className="w-4 h-4" />
@@ -553,16 +467,7 @@ export default function ListingsPage() {
                                   className="fixed inset-0 z-10"
                                   onClick={() => setOpenMenu(null)}
                                 />
-                                <div className="absolute right-0 top-8 z-20 bg-white dark:bg-[#1c1f2e] border border-stone-200 dark:border-[#2a2d3e] rounded-xl shadow-xl overflow-hidden min-w-[160px]">
-                                  <button
-                                    onClick={() => handleHide(listing.id)}
-                                    className="flex items-center gap-2.5 w-full px-4 py-2.5 text-xs text-stone-700 dark:text-stone-200 hover:bg-stone-50 dark:hover:bg-[#252837] transition-colors"
-                                  >
-                                    <EyeOff className="w-3.5 h-3.5 text-amber-500" />
-                                    {listing.status === "HIDDEN"
-                                      ? "Unhide Listing"
-                                      : "Hide Listing"}
-                                  </button>
+                                <div className="absolute right-0 top-8 z-20 bg-white dark:bg-[#1c1f2e] border border-stone-200 dark:border-[#2a2d3e] rounded-xl shadow-xl overflow-hidden min-w-40">
                                   <button
                                     onClick={() => handleRemove(listing.id)}
                                     className="flex items-center gap-2.5 w-full px-4 py-2.5 text-xs text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors border-t border-stone-100 dark:border-[#2a2d3e]"

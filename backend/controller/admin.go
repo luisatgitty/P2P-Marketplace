@@ -140,3 +140,42 @@ func DeleteAdminUser(c *fiber.Ctx) error {
 		"userId": targetUserId,
 	})
 }
+
+func GetAdminListings(c *fiber.Ctx) error {
+	_, authErr := requireAdmin(c)
+	if authErr != nil {
+		return authErr
+	}
+
+	listings, err := repository.GetAdminListings()
+	if err != nil {
+		return SendErrorResponse(c, 500, err.Error(), err)
+	}
+
+	return SendSuccessResponse(c, 200, "Listings fetched successfully", map[string]any{
+		"listings": listings,
+	})
+}
+
+func DeleteAdminListing(c *fiber.Ctx) error {
+	_, authErr := requireAdmin(c)
+	if authErr != nil {
+		return authErr
+	}
+
+	targetListingId := strings.TrimSpace(c.Params("id"))
+	if targetListingId == "" {
+		return SendErrorResponse(c, 400, "Listing ID is required", nil)
+	}
+
+	if err := repository.DeleteAdminListing(targetListingId); err != nil {
+		if strings.EqualFold(err.Error(), "Listing not found") {
+			return SendErrorResponse(c, 404, err.Error(), err)
+		}
+		return SendErrorResponse(c, 500, err.Error(), err)
+	}
+
+	return SendSuccessResponse(c, 200, "Listing removed successfully", map[string]any{
+		"listingId": targetListingId,
+	})
+}

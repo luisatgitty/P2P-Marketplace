@@ -266,3 +266,104 @@ func DeleteAdminUser(userId string) error {
 
 	return nil
 }
+
+func GetAdminListings() ([]model.AdminListingListItemFromDb, error) {
+	db := middleware.DBConn
+	listings := make([]model.AdminListingListItemFromDb, 0)
+
+	query := `
+		SELECT
+			l.id::text AS id,
+			l.title,
+			l.listing_type::text AS type,
+			COALESCE(c.name, 'Others') AS category,
+			l.price,
+			l.price_unit AS unit,
+			TRIM(BOTH ', ' FROM CONCAT_WS(', ', NULLIF(TRIM(l.location_city), ''), NULLIF(TRIM(l.location_province), ''))) AS location,
+			l.status::text AS status,
+			TRIM(BOTH ' ' FROM CONCAT_WS(' ', NULLIF(TRIM(u.first_name), ''), NULLIF(TRIM(u.last_name), ''))) AS seller,
+			COALESCE(l.view_count, 0)::int AS views,
+			l.created_at AS created
+		FROM public.listings l
+		LEFT JOIN public.categories c ON c.id = l.category_id
+		LEFT JOIN public.users u ON u.id = l.user_id
+		ORDER BY l.created_at DESC
+	`
+
+	if err := db.Raw(query).Scan(&listings).Error; err != nil {
+		return nil, fmt.Errorf("Failed to fetch listings")
+	}
+
+	for i := range listings {
+		listings[i].Type = strings.ToUpper(strings.TrimSpace(listings[i].Type))
+		listings[i].Status = strings.ToUpper(strings.TrimSpace(listings[i].Status))
+		if strings.TrimSpace(listings[i].Seller) == "" {
+			listings[i].Seller = "Unknown Seller"
+		}
+	}
+
+	return listings, nil
+}
+
+func DeleteAdminListing(listingId string) error {
+	db := middleware.DBConn
+	tx := db.Begin()
+	if tx.Error != nil {
+		return tx.Error
+	}
+
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	var existingId string
+	if err := tx.Raw(`SELECT id::text FROM public.listings WHERE id = $1 LIMIT 1`, listingId).Scan(&existingId).Error; err != nil {
+		tx.Rollback()
+		return fmt.Errorf("Failed to validate listing")
+	}
+	if strings.TrimSpace(existingId) == "" {
+		tx.Rollback()
+		return fmt.Errorf("Listing not found")
+	}
+
+	if err := tx.Exec(`DELETE FROM public.bookmarks WHERE listing_id = $1`, listingId).Error; err != nil {
+		tx.Rollback()
+		return fmt.Errorf("Failed to remove listing bookmarks")
+	}
+
+	if err := tx.Exec(`DELETE FROM public.listing_sell_details WHERE listing_id = $1`, listingId).Error; err != nil {
+		tx.Rollback()
+		return fmt.Errorf("Failed to remove listing sell details")
+	}
+	if err := tx.Exec(`DELETE FROM public.listing_rent_details WHERE listing_id = $1`, listingId).Error; err != nil {
+		tx.Rollback()
+		return fmt.Errorf("Failed to remove listing rent details")
+	}
+	if err := tx.Exec(`DELETE FROM public.listing_service_details WHERE listing_id = $1`, listingId).Error; err != nil {
+		tx.Rollback()
+		return fmt.Errorf("Failed to remove listing service details")
+	}
+
+	if err := deleteListingImagesTx(tx, listingId); err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	deleteResult := tx.Exec(`DELETE FROM public.listings WHERE id = $1`, listingId)
+	if deleteResult.Error != nil {
+		tx.Rollback()
+		return fmt.Errorf("Failed to remove listing")
+	}
+	if deleteResult.RowsAffected == 0 {
+		tx.Rollback()
+		return fmt.Errorf("Listing not found")
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		return err
+	}
+
+	return nil
+}
