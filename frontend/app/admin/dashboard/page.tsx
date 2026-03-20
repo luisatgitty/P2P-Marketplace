@@ -289,6 +289,7 @@ function ReportBadge({ status }: { status: string }) {
 export default function DashboardPage() {
   const [stats, setStats] = useState<AdminDashboardStats>(EMPTY_STATS);
   const [weeklyNewUsers, setWeeklyNewUsers] = useState<AdminWeeklyNewUsers[]>(EMPTY_WEEKLY_NEW_USERS);
+  const [weeklyNewListings, setWeeklyNewListings] = useState<AdminWeeklyNewUsers[]>(EMPTY_WEEKLY_NEW_USERS);
   const [listingTypeBreakdown, setListingTypeBreakdown] = useState<AdminListingTypeBreakdown[]>(EMPTY_LISTING_TYPE_BREAKDOWN);
   const [listingTypeTotalActive, setListingTypeTotalActive] = useState(0);
 
@@ -301,6 +302,7 @@ export default function DashboardPage() {
         if (!mounted) return;
         setStats({ ...EMPTY_STATS, ...data.stats });
         setWeeklyNewUsers(data.weeklyNewUsers.length > 0 ? data.weeklyNewUsers : EMPTY_WEEKLY_NEW_USERS);
+        setWeeklyNewListings(data.weeklyNewListings.length > 0 ? data.weeklyNewListings : EMPTY_WEEKLY_NEW_USERS);
         setListingTypeBreakdown(data.listingTypeBreakdown.length > 0 ? data.listingTypeBreakdown : EMPTY_LISTING_TYPE_BREAKDOWN);
         setListingTypeTotalActive(data.listingTypeTotalActive);
       } catch (err) {
@@ -358,6 +360,12 @@ export default function DashboardPage() {
   const weeklyChangePct = stats.newUsersLastWeek <= 0
     ? (stats.newUsersThisWeek > 0 ? 100 : 0)
     : ((stats.newUsersThisWeek - stats.newUsersLastWeek) / stats.newUsersLastWeek) * 100;
+  const maxWeeklyListings = Math.max(1, ...weeklyNewListings.map((d) => d.count));
+  const totalWeeklyListings = weeklyNewListings.reduce((sum, item) => sum + item.count, 0);
+  const weeklyListingsTrend = getTrend(stats.newListingsThisWeek, stats.newListingsLastWeek);
+  const weeklyListingsChangePct = stats.newListingsLastWeek <= 0
+    ? (stats.newListingsThisWeek > 0 ? 100 : 0)
+    : ((stats.newListingsThisWeek - stats.newListingsLastWeek) / stats.newListingsLastWeek) * 100;
   const listingTypeRows = listingTypeBreakdown.map((item) => ({
     ...item,
     ...LISTING_TYPE_META[item.type],
@@ -436,7 +444,7 @@ export default function DashboardPage() {
           <div className="flex items-center justify-between mb-5">
             <div>
               <p className="text-sm font-bold text-stone-900 dark:text-stone-50">
-                New Users — This Week
+                New Users This Week
               </p>
               <p className="text-xs text-stone-400 dark:text-stone-500 mt-0.5">
                 {totalWeeklyRegistrations.toLocaleString()} total registrations
@@ -464,6 +472,94 @@ export default function DashboardPage() {
                   className="w-full rounded-t-md bg-[#1e2433] dark:bg-stone-300 transition-all duration-300"
                   style={{
                     height: `${(count / maxWeekly) * 100}%`,
+                    minHeight: 6,
+                  }}
+                />
+                <span className="text-[10px] text-stone-400 dark:text-stone-500">
+                  {day}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Quick health metrics */}
+        <div className="grid grid-cols-2 gap-4 bg-white dark:bg-[#1c1f2e] rounded-2xl border border-stone-200 dark:border-[#2a2d3e] p-4">
+          {[
+            {
+              Icon: UserCheck,
+              label: "Active",
+              value: "94.2%",
+              color: "text-teal-500",
+            },
+            {
+              Icon: UserX,
+              label: "Inactive",
+              value: "5.8%",
+              color: "text-red-400",
+            },
+            {
+              Icon: CheckCircle2,
+              label: "Verified",
+              value: "88.3%",
+              color: "text-blue-500",
+            },
+            {
+              Icon: AlertTriangle,
+              label: "Locked",
+              value: "0.4%",
+              color: "text-amber-500",
+            },
+          ].map(({ Icon, label, value, color }) => (
+            <div
+              key={label}
+              className="bg-stone-50 dark:bg-[#13151f] rounded-xl p-2.5 text-center"
+            >
+              <Icon className={cn("w-4 h-4 mx-auto mb-1", color)} />
+              <p className="text-xs font-bold text-stone-800 dark:text-stone-100">
+                {value}
+              </p>
+              <p className="text-[10px] text-stone-400 dark:text-stone-500">
+                {label}
+              </p>
+            </div>
+          ))}
+        </div>
+
+      {/* ── Second row ── */}
+        {/* New listings created this week */}
+        <div className="lg:col-span-2 bg-white dark:bg-[#1c1f2e] rounded-2xl border border-stone-200 dark:border-[#2a2d3e] p-5">
+          <div className="flex items-center justify-between mb-5">
+            <div>
+              <p className="text-sm font-bold text-stone-900 dark:text-stone-50">
+                New Listings This Week
+              </p>
+              <p className="text-xs text-stone-400 dark:text-stone-500 mt-0.5">
+                {totalWeeklyListings.toLocaleString()} total listings
+              </p>
+            </div>
+            <span className={cn(
+              "text-xs font-bold px-2.5 py-1 rounded-full",
+              weeklyListingsTrend === "up" && "text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-950/30",
+              weeklyListingsTrend === "down" && "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30",
+              weeklyListingsTrend === "neutral" && "text-stone-500 dark:text-stone-400 bg-stone-100 dark:bg-stone-800/60",
+            )}>
+              {weeklyListingsTrend === "up" ? "↑" : weeklyListingsTrend === "down" ? "↓" : "→"} {Math.abs(weeklyListingsChangePct).toFixed(1)}%
+            </span>
+          </div>
+          <div className="flex items-end gap-2 h-32">
+            {weeklyNewListings.map(({ day, count }) => (
+              <div
+                key={day}
+                className="flex-1 flex flex-col items-center gap-1.5"
+              >
+                <span className="text-[10px] font-bold text-stone-500 dark:text-stone-400">
+                  {count}
+                </span>
+                <div
+                  className="w-full rounded-t-md bg-[#1e2433] dark:bg-stone-300 transition-all duration-300"
+                  style={{
+                    height: `${(count / maxWeeklyListings) * 100}%`,
                     minHeight: 6,
                   }}
                 />
@@ -513,153 +609,7 @@ export default function DashboardPage() {
             ))}
           </div>
         </div>
-      </div>
-
-      {/* ── Second row: user roles + quick summary ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* User roles */}
-        <div className="bg-white dark:bg-[#1c1f2e] rounded-2xl border border-stone-200 dark:border-[#2a2d3e] p-5">
-          <p className="text-sm font-bold text-stone-900 dark:text-stone-50 mb-1">
-            Users by Role
-          </p>
-          <p className="text-xs text-stone-400 dark:text-stone-500 mb-5">
-            1,247 total accounts
-          </p>
-          <div className="space-y-4">
-            {USER_ROLES.map(({ label, count, pct, color }) => (
-              <div key={label}>
-                <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-xs font-semibold text-stone-700 dark:text-stone-200">
-                    {label}
-                  </span>
-                  <span className="text-xs font-bold text-stone-500 dark:text-stone-400">
-                    {count.toLocaleString()}
-                  </span>
-                </div>
-                <div className="h-2 bg-stone-100 dark:bg-[#13151f] rounded-full overflow-hidden">
-                  <div
-                    className={cn("h-full rounded-full", color)}
-                    style={{ width: `${pct}%` }}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Quick health metrics */}
-          <div className="grid grid-cols-2 gap-2 mt-5 pt-4 border-t border-stone-100 dark:border-[#2a2d3e]">
-            {[
-              {
-                Icon: UserCheck,
-                label: "Active",
-                value: "94.2%",
-                color: "text-teal-500",
-              },
-              {
-                Icon: UserX,
-                label: "Inactive",
-                value: "5.8%",
-                color: "text-red-400",
-              },
-              {
-                Icon: CheckCircle2,
-                label: "Email verified",
-                value: "88.3%",
-                color: "text-blue-500",
-              },
-              {
-                Icon: AlertTriangle,
-                label: "Locked",
-                value: "0.4%",
-                color: "text-amber-500",
-              },
-            ].map(({ Icon, label, value, color }) => (
-              <div
-                key={label}
-                className="bg-stone-50 dark:bg-[#13151f] rounded-xl p-2.5 text-center"
-              >
-                <Icon className={cn("w-4 h-4 mx-auto mb-1", color)} />
-                <p className="text-xs font-bold text-stone-800 dark:text-stone-100">
-                  {value}
-                </p>
-                <p className="text-[10px] text-stone-400 dark:text-stone-500">
-                  {label}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Recent users */}
-        <div className="bg-white dark:bg-[#1c1f2e] rounded-2xl border border-stone-200 dark:border-[#2a2d3e] p-5">
-          <div className="flex items-center justify-between mb-4">
-            <p className="text-sm font-bold text-stone-900 dark:text-stone-50">
-              Recent Users
-            </p>
-            <Link
-              href="/admin/users"
-              className="text-[11px] font-semibold text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 transition-colors"
-            >
-              View all →
-            </Link>
-          </div>
-          <div className="space-y-3">
-            {RECENT_USERS.map(({ id, name, email, verification, joined }) => (
-              <div key={id} className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-linear-to-br from-[#3a4a6a] to-[#1e2a40] flex items-center justify-center text-white text-[10px] font-bold shrink-0">
-                  {name.charAt(0)}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-semibold text-stone-800 dark:text-stone-100 truncate">
-                    {name}
-                  </p>
-                  <p className="text-[10px] text-stone-400 dark:text-stone-500 truncate">
-                    {email}
-                  </p>
-                </div>
-                <VerifBadge status={verification} />
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Recent reports */}
-        <div className="bg-white dark:bg-[#1c1f2e] rounded-2xl border border-stone-200 dark:border-[#2a2d3e] p-5">
-          <div className="flex items-center justify-between mb-4">
-            <p className="text-sm font-bold text-stone-900 dark:text-stone-50">
-              Recent Reports
-            </p>
-            <Link
-              href="/admin/reports"
-              className="text-[11px] font-semibold text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 transition-colors"
-            >
-              View all →
-            </Link>
-          </div>
-          <div className="space-y-3">
-            {RECENT_REPORTS.map(
-              ({ id, reporter, target, reason, status, ago }) => (
-                <div key={id} className="flex items-start gap-2.5">
-                  <div className="w-7 h-7 rounded-full bg-red-100 dark:bg-red-950/40 flex items-center justify-center shrink-0 mt-0.5">
-                    <Flag className="w-3 h-3 text-red-500" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-semibold text-stone-800 dark:text-stone-100 truncate">
-                      {reason}
-                    </p>
-                    <p className="text-[10px] text-stone-400 dark:text-stone-500 truncate">
-                      {target}
-                    </p>
-                    <p className="text-[10px] text-stone-400 dark:text-stone-500">
-                      {reporter} · {ago}
-                    </p>
-                  </div>
-                  <ReportBadge status={status} />
-                </div>
-              ),
-            )}
-          </div>
-        </div>
+        
       </div>
     </div>
   );

@@ -14,7 +14,7 @@ func GetAdminDashboardStats() (model.AdminDashboardStatsFromDb, error) {
 
 	query := `
 		SELECT
-			(SELECT COUNT(*)::int FROM public.users WHERE deleted_at IS NULL) AS total_users,
+			(SELECT COUNT(*)::int FROM public.users WHERE deleted_at IS NULL AND role = 'USER') AS total_users,
 			(SELECT COUNT(*)::int FROM public.users WHERE deleted_at IS NULL AND created_at >= date_trunc('week', now())) AS new_users_this_week,
 			(SELECT COUNT(*)::int FROM public.users WHERE deleted_at IS NULL AND created_at >= date_trunc('week', now()) - INTERVAL '7 days' AND created_at < date_trunc('week', now())) AS new_users_last_week,
 			(SELECT COUNT(*)::int FROM public.listings WHERE status = 'AVAILABLE') AS active_listings,
@@ -66,6 +66,45 @@ func GetAdminWeeklyNewUsers() ([]model.AdminWeeklyNewUsersFromDb, error) {
 
 	if err := db.Raw(query).Scan(&rows).Error; err != nil {
 		return nil, fmt.Errorf("Failed to fetch weekly new users")
+	}
+
+	for i := range rows {
+		rows[i].Day = strings.TrimSpace(rows[i].Day)
+	}
+
+	return rows, nil
+}
+
+func GetAdminWeeklyNewListings() ([]model.AdminWeeklyNewUsersFromDb, error) {
+	db := middleware.DBConn
+	rows := make([]model.AdminWeeklyNewUsersFromDb, 0, 7)
+
+	query := `
+		WITH week_days AS (
+			SELECT generate_series(
+				date_trunc('week', now())::date,
+				date_trunc('week', now())::date + INTERVAL '6 days',
+				INTERVAL '1 day'
+			)::date AS day_date
+		),
+		listing_counts AS (
+			SELECT date_trunc('day', created_at)::date AS day_date, COUNT(*)::int AS count
+			FROM public.listings
+			WHERE created_at >= date_trunc('week', now())
+				AND created_at < date_trunc('week', now()) + INTERVAL '7 days'
+			GROUP BY 1
+		)
+		SELECT
+			TO_CHAR(wd.day_date, 'Dy') AS day,
+			COALESCE(lc.count, 0)::int AS count,
+			EXTRACT(ISODOW FROM wd.day_date)::int AS day_order
+		FROM week_days wd
+		LEFT JOIN listing_counts lc ON lc.day_date = wd.day_date
+		ORDER BY day_order ASC
+	`
+
+	if err := db.Raw(query).Scan(&rows).Error; err != nil {
+		return nil, fmt.Errorf("Failed to fetch weekly new listings")
 	}
 
 	for i := range rows {

@@ -27,6 +27,7 @@ export type AdminListingTypeBreakdown = {
 export type AdminDashboardPayload = {
   stats: AdminDashboardStats;
   weeklyNewUsers: AdminWeeklyNewUsers[];
+  weeklyNewListings: AdminWeeklyNewUsers[];
   listingTypeBreakdown: AdminListingTypeBreakdown[];
   listingTypeTotalActive: number;
 };
@@ -46,6 +47,7 @@ export async function getAdminDashboardStats(): Promise<AdminDashboardPayload> {
     return {
       stats: (parsedJson?.data?.stats ?? {}) as AdminDashboardStats,
       weeklyNewUsers: (parsedJson?.data?.weeklyNewUsers ?? []) as AdminWeeklyNewUsers[],
+      weeklyNewListings: (parsedJson?.data?.weeklyNewListings ?? []) as AdminWeeklyNewUsers[],
       listingTypeBreakdown: (parsedJson?.data?.listingTypeBreakdown ?? []) as AdminListingTypeBreakdown[],
       listingTypeTotalActive: Number(parsedJson?.data?.listingTypeTotalActive ?? 0),
     };
