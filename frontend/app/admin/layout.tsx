@@ -87,6 +87,13 @@ function SidebarContent({
     (item) => !item.roles || item.roles.includes(SESSION.role as any),
   );
 
+  // Initials for when profile image is missing
+  const initials =
+    [user?.firstName?.[0], user?.lastName?.[0]]
+      .filter(Boolean)
+      .join("")
+      .toUpperCase() || "A";
+
   return (
     // overflow-visible so the user dropdown can render above the bottom section
     // without being clipped by the sidebar container.
