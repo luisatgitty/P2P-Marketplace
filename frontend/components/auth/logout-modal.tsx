@@ -10,11 +10,10 @@ import { cn } from "@/lib/utils";
 export interface LogoutModalProps {
   open: boolean;
   onClose: () => void;
-  userImageSrc: string;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
-export function LogoutModal({ open, onClose, userImageSrc }: LogoutModalProps) {
+export function LogoutModal({ open, onClose }: LogoutModalProps) {
   const [state, setState] = useState<"idle" | "loading" | "done">("idle");
   const { clearUserData, user } = useUser();
 
@@ -85,13 +84,13 @@ export function LogoutModal({ open, onClose, userImageSrc }: LogoutModalProps) {
                 {/* Avatar */}
                 <div className="w-8 h-8 rounded-full overflow-hidden border border-stone-200 dark:border-[#2a2d3e] bg-stone-200 dark:bg-stone-700 shrink-0 relative">
                   <Image
-                    src={userImageSrc}
+                    src={user?.profileImageUrl || "/profile-icon.png"}
                     alt={userName}
                     width={32}
                     height={32}
                     className="w-full h-full object-cover"
                   />
-                  {userImageSrc === "/profile-icon.png" && (
+                  {(user?.profileImageUrl === "/profile-icon.png") && (
                     <span className="absolute inset-0 flex items-center justify-center text-[11px] font-bold text-stone-700 dark:text-stone-100">
                       {initials}
                     </span>

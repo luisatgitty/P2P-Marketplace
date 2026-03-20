@@ -4,6 +4,7 @@ import { createContext, useCallback, useContext, useState, useEffect } from "rea
 import { useRouter, usePathname } from "next/navigation";
 import { User } from "@/types/forms";
 import { LoadingPage } from "@/components/loading";
+import { validateImageURL } from "@/utils/validation";
 import { sendDeleteRequest, sendGetRequest } from "@/services/authService";
 
 interface UserContextType {
@@ -312,6 +313,30 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     validateUser();
   }, []);
 
+  useEffect(() => {
+    setUser((prev) => {
+      if (!prev) return prev;
+
+      const profile_image_url = (prev.profileImageUrl ?? "/profile-icon.png").trim();
+      const cover_image_url = (prev.coverImageUrl ?? "/cover-placeholder.jpg").trim();
+      const nextProfileImageUrl = validateImageURL(profile_image_url);
+      const nextCoverImageUrl = validateImageURL(cover_image_url);
+
+      if (
+        prev.profileImageUrl === nextProfileImageUrl &&
+        prev.coverImageUrl === nextCoverImageUrl
+      ) {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        profileImageUrl: nextProfileImageUrl,
+        coverImageUrl: nextCoverImageUrl,
+      };
+    });
+  }, [user]);
+
   // Handle route protection on client navigation/history traversal
   useEffect(() => {
     if (isLoading) return;
@@ -369,6 +394,8 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     </UserContext.Provider>
   );
 }
+
+
 
 export function useUser(): UserContextType {
   const context = useContext(UserContext);

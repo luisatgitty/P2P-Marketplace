@@ -81,7 +81,6 @@ export default function Navbar() {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [logoutModalOpen, setLogoutModalOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const [profileImageSrc, setProfileImageSrc] = useState("/profile-icon.png");
   const [hasUnreadMessages, setHasUnreadMessages] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -104,29 +103,6 @@ export default function Navbar() {
       // Keep current state on transient errors.
     }
   }, [isAuth]);
-
-  useEffect(() => {
-    const raw = (user?.profileImageUrl ?? "").trim();
-    const apiBase = (process.env.NEXT_PUBLIC_API_URL ?? "").replace(/\/$/, "");
-
-    if (!raw) {
-      setProfileImageSrc("/profile-icon.png");
-      return;
-    }
-
-    if (raw.startsWith("http://") || raw.startsWith("https://")) {
-      setProfileImageSrc(raw);
-      return;
-    }
-
-    if (raw.startsWith("/uploads/") || raw.startsWith("uploads/")) {
-      const normalized = raw.startsWith("/") ? raw : `/${raw}`;
-      setProfileImageSrc(apiBase ? `${apiBase}${normalized}` : normalized);
-      return;
-    }
-
-    setProfileImageSrc(raw);
-  }, [user?.profileImageUrl]);
 
   // Avoid hydration mismatch for theme
   useEffect(() => setMounted(true), []);
@@ -167,7 +143,6 @@ export default function Navbar() {
       <LogoutModal
         open={logoutModalOpen}
         onClose={() => setLogoutModalOpen(false)}
-        userImageSrc={profileImageSrc}
       />
 
       {/* Amber accent stripe */}
@@ -209,12 +184,11 @@ export default function Navbar() {
                 <div className="relative w-7 h-7">
                   <div className="w-7 h-7 rounded-full bg-stone-600 overflow-hidden border border-white/20">
                   <Image
-                    src={profileImageSrc}
+                    src={user?.profileImageUrl || "/profile-icon.png"}
                     alt="Profile"
                     width={28}
                     height={28}
                     className="w-full h-full object-cover"
-                    onError={() => setProfileImageSrc("/profile-icon.png")}
                   />
                   </div>
                   {isAuth && hasUnreadMessages && (
