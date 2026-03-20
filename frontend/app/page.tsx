@@ -171,15 +171,16 @@ function HomePageInner() {
     }
   };
 
-  const loadCitiesOnDemand = async () => {
-    if (!provinceCode || loadingCities) return;
-    if (fetchedCitiesProvinceCode === provinceCode) return;
+  const loadCitiesOnDemand = async (targetProvinceCode?: string) => {
+    const effectiveProvinceCode = targetProvinceCode ?? provinceCode;
+    if (!effectiveProvinceCode || loadingCities) return;
+    if (fetchedCitiesProvinceCode === effectiveProvinceCode) return;
 
     setLoadingCities(true);
     try {
-      const data = await getCitiesByProvince(provinceCode);
+      const data = await getCitiesByProvince(effectiveProvinceCode);
       setCityOptions(data);
-      setFetchedCitiesProvinceCode(provinceCode);
+      setFetchedCitiesProvinceCode(effectiveProvinceCode);
     } catch (err) {
       const message = typeof err === "string" ? err : "Failed to load cities/municipalities";
       toast.error(message, { position: "top-center" });
@@ -187,6 +188,14 @@ function HomePageInner() {
       setLoadingCities(false);
     }
   };
+
+  useEffect(() => {
+    if (!provinceCode) return;
+    if (fetchedCitiesProvinceCode === provinceCode) return;
+    if (loadingCities) return;
+
+    void loadCitiesOnDemand(provinceCode);
+  }, [provinceCode, fetchedCitiesProvinceCode, loadingCities]);
 
   const hasActiveFilters = Object.values(applied).some(
     (v, i) => v !== ["", "All Categories", "Any Condition", "Province", "City/Municipality", "", ""][i]
