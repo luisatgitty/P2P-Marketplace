@@ -14,10 +14,11 @@ import {
   Settings,
   UserCog,
   LogOut,
-  Menu,
   X,
-  Bell,
+  ChevronUp,
   ChevronRight,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -42,73 +43,149 @@ interface NavItem {
   roles?: Array<"ADMIN" | "SUPER_ADMIN">;
 }
 
+// ── Main navigation (sidebar links) ───────────────────────────────────────────
+// Settings and Admin Management have been moved to the user dropdown below.
 const NAV: NavItem[] = [
   { href: "/admin/dashboard", label: "Dashboard", Icon: LayoutDashboard },
   { href: "/admin/users", label: "Users", Icon: Users },
   { href: "/admin/listings", label: "Listings", Icon: Package },
   { href: "/admin/reports", label: "Reports", Icon: Flag },
   { href: "/admin/verifications", label: "Verifications", Icon: ShieldCheck },
-  { href: "/admin/settings", label: "Settings", Icon: Settings },
+];
+
+// ── User-scoped menu (shown in bottom dropdown) ───────────────────────────────
+const USER_MENU: NavItem[] = [
   {
     href: "/admin/admins",
     label: "Admin Management",
     Icon: UserCog,
     roles: ["SUPER_ADMIN"],
   },
+  { href: "/admin/settings", label: "Settings", Icon: Settings },
 ];
 
-function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
+// ─────────────────────────────────────────────────────────────────────────────
+// SidebarContent
+// ─────────────────────────────────────────────────────────────────────────────
+interface SidebarContentProps {
+  onNavigate?: () => void;
+  collapsed?: boolean;
+  onToggleCollapse?: () => void;
+}
+
+function SidebarContent({
+  onNavigate,
+  collapsed = false,
+  onToggleCollapse,
+}: SidebarContentProps) {
   const pathname = usePathname();
   const { user, clearUserData } = useUser();
-  const filtered = NAV.filter(
+  const [dropdownOpen, setDropdown] = useState(false);
+
+  const filteredNav = NAV;
+  const filteredUserMenu = USER_MENU.filter(
     (item) => !item.roles || item.roles.includes(SESSION.role as any),
   );
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Logo */}
-      <div className="px-5 py-5 border-b border-white/10 flex-shrink-0">
-        <div className="flex items-center gap-2.5">
-          <Image
-            src="/logo.png"
-            alt="P2P Marketplace"
-            width={32}
-            height={32}
-            className="rounded-md shrink-0"
-          />
-          <div className="min-w-0">
+    // overflow-visible so the user dropdown can render above the bottom section
+    // without being clipped by the sidebar container.
+    <div className="flex flex-col h-full overflow-visible">
+      {/* ── Logo + collapse toggle ─────────────────────────────────────── */}
+      <div
+        className={cn(
+          "flex-shrink-0 border-b border-white/10",
+          collapsed
+            ? "flex flex-col items-center gap-2 py-3.5"
+            : "flex items-center gap-2.5 px-5 py-5",
+        )}
+      >
+        <Image
+          src="/logo.png"
+          alt="P2P Marketplace"
+          width={32}
+          height={32}
+          className="rounded-md flex-shrink-0"
+        />
+
+        {/* Text — only shown when expanded */}
+        {!collapsed && (
+          <div className="flex-1 min-w-0">
             <p className="text-sm font-bold text-white leading-none">
               P2P Marketplace
             </p>
-            <p className="text-xs text-slate-400 mt-0.5">Admin Panel</p>
+            <p className="text-[10px] text-slate-400 mt-0.5">Admin Panel</p>
           </div>
-        </div>
+        )}
+
+        {/* Collapse toggle button */}
+        {onToggleCollapse && (
+          <button
+            type="button"
+            onClick={onToggleCollapse}
+            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            className="flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:bg-white/10 hover:text-white transition-colors"
+          >
+            {collapsed ? (
+              <PanelLeftOpen className="w-4 h-4" />
+            ) : (
+              <PanelLeftClose className="w-4 h-4" />
+            )}
+          </button>
+        )}
       </div>
 
-      {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
-        {filtered.map(({ href, label, Icon }) => {
+      {/* ── Navigation ────────────────────────────────────────────────── */}
+      <nav
+        className={cn(
+          "flex-1 overflow-y-auto py-4",
+          collapsed
+            ? "flex flex-col items-center gap-1 px-0"
+            : "px-3 space-y-0.5",
+        )}
+      >
+        {/* Section label — hidden when collapsed */}
+        {!collapsed && (
+          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.15em] px-2 mb-2">
+            Menu
+          </p>
+        )}
+
+        {filteredNav.map(({ href, label, Icon }) => {
           const active = pathname === href || pathname.startsWith(href + "/");
           const badge = BADGES[href];
+
           return (
             <Link
               key={href}
               href={href}
               onClick={onNavigate}
+              title={collapsed ? label : undefined}
               className={cn(
-                "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all",
+                "relative flex items-center rounded-xl transition-all",
+                collapsed
+                  ? "justify-center w-10 h-10"
+                  : "gap-3 px-3 py-2.5 w-full text-sm font-medium",
                 active
                   ? "bg-white/10 text-white"
                   : "text-slate-400 hover:bg-white/5 hover:text-white",
               )}
             >
               <Icon className="w-4 h-4 flex-shrink-0" />
-              <span className="flex-1">{label}</span>
+
+              {/* Label (expanded only) */}
+              {!collapsed && <span className="flex-1">{label}</span>}
+
+              {/* Badge: count when expanded, red dot when collapsed */}
               {badge ? (
-                <span className="w-5 h-5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center flex-shrink-0">
-                  {badge > 9 ? "9+" : badge}
-                </span>
-              ) : active ? (
+                collapsed ? (
+                  <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-red-500" />
+                ) : (
+                  <span className="w-5 h-5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center flex-shrink-0">
+                    {badge > 9 ? "9+" : badge}
+                  </span>
+                )
+              ) : active && !collapsed ? (
                 <ChevronRight className="w-3.5 h-3.5 text-slate-500 flex-shrink-0" />
               ) : null}
             </Link>
@@ -116,88 +193,192 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
         })}
       </nav>
 
-      {/* Bottom: user info + logout */}
-      <div className="flex-shrink-0 border-t border-white/10 p-4">
-        <div className="flex items-center gap-3 mb-3">
-          <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[11px] font-bold flex-shrink-0">
+      {/* ── Bottom: user button + dropdown ──────────────────────────────── */}
+      <div
+        className={cn(
+          "relative flex-shrink-0 border-t border-white/10",
+          collapsed ? "p-2" : "p-4",
+        )}
+      >
+        {/* Close dropdown on outside click */}
+        {dropdownOpen && (
+          <div
+            className="fixed inset-0 z-40"
+            onClick={() => setDropdown(false)}
+          />
+        )}
+
+        {/* ── Dropdown menu — renders above the button ── */}
+        {dropdownOpen && (
+          <div
+            className={cn(
+              "absolute z-50 bottom-full mb-2",
+              // When collapsed, align to left and set a fixed width so it
+              // extends to the right of the icon-only sidebar.
+              collapsed ? "left-0 min-w-52" : "left-2 right-2",
+              "bg-[#252f45] border border-white/10 rounded-2xl shadow-2xl overflow-hidden",
+              // Slide-up entrance
+              "animate-in fade-in slide-in-from-bottom-2 duration-150",
+            )}
+          >
+            {/* User identity header */}
+            <div className="flex items-center gap-3 px-4 py-3.5 border-b border-white/10">
+              <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0">
+                <Image
+                  src={user?.profileImageUrl || "/profile-icon.png"}
+                  alt="Profile"
+                  width={32}
+                  height={32}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-bold text-slate-100 truncate">
+                  {user?.firstName} {user?.lastName}
+                </p>
+                <p className="text-[10px] text-slate-400 truncate">
+                  {user?.email}
+                </p>
+              </div>
+            </div>
+
+            {/* User menu items */}
+            <div className="py-1.5">
+              {filteredUserMenu.map(({ href, label, Icon }) => (
+                <Link
+                  key={href}
+                  href={href}
+                  onClick={() => {
+                    setDropdown(false);
+                    onNavigate?.();
+                  }}
+                  className="flex items-center gap-3 px-4 py-2.5 text-xs font-medium text-slate-300 hover:bg-white/5 hover:text-white transition-colors"
+                >
+                  <Icon className="w-3.5 h-3.5 flex-shrink-0 text-slate-400" />
+                  {label}
+                </Link>
+              ))}
+            </div>
+
+            {/* Log out */}
+            <div className="border-t border-white/10 py-1.5">
+              <button
+                type="button"
+                onClick={() => {
+                  setDropdown(false);
+                  clearUserData();
+                }}
+                className="flex items-center gap-3 w-full px-4 py-2.5 text-xs font-medium text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors"
+              >
+                <LogOut className="w-3.5 h-3.5 flex-shrink-0" />
+                Log Out
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ── User trigger button ── */}
+        <button
+          type="button"
+          onClick={() => setDropdown((v) => !v)}
+          className={cn(
+            "w-full flex items-center rounded-xl transition-all",
+            "hover:bg-white/5 active:bg-white/10",
+            collapsed ? "justify-center w-10 h-10 mx-auto" : "gap-3 px-2 py-2",
+          )}
+        >
+          {/* Avatar */}
+          <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 ring-2 ring-white/10">
             <Image
               src={user?.profileImageUrl || "/profile-icon.png"}
               alt="Profile"
-              width={28}
-              height={28}
+              width={32}
+              height={32}
               className="w-full h-full object-cover"
             />
           </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-xs font-bold text-white truncate">
-              {user?.firstName} {user?.lastName}
-            </p>
-            <p className="text-[10px] text-slate-400 truncate">
-              {user?.email}
-            </p>
-          </div>
-        </div>
-        <button
-          type="button"
-          className="flex items-center gap-2 w-full px-3 py-2 rounded-lg text-xs font-medium text-slate-400 hover:bg-white/5 hover:text-red-400 transition-colors"
-          onClick={clearUserData}
-        >
-          <LogOut className="w-3.5 h-3.5" />
-          Sign Out
+
+          {/* Name + email (expanded only) */}
+          {!collapsed && (
+            <>
+              <div className="flex-1 min-w-0 text-left">
+                <p className="text-xs font-bold text-white truncate leading-tight">
+                  {user?.firstName} {user?.lastName}
+                </p>
+                <p className="text-[10px] text-slate-400 truncate mt-0.5">
+                  {user?.email}
+                </p>
+              </div>
+
+              {/* Animated chevron */}
+              <ChevronUp
+                className={cn(
+                  "w-3.5 h-3.5 flex-shrink-0 text-slate-500 transition-transform duration-200",
+                  dropdownOpen ? "rotate-0" : "rotate-180",
+                )}
+              />
+            </>
+          )}
         </button>
       </div>
     </div>
   );
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// AdminLayout
+// ─────────────────────────────────────────────────────────────────────────────
 export default function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const [open, setOpen] = useState(false);
-  const pathname = usePathname();
-
-  // Current page title from nav
-  const currentNav = NAV.find(
-    (n) => pathname === n.href || pathname.startsWith(n.href + "/"),
-  );
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
 
   return (
-    // Fixed full-screen overlay — sits above the root layout's Navbar/Footer
     <div className="fixed inset-0 z-[100] flex bg-stone-100 dark:bg-[#0f1117] overflow-hidden">
-      {/* ── Desktop sidebar ──────────────────────────────────────────────── */}
-      <div className="hidden lg:flex flex-col w-60 flex-shrink-0 bg-[#1e2433] h-full">
-        <SidebarContent />
+      {/* ── Desktop sidebar ─────────────────────────────────────────────── */}
+      <div
+        className={cn(
+          "hidden lg:flex flex-col flex-shrink-0 bg-[#1e2433] h-full",
+          "transition-all duration-300 ease-in-out",
+          collapsed ? "w-16" : "w-60",
+        )}
+      >
+        <SidebarContent
+          collapsed={collapsed}
+          onToggleCollapse={() => setCollapsed((c) => !c)}
+        />
       </div>
 
-      {/* ── Mobile sidebar overlay ───────────────────────────────────────── */}
-      {open && (
+      {/* ── Mobile sidebar overlay ──────────────────────────────────────── */}
+      {mobileOpen && (
         <div
           className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden"
-          onClick={() => setOpen(false)}
+          onClick={() => setMobileOpen(false)}
         />
       )}
       <div
         className={cn(
           "fixed inset-y-0 left-0 z-50 w-64 bg-[#1e2433] flex flex-col",
           "transition-transform duration-300 ease-in-out lg:hidden",
-          open ? "translate-x-0" : "-translate-x-full",
+          mobileOpen ? "translate-x-0" : "-translate-x-full",
         )}
       >
         <button
           type="button"
-          onClick={() => setOpen(false)}
+          onClick={() => setMobileOpen(false)}
           className="absolute top-4 right-4 w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-slate-300 hover:text-white transition-colors"
         >
           <X className="w-4 h-4" />
         </button>
-        <SidebarContent onNavigate={() => setOpen(false)} />
+        {/* Mobile sidebar is never collapsed — no toggle needed */}
+        <SidebarContent onNavigate={() => setMobileOpen(false)} />
       </div>
 
-      {/* ── Main area ────────────────────────────────────────────────────── */}
+      {/* ── Main area ───────────────────────────────────────────────────── */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Scrollable content */}
         <main className="flex-1 overflow-y-auto">{children}</main>
       </div>
     </div>
