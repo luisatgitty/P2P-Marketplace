@@ -290,6 +290,26 @@ type AdminListingListItemFromDb struct {
 	Created  time.Time `gorm:"column:created" json:"created"`
 }
 
+type AdminReportListItemFromDb struct {
+	Id             string     `gorm:"column:id" json:"id"`
+	Reporter       string     `gorm:"column:reporter" json:"reporter"`
+	TargetType     string     `gorm:"column:target_type" json:"target_type"`
+	TargetName     string     `gorm:"column:target_name" json:"target_name"`
+	TargetId       string     `gorm:"column:target_id" json:"target_id"`
+	ListingOwner   string     `gorm:"column:listing_owner" json:"listing_owner"`
+	Reason         string     `gorm:"column:reason" json:"reason"`
+	Description    *string    `gorm:"column:description" json:"description"`
+	Status         string     `gorm:"column:status" json:"status"`
+	ReviewedBy     *string    `gorm:"column:reviewed_by" json:"reviewed_by"`
+	ReviewedAt     *time.Time `gorm:"column:reviewed_at" json:"reviewed_at"`
+	CreatedAt      time.Time  `gorm:"column:created_at" json:"created_at"`
+	ReportedUserId *string    `gorm:"column:reported_user_id" json:"reported_user_id"`
+}
+
+type AdminSetReportStatusBody struct {
+	Status string `json:"status"`
+}
+
 type ListingDetailFromDb struct {
 	Id                 string     `gorm:"column:id"`
 	SellerId           string     `gorm:"column:seller_id"`

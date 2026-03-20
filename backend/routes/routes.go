@@ -48,6 +48,8 @@ func AppRoutes(app *fiber.App) {
 	app.Delete("/admin/users/:id", controller.AuthenticateUser, controller.DeleteAdminUser)
 	app.Get("/admin/listings", controller.AuthenticateUser, controller.GetAdminListings)
 	app.Delete("/admin/listings/:id", controller.AuthenticateUser, controller.DeleteAdminListing)
+	app.Get("/admin/reports", controller.AuthenticateUser, controller.GetAdminReports)
+	app.Patch("/admin/reports/:id/status", controller.AuthenticateUser, controller.SetAdminReportStatus)
 	app.Get("/messages/conversations", controller.AuthenticateUser, controller.GetConversations)
 	app.Post("/messages/conversations/from-listing", controller.AuthenticateUser, controller.CreateConversationFromListing)
 	app.Get("/messages/conversations/:id", controller.AuthenticateUser, controller.GetConversation)

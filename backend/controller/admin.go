@@ -179,3 +179,56 @@ func DeleteAdminListing(c *fiber.Ctx) error {
 		"listingId": targetListingId,
 	})
 }
+
+func GetAdminReports(c *fiber.Ctx) error {
+	_, authErr := requireAdmin(c)
+	if authErr != nil {
+		return authErr
+	}
+
+	reports, err := repository.GetAdminReports()
+	if err != nil {
+		return SendErrorResponse(c, 500, err.Error(), err)
+	}
+
+	return SendSuccessResponse(c, 200, "Reports fetched successfully", map[string]any{
+		"reports": reports,
+	})
+}
+
+func SetAdminReportStatus(c *fiber.Ctx) error {
+	adminUserId, authErr := requireAdmin(c)
+	if authErr != nil {
+		return authErr
+	}
+
+	reportId := strings.TrimSpace(c.Params("id"))
+	if reportId == "" {
+		return SendErrorResponse(c, 400, "Report ID is required", nil)
+	}
+
+	var body model.AdminSetReportStatusBody
+	if err := c.BodyParser(&body); err != nil {
+		return SendErrorResponse(c, 400, "Invalid request body", err)
+	}
+
+	normalizedStatus := strings.ToUpper(strings.TrimSpace(body.Status))
+	if normalizedStatus != "RESOLVED" && normalizedStatus != "DISMISSED" {
+		return SendErrorResponse(c, 400, "Status must be RESOLVED or DISMISSED", nil)
+	}
+
+	if err := repository.SetAdminReportStatus(reportId, adminUserId, normalizedStatus); err != nil {
+		if strings.EqualFold(err.Error(), "Report not found") {
+			return SendErrorResponse(c, 404, err.Error(), err)
+		}
+		if strings.EqualFold(err.Error(), "Invalid report status") {
+			return SendErrorResponse(c, 400, err.Error(), err)
+		}
+		return SendErrorResponse(c, 500, err.Error(), err)
+	}
+
+	return SendSuccessResponse(c, 200, "Report status updated successfully", map[string]any{
+		"reportId": reportId,
+		"status":   normalizedStatus,
+	})
+}

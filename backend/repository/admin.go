@@ -367,3 +367,76 @@ func DeleteAdminListing(listingId string) error {
 
 	return nil
 }
+
+func GetAdminReports() ([]model.AdminReportListItemFromDb, error) {
+	db := middleware.DBConn
+	reports := make([]model.AdminReportListItemFromDb, 0)
+
+	query := `
+		SELECT
+			r.id::text AS id,
+			TRIM(BOTH ' ' FROM CONCAT_WS(' ', NULLIF(TRIM(rep.first_name), ''), NULLIF(TRIM(rep.last_name), ''))) AS reporter,
+			CASE WHEN r.reported_listing_id IS NOT NULL THEN 'LISTING' ELSE 'USER' END AS target_type,
+			CASE
+				WHEN r.reported_listing_id IS NOT NULL THEN COALESCE(l.title, 'Unknown Listing')
+				ELSE COALESCE(NULLIF(TRIM(CONCAT_WS(' ', NULLIF(TRIM(ru.first_name), ''), NULLIF(TRIM(ru.last_name), ''))), ''), ru.email, 'Unknown User')
+			END AS target_name,
+			COALESCE(r.reported_listing_id::text, r.reported_user_id::text, '') AS target_id,
+			COALESCE(NULLIF(TRIM(CONCAT_WS(' ', NULLIF(TRIM(owner.first_name), ''), NULLIF(TRIM(owner.last_name), ''))), ''), owner.email, '—') AS listing_owner,
+			r.reason,
+			r.description,
+			r.status::text AS status,
+			NULLIF(TRIM(CONCAT_WS(' ', NULLIF(TRIM(rev.first_name), ''), NULLIF(TRIM(rev.last_name), ''))), '') AS reviewed_by,
+			r.reviewed_at,
+			r.created_at,
+			r.reported_user_id::text AS reported_user_id
+		FROM public.reports r
+		LEFT JOIN public.users rep ON rep.id = r.reporter_id
+		LEFT JOIN public.listings l ON l.id = r.reported_listing_id
+		LEFT JOIN public.users owner ON owner.id = l.user_id
+		LEFT JOIN public.users ru ON ru.id = r.reported_user_id
+		LEFT JOIN public.users rev ON rev.id = r.reviewed_by_id
+		ORDER BY r.created_at DESC
+	`
+
+	if err := db.Raw(query).Scan(&reports).Error; err != nil {
+		return nil, fmt.Errorf("Failed to fetch reports")
+	}
+
+	for i := range reports {
+		reports[i].TargetType = strings.ToUpper(strings.TrimSpace(reports[i].TargetType))
+		reports[i].Status = strings.ToUpper(strings.TrimSpace(reports[i].Status))
+		if strings.TrimSpace(reports[i].Reporter) == "" {
+			reports[i].Reporter = "Unknown Reporter"
+		}
+	}
+
+	return reports, nil
+}
+
+func SetAdminReportStatus(reportId, reviewedById, status string) error {
+	db := middleware.DBConn
+
+	normalizedStatus := strings.ToUpper(strings.TrimSpace(status))
+	if normalizedStatus != "RESOLVED" && normalizedStatus != "DISMISSED" {
+		return fmt.Errorf("Invalid report status")
+	}
+
+	result := db.Exec(`
+		UPDATE public.reports
+		SET
+			status = $1::report_status,
+			reviewed_by_id = $2,
+			reviewed_at = now()
+		WHERE id = $3
+	`, normalizedStatus, reviewedById, reportId)
+
+	if result.Error != nil {
+		return fmt.Errorf("Failed to update report status")
+	}
+	if result.RowsAffected == 0 {
+		return fmt.Errorf("Report not found")
+	}
+
+	return nil
+}

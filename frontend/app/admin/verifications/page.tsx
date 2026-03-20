@@ -437,10 +437,6 @@ export default function VerificationsPage() {
         <h2 className="text-xl font-extrabold text-stone-900 dark:text-stone-50">
           User Verifications
         </h2>
-        <p className="text-sm text-stone-500 dark:text-stone-400 mt-0.5">
-          Review submitted identity documents and approve or reject seller
-          verification requests
-        </p>
       </div>
 
       {/* Summary */}
