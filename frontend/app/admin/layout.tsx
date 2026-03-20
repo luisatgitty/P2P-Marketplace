@@ -22,14 +22,6 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-// ── Replace with real auth context once wired ──────────────────────────────────
-const SESSION = {
-  name: "Super Admin",
-  email: "superadmin@p2pmarket.ph",
-  role: "SUPER_ADMIN" as "USER" | "ADMIN" | "SUPER_ADMIN",
-  avatar: "SA",
-};
-
 // ── Badge counts — wire to real API later ──────────────────────────────────────
 const BADGES: Record<string, number> = {
   "/admin/reports": 23,
@@ -81,18 +73,18 @@ function SidebarContent({
   const pathname = usePathname();
   const { user, clearUserData } = useUser();
   const [dropdownOpen, setDropdown] = useState(false);
+  const roleFromUser = String(user?.role ?? "").toUpperCase();
+  const currentAdminRole: "ADMIN" | "SUPER_ADMIN" | null =
+    roleFromUser === "SUPER_ADMIN"
+      ? "SUPER_ADMIN"
+      : roleFromUser === "ADMIN"
+        ? "ADMIN"
+        : null;
 
   const filteredNav = NAV;
   const filteredUserMenu = USER_MENU.filter(
-    (item) => !item.roles || item.roles.includes(SESSION.role as any),
+    (item) => !item.roles || (currentAdminRole !== null && item.roles.includes(currentAdminRole)),
   );
-
-  // Initials for when profile image is missing
-  const initials =
-    [user?.firstName?.[0], user?.lastName?.[0]]
-      .filter(Boolean)
-      .join("")
-      .toUpperCase() || "A";
 
   return (
     // overflow-visible so the user dropdown can render above the bottom section
@@ -151,13 +143,6 @@ function SidebarContent({
             : "px-3 space-y-0.5",
         )}
       >
-        {/* Section label — hidden when collapsed */}
-        {!collapsed && (
-          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.15em] px-2 mb-2">
-            Menu
-          </p>
-        )}
-
         {filteredNav.map(({ href, label, Icon }) => {
           const active = pathname === href || pathname.startsWith(href + "/");
           const badge = BADGES[href];
