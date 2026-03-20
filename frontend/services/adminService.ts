@@ -1,5 +1,9 @@
 export type AdminDashboardStats = {
   totalUsers: number;
+  activeUsers: number;
+  inactiveUsers: number;
+  verifiedUsers: number;
+  lockedUsers: number;
   newUsersThisWeek: number;
   newUsersLastWeek: number;
   activeListings: number;

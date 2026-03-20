@@ -221,6 +221,10 @@ type ListingsFilter struct {
 
 type AdminDashboardStatsFromDb struct {
 	TotalUsers                    int `gorm:"column:total_users" json:"totalUsers"`
+	ActiveUsers                   int `gorm:"column:active_users" json:"activeUsers"`
+	InactiveUsers                 int `gorm:"column:inactive_users" json:"inactiveUsers"`
+	VerifiedUsers                 int `gorm:"column:verified_users" json:"verifiedUsers"`
+	LockedUsers                   int `gorm:"column:locked_users" json:"lockedUsers"`
 	NewUsersThisWeek              int `gorm:"column:new_users_this_week" json:"newUsersThisWeek"`
 	NewUsersLastWeek              int `gorm:"column:new_users_last_week" json:"newUsersLastWeek"`
 	ActiveListings                int `gorm:"column:active_listings" json:"activeListings"`

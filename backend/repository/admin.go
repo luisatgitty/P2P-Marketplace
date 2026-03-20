@@ -15,6 +15,10 @@ func GetAdminDashboardStats() (model.AdminDashboardStatsFromDb, error) {
 	query := `
 		SELECT
 			(SELECT COUNT(*)::int FROM public.users WHERE deleted_at IS NULL AND role = 'USER') AS total_users,
+			(SELECT COUNT(*)::int FROM public.users WHERE deleted_at IS NULL AND role = 'USER' AND last_login_at IS NOT NULL AND last_login_at >= now() - INTERVAL '30 days') AS active_users,
+			(SELECT COUNT(*)::int FROM public.users WHERE deleted_at IS NULL AND role = 'USER' AND (last_login_at IS NULL OR last_login_at < now() - INTERVAL '30 days')) AS inactive_users,
+			(SELECT COUNT(*)::int FROM public.users WHERE deleted_at IS NULL AND role = 'USER' AND verification_status = 'VERIFIED') AS verified_users,
+			(SELECT COUNT(*)::int FROM public.users WHERE deleted_at IS NULL AND role = 'USER' AND account_locked_until IS NOT NULL AND account_locked_until > now()) AS locked_users,
 			(SELECT COUNT(*)::int FROM public.users WHERE deleted_at IS NULL AND created_at >= date_trunc('week', now())) AS new_users_this_week,
 			(SELECT COUNT(*)::int FROM public.users WHERE deleted_at IS NULL AND created_at >= date_trunc('week', now()) - INTERVAL '7 days' AND created_at < date_trunc('week', now())) AS new_users_last_week,
 			(SELECT COUNT(*)::int FROM public.listings WHERE status = 'AVAILABLE') AS active_listings,

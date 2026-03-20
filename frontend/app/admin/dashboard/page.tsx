@@ -68,6 +68,10 @@ const STAT_CARD_META = [
 
 const EMPTY_STATS: AdminDashboardStats = {
   totalUsers: 0,
+  activeUsers: 0,
+  inactiveUsers: 0,
+  verifiedUsers: 0,
+  lockedUsers: 0,
   newUsersThisWeek: 0,
   newUsersLastWeek: 0,
   activeListings: 0,
@@ -370,6 +374,33 @@ export default function DashboardPage() {
     ...item,
     ...LISTING_TYPE_META[item.type],
   }));
+  const totalUsersBase = Math.max(1, stats.totalUsers);
+  const userHealthCards = [
+    {
+      Icon: UserCheck,
+      label: "Active",
+      value: `${((stats.activeUsers / totalUsersBase) * 100).toFixed(1)}%`,
+      color: "text-teal-500",
+    },
+    {
+      Icon: UserX,
+      label: "Inactive",
+      value: `${((stats.inactiveUsers / totalUsersBase) * 100).toFixed(1)}%`,
+      color: "text-red-400",
+    },
+    {
+      Icon: CheckCircle2,
+      label: "Verified",
+      value: `${((stats.verifiedUsers / totalUsersBase) * 100).toFixed(1)}%`,
+      color: "text-blue-500",
+    },
+    {
+      Icon: AlertTriangle,
+      label: "Locked",
+      value: `${((stats.lockedUsers / totalUsersBase) * 100).toFixed(1)}%`,
+      color: "text-amber-500",
+    },
+  ];
 
   return (
     <div className="p-5 sm:p-6 space-y-6">
@@ -378,9 +409,6 @@ export default function DashboardPage() {
         <h2 className="text-xl font-extrabold text-stone-900 dark:text-stone-50">
           Dashboard
         </h2>
-        <p className="text-sm text-stone-500 dark:text-stone-400 mt-0.5">
-          Overview of your P2P Marketplace — last updated just now.
-        </p>
       </div>
 
       {/* ── Stat cards ── */}
@@ -483,37 +511,12 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Quick health metrics */}
+        {/* User health */}
         <div className="grid grid-cols-2 gap-4 bg-white dark:bg-[#1c1f2e] rounded-2xl border border-stone-200 dark:border-[#2a2d3e] p-4">
-          {[
-            {
-              Icon: UserCheck,
-              label: "Active",
-              value: "94.2%",
-              color: "text-teal-500",
-            },
-            {
-              Icon: UserX,
-              label: "Inactive",
-              value: "5.8%",
-              color: "text-red-400",
-            },
-            {
-              Icon: CheckCircle2,
-              label: "Verified",
-              value: "88.3%",
-              color: "text-blue-500",
-            },
-            {
-              Icon: AlertTriangle,
-              label: "Locked",
-              value: "0.4%",
-              color: "text-amber-500",
-            },
-          ].map(({ Icon, label, value, color }) => (
+          {userHealthCards.map(({ Icon, label, value, color }) => (
             <div
               key={label}
-              className="bg-stone-50 dark:bg-[#13151f] rounded-xl p-2.5 text-center"
+              className="bg-stone-50 dark:bg-[#13151f] rounded-xl p-2.5 text-center flex flex-col items-center justify-center"
             >
               <Icon className={cn("w-4 h-4 mx-auto mb-1", color)} />
               <p className="text-xs font-bold text-stone-800 dark:text-stone-100">
