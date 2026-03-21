@@ -313,17 +313,9 @@ export default function ReportsPage() {
                       </td>
                       <td className="py-3.5 px-4 max-w-65">
                         {report.target_type === "LISTING" ? (
-                          <div className="space-y-0.5">
-                            <p className="text-xs text-stone-600 dark:text-stone-300 line-clamp-2">
-                              {report.target_name}
-                            </p>
-                            <Link
-                              href={`/listing/${report.target_id}`}
-                              className="inline-flex items-center gap-1 text-[11px] font-semibold text-teal-600 dark:text-teal-400 hover:underline"
-                            >
-                              Open listing <ExternalLink className="w-3 h-3" />
-                            </Link>
-                          </div>
+                          <p className="text-xs text-stone-600 dark:text-stone-300 line-clamp-2">
+                            {report.target_name}
+                          </p>
                         ) : (
                           <span className="text-xs text-stone-400">—</span>
                         )}
@@ -364,6 +356,17 @@ export default function ReportsPage() {
                           </button>
                           {openMenu === report.id && (
                             <div className="absolute right-0 top-8 z-20 w-40 rounded-xl border border-stone-200 bg-white p-1 shadow-md dark:border-[#2a2d3e] dark:bg-[#1c1f2e]">
+                              {report.target_type === "LISTING" && (
+                                <Link
+                                  href={`/listing/${report.target_id}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  onClick={() => setOpenMenu(null)}
+                                  className="flex w-full items-center gap-1 rounded-lg px-2.5 py-2 text-left text-xs font-semibold text-teal-600 hover:bg-teal-50 dark:text-teal-400 dark:hover:bg-teal-950/30"
+                                >
+                                  <ExternalLink className="h-3.5 w-3.5" /> Open listing
+                                </Link>
+                              )}
                               <button
                                 onClick={() => {
                                   setExpandedRow((prev) =>
@@ -386,7 +389,7 @@ export default function ReportsPage() {
                                     className="flex w-full items-center gap-1 rounded-lg px-2.5 py-2 text-left text-xs font-semibold text-teal-600 hover:bg-teal-50 dark:text-teal-400 dark:hover:bg-teal-950/30"
                                     disabled={actionLoadingId === report.id}
                                   >
-                                    <CheckCircle2 className="h-3.5 w-3.5" /> Resolve
+                                    <CheckCircle2 className="h-3.5 w-3.5" /> Take Action
                                   </button>
                                   <button
                                     onClick={() =>
@@ -409,44 +412,17 @@ export default function ReportsPage() {
                         className="bg-stone-50 dark:bg-[#13151f]"
                       >
                         <td colSpan={7} className="px-4 py-4">
-                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                            <div>
-                              <p className="text-[10px] font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest mb-1">
-                                Reported Listing
-                              </p>
-                              <p className="text-xs text-stone-600 dark:text-stone-300 mt-0.5">
-                                {report.target_type === "LISTING"
-                                  ? report.target_name
-                                  : "No listing linked"}
-                              </p>
-                              {report.target_type === "LISTING" && (
-                                <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5">
-                                  Owner: {report.listing_owner}
-                                </p>
+                          <div>
+                            <p className="text-[10px] font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest mb-1">
+                              Report Description
+                            </p>
+                            <p className="text-xs text-stone-600 dark:text-stone-300 leading-relaxed">
+                              {report.description ?? (
+                                <span className="italic text-stone-400">
+                                  No additional description provided.
+                                </span>
                               )}
-                            </div>
-                            <div className="sm:col-span-2">
-                              <p className="text-[10px] font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest mb-1">
-                                Reporter&apos;s Description
-                              </p>
-                              <p className="text-xs text-stone-600 dark:text-stone-300 leading-relaxed">
-                                {report.description ?? (
-                                  <span className="italic text-stone-400">
-                                    No additional description provided.
-                                  </span>
-                                )}
-                              </p>
-                            </div>
-                            {report.reviewed_by && (
-                              <div>
-                                <p className="text-[10px] font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest mb-1">
-                                  Reviewed By
-                                </p>
-                                <p className="text-xs text-stone-600 dark:text-stone-300">
-                                  {report.reviewed_by} · {formatDateTime(report.reviewed_at)}
-                                </p>
-                              </div>
-                            )}
+                            </p>
                           </div>
                         </td>
                       </tr>
