@@ -499,6 +499,8 @@ export default function UsersPage() {
                               <div className="absolute right-0 top-8 z-20 bg-white dark:bg-[#1c1f2e] border border-stone-200 dark:border-[#2a2d3e] rounded-xl shadow-xl overflow-hidden min-w-40">
                                 <Link
                                   href={`/profile?userId=${user.id}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
                                   onClick={() => setOpenMenu(null)}
                                   className="flex items-center gap-2.5 w-full px-4 py-2.5 text-xs text-stone-700 dark:text-stone-200 hover:bg-stone-50 dark:hover:bg-[#252837] transition-colors"
                                 >
