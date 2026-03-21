@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   Search,
@@ -297,9 +297,8 @@ export default function ReportsPage() {
                 </tr>
               ) : (
                 filtered.map((report) => (
-                  <>
+                  <Fragment key={report.id}>
                     <tr
-                      key={report.id}
                       className="hover:bg-stone-50 dark:hover:bg-[#252837] transition-colors"
                     >
                       <td className="py-3.5 px-4">
@@ -407,7 +406,6 @@ export default function ReportsPage() {
                     </tr>
                     {expandedRow === report.id && (
                       <tr
-                        key={`${report.id}-detail`}
                         className="bg-stone-50 dark:bg-[#13151f]"
                       >
                         <td colSpan={7} className="px-4 py-4">
@@ -453,7 +451,7 @@ export default function ReportsPage() {
                         </td>
                       </tr>
                     )}
-                  </>
+                  </Fragment>
                 ))
               )}
             </tbody>

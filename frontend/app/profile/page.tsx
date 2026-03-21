@@ -267,7 +267,11 @@ function ProfileReviewCard({ review }: { review: ProfileReviewItem }) {
 }
 
 // ─── Image upload hook with remove support ────────────────────────────────────
-function useImageUpload(initialSrc?: string | null, onUploaded?: (file: File) => Promise<void>) {
+function useImageUpload(
+  initialSrc?: string | null,
+  onUploaded?: (file: File) => Promise<void>,
+  onRemoved?: () => Promise<void>,
+) {
   const [src, setSrc] = useState<string | null>(initialSrc ?? null);
   const [file, setFile] = useState<File | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -279,7 +283,13 @@ function useImageUpload(initialSrc?: string | null, onUploaded?: (file: File) =>
 
   function trigger() { inputRef.current?.click(); }
 
-  function remove() {
+  async function remove() {
+    if (onRemoved) {
+      await onRemoved();
+      setFile(null);
+      return;
+    }
+
     setSrc(null);
     setFile(null);
   }
@@ -288,22 +298,17 @@ function useImageUpload(initialSrc?: string | null, onUploaded?: (file: File) =>
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const previous = src;
     setFile(file);
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result as string;
-      setSrc(result);
-    };
-    reader.readAsDataURL(file);
-
     if (onUploaded) {
-      try {
-        await onUploaded(file);
-      } catch {
-        setSrc(previous ?? null);
-      }
+      await onUploaded(file);
+    } else {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = reader.result as string;
+        setSrc(result);
+      };
+      reader.readAsDataURL(file);
     }
 
     e.target.value = "";
@@ -437,6 +442,7 @@ export default function ProfilePage() {
       const profileImage = await encodeFileToPayload(file);
       const updatedUser = await updateProfileImages({ profileImage });
       if (user) saveUserData({ ...user, ...updatedUser });
+      setProfileUser((prev) => ({ ...(prev ?? updatedUser), ...updatedUser }));
       showSuccessToast("Profile photo updated");
     } catch (err) {
       const message = typeof err === "string" ? err : (err instanceof Error ? err.message : "Failed to update profile photo");
@@ -453,6 +459,7 @@ export default function ProfilePage() {
       const coverImage = await encodeFileToPayload(file);
       const updatedUser = await updateProfileImages({ coverImage });
       if (user) saveUserData({ ...user, ...updatedUser });
+      setProfileUser((prev) => ({ ...(prev ?? updatedUser), ...updatedUser }));
       showSuccessToast("Cover photo updated");
     } catch (err) {
       const message = typeof err === "string" ? err : (err instanceof Error ? err.message : "Failed to update cover photo");
@@ -463,8 +470,44 @@ export default function ProfilePage() {
     }
   };
 
-  const avatar = useImageUpload(profileUser?.profileImageUrl ?? null, handleAvatarUpload);
-  const cover  = useImageUpload(profileUser?.coverImageUrl ?? null, handleCoverUpload);
+  const handleAvatarRemove = async () => {
+    if (uploadingAvatar) return;
+
+    setUploadingAvatar(true);
+    try {
+      const updatedUser = await updateProfileImages({ removeProfileImage: true });
+      if (user) saveUserData({ ...user, ...updatedUser });
+      setProfileUser((prev) => ({ ...(prev ?? updatedUser), ...updatedUser }));
+      showSuccessToast("Profile photo removed");
+    } catch (err) {
+      const message = typeof err === "string" ? err : (err instanceof Error ? err.message : "Failed to remove profile photo");
+      showErrorToast(message);
+      throw err;
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
+
+  const handleCoverRemove = async () => {
+    if (uploadingCover) return;
+
+    setUploadingCover(true);
+    try {
+      const updatedUser = await updateProfileImages({ removeCoverImage: true });
+      if (user) saveUserData({ ...user, ...updatedUser });
+      setProfileUser((prev) => ({ ...(prev ?? updatedUser), ...updatedUser }));
+      showSuccessToast("Cover photo removed");
+    } catch (err) {
+      const message = typeof err === "string" ? err : (err instanceof Error ? err.message : "Failed to remove cover photo");
+      showErrorToast(message);
+      throw err;
+    } finally {
+      setUploadingCover(false);
+    }
+  };
+
+  const avatar = useImageUpload(profileUser?.profileImageUrl ?? null, handleAvatarUpload, handleAvatarRemove);
+  const cover  = useImageUpload(profileUser?.coverImageUrl ?? null, handleCoverUpload, handleCoverRemove);
 
   useEffect(() => {
     if (!isViewingExternalProfile && user) {
@@ -479,6 +522,8 @@ export default function ProfilePage() {
   }, [isViewingExternalProfile]);
 
   useEffect(() => {
+    if (!editOpen || isViewingExternalProfile) return;
+
     const loadProvinces = async () => {
       try {
         const data = await getProvinces();
@@ -489,9 +534,11 @@ export default function ProfilePage() {
     };
 
     loadProvinces();
-  }, []);
+  }, [editOpen, isViewingExternalProfile]);
 
   useEffect(() => {
+    if (!editOpen || isViewingExternalProfile) return;
+
     if (!selectedProvCode) {
       setCities([]);
       setSelectedCityCode("");
@@ -511,9 +558,11 @@ export default function ProfilePage() {
     };
 
     loadCities();
-  }, [selectedProvCode]);
+  }, [editOpen, isViewingExternalProfile, selectedProvCode, form.locationCity]);
 
   useEffect(() => {
+    if (!editOpen || isViewingExternalProfile) return;
+
     if (!selectedCityCode) {
       setBarangays([]);
       return;
@@ -529,7 +578,7 @@ export default function ProfilePage() {
     };
 
     loadBarangays();
-  }, [selectedCityCode]);
+  }, [editOpen, isViewingExternalProfile, selectedCityCode]);
 
   useEffect(() => {
     const loadProfile = async () => {
@@ -766,7 +815,14 @@ export default function ProfilePage() {
             {/* Remove cover button */}
             {!isViewingExternalProfile && cover.src && (
               <button
-                onClick={(e) => { e.stopPropagation(); cover.remove(); showSuccessToast("Cover photo removed"); }}
+                onClick={async (e) => {
+                  e.stopPropagation();
+                  try {
+                    await cover.remove();
+                  } catch {
+                    // toast already handled in remove flow
+                  }
+                }}
                 className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/50 hover:bg-black/70 flex items-center justify-center text-white transition-colors opacity-0 group-hover:opacity-100"
                 title="Remove cover photo"
               >
@@ -820,7 +876,15 @@ export default function ProfilePage() {
                       {avatar.src && (
                         <button
                           className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors border-t border-stone-100 dark:border-[#2a2d3e]"
-                          onClick={() => { avatar.remove(); setShowAvatarMenu(false); showSuccessToast("Profile photo removed"); }}
+                          onClick={async () => {
+                            try {
+                              await avatar.remove();
+                            } catch {
+                              // toast already handled in remove flow
+                            } finally {
+                              setShowAvatarMenu(false);
+                            }
+                          }}
                         >
                           <Trash2 className="w-4 h-4" />
                           Remove Photo
@@ -978,21 +1042,12 @@ export default function ProfilePage() {
                     </div>
                     <div>
                       <label className={lbl}>Confirm New Password</label>
-                      <div className="relative">
-                        <Input
-                          type={showConfirmPassword ? "text" : "password"}
-                          value={form.confirmPassword}
-                          onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })}
-                          placeholder="Repeat new password"
-                        />
-                        <button
-                          type="button"
-                          className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm leading-5"
-                          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                        >
-                          {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                        </button>
-                      </div>
+                      <Input
+                        type={showConfirmPassword ? "text" : "password"}
+                        value={form.confirmPassword}
+                        onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })}
+                        placeholder="Repeat new password"
+                      />
                     </div>
                   </div>
                 </div>
