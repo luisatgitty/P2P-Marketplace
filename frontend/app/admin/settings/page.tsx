@@ -1,102 +1,69 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useUser } from "@/utils/UserContext";
+import Image from "next/image";
 import {
   Lock,
-  Mail,
-  Phone,
   Eye,
   EyeOff,
   CheckCircle2,
   AlertTriangle,
-  Shield,
-  KeyRound,
   User,
+  Camera,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Button }               from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle }    from "@/components/ui/card";
+import { FieldLabel }           from "@/components/ui/field";
+import { Input }                from "@/components/ui/input";
+import { Separator }            from "@/components/ui/separator";
 
 // ── Mock current admin ─────────────────────────────────────────────────────────
 const CURRENT_ADMIN = {
   firstName: "Super",
-  lastName: "Admin",
-  email: "superadmin@p2pmarket.ph",
-  phone: "09171234000",
-  role: "SUPER_ADMIN",
+  lastName:  "Admin",
+  email:     "superadmin@p2pmarket.ph",
+  phone:     "09171234000",
+  role:      "SUPER_ADMIN",
 };
 
-function Section({
-  title,
-  desc,
-  children,
-}: {
-  title: string;
-  desc: string;
-  children: React.ReactNode;
-}) {
+// ── Password strength ──────────────────────────────────────────────────────────
+const STRENGTH_CONFIG = [
+  { label: "Weak",   bar: "bg-red-500",    text: "text-red-500"    },
+  { label: "Fair",   bar: "bg-amber-500",  text: "text-amber-500"  },
+  { label: "Good",   bar: "bg-yellow-400", text: "text-yellow-500" },
+  { label: "Strong", bar: "bg-teal-500",   text: "text-teal-500"   },
+] as const;
+
+function getStrengthScore(pw: string): number {
+  return [
+    pw.length >= 8,
+    /[A-Z]/.test(pw),
+    /[0-9]/.test(pw),
+    /[!@#$%^&*()_+\-=[\]{}|;',.<>?]/.test(pw),
+  ].filter(Boolean).length;
+}
+
+const LETTERS_SPACE_ONLY = /^[A-Za-z\s]+$/;
+
+// ── Sub-components ─────────────────────────────────────────────────────────────
+
+/** Eye-toggle button for password inputs */
+function EyeToggle({ show, onToggle }: { show: boolean; onToggle: () => void }) {
   return (
-    <div className="bg-white dark:bg-[#1c1f2e] rounded-2xl border border-stone-200 dark:border-[#2a2d3e] overflow-hidden">
-      <div className="px-6 py-5 border-b border-stone-100 dark:border-[#2a2d3e]">
-        <h3 className="text-sm font-bold text-stone-900 dark:text-stone-50">
-          {title}
-        </h3>
-        <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5">
-          {desc}
-        </p>
-      </div>
-      <div className="px-6 py-5">{children}</div>
-    </div>
+    <Button
+      variant='icon'
+      onClick={onToggle}
+      className='text-muted-foreground absolute inset-y-0 right-0 rounded-l-none'
+    >
+      {show ? <EyeOff /> : <Eye />}
+    </Button>
   );
 }
 
-function FieldLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <label className="block text-[11px] font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest mb-1.5">
-      {children}
-    </label>
-  );
-}
-
-function Input({
-  type = "text",
-  value,
-  onChange,
-  placeholder,
-  disabled,
-  rightEl,
-}: {
-  type?: string;
-  value: string;
-  onChange: (v: string) => void;
-  placeholder?: string;
-  disabled?: boolean;
-  rightEl?: React.ReactNode;
-}) {
-  return (
-    <div className="relative">
-      <input
-        type={type}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        disabled={disabled}
-        className={cn(
-          "w-full px-3.5 py-2.5 rounded-xl text-sm border transition-colors outline-none",
-          "bg-stone-50 dark:bg-[#13151f] text-stone-800 dark:text-stone-100 placeholder-stone-400",
-          "border-stone-200 dark:border-[#2a2d3e] focus:border-stone-400 dark:focus:border-stone-500",
-          "disabled:opacity-60 disabled:cursor-not-allowed",
-          rightEl && "pr-10",
-        )}
-      />
-      {rightEl && (
-        <div className="absolute right-3 top-1/2 -translate-y-1/2">
-          {rightEl}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function Toast({ msg, type }: { msg: string; type: "success" | "error" }) {
+/** Inline success / error feedback banner */
+function InlineFeedback({ msg, type }: { msg: string; type: "success" | "error" }) {
   return (
     <div
       className={cn(
@@ -106,398 +73,414 @@ function Toast({ msg, type }: { msg: string; type: "success" | "error" }) {
           : "bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400",
       )}
     >
-      {type === "success" ? (
-        <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
-      ) : (
-        <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-      )}
+      {type === "success"
+        ? <CheckCircle2 className="w-4 h-4 shrink-0" />
+        : <AlertTriangle className="w-4 h-4 shrink-0" />}
       {msg}
     </div>
   );
 }
 
+/** Four-segment password strength bar with label */
+function PasswordStrengthBar({ password }: { password: string }) {
+  if (!password) return null;
+
+  const score  = getStrengthScore(password);          // 0–4
+  const cfg    = STRENGTH_CONFIG[Math.max(0, score - 1)]; // clamp so index never goes below 0
+  const filled = Math.max(1, score);                  // always show at least 1 segment
+
+  return (
+    <div className="space-y-2">
+      {/* Segmented bar */}
+      <div className="flex gap-1.5">
+        {Array.from({ length: 4 }, (_, i) => (
+          <div
+            key={i}
+            className={cn(
+              "flex-1 h-1.5 rounded-full transition-all duration-300",
+              i < filled ? cfg.bar : "bg-stone-200 dark:bg-stone-700",
+            )}
+          />
+        ))}
+      </div>
+
+      {/* Strength label */}
+      <p className={cn("text-[11px] font-bold", cfg.text)}>
+        {cfg.label} password
+      </p>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Main page
+// ─────────────────────────────────────────────────────────────────────────────
 export default function SettingsPage() {
-  // Profile
-  const [firstName, setFirstName] = useState(CURRENT_ADMIN.firstName);
-  const [lastName, setLastName] = useState(CURRENT_ADMIN.lastName);
-  const [profileMsg, setProfileMsg] = useState<{
-    text: string;
-    type: "success" | "error";
-  } | null>(null);
-  const [savingProfile, setSavingProfile] = useState(false);
+  const { user }        = useUser();
+  const fileInputRef    = useRef<HTMLInputElement | null>(null);
+  const originalFirstName = user?.firstName ?? CURRENT_ADMIN.firstName;
+  const originalLastName  = user?.lastName ?? CURRENT_ADMIN.lastName;
 
-  // Password
-  const [currentPw, setCurrentPw] = useState("");
-  const [newPw, setNewPw] = useState("");
-  const [confirmPw, setConfirmPw] = useState("");
-  const [showCurr, setShowCurr] = useState(false);
-  const [showNew, setShowNew] = useState(false);
-  const [showConf, setShowConf] = useState(false);
-  const [pwMsg, setPwMsg] = useState<{
-    text: string;
-    type: "success" | "error";
-  } | null>(null);
-  const [savingPw, setSavingPw] = useState(false);
+  // ── Profile state
+  const [firstName,       setFirstName]       = useState(CURRENT_ADMIN.firstName);
+  const [lastName,        setLastName]        = useState(CURRENT_ADMIN.lastName);
+  const [profilePreview,  setProfilePreview]  = useState<string | null>(null);
+  const [firstNameError,  setFirstNameError]  = useState(false);
+  const [lastNameError,   setLastNameError]   = useState(false);
 
-  // Email
+  // ── Password state
+  const [currentPw,           setCurrentPw]           = useState("");
+  const [newPw,               setNewPw]               = useState("");
+  const [confirmPw,           setConfirmPw]           = useState("");
+  const [showCurr,            setShowCurr]            = useState(false);
+  const [showNew,             setShowNew]             = useState(false);
+  const [showConf,            setShowConf]            = useState(false);
+  const [passwordInputsError, setPasswordInputsError] = useState(false);
+
+  // ── Contact state
   const [newEmail, setNewEmail] = useState("");
-  const [emailPw, setEmailPw] = useState("");
-  const [emailMsg, setEmailMsg] = useState<{
-    text: string;
-    type: "success" | "error";
-  } | null>(null);
-  const [savingEmail, setSavingEmail] = useState(false);
-
-  // Phone
+  const [emailPw,  setEmailPw]  = useState("");
   const [newPhone, setNewPhone] = useState("");
-  const [phonePw, setPhonePw] = useState("");
-  const [phoneMsg, setPhoneMsg] = useState<{
-    text: string;
-    type: "success" | "error";
-  } | null>(null);
-  const [savingPhone, setSavingPhone] = useState(false);
+  const [phonePw,  setPhonePw]  = useState("");
 
-  function simulate(
-    setter: (v: boolean) => void,
-    msgSetter: (v: { text: string; type: "success" | "error" } | null) => void,
-    onSuccess: () => void,
-    validation?: () => string | null,
-  ) {
-    const err = validation?.();
-    if (err) {
-      msgSetter({ text: err, type: "error" });
+  // ── Form state
+  const [formMsg,    setFormMsg]    = useState<{ text: string; type: "success" | "error" } | null>(null);
+  const [savingForm, setSavingForm] = useState(false);
+
+  useEffect(() => {
+    setFirstName(originalFirstName);
+    setLastName(originalLastName);
+  }, [originalFirstName, originalLastName]);
+
+  const isNameChanged =
+    firstName.trim() !== originalFirstName.trim() ||
+    lastName.trim() !== originalLastName.trim();
+  const hasPasswordValues = Boolean(currentPw || newPw || confirmPw);
+  const canSaveChanges = isNameChanged || hasPasswordValues;
+
+  // ── Profile image handlers ─────────────────────────────────────────────────
+  function handlePickImage() {
+    fileInputRef.current?.click();
+  }
+
+  function handleImageChange(file: File | null) {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setFormMsg({ text: "Please select a valid image file.", type: "error" });
       return;
     }
-    setter(true);
+    const reader = new FileReader();
+    reader.onload = () => {
+      setProfilePreview(typeof reader.result === "string" ? reader.result : null);
+    };
+    reader.readAsDataURL(file);
+  }
+
+  // ── Validation ──────────────────────────────────────────────────────────────
+  function validateForm(): string | null {
+    const trimmedFirstName = firstName.trim();
+    const trimmedLastName = lastName.trim();
+
+    const hasFirstNameError = !trimmedFirstName || !LETTERS_SPACE_ONLY.test(trimmedFirstName);
+    const hasLastNameError = !trimmedLastName || !LETTERS_SPACE_ONLY.test(trimmedLastName);
+
+    setFirstNameError(hasFirstNameError);
+    setLastNameError(hasLastNameError);
+
+    if (!trimmedFirstName || !trimmedLastName) {
+      return "First and last name are required.";
+    }
+
+    if (!LETTERS_SPACE_ONLY.test(trimmedFirstName) || !LETTERS_SPACE_ONLY.test(trimmedLastName)) {
+      return "First and last name must contain letters only.";
+    }
+
+    const hasAnyPassword = Boolean(currentPw || newPw || confirmPw);
+    if (hasAnyPassword) {
+      if (!currentPw || !newPw || !confirmPw) {
+        setPasswordInputsError(true);
+        return "Current, new, and confirm password are all required.";
+      }
+      if (newPw.length < 8) { setPasswordInputsError(true); return "New password must be at least 8 characters."; }
+      if (!/[A-Z]/.test(newPw)) { setPasswordInputsError(true); return "New password must contain at least one uppercase letter."; }
+      if (!/[a-z]/.test(newPw)) { setPasswordInputsError(true); return "New password must contain at least one lowercase letter."; }
+      if (!/[0-9]/.test(newPw)) { setPasswordInputsError(true); return "New password must contain at least one number."; }
+      if (!/[!@#$%^&*()_+\-=[\]{}|;',.<>?]/.test(newPw)) { setPasswordInputsError(true); return "New password must contain at least one special character."; }
+      if (newPw !== confirmPw) { setPasswordInputsError(true); return "Confirm password must match the new password."; }
+      setPasswordInputsError(false);
+    } else {
+      setPasswordInputsError(false);
+    }
+
+    if (newEmail) {
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)) return "Invalid new email format.";
+      if (!emailPw) return "Password confirmation is required for email update.";
+    }
+
+    if (newPhone) {
+      if (!/^9\d{9}$/.test(newPhone.replace(/\s/g, ""))) return "Enter a valid PH mobile number (e.g. 9171234567).";
+      if (!phonePw) return "Password confirmation is required for mobile number update.";
+    }
+
+    return null;
+  }
+
+  // ── Save handler ────────────────────────────────────────────────────────────
+  function handleSave() {
+    const err = validateForm();
+    if (err) { setFormMsg({ text: err, type: "error" }); return; }
+
+    setSavingForm(true);
     setTimeout(() => {
-      setter(false);
-      onSuccess();
-      msgSetter({ text: "Changes saved successfully.", type: "success" });
-      setTimeout(() => msgSetter(null), 4000);
+      setSavingForm(false);
+      setCurrentPw(""); setNewPw(""); setConfirmPw("");
+      setEmailPw(""); setPhonePw("");
+      setNewEmail(""); setNewPhone("");
+      setPasswordInputsError(false);
+      setFormMsg({ text: "Settings updated successfully.", type: "success" });
+      setTimeout(() => setFormMsg(null), 4000);
     }, 900);
   }
 
-  const EyeBtn = ({
-    show,
-    setShow,
-  }: {
-    show: boolean;
-    setShow: (v: boolean) => void;
-  }) => (
-    <button
-      type="button"
-      onClick={() => setShow(!show)}
-      className="text-stone-400 hover:text-stone-600 dark:hover:text-stone-300 transition-colors"
-    >
-      {show ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-    </button>
-  );
-
   return (
     <div className="p-5 sm:p-6 space-y-5 max-w-2xl">
+
+      {/* ── Page title ── */}
       <div>
-        <h2 className="text-xl font-extrabold text-stone-900 dark:text-stone-50">
+        <h1 className="text-xl font-extrabold text-stone-900 dark:text-stone-50">
           Settings
-        </h2>
-        <p className="text-sm text-stone-500 dark:text-stone-400 mt-0.5">
-          Manage your admin account credentials and profile
-        </p>
+        </h1>
       </div>
 
-      {/* Account summary */}
-      <div className="bg-[#1e2433] rounded-2xl p-5 flex items-center gap-4">
-        <div className="w-14 h-14 rounded-full bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center text-white text-lg font-extrabold flex-shrink-0">
-          {CURRENT_ADMIN.firstName.charAt(0)}
-          {CURRENT_ADMIN.lastName.charAt(0)}
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-base font-extrabold text-white">
-            {CURRENT_ADMIN.firstName} {CURRENT_ADMIN.lastName}
-          </p>
-          <p className="text-sm text-slate-400">{CURRENT_ADMIN.email}</p>
-          <span className="inline-block mt-1.5 text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
-            {CURRENT_ADMIN.role === "SUPER_ADMIN" ? "Super Admin" : "Admin"}
-          </span>
-        </div>
-        <Shield className="w-6 h-6 text-amber-400 flex-shrink-0" />
-      </div>
-
-      {/* ── Profile ── */}
-      <Section
-        title="Profile Information"
-        desc="Update your display name shown in the admin panel."
-      >
-        <div className="grid grid-cols-2 gap-4 mb-4">
-          <div>
-            <FieldLabel>First Name</FieldLabel>
-            <Input value={firstName} onChange={setFirstName} />
-          </div>
-          <div>
-            <FieldLabel>Last Name</FieldLabel>
-            <Input value={lastName} onChange={setLastName} />
-          </div>
-        </div>
-        {profileMsg && (
-          <div className="mb-4">
-            <Toast msg={profileMsg.text} type={profileMsg.type} />
-          </div>
-        )}
-        <button
-          type="button"
-          disabled={savingProfile}
-          onClick={() =>
-            simulate(
-              setSavingProfile,
-              setProfileMsg,
-              () => {},
-              () =>
-                !firstName.trim() || !lastName.trim()
-                  ? "First and last name are required."
-                  : null,
-            )
-          }
-          className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#1e2433] dark:bg-stone-100 text-white dark:text-stone-900 text-sm font-bold hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed transition-opacity"
-        >
-          <User className="w-4 h-4" />
-          {savingProfile ? "Saving…" : "Save Profile"}
-        </button>
-      </Section>
-
-      {/* ── Password ── */}
-      <Section
-        title="Change Password"
-        desc="Use a strong password with at least 8 characters, including uppercase, numbers, and symbols."
-      >
-        <div className="space-y-4 mb-4">
-          <div>
-            <FieldLabel>Current Password</FieldLabel>
-            <Input
-              type={showCurr ? "text" : "password"}
-              value={currentPw}
-              onChange={setCurrentPw}
-              placeholder="Enter current password"
-              rightEl={<EyeBtn show={showCurr} setShow={setShowCurr} />}
+      {/* ── Profile summary banner ── */}
+      <Card>
+        <CardContent className="flex items-center gap-4">
+          <div className="relative group shrink-0">
+            <Image
+              src={profilePreview || user?.profileImageUrl || "/profile-icon.png"}
+              alt="Profile"
+              width={56}
+              height={56}
+              className="w-14 h-14 rounded-full object-cover ring-2 ring-white/10"
+            />
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={handlePickImage}
+              aria-label="Change profile picture"
+              className="absolute inset-0 w-full h-full rounded-full bg-black/50 text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/50 hover:text-white"
+            >
+              <Camera className="w-4 h-4" />
+            </Button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => handleImageChange(e.target.files?.[0] ?? null)}
             />
           </div>
-          <div>
-            <FieldLabel>New Password</FieldLabel>
-            <Input
-              type={showNew ? "text" : "password"}
-              value={newPw}
-              onChange={setNewPw}
-              placeholder="Enter new password (min 8 chars)"
-              rightEl={<EyeBtn show={showNew} setShow={setShowNew} />}
-            />
+          <div className="flex-1 min-w-0">
+            <p className="text-base font-extrabold text-white truncate">
+              {user?.firstName} {user?.lastName}
+            </p>
+            <p className="text-sm text-slate-400 truncate">{user?.email}</p>
+            <span className="inline-block mt-1.5 text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
+              {user?.role === "SUPER_ADMIN" ? "Super Admin" : "Admin"}
+            </span>
           </div>
-          <div>
-            <FieldLabel>Confirm New Password</FieldLabel>
-            <Input
-              type={showConf ? "text" : "password"}
-              value={confirmPw}
-              onChange={setConfirmPw}
-              placeholder="Re-enter new password"
-              rightEl={<EyeBtn show={showConf} setShow={setShowConf} />}
-            />
-          </div>
-        </div>
+        </CardContent>
+      </Card>
 
-        {/* Strength indicators */}
-        {newPw && (
-          <div className="mb-4 space-y-1.5">
-            {[
-              { label: "At least 8 characters", ok: newPw.length >= 8 },
-              { label: "One uppercase letter", ok: /[A-Z]/.test(newPw) },
-              { label: "One number", ok: /[0-9]/.test(newPw) },
-              {
-                label: "One special character",
-                ok: /[!@#$%^&*()_+\-=[\]{}|;',.<>?]/.test(newPw),
-              },
-            ].map(({ label, ok }) => (
-              <div key={label} className="flex items-center gap-2">
-                <CheckCircle2
-                  className={cn(
-                    "w-3.5 h-3.5 flex-shrink-0",
-                    ok ? "text-teal-500" : "text-stone-300 dark:text-stone-600",
-                  )}
-                />
-                <span
-                  className={cn(
-                    "text-xs",
-                    ok
-                      ? "text-stone-700 dark:text-stone-200"
-                      : "text-stone-400 dark:text-stone-500",
-                  )}
-                >
-                  {label}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
+      {/* ══ Account Settings card ═══════════════════════════════════════════ */}
+      <Card className="dark:bg-[#1c1f2e] dark:border-[#2a2d3e]">
+        <CardHeader>
+          <CardTitle>Account Settings</CardTitle>
+          <CardDescription>Update your admin account credentials</CardDescription>
+        </CardHeader>
+        <CardContent className="grid grid-cols-2 gap-4">
 
-        {pwMsg && (
-          <div className="mb-4">
-            <Toast msg={pwMsg.text} type={pwMsg.type} />
-          </div>
-        )}
-        <button
-          type="button"
-          disabled={savingPw}
-          onClick={() =>
-            simulate(
-              setSavingPw,
-              setPwMsg,
-              () => {
-                setCurrentPw("");
-                setNewPw("");
-                setConfirmPw("");
-              },
-              () => {
-                if (!currentPw) return "Current password is required.";
-                if (newPw.length < 8)
-                  return "New password must be at least 8 characters.";
-                if (newPw !== confirmPw) return "Passwords do not match.";
-                return null;
-              },
-            )
-          }
-          className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#1e2433] dark:bg-stone-100 text-white dark:text-stone-900 text-sm font-bold hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed transition-opacity"
-        >
-          <KeyRound className="w-4 h-4" />
-          {savingPw ? "Updating…" : "Update Password"}
-        </button>
-      </Section>
-
-      {/* ── Email ── */}
-      <Section
-        title="Change Email Address"
-        desc="A verification email will be sent to your new address before the change takes effect."
-      >
-        <div className="space-y-4 mb-4">
-          <div>
-            <FieldLabel>Current Email</FieldLabel>
-            <Input value={CURRENT_ADMIN.email} onChange={() => {}} disabled />
-          </div>
-          <div>
-            <FieldLabel>New Email Address</FieldLabel>
-            <Input
-              type="email"
-              value={newEmail}
-              onChange={setNewEmail}
-              placeholder="Enter new email address"
-            />
-          </div>
-          <div>
-            <FieldLabel>Current Password (to confirm)</FieldLabel>
-            <Input
-              type="password"
-              value={emailPw}
-              onChange={setEmailPw}
-              placeholder="Enter your password to confirm"
-            />
-          </div>
-        </div>
-        {emailMsg && (
-          <div className="mb-4">
-            <Toast msg={emailMsg.text} type={emailMsg.type} />
-          </div>
-        )}
-        <button
-          type="button"
-          disabled={savingEmail}
-          onClick={() =>
-            simulate(
-              setSavingEmail,
-              setEmailMsg,
-              () => {
-                setNewEmail("");
-                setEmailPw("");
-              },
-              () => {
-                if (!newEmail.trim()) return "New email address is required.";
-                if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail))
-                  return "Invalid email format.";
-                if (!emailPw) return "Password confirmation is required.";
-                return null;
-              },
-            )
-          }
-          className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#1e2433] dark:bg-stone-100 text-white dark:text-stone-900 text-sm font-bold hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed transition-opacity"
-        >
-          <Mail className="w-4 h-4" />
-          {savingEmail ? "Sending verification…" : "Update Email"}
-        </button>
-      </Section>
-
-      {/* ── Phone ── */}
-      <Section
-        title="Change Mobile Number"
-        desc="Update the mobile number associated with your admin account."
-      >
-        <div className="space-y-4 mb-4">
-          <div>
-            <FieldLabel>Current Number</FieldLabel>
-            <Input value={CURRENT_ADMIN.phone} onChange={() => {}} disabled />
-          </div>
-          <div>
-            <FieldLabel>New Mobile Number</FieldLabel>
-            <div className="flex gap-2">
-              <div className="flex items-center justify-center bg-stone-100 dark:bg-[#13151f] border border-stone-200 dark:border-[#2a2d3e] rounded-xl px-3 text-sm text-stone-500 dark:text-stone-400 font-medium w-14 flex-shrink-0">
-                +63
-              </div>
+          {/* Wraps name inputs in form to disable browser autocomplete */}
+          <form className="contents" autoComplete="off">
+            {/* ── Name ── */}
+            <div className="space-y-2">
+              <FieldLabel htmlFor="firstName">First Name</FieldLabel>
               <Input
-                value={newPhone}
-                onChange={setNewPhone}
-                placeholder="9XX XXX XXXX"
+                id="firstName"
+                value={firstName}
+                aria-invalid={firstNameError}
+                onChange={(e) => {
+                  setFirstName(e.target.value);
+                  if (firstNameError) setFirstNameError(false);
+                }}
               />
             </div>
-          </div>
-          <div>
-            <FieldLabel>Current Password (to confirm)</FieldLabel>
+            <div className="space-y-2">
+              <FieldLabel htmlFor="lastName">Last Name</FieldLabel>
+              <Input
+                id="lastName"
+                value={lastName}
+                aria-invalid={lastNameError}
+                onChange={(e) => {
+                  setLastName(e.target.value);
+                  if (lastNameError) setLastNameError(false);
+                }}
+              />
+            </div>
+          </form>
+
+          {/* ── Contact info ── */}
+          <div className="space-y-2 cursor-not-allowed">
+            <FieldLabel htmlFor="currentEmail">Email Address</FieldLabel>
             <Input
-              type="password"
-              value={phonePw}
-              onChange={setPhonePw}
-              placeholder="Enter your password to confirm"
+              id="currentEmail"
+              value={user?.email}
+              disabled
             />
           </div>
-        </div>
-        {phoneMsg && (
-          <div className="mb-4">
-            <Toast msg={phoneMsg.text} type={phoneMsg.type} />
+          <div className="space-y-2 cursor-not-allowed">
+            <FieldLabel htmlFor="currentPhone">Contact Number</FieldLabel>
+            <Input
+              id="currentPhone"
+              value={user?.phoneNumber}
+              disabled
+            />
           </div>
-        )}
-        <button
-          type="button"
-          disabled={savingPhone}
-          onClick={() =>
-            simulate(
-              setSavingPhone,
-              setPhoneMsg,
-              () => {
-                setNewPhone("");
-                setPhonePw("");
-              },
-              () => {
-                if (!newPhone.trim()) return "New mobile number is required.";
-                if (!/^9\d{9}$/.test(newPhone.replace(/\s/g, "")))
-                  return "Enter a valid PH mobile number (e.g. 9171234567).";
-                if (!phonePw) return "Password confirmation is required.";
-                return null;
-              },
-            )
-          }
-          className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#1e2433] dark:bg-stone-100 text-white dark:text-stone-900 text-sm font-bold hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed transition-opacity"
-        >
-          <Phone className="w-4 h-4" />
-          {savingPhone ? "Updating…" : "Update Mobile Number"}
-        </button>
-      </Section>
+        </CardContent>
 
-      {/* ── Security info ── */}
+        <Separator />
+
+        <CardHeader>
+          <CardTitle>Change Password</CardTitle>
+          <CardDescription>Leave all three fields empty if you don&apos;t want to change your password</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+
+          {/* Current password */}
+          <div className="space-y-2">
+            <FieldLabel htmlFor="currentPw">Current Password</FieldLabel>
+            <div className="relative">
+              <Input
+                id="currentPw"
+                type={showCurr ? "text" : "password"}
+                value={currentPw}
+                onChange={(e) => {
+                  setCurrentPw(e.target.value);
+                  if (!e.target.value) {
+                    setNewPw("");
+                    setConfirmPw("");
+                    setPasswordInputsError(false);
+                  }
+                  if (passwordInputsError) setPasswordInputsError(false);
+                }}
+                placeholder="Enter current password"
+                aria-invalid={passwordInputsError}
+                className={"pr-10 dark:bg-[#13151f] dark:border-[#2a2d3e]"}
+              />
+              <EyeToggle show={showCurr} onToggle={() => setShowCurr((v) => !v)} />
+            </div>
+          </div>
+
+          {/* New + Confirm Password */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <FieldLabel htmlFor="newPw">New Password</FieldLabel>
+              <div className="relative">
+                <Input
+                  id="newPw"
+                  type={showNew ? "text" : "password"}
+                  disabled={!currentPw.trim()}
+                  value={newPw}
+                  onChange={(e) => {
+                    setNewPw(e.target.value);
+                    if (passwordInputsError) setPasswordInputsError(false);
+                  }}
+                  placeholder="Enter new password"
+                  aria-invalid={passwordInputsError}
+                  className={"pr-10 dark:bg-[#13151f] dark:border-[#2a2d3e]"}
+                />
+                <EyeToggle show={showNew} onToggle={() => setShowNew((v) => !v)} />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <FieldLabel htmlFor="confirmPw">Confirm New Password</FieldLabel>
+              <div className="relative">
+                <Input
+                  id="confirmPw"
+                  type={showConf ? "text" : "password"}
+                  disabled={!currentPw.trim()}
+                  value={confirmPw}
+                  onChange={(e) => {
+                    setConfirmPw(e.target.value);
+                    if (passwordInputsError) setPasswordInputsError(false);
+                  }}
+                  placeholder="Re-enter new password"
+                  aria-invalid={passwordInputsError}
+                  className={"pr-10 dark:bg-[#13151f] dark:border-[#2a2d3e]"}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Strength + checklist — only shown when typing a new password */}
+          {newPw && (
+            <div className="space-y-3 pt-1">
+
+              {/* ── Strength progress bar ── */}
+              <PasswordStrengthBar password={newPw} />
+
+              {/* ── Complexity checklist ── */}
+              <div className="grid grid-cols-2 gap-x-6 gap-y-1.5">
+                {[
+                  { label: "At least 8 characters",    ok: newPw.length >= 8 },
+                  { label: "One uppercase letter",      ok: /[A-Z]/.test(newPw) },
+                  { label: "One number",                ok: /[0-9]/.test(newPw) },
+                  { label: "One special character",     ok: /[!@#$%^&*()_+\-=[\]{}|;',.<>?]/.test(newPw) },
+                ].map(({ label, ok }) => (
+                  <div key={label} className="flex items-center gap-2">
+                    <CheckCircle2
+                      className={cn(
+                        "w-3.5 h-3.5 shrink-0 transition-colors duration-200",
+                        ok ? "text-teal-500" : "text-stone-300 dark:text-stone-600",
+                      )}
+                    />
+                    <span
+                      className={cn(
+                        "text-xs transition-colors duration-200",
+                        ok ? "text-stone-700 dark:text-stone-200" : "text-stone-400 dark:text-stone-500",
+                      )}
+                    >
+                      {label}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </CardContent>
+
+        <CardContent className="space-y-4">
+          {/* ── Error Message ── */}
+          {formMsg && <InlineFeedback msg={formMsg.text} type={formMsg.type} />}
+
+          {/* ── Save Button ── */}
+          <Button
+            type="button"
+            disabled={savingForm || !canSaveChanges}
+            onClick={handleSave}
+            className="rounded-full px-6 bg-[#1e2433] hover:bg-[#2a3650] dark:bg-stone-100 dark:text-stone-900 dark:hover:bg-stone-200 text-white font-bold gap-2"
+          >
+            <User className="w-4 h-4" />
+            {savingForm ? "Saving…" : "Save Changes"}
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* ── Security reminders ── */}
       <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-2xl p-4">
-        <div className="flex items-center gap-2 mb-2">
-          <Lock className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0" />
+        <div className="flex items-center gap-2 mb-2.5">
+          <Lock className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
           <p className="text-sm font-bold text-amber-800 dark:text-amber-300">
             Security Reminders
           </p>
@@ -509,11 +492,8 @@ export default function SettingsPage() {
             "Log out of the admin panel when using a shared or public device.",
             "Report any suspicious login activity to the system owner immediately.",
           ].map((tip) => (
-            <li
-              key={tip}
-              className="flex items-start gap-2 text-xs text-amber-700 dark:text-amber-400"
-            >
-              <span className="text-amber-400 mt-0.5 flex-shrink-0">•</span>
+            <li key={tip} className="flex items-start gap-2 text-xs text-amber-700 dark:text-amber-400">
+              <span className="text-amber-400 mt-0.5 shrink-0">•</span>
               {tip}
             </li>
           ))}
