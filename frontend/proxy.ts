@@ -41,6 +41,7 @@ export function proxy(request: NextRequest) {
   const hasSessionToken = Boolean(request.cookies.get("session_token")?.value);
   const roleCookie = (request.cookies.get("app_role")?.value ?? "").toUpperCase();
   const isAdminRole = roleCookie === "ADMIN" || roleCookie === "SUPER_ADMIN";
+  const hasRoleCookie = roleCookie !== "";
 
   const matchesRoute = (route: string): boolean => {
     if (route === "/") return pathname === "/";
@@ -74,7 +75,8 @@ export function proxy(request: NextRequest) {
     }
 
     // Non-admin users cannot access /admin routes.
-    if (!isAdminRole && isAdminRoute) {
+    // If role cookie is missing, allow request and let client/backend auth resolve role.
+    if (hasRoleCookie && !isAdminRole && isAdminRoute) {
       return NextResponse.redirect(new URL("/", request.url));
     }
   }

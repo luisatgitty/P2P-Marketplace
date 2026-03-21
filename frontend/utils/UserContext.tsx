@@ -122,7 +122,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const isAuthRoute = AUTH_ROUTES.some(isRouteRootMatch);
   const isAdminRoute = ADMIN_ROUTES.some(isRouteRootMatch);
   const isKnownAppRoute = KNOWN_APP_ROUTES.some(isRouteRootMatch);
-  const isAdminRole = ["ADMIN", "SUPERADMIN"].includes((user?.role ?? "").toUpperCase());
+  const isAdminRole = ["ADMIN", "SUPER_ADMIN"].includes((user?.role ?? "").toUpperCase());
 
   useEffect(() => {
     if (!isAuth) return;
