@@ -113,6 +113,10 @@
   --sidebar-ring: #555968;
 }
 
+.dark [aria-invalid="true"] {
+  border-color: var(--destructive) !important;
+}
+
 /* ── Base resets ── */
 @layer base {
   * {

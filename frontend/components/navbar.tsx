@@ -149,7 +149,7 @@ export default function Navbar() {
       <div className="fixed top-0 left-0 right-0 z-50 h-1 bg-amber-800" />
 
       {/* Main navbar */}
-      <nav className="fixed top-1 left-0 right-0 z-50 bg-[#1a2235]/95 backdrop-blur-sm text-white shadow-lg border-b border-white/5">
+      <nav className="fixed top-1 left-0 right-0 z-50 bg-[#1a2235]/95 backdrop-blur-xs text-white shadow-lg border-b border-white/5">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-3">
 
           {/* ── LEFT: Branding ─────────────────────────────────── */}
@@ -272,21 +272,21 @@ export default function Navbar() {
                             Become a Seller
                           </Link>
                         )}
+                        {mounted && (
+                          <button
+                            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                            className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-stone-200 hover:bg-white/10 hover:text-white transition-colors"
+                          >
+                            {theme === "dark"
+                              ? <Sun size={15} className="text-amber-400" />
+                              : <Moon size={15} className="text-stone-300" />
+                            }
+                            {theme === "dark" ? "Light Mode" : "Dark Mode"}
+                          </button>
+                        )}
                       </div>
 
                       <div className="border-t border-white/10" />
-                      {mounted && (
-                        <button
-                          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-                          className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-stone-200 hover:bg-white/10 hover:text-white transition-colors"
-                        >
-                          {theme === "dark"
-                            ? <Sun size={15} className="text-amber-400" />
-                            : <Moon size={15} className="text-stone-300" />
-                          }
-                          {theme === "dark" ? "Light Mode" : "Dark Mode"}
-                        </button>
-                      )}
                       <button
                         onClick={handleLogOut}
                         className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors"
@@ -343,7 +343,7 @@ export default function Navbar() {
       </nav>
 
       {/* Spacer for fixed navbar (1px stripe + 56px nav) */}
-      <div className="h-14.25" />
+      <div className="h-15" />
     </>
   );
 }

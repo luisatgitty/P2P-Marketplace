@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
+import { useTheme } from "next-themes";
 import { useUser } from "@/utils/UserContext";
 import {
   LayoutDashboard,
@@ -19,6 +20,8 @@ import {
   ChevronRight,
   PanelLeftClose,
   PanelLeftOpen,
+  Sun,
+  Moon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -71,8 +74,11 @@ function SidebarContent({
   onToggleCollapse,
 }: SidebarContentProps) {
   const pathname = usePathname();
+  const { theme, resolvedTheme, setTheme } = useTheme();
   const { user, clearUserData } = useUser();
   const [dropdownOpen, setDropdown] = useState(false);
+  const effectiveTheme = resolvedTheme ?? theme;
+  const isDarkMode = effectiveTheme === "dark";
   const roleFromUser = String(user?.role ?? "").toUpperCase();
   const currentAdminRole: "ADMIN" | "SUPER_ADMIN" | null =
     roleFromUser === "SUPER_ADMIN"
@@ -250,6 +256,19 @@ function SidebarContent({
                   {label}
                 </Link>
               ))}
+
+              <button
+                type="button"
+                onClick={() => setTheme(isDarkMode ? "light" : "dark")}
+                className="flex items-center gap-3 w-full px-4 py-2.5 text-xs font-medium text-slate-300 hover:bg-white/5 hover:text-white transition-colors"
+              >
+                {isDarkMode ? (
+                  <Sun className="w-3.5 h-3.5 shrink-0 text-slate-400" />
+                ) : (
+                  <Moon className="w-3.5 h-3.5 shrink-0 text-slate-400" />
+                )}
+                {isDarkMode ? "Light Mode" : "Dark Mode"}
+              </button>
             </div>
 
             {/* Log out */}

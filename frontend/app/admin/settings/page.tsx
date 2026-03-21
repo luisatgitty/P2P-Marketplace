@@ -500,7 +500,7 @@ export default function SettingsPage() {
             <FieldLabel htmlFor="currentEmail">Email Address</FieldLabel>
             <Input
               id="currentEmail"
-              value={user?.email}
+              value={user?.email ?? ""}
               disabled
             />
           </div>
@@ -508,7 +508,7 @@ export default function SettingsPage() {
             <FieldLabel htmlFor="currentPhone">Contact Number</FieldLabel>
             <Input
               id="currentPhone"
-              value={user?.phoneNumber}
+              value={user?.phoneNumber ?? ""}
               disabled
             />
           </div>
