@@ -2,6 +2,7 @@ export type AdminUserRecord = {
   id: string;
   first_name: string;
   last_name: string;
+  profile_image_url: string;
   email: string;
   phone: string;
   role: "USER" | "ADMIN" | "SUPER_ADMIN";

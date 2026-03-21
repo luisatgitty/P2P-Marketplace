@@ -176,6 +176,7 @@ func GetAdminUsers() ([]model.AdminUserListItemFromDb, error) {
 			u.id::text AS id,
 			u.first_name,
 			u.last_name,
+			COALESCE(u.profile_image_url, '') AS profile_image_url,
 			u.email,
 			COALESCE(u.phone_number, '') AS phone,
 			u.role::text AS role,

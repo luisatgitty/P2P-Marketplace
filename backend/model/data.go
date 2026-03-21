@@ -261,6 +261,7 @@ type AdminUserListItemFromDb struct {
 	Id              string     `gorm:"column:id" json:"id"`
 	FirstName       string     `gorm:"column:first_name" json:"first_name"`
 	LastName        string     `gorm:"column:last_name" json:"last_name"`
+	ProfileImageURL string     `gorm:"column:profile_image_url" json:"profile_image_url"`
 	Email           string     `gorm:"column:email" json:"email"`
 	Phone           string     `gorm:"column:phone" json:"phone"`
 	Role            string     `gorm:"column:role" json:"role"`

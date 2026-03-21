@@ -12,7 +12,12 @@ export function proxy(request: NextRequest) {
     "/not-found",
   ];
 
-  const ADMIN_ROUTES = ["/admin"];
+  const ADMIN_ROUTES = [
+    "/",
+    "/admin",
+    "/listing",
+    "/profile",
+  ];
 
   const KNOWN_APP_ROUTES = [
     "/",

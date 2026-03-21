@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { validateImageURL } from "@/utils/validation";
 import {
   getAdminUsers,
   setAdminUserActive,
@@ -41,6 +42,7 @@ interface AdminUser {
   id: string;
   first_name: string;
   last_name: string;
+  profile_image_url: string;
   email: string;
   phone: string | null;
   role: Role;
@@ -227,6 +229,11 @@ export default function UsersPage() {
   async function handleToggleActive(id: string) {
     const target = users.find((u) => u.id === id);
     if (!target) return;
+
+    if (target.is_active) {
+      const confirmed = window.confirm("Deactivate this user account?");
+      if (!confirmed) return;
+    }
 
     const nextIsActive = !target.is_active;
     setActionLoadingUserId(id);
@@ -421,9 +428,17 @@ export default function UsersPage() {
                   >
                     <td className="py-3.5 px-4">
                       <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-8 h-8 rounded-full bg-linear-to-br from-[#3a4a6a] to-[#1e2a40] flex items-center justify-center text-white text-[10px] font-bold shrink-0">
-                          {user.first_name.charAt(0)}
-                        </div>
+                        {user.profile_image_url ? (
+                          <img
+                            src={validateImageURL(user.profile_image_url)}
+                            alt={`${user.first_name} ${user.last_name}`}
+                            className="w-8 h-8 rounded-full object-cover border border-stone-200 dark:border-[#2a2d3e] shrink-0"
+                          />
+                        ) : (
+                          <div className="w-8 h-8 rounded-full bg-linear-to-br from-[#3a4a6a] to-[#1e2a40] flex items-center justify-center text-white text-[10px] font-bold shrink-0">
+                            {user.first_name.charAt(0)}
+                          </div>
+                        )}
                         <div className="min-w-0">
                           <p className="text-xs font-bold text-stone-800 dark:text-stone-100 truncate max-w-40">
                             {user.first_name} {user.last_name}
@@ -458,15 +473,10 @@ export default function UsersPage() {
                         </span>
                       )}
                     </td>
+
+                    {/* Actions */}
                     <td className="py-3.5 px-4">
                       <div className="flex items-center justify-end gap-1.5">
-                        <Link
-                          href={`/profile?userId=${user.id}`}
-                          target="_blank"
-                          className="flex items-center gap-1 text-[11px] font-semibold text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-100 transition-colors px-2 py-1 rounded-lg hover:bg-stone-100 dark:hover:bg-[#252837]"
-                        >
-                          <ExternalLink className="w-3 h-3" /> View
-                        </Link>
                         <div className="relative">
                           <button
                             type="button"
@@ -487,9 +497,16 @@ export default function UsersPage() {
                                 onClick={() => setOpenMenu(null)}
                               />
                               <div className="absolute right-0 top-8 z-20 bg-white dark:bg-[#1c1f2e] border border-stone-200 dark:border-[#2a2d3e] rounded-xl shadow-xl overflow-hidden min-w-40">
+                                <Link
+                                  href={`/profile?userId=${user.id}`}
+                                  onClick={() => setOpenMenu(null)}
+                                  className="flex items-center gap-2.5 w-full px-4 py-2.5 text-xs text-stone-700 dark:text-stone-200 hover:bg-stone-50 dark:hover:bg-[#252837] transition-colors"
+                                >
+                                  <ExternalLink className="w-3.5 h-3.5" /> View
+                                </Link>
                                 <button
                                   onClick={() => handleToggleActive(user.id)}
-                                  className="flex items-center gap-2.5 w-full px-4 py-2.5 text-xs text-stone-700 dark:text-stone-200 hover:bg-stone-50 dark:hover:bg-[#252837] transition-colors"
+                                  className="flex items-center gap-2.5 w-full px-4 py-2.5 text-xs text-stone-700 dark:text-stone-200 hover:bg-stone-50 dark:hover:bg-[#252837] transition-colors border-t border-stone-100 dark:border-[#2a2d3e]"
                                 >
                                   {user.is_active ? (
                                     <>

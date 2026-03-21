@@ -33,7 +33,12 @@ const AUTH_ROUTES = [
   "/reset-password",
   "/verify-email",
 ];
-const ADMIN_ROUTES = ["/admin"];
+const ADMIN_ROUTES = [
+  "/",
+  "/admin",
+  "/listing",
+  "/profile",
+];
 const KNOWN_APP_ROUTES = [
   "/",
   "/signup",
