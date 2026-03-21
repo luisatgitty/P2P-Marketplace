@@ -325,9 +325,23 @@ func UpdateProfileImages(userId string, body model.UpdateProfileImagesBody) erro
 		}
 	}()
 
-	if body.ProfileImage == nil && body.CoverImage == nil {
+	if body.ProfileImage == nil && body.CoverImage == nil && !body.RemoveProfileImage && !body.RemoveCoverImage {
 		tx.Rollback()
 		return fmt.Errorf("No image provided")
+	}
+
+	if body.RemoveProfileImage {
+		if err := clearUserImageTx(tx, userId, "profile_image_url"); err != nil {
+			tx.Rollback()
+			return err
+		}
+	}
+
+	if body.RemoveCoverImage {
+		if err := clearUserImageTx(tx, userId, "cover_image_url"); err != nil {
+			tx.Rollback()
+			return err
+		}
 	}
 
 	if err := upsertUserImageTx(tx, userId, body.ProfileImage, "profile_image_url", "profiles"); err != nil {
@@ -342,6 +356,29 @@ func UpdateProfileImages(userId string, body model.UpdateProfileImagesBody) erro
 
 	if err := tx.Commit().Error; err != nil {
 		return err
+	}
+
+	return nil
+}
+
+func clearUserImageTx(tx *gorm.DB, userId, columnName string) error {
+	if columnName != "profile_image_url" && columnName != "cover_image_url" {
+		return fmt.Errorf("Invalid image column")
+	}
+
+	uploadRoot := getUploadRootDir()
+
+	var previousURL sql.NullString
+	selectQuery := fmt.Sprintf("SELECT %s FROM public.users WHERE id = $1", columnName)
+	if err := tx.Raw(selectQuery, userId).Scan(&previousURL).Error; err != nil {
+		return fmt.Errorf("Failed to retrieve previous user image")
+	}
+
+	removeLocalUpload(uploadRoot, previousURL.String)
+
+	updateQuery := fmt.Sprintf("UPDATE public.users SET %s = NULL, updated_at = $1 WHERE id = $2", columnName)
+	if err := tx.Exec(updateQuery, time.Now(), userId).Error; err != nil {
+		return fmt.Errorf("Failed to clear user image reference")
 	}
 
 	return nil

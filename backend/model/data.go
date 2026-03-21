@@ -48,8 +48,10 @@ type UpdateProfileBody struct {
 }
 
 type UpdateProfileImagesBody struct {
-	ProfileImage *ListingImageBody `json:"profileImage,omitempty"`
-	CoverImage   *ListingImageBody `json:"coverImage,omitempty"`
+	ProfileImage       *ListingImageBody `json:"profileImage,omitempty"`
+	CoverImage         *ListingImageBody `json:"coverImage,omitempty"`
+	RemoveProfileImage bool              `json:"removeProfileImage,omitempty"`
+	RemoveCoverImage   bool              `json:"removeCoverImage,omitempty"`
 }
 
 type LocationOption struct {

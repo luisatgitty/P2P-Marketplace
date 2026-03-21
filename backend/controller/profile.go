@@ -120,8 +120,8 @@ func UpdateMeProfile(c *fiber.Ctx) error {
 	if len(body.LastName) < config.NameMinLength || len(body.LastName) > config.NameMaxLength {
 		return SendErrorResponse(c, 400, fmt.Sprintf("Last name must be between %d and %d characters", config.NameMinLength, config.NameMaxLength), nil)
 	}
-	if body.LocationProv == "" || body.LocationCity == "" {
-		return SendErrorResponse(c, 400, "Province and city/municipality are required", nil)
+	if (body.LocationProv == "" && body.LocationCity != "") || (body.LocationProv != "" && body.LocationCity == "") {
+		return SendErrorResponse(c, 400, "Province and city/municipality must both be provided", nil)
 	}
 	if len(body.Bio) > 200 {
 		return SendErrorResponse(c, 400, "Bio must not exceed 200 characters", nil)
@@ -161,7 +161,7 @@ func UpdateMeProfileImages(c *fiber.Ctx) error {
 		return SendErrorResponse(c, 400, "Invalid request body. Please contact support.", err)
 	}
 
-	if body.ProfileImage == nil && body.CoverImage == nil {
+	if body.ProfileImage == nil && body.CoverImage == nil && !body.RemoveProfileImage && !body.RemoveCoverImage {
 		return SendErrorResponse(c, 400, "At least one image is required", nil)
 	}
 

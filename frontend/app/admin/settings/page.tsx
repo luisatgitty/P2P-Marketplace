@@ -11,6 +11,7 @@ import {
   AlertTriangle,
   User,
   Camera,
+  Trash2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button }               from "@/components/ui/button";
@@ -18,6 +19,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle }    from "@/
 import { FieldLabel }           from "@/components/ui/field";
 import { Input }                from "@/components/ui/input";
 import { Separator }            from "@/components/ui/separator";
+import { updateProfileData, updateProfileImages } from "@/services/profileService";
+import { toast } from "sonner";
 
 // ── Mock current admin ─────────────────────────────────────────────────────────
 const CURRENT_ADMIN = {
@@ -46,6 +49,71 @@ function getStrengthScore(pw: string): number {
 }
 
 const LETTERS_SPACE_ONLY = /^[A-Za-z\s]+$/;
+
+type EncodedImagePayload = {
+  name: string;
+  mimeType: string;
+  data: string;
+};
+
+async function compressImageForProfile(file: File): Promise<Blob> {
+  const objectUrl = URL.createObjectURL(file);
+  try {
+    const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const img = new window.Image();
+      img.onload = () => resolve(img);
+      img.onerror = () => reject(new Error("Invalid image file."));
+      img.src = objectUrl;
+    });
+
+    const maxDimension = 1200;
+    const scale = Math.min(1, maxDimension / Math.max(image.width, image.height));
+    const width = Math.max(1, Math.round(image.width * scale));
+    const height = Math.max(1, Math.round(image.height * scale));
+
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+
+    const context = canvas.getContext("2d");
+    if (!context) return file;
+
+    context.drawImage(image, 0, 0, width, height);
+    const blob = await new Promise<Blob | null>((resolve) => {
+      canvas.toBlob((output) => resolve(output), "image/webp", 0.8);
+    });
+
+    return blob ?? file;
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
+}
+
+async function encodeFileToPayload(file: File): Promise<EncodedImagePayload> {
+  const compressed = await compressImageForProfile(file);
+
+  const data = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result;
+      if (typeof result !== "string") {
+        reject(new Error("Failed to encode image."));
+        return;
+      }
+      resolve(result.split(",")[1] ?? "");
+    };
+    reader.onerror = () => reject(new Error("Failed to encode image."));
+    reader.readAsDataURL(compressed);
+  });
+
+  const baseName = file.name.replace(/\.[^/.]+$/, "");
+
+  return {
+    name: `${baseName}.webp`,
+    mimeType: "image/webp",
+    data,
+  };
+}
 
 // ── Sub-components ─────────────────────────────────────────────────────────────
 
@@ -116,7 +184,7 @@ function PasswordStrengthBar({ password }: { password: string }) {
 // Main page
 // ─────────────────────────────────────────────────────────────────────────────
 export default function SettingsPage() {
-  const { user }        = useUser();
+  const { user, saveUserData } = useUser();
   const fileInputRef    = useRef<HTMLInputElement | null>(null);
   const originalFirstName = user?.firstName ?? CURRENT_ADMIN.firstName;
   const originalLastName  = user?.lastName ?? CURRENT_ADMIN.lastName;
@@ -146,6 +214,8 @@ export default function SettingsPage() {
   // ── Form state
   const [formMsg,    setFormMsg]    = useState<{ text: string; type: "success" | "error" } | null>(null);
   const [savingForm, setSavingForm] = useState(false);
+  const [showProfileImageMenu, setShowProfileImageMenu] = useState(false);
+  const [updatingProfileImage, setUpdatingProfileImage] = useState(false);
 
   useEffect(() => {
     setFirstName(originalFirstName);
@@ -160,20 +230,50 @@ export default function SettingsPage() {
 
   // ── Profile image handlers ─────────────────────────────────────────────────
   function handlePickImage() {
+    setShowProfileImageMenu(false);
     fileInputRef.current?.click();
   }
 
-  function handleImageChange(file: File | null) {
+  async function handleImageChange(file: File | null) {
     if (!file) return;
     if (!file.type.startsWith("image/")) {
-      setFormMsg({ text: "Please select a valid image file.", type: "error" });
+      toast.error("Please select a valid image file.", { position: "top-center" });
       return;
     }
-    const reader = new FileReader();
-    reader.onload = () => {
-      setProfilePreview(typeof reader.result === "string" ? reader.result : null);
-    };
-    reader.readAsDataURL(file);
+
+    setUpdatingProfileImage(true);
+    try {
+      const profileImage = await encodeFileToPayload(file);
+      const updatedUser = await updateProfileImages({ profileImage });
+      if (user) {
+        saveUserData({ ...user, ...updatedUser });
+      }
+      setProfilePreview(updatedUser.profileImageUrl ?? null);
+      toast.success("Profile picture updated", { position: "top-center" });
+    } catch (err) {
+      const message = typeof err === "string" ? err : (err instanceof Error ? err.message : "Failed to update profile picture");
+      toast.error(message, { position: "top-center" });
+    } finally {
+      setUpdatingProfileImage(false);
+    }
+  }
+
+  async function handleRemoveProfileImage() {
+    setShowProfileImageMenu(false);
+    setUpdatingProfileImage(true);
+    try {
+      const updatedUser = await updateProfileImages({ removeProfileImage: true });
+      if (user) {
+        saveUserData({ ...user, ...updatedUser });
+      }
+      setProfilePreview(null);
+      toast.success("Profile picture removed", { position: "top-center" });
+    } catch (err) {
+      const message = typeof err === "string" ? err : (err instanceof Error ? err.message : "Failed to remove profile picture");
+      toast.error(message, { position: "top-center" });
+    } finally {
+      setUpdatingProfileImage(false);
+    }
   }
 
   // ── Validation ──────────────────────────────────────────────────────────────
@@ -226,20 +326,57 @@ export default function SettingsPage() {
   }
 
   // ── Save handler ────────────────────────────────────────────────────────────
-  function handleSave() {
+  async function handleSave() {
     const err = validateForm();
     if (err) { setFormMsg({ text: err, type: "error" }); return; }
 
+    setFormMsg(null);
     setSavingForm(true);
-    setTimeout(() => {
+    try {
+      const updatedUser = await updateProfileData({
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        phoneNumber: (user?.phoneNumber ?? "").trim(),
+        bio: (user?.bio ?? "").trim(),
+        locationProv: (user?.locationProv ?? "").trim(),
+        locationCity: (user?.locationCity ?? "").trim(),
+        locationBrgy: (user?.locationBrgy ?? "").trim(),
+        currentPassword: currentPw.trim(),
+        newPassword: newPw.trim(),
+      });
+
+      saveUserData({
+        userId: user?.userId,
+        firstName: updatedUser.firstName,
+        lastName: updatedUser.lastName,
+        email: updatedUser.email,
+        phoneNumber: updatedUser.phoneNumber,
+        bio: updatedUser.bio,
+        locationBrgy: updatedUser.locationBrgy,
+        locationCity: updatedUser.locationCity,
+        locationProv: updatedUser.locationProv,
+        profileImageUrl: updatedUser.profileImageUrl,
+        coverImageUrl: updatedUser.coverImageUrl,
+        role: updatedUser.role,
+        status: updatedUser.status,
+      });
+
       setSavingForm(false);
       setCurrentPw(""); setNewPw(""); setConfirmPw("");
       setEmailPw(""); setPhonePw("");
       setNewEmail(""); setNewPhone("");
       setPasswordInputsError(false);
+      setFirstNameError(false);
+      setLastNameError(false);
       setFormMsg({ text: "Settings updated successfully.", type: "success" });
       setTimeout(() => setFormMsg(null), 4000);
-    }, 900);
+    } catch (err) {
+      setSavingForm(false);
+      setFormMsg({
+        text: typeof err === "string" ? err : (err instanceof Error ? err.message : "Failed to update settings."),
+        type: "error",
+      });
+    }
   }
 
   return (
@@ -255,30 +392,58 @@ export default function SettingsPage() {
       {/* ── Profile summary banner ── */}
       <Card>
         <CardContent className="flex items-center gap-4">
-          <div className="relative group shrink-0">
-            <Image
-              src={profilePreview || user?.profileImageUrl || "/profile-icon.png"}
-              alt="Profile"
-              width={56}
-              height={56}
-              className="w-14 h-14 rounded-full object-cover ring-2 ring-white/10"
-            />
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              onClick={handlePickImage}
-              aria-label="Change profile picture"
-              className="absolute inset-0 w-full h-full rounded-full bg-black/50 text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/50 hover:text-white"
+          <div className="relative">
+            <div
+              className="relative group shrink-0 cursor-pointer"
+              onClick={() => !updatingProfileImage && setShowProfileImageMenu((v) => !v)}
             >
-              <Camera className="w-4 h-4" />
-            </Button>
+              <Image
+                src={profilePreview || user?.profileImageUrl || "/profile-icon.png"}
+                alt="Profile"
+                width={56}
+                height={56}
+                className="w-14 h-14 rounded-full object-cover ring-2 ring-white/10"
+              />
+              <div className="absolute inset-0 rounded-full bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
+                <Camera className="w-4 h-4 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+              </div>
+            </div>
+
+            {showProfileImageMenu && (
+              <>
+                <div className="fixed inset-0 z-10" onClick={() => setShowProfileImageMenu(false)} />
+                <div className="absolute top-full left-0 mt-2 z-20 bg-white dark:bg-[#1c1f2e] border border-stone-200 dark:border-[#2a2d3e] rounded-xl shadow-lg overflow-hidden w-44">
+                  <button
+                    type="button"
+                    className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-stone-700 dark:text-stone-300 hover:bg-stone-50 dark:hover:bg-[#252837] transition-colors disabled:opacity-60"
+                    onClick={handlePickImage}
+                    disabled={updatingProfileImage}
+                  >
+                    <Camera className="w-4 h-4 text-stone-400" />
+                    {updatingProfileImage ? "Updating..." : "Update Photo"}
+                  </button>
+                  <button
+                    type="button"
+                    className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors border-t border-stone-100 dark:border-[#2a2d3e] disabled:opacity-60"
+                    onClick={handleRemoveProfileImage}
+                    disabled={updatingProfileImage}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    Remove Photo
+                  </button>
+                </div>
+              </>
+            )}
+
             <input
               ref={fileInputRef}
               type="file"
               accept="image/*"
               className="hidden"
-              onChange={(e) => handleImageChange(e.target.files?.[0] ?? null)}
+              onChange={(e) => {
+                handleImageChange(e.target.files?.[0] ?? null);
+                e.currentTarget.value = "";
+              }}
             />
           </div>
           <div className="flex-1 min-w-0">

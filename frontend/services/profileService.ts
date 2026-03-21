@@ -82,6 +82,8 @@ export interface UpdateProfileImagesPayload {
     mimeType: string;
     data: string;
   };
+  removeProfileImage?: boolean;
+  removeCoverImage?: boolean;
 }
 
 export async function getProfileData(): Promise<ProfilePayload> {
