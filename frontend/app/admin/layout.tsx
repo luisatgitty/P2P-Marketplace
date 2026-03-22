@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
@@ -15,7 +15,6 @@ import {
   Settings,
   UserCog,
   LogOut,
-  X,
   ChevronUp,
   ChevronRight,
   PanelLeftClose,
@@ -344,48 +343,37 @@ export default function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
+  const [isSmallScreen, setIsSmallScreen] = useState(false);
+
+  useEffect(() => {
+    const checkScreen = () => {
+      setIsSmallScreen(window.innerWidth < 1024);
+    };
+
+    checkScreen();
+    window.addEventListener("resize", checkScreen);
+    return () => window.removeEventListener("resize", checkScreen);
+  }, []);
+
+  const effectiveCollapsed = isSmallScreen ? true : collapsed;
 
   return (
     <div className="fixed inset-0 z-[100] flex bg-stone-100 dark:bg-[#0f1117] overflow-hidden">
-      {/* ── Desktop sidebar ─────────────────────────────────────────────── */}
+      {/* ── Sidebar ─────────────────────────────────────────────────────── */}
       <div
         className={cn(
-          "hidden lg:flex flex-col flex-shrink-0 bg-[#1e2433] h-full",
+          "flex flex-col flex-shrink-0 bg-[#1e2433] h-full",
           "transition-all duration-300 ease-in-out",
-          collapsed ? "w-16" : "w-60",
+          effectiveCollapsed ? "w-16" : "w-60",
         )}
       >
         <SidebarContent
-          collapsed={collapsed}
-          onToggleCollapse={() => setCollapsed((c) => !c)}
+          collapsed={effectiveCollapsed}
+          onToggleCollapse={
+            isSmallScreen ? undefined : () => setCollapsed((c) => !c)
+          }
         />
-      </div>
-
-      {/* ── Mobile sidebar overlay ──────────────────────────────────────── */}
-      {mobileOpen && (
-        <div
-          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden"
-          onClick={() => setMobileOpen(false)}
-        />
-      )}
-      <div
-        className={cn(
-          "fixed inset-y-0 left-0 z-50 w-64 bg-[#1e2433] flex flex-col",
-          "transition-transform duration-300 ease-in-out lg:hidden",
-          mobileOpen ? "translate-x-0" : "-translate-x-full",
-        )}
-      >
-        <button
-          type="button"
-          onClick={() => setMobileOpen(false)}
-          className="absolute top-4 right-4 w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-slate-300 hover:text-white transition-colors"
-        >
-          <X className="w-4 h-4" />
-        </button>
-        {/* Mobile sidebar is never collapsed — no toggle needed */}
-        <SidebarContent onNavigate={() => setMobileOpen(false)} />
       </div>
 
       {/* ── Main area ───────────────────────────────────────────────────── */}

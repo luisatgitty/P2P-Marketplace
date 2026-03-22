@@ -464,7 +464,7 @@ export default function SettingsPage() {
           <CardTitle>Account Settings</CardTitle>
           <CardDescription>Update your admin account credentials</CardDescription>
         </CardHeader>
-        <CardContent className="grid grid-cols-2 gap-4">
+        <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 
           {/* Wraps name inputs in form to disable browser autocomplete */}
           <form className="contents" autoComplete="off">
@@ -548,7 +548,7 @@ export default function SettingsPage() {
           </div>
 
           {/* New + Confirm Password */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <FieldLabel htmlFor="newPw">New Password</FieldLabel>
               <div className="relative">
