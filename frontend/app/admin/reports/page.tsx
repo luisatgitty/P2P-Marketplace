@@ -8,10 +8,11 @@ import {
   X,
   CheckCircle2,
   XCircle,
+  Eye,
+  EyeOff,
   ExternalLink,
   Flag,
   AlertTriangle,
-  MoreHorizontal,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -61,7 +62,6 @@ export default function ReportsPage() {
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [reports, setReports] = useState<AdminReport[]>(REPORTS);
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
-  const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [loadingReports, setLoadingReports] = useState(true);
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
 
@@ -142,7 +142,6 @@ export default function ReportsPage() {
       toast.error(message, { position: "top-center" });
     } finally {
       setActionLoadingId(null);
-      setOpenMenu(null);
     }
   }
 
@@ -342,67 +341,64 @@ export default function ReportsPage() {
                         {formatDateTime(report.created_at)}
                       </td>
                       <td className="py-3.5 px-4">
-                        <div className="relative flex items-center justify-end">
+                        <div className="flex items-center justify-end gap-1.5">
+                          {report.target_type === "LISTING" && (
+                            <Link
+                              href={`/listing/${report.target_id}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              title="Open listing"
+                              aria-label="Open listing"
+                              className="inline-flex items-center justify-center rounded-lg p-1.5 text-teal-600 hover:bg-teal-50 dark:text-teal-400 dark:hover:bg-teal-950/30"
+                            >
+                              <ExternalLink className="w-4 h-4" />
+                            </Link>
+                          )}
                           <button
+                            type="button"
+                            title={expandedRow === report.id ? "Hide Details" : "View Details"}
+                            aria-label={expandedRow === report.id ? "Hide Details" : "View Details"}
                             onClick={() =>
-                              setOpenMenu((prev) =>
+                              setExpandedRow((prev) =>
                                 prev === report.id ? null : report.id,
                               )
                             }
                             className="inline-flex items-center justify-center rounded-lg p-1.5 text-stone-500 hover:bg-stone-100 dark:text-stone-300 dark:hover:bg-[#252837]"
                             disabled={actionLoadingId === report.id}
                           >
-                            <MoreHorizontal className="w-4 h-4" />
+                            {expandedRow === report.id ? (
+                              <EyeOff className="w-4 h-4" />
+                            ) : (
+                              <Eye className="w-4 h-4" />
+                            )}
                           </button>
-                          {openMenu === report.id && (
-                            <div className="absolute right-0 top-8 z-20 w-40 rounded-xl border border-stone-200 bg-white p-1 shadow-md dark:border-[#2a2d3e] dark:bg-[#1c1f2e]">
-                              {report.target_type === "LISTING" && (
-                                <Link
-                                  href={`/listing/${report.target_id}`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  onClick={() => setOpenMenu(null)}
-                                  className="flex w-full items-center gap-1 rounded-lg px-2.5 py-2 text-left text-xs font-semibold text-teal-600 hover:bg-teal-50 dark:text-teal-400 dark:hover:bg-teal-950/30"
-                                >
-                                  <ExternalLink className="h-3.5 w-3.5" /> Open listing
-                                </Link>
-                              )}
+                          {report.status === "PENDING" && (
+                            <>
                               <button
-                                onClick={() => {
-                                  setExpandedRow((prev) =>
-                                    prev === report.id ? null : report.id,
-                                  );
-                                  setOpenMenu(null);
-                                }}
-                                className="w-full rounded-lg px-2.5 py-2 text-left text-xs text-stone-600 hover:bg-stone-100 dark:text-stone-300 dark:hover:bg-[#252837]"
+                                type="button"
+                                title="Take Action"
+                                aria-label="Take Action"
+                                onClick={() =>
+                                  void handleAction(report.id, "RESOLVED")
+                                }
+                                className="inline-flex items-center justify-center rounded-lg p-1.5 text-teal-600 hover:bg-teal-50 dark:text-teal-400 dark:hover:bg-teal-950/30"
+                                disabled={actionLoadingId === report.id}
                               >
-                                {expandedRow === report.id
-                                  ? "Hide Details"
-                                  : "View Details"}
+                                <CheckCircle2 className="h-4 w-4" />
                               </button>
-                              {report.status === "PENDING" && (
-                                <>
-                                  <button
-                                    onClick={() =>
-                                      void handleAction(report.id, "RESOLVED")
-                                    }
-                                    className="flex w-full items-center gap-1 rounded-lg px-2.5 py-2 text-left text-xs font-semibold text-teal-600 hover:bg-teal-50 dark:text-teal-400 dark:hover:bg-teal-950/30"
-                                    disabled={actionLoadingId === report.id}
-                                  >
-                                    <CheckCircle2 className="h-3.5 w-3.5" /> Take Action
-                                  </button>
-                                  <button
-                                    onClick={() =>
-                                      void handleAction(report.id, "DISMISSED")
-                                    }
-                                    className="flex w-full items-center gap-1 rounded-lg px-2.5 py-2 text-left text-xs font-semibold text-stone-500 hover:bg-stone-100 dark:text-stone-300 dark:hover:bg-[#252837]"
-                                    disabled={actionLoadingId === report.id}
-                                  >
-                                    <XCircle className="h-3.5 w-3.5" /> Dismiss
-                                  </button>
-                                </>
-                              )}
-                            </div>
+                              <button
+                                type="button"
+                                title="Dismiss"
+                                aria-label="Dismiss"
+                                onClick={() =>
+                                  void handleAction(report.id, "DISMISSED")
+                                }
+                                className="inline-flex items-center justify-center rounded-lg p-1.5 text-stone-500 hover:bg-stone-100 dark:text-stone-300 dark:hover:bg-[#252837]"
+                                disabled={actionLoadingId === report.id}
+                              >
+                                <XCircle className="h-4 w-4" />
+                              </button>
+                            </>
                           )}
                         </div>
                       </td>

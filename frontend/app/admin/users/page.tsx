@@ -7,7 +7,6 @@ import {
   ChevronUp,
   ChevronDown,
   ChevronsUpDown,
-  MoreHorizontal,
   UserCheck,
   UserX,
   Trash2,
@@ -144,7 +143,6 @@ export default function UsersPage() {
     dir: "desc",
   });
   const [page, setPage] = useState(1);
-  const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(true);
   const [actionLoadingUserId, setActionLoadingUserId] = useState<string | null>(null);
@@ -250,7 +248,6 @@ export default function UsersPage() {
       toast.error(message, { position: "top-center" });
     } finally {
       setActionLoadingUserId(null);
-      setOpenMenu(null);
     }
   }
 
@@ -268,7 +265,6 @@ export default function UsersPage() {
       toast.error(message, { position: "top-center" });
     } finally {
       setActionLoadingUserId(null);
-      setOpenMenu(null);
     }
   }
 
@@ -477,61 +473,40 @@ export default function UsersPage() {
                     {/* Actions */}
                     <td className="py-3.5 px-4">
                       <div className="flex items-center justify-end gap-1.5">
-                        <div className="relative">
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setOpenMenu((prev) =>
-                                prev === user.id ? null : user.id,
-                              )
-                            }
-                            disabled={actionLoadingUserId === user.id}
-                            className="w-7 h-7 rounded-lg flex items-center justify-center text-stone-400 hover:bg-stone-100 dark:hover:bg-[#252837] hover:text-stone-700 dark:hover:text-stone-200 transition-colors"
-                          >
-                            <MoreHorizontal className="w-4 h-4" />
-                          </button>
-                          {openMenu === user.id && (
-                            <>
-                              <div
-                                className="fixed inset-0 z-10"
-                                onClick={() => setOpenMenu(null)}
-                              />
-                              <div className="absolute right-0 top-8 z-20 bg-white dark:bg-[#1c1f2e] border border-stone-200 dark:border-[#2a2d3e] rounded-xl shadow-xl overflow-hidden min-w-40">
-                                <Link
-                                  href={`/profile?userId=${user.id}`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  onClick={() => setOpenMenu(null)}
-                                  className="flex items-center gap-2.5 w-full px-4 py-2.5 text-xs text-stone-700 dark:text-stone-200 hover:bg-stone-50 dark:hover:bg-[#252837] transition-colors"
-                                >
-                                  <ExternalLink className="w-3.5 h-3.5" /> View
-                                </Link>
-                                <button
-                                  onClick={() => handleToggleActive(user.id)}
-                                  className="flex items-center gap-2.5 w-full px-4 py-2.5 text-xs text-stone-700 dark:text-stone-200 hover:bg-stone-50 dark:hover:bg-[#252837] transition-colors border-t border-stone-100 dark:border-[#2a2d3e]"
-                                >
-                                  {user.is_active ? (
-                                    <>
-                                      <UserX className="w-3.5 h-3.5 text-amber-500" />{" "}
-                                      Deactivate
-                                    </>
-                                  ) : (
-                                    <>
-                                      <UserCheck className="w-3.5 h-3.5 text-teal-500" />{" "}
-                                      Activate
-                                    </>
-                                  )}
-                                </button>
-                                <button
-                                  onClick={() => handleDelete(user.id)}
-                                  className="flex items-center gap-2.5 w-full px-4 py-2.5 text-xs text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors border-t border-stone-100 dark:border-[#2a2d3e]"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" /> Delete User
-                                </button>
-                              </div>
-                            </>
+                        <Link
+                          href={`/profile?userId=${user.id}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title="View"
+                          aria-label="View"
+                          className="w-7 h-7 rounded-lg inline-flex items-center justify-center text-stone-500 hover:bg-stone-100 dark:text-stone-300 dark:hover:bg-[#252837] hover:text-stone-700 dark:hover:text-stone-200 transition-colors"
+                        >
+                          <ExternalLink className="w-4 h-4" />
+                        </Link>
+                        <button
+                          type="button"
+                          title={user.is_active ? "Deactivate" : "Activate"}
+                          aria-label={user.is_active ? "Deactivate" : "Activate"}
+                          onClick={() => handleToggleActive(user.id)}
+                          disabled={actionLoadingUserId === user.id}
+                          className="w-7 h-7 rounded-lg inline-flex items-center justify-center text-stone-500 hover:bg-stone-100 dark:text-stone-300 dark:hover:bg-[#252837] hover:text-stone-700 dark:hover:text-stone-200 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                        >
+                          {user.is_active ? (
+                            <UserX className="w-4 h-4 text-amber-500" />
+                          ) : (
+                            <UserCheck className="w-4 h-4 text-teal-500" />
                           )}
-                        </div>
+                        </button>
+                        <button
+                          type="button"
+                          title="Delete User"
+                          aria-label="Delete User"
+                          onClick={() => handleDelete(user.id)}
+                          disabled={actionLoadingUserId === user.id}
+                          className="w-7 h-7 rounded-lg inline-flex items-center justify-center text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
                       </div>
                     </td>
                   </tr>

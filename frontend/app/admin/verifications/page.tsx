@@ -627,25 +627,33 @@ export default function VerificationsPage() {
                       <td className="py-3.5 px-4">
                         <div className="flex items-center justify-end gap-1.5">
                           <button
+                            type="button"
+                            title={verif.status === "PENDING" ? "Review" : "View"}
+                            aria-label={verif.status === "PENDING" ? "Review" : "View"}
                             onClick={() => setSelected(verif)}
-                            className="flex items-center gap-1 text-[11px] font-bold text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-100 transition-colors px-2 py-1 rounded-lg hover:bg-stone-100 dark:hover:bg-[#252837]"
+                            className="inline-flex items-center justify-center rounded-lg p-1.5 text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-100 transition-colors hover:bg-stone-100 dark:hover:bg-[#252837]"
                           >
-                            <Eye className="w-3 h-3" />
-                            {verif.status === "PENDING" ? "Review" : "View"}
+                            <Eye className="w-4 h-4" />
                           </button>
                           {verif.status === "PENDING" && (
                             <>
                               <button
+                                type="button"
+                                title="Approve"
+                                aria-label="Approve"
                                 onClick={() => handleApprove(verif.id)}
-                                className="flex items-center gap-1 text-[11px] font-bold text-teal-600 dark:text-teal-400 hover:bg-teal-50 dark:hover:bg-teal-950/30 px-2 py-1 rounded-lg transition-colors"
+                                className="inline-flex items-center justify-center rounded-lg p-1.5 text-teal-600 dark:text-teal-400 hover:bg-teal-50 dark:hover:bg-teal-950/30 transition-colors"
                               >
-                                <CheckCircle2 className="w-3 h-3" /> Approve
+                                <CheckCircle2 className="w-4 h-4" />
                               </button>
                               <button
+                                type="button"
+                                title="Reject"
+                                aria-label="Reject"
                                 onClick={() => setSelected(verif)}
-                                className="flex items-center gap-1 text-[11px] font-bold text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 px-2 py-1 rounded-lg transition-colors"
+                                className="inline-flex items-center justify-center rounded-lg p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors"
                               >
-                                <XCircle className="w-3 h-3" /> Reject
+                                <XCircle className="w-4 h-4" />
                               </button>
                             </>
                           )}

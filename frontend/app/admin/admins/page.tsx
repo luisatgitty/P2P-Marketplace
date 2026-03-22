@@ -390,11 +390,13 @@ export default function AdminsPage() {
                         <div className="flex items-center justify-end gap-1.5">
                           <button
                             type="button"
+                            title={removingId === admin.id ? "Removing" : "Remove"}
+                            aria-label={removingId === admin.id ? "Removing" : "Remove"}
                             onClick={() => void handleDelete(admin.id, admin.name)}
                             disabled={removingId === admin.id}
-                            className="flex items-center gap-1 text-[11px] font-bold text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 px-2 py-1 rounded-lg transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                            className="inline-flex items-center justify-center w-7 h-7 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-lg transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
                           >
-                            <Trash2 className="w-3 h-3" /> {removingId === admin.id ? "Removing…" : "Remove"}
+                            <Trash2 className="w-4 h-4" />
                           </button>
                         </div>
                       )}
