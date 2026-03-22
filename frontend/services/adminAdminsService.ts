@@ -2,6 +2,7 @@ export type AdminAccountRecord = {
   id: string;
   first_name: string;
   last_name: string;
+  profile_image_url: string;
   email: string;
   role: "ADMIN" | "SUPER_ADMIN";
   is_active: boolean;
