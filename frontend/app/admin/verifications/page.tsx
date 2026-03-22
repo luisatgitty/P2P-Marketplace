@@ -370,8 +370,10 @@ function DetailModal({
 export default function VerificationsPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
+  const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<AdminVerification | null>(null);
   const [records, setRecords] = useState<AdminVerification[]>(VERIFICATIONS);
+  const PER_PAGE = 8;
 
   const filtered = useMemo(() => {
     let data = [...records];
@@ -385,6 +387,9 @@ export default function VerificationsPage() {
       data = data.filter((v) => v.status === statusFilter);
     return data;
   }, [records, search, statusFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
+  const paged = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
 
   const pendingCount = records.filter((r) => r.status === "PENDING").length;
   const verifiedCount = records.filter((r) => r.status === "VERIFIED").length;
@@ -477,9 +482,10 @@ export default function VerificationsPage() {
               bg,
               border,
             )}
-            onClick={() =>
-              setStatusFilter((prev) => (prev === status ? "ALL" : status))
-            }
+            onClick={() => {
+              setStatusFilter((prev) => (prev === status ? "ALL" : status));
+              setPage(1);
+            }}
           >
             <Icon className={cn("w-5 h-5 mx-auto mb-1.5", color)} />
             <p className={cn("text-xl font-extrabold", color)}>{count}</p>
@@ -497,7 +503,10 @@ export default function VerificationsPage() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
             <input
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(1);
+              }}
               placeholder="Search by name or email…"
               className="w-full pl-9 pr-3 py-2.5 bg-stone-50 dark:bg-[#13151f] border border-stone-200 dark:border-[#2a2d3e] rounded-xl text-sm text-stone-800 dark:text-stone-100 placeholder-stone-400 outline-none focus:border-stone-400 transition-colors"
             />
@@ -507,7 +516,10 @@ export default function VerificationsPage() {
               <Filter className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-stone-400 pointer-events-none" />
               <select
                 value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
+                onChange={(e) => {
+                  setStatusFilter(e.target.value);
+                  setPage(1);
+                }}
                 className="pl-7 pr-8 py-2.5 bg-stone-50 dark:bg-[#13151f] border border-stone-200 dark:border-[#2a2d3e] rounded-xl text-sm text-stone-700 dark:text-stone-200 outline-none focus:border-stone-400 transition-colors appearance-none cursor-pointer"
               >
                 <option value="ALL">All Status</option>
@@ -521,6 +533,7 @@ export default function VerificationsPage() {
                 onClick={() => {
                   setSearch("");
                   setStatusFilter("ALL");
+                  setPage(1);
                 }}
                 className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-red-200 dark:border-red-800 text-xs font-semibold text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors"
               >
@@ -530,7 +543,7 @@ export default function VerificationsPage() {
           </div>
         </div>
         <p className="text-xs text-stone-400 dark:text-stone-500 mt-2.5">
-          {filtered.length} request{filtered.length !== 1 ? "s" : ""} found
+          Showing {paged.length} of {filtered.length} requests
         </p>
       </div>
 
@@ -561,7 +574,7 @@ export default function VerificationsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-stone-100 dark:divide-[#2a2d3e]">
-              {filtered.length === 0 ? (
+              {paged.length === 0 ? (
                 <tr>
                   <td
                     colSpan={6}
@@ -571,7 +584,7 @@ export default function VerificationsPage() {
                   </td>
                 </tr>
               ) : (
-                filtered.map((verif) => {
+                paged.map((verif) => {
                   const sc = STATUS_CONFIG[verif.status];
                   const StatusIcon = sc.Icon;
                   return (
@@ -665,6 +678,41 @@ export default function VerificationsPage() {
               )}
             </tbody>
           </table>
+        </div>
+        <div className="flex items-center justify-between px-4 py-3 border-t border-stone-100 dark:border-[#2a2d3e]">
+          <p className="text-xs text-stone-400 dark:text-stone-500">
+            Page {page} of {totalPages} · {filtered.length} results
+          </p>
+          <div className="flex gap-1.5">
+            <button
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page === 1}
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold text-stone-600 dark:text-stone-300 border border-stone-200 dark:border-[#2a2d3e] hover:bg-stone-50 dark:hover:bg-[#252837] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              ← Prev
+            </button>
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((n) => (
+              <button
+                key={n}
+                onClick={() => setPage(n)}
+                className={cn(
+                  "w-8 h-8 rounded-lg text-xs font-bold transition-colors",
+                  page === n
+                    ? "bg-[#1e2433] text-white"
+                    : "text-stone-500 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-[#252837]",
+                )}
+              >
+                {n}
+              </button>
+            ))}
+            <button
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={page === totalPages}
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold text-stone-600 dark:text-stone-300 border border-stone-200 dark:border-[#2a2d3e] hover:bg-stone-50 dark:hover:bg-[#252837] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              Next →
+            </button>
+          </div>
         </div>
       </div>
 
