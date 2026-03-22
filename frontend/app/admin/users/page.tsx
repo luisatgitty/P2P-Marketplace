@@ -76,6 +76,17 @@ function formatDateTime(value?: string | null): string {
   });
 }
 
+function formatTime12h(value?: string | null): string {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleTimeString("en-PH", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
+}
+
 // ── Sub-components ─────────────────────────────────────────────────────────────
 function VerifBadge({ status }: { status: VerifStatus }) {
   const map = {
@@ -97,7 +108,7 @@ function VerifBadge({ status }: { status: VerifStatus }) {
 function StatusDot({ active }: { active: boolean }) {
   return (
     <span className={cn(
-      "inline-flex items-center gap-1.5 text-xs font-semibold",
+      "inline-flex items-center gap-1.5 text-sm font-semibold",
       active ? "text-teal-600 dark:text-teal-400" : "text-stone-400 dark:text-stone-500",
     )}>
       <span className={cn("w-1.5 h-1.5 rounded-full", active ? "bg-teal-500" : "bg-stone-400")} />
@@ -330,6 +341,9 @@ export default function UsersPage() {
               <TableHeader>
                 <TableRow className="border-stone-200 dark:border-[#2a2d3e] bg-stone-50 dark:bg-[#13151f] hover:bg-stone-50 dark:hover:bg-[#13151f]">
                   <SortableTH label="Name"         field="name"         />
+                  <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest whitespace-nowrap">
+                    Location
+                  </TableHead>
                   <SortableTH label="Verification" field="verification" />
                   <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest whitespace-nowrap">
                     Status
@@ -346,13 +360,13 @@ export default function UsersPage() {
               <TableBody>
                 {loadingUsers ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="py-16 text-center text-sm text-stone-400 dark:text-stone-500">
+                    <TableCell colSpan={8} className="py-16 text-center text-sm text-stone-400 dark:text-stone-500">
                       Loading users…
                     </TableCell>
                   </TableRow>
                 ) : paged.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="py-16 text-center text-sm text-stone-400 dark:text-stone-500">
+                    <TableCell colSpan={8} className="py-16 text-center text-sm text-stone-400 dark:text-stone-500">
                       No users match the current filters.
                     </TableCell>
                   </TableRow>
@@ -389,6 +403,11 @@ export default function UsersPage() {
                       </TableCell>
 
                       {/* Verification badge */}
+                      <TableCell className="py-3.5 text-sm text-stone-500 dark:text-stone-400 max-w-44 whitespace-normal">
+                        {user.location || <span className="text-stone-300 dark:text-stone-600">—</span>}
+                      </TableCell>
+
+                      {/* Verification badge */}
                       <TableCell className="py-3.5 whitespace-nowrap">
                         <VerifBadge status={user.verification} />
                       </TableCell>
@@ -411,7 +430,14 @@ export default function UsersPage() {
                       {/* Last login */}
                       <TableCell className="py-3.5 text-sm text-stone-500 dark:text-stone-400 whitespace-nowrap">
                         {user.last_login
-                          ? formatDateTime(user.last_login)
+                          ? (
+                            <div className="leading-tight">
+                              <p className="text-sm font-semibold">
+                                {formatTime12h(user.last_login)}
+                              </p>
+                              <p>{formatDateTime(user.last_login)}</p>
+                            </div>
+                          )
                           : <span className="text-stone-300 dark:text-stone-600">Never</span>
                         }
                       </TableCell>
