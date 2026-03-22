@@ -1,12 +1,19 @@
 "use client";
 
-import { useState, useRef, KeyboardEvent } from "react";
+import { useState, useRef, KeyboardEvent, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   ImagePlus, X, ChevronRight, ChevronLeft, AlertCircle,
   CheckCircle2, Loader2, Info, Plus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useUser } from "@/utils/UserContext";
+import {
+  getBarangaysByCity,
+  getCitiesByProvince,
+  getProvinces,
+  type LocationOption,
+} from "@/services/locationService";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 export type FormType = "sell" | "rent" | "service";
@@ -173,11 +180,6 @@ const AMENITIES = [
   "Pet-Friendly", "Fully Furnished", "Semi-Furnished", "Near Transport",
 ];
 
-const PROVINCES = [
-  "Metro Manila", "Laguna", "Cavite", "Batangas", "Rizal",
-  "Bulacan", "Pampanga", "Cebu", "Davao del Sur", "Iloilo", "Others",
-];
-
 const MAX_HIGHLIGHTS = 8;
 
 type UploadImagePayload = {
@@ -294,12 +296,18 @@ function StyledInput(props: React.InputHTMLAttributes<HTMLInputElement> & { ref?
 }
 
 function StyledSelect({
-  value, onChange, children, className,
-}: { value: string; onChange: (v: string) => void; children: React.ReactNode; className?: string }) {
+  value, onChange, children, className, ...props
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  children: React.ReactNode;
+  className?: string;
+} & Omit<React.SelectHTMLAttributes<HTMLSelectElement>, "value" | "onChange" | "children" | "className">) {
   return (
     <select
       value={value}
       onChange={(e) => onChange(e.target.value)}
+      {...props}
       className={cn(
         "w-full rounded-xl border border-stone-200 dark:border-[#2a2d3e]",
         "bg-white dark:bg-[#13151f] text-stone-800 dark:text-stone-100 text-sm",
@@ -672,6 +680,7 @@ interface ListingFormProps {
 
 export default function ListingForm({ type, initialData, isEdit = false, listingId }: ListingFormProps) {
   const router = useRouter();
+  const { user } = useUser();
   const cfg    = FORM_CONFIG[type];
 
   const [step,       setStep]   = useState(0);
@@ -703,6 +712,117 @@ export default function ListingForm({ type, initialData, isEdit = false, listing
   const [inclusions,  setIncl] = useState<string[]>(initialData?.inclusions ?? [""]);
   // Images
   const [images, setImages] = useState<{ file: File; preview: string }[]>([]);
+  // Location options
+  const [provinces, setProvinces] = useState<LocationOption[]>([]);
+  const [cities, setCities] = useState<LocationOption[]>([]);
+  const [barangays, setBarangays] = useState<LocationOption[]>([]);
+  const [selectedProvCode, setSelectedProvCode] = useState("");
+  const [selectedCityCode, setSelectedCityCode] = useState("");
+  const [loadingProvinces, setLoadingProvinces] = useState(false);
+  const [loadingCities, setLoadingCities] = useState(false);
+  const [loadingBarangays, setLoadingBarangays] = useState(false);
+
+  // Default location from user profile for create flow only.
+  useEffect(() => {
+    if (isEdit) return;
+    if (initialData?.locationProv || initialData?.locationCity || initialData?.locationBrgy) return;
+    if (!user) return;
+
+    if (user.locationProv) setProv(user.locationProv);
+    if (user.locationCity) setCity(user.locationCity);
+    if (user.locationBrgy) setBrgy(user.locationBrgy);
+    return;
+  }, [isEdit, initialData?.locationProv, initialData?.locationCity, initialData?.locationBrgy, user]);
+
+  useEffect(() => {
+    let mounted = true;
+    const loadProvinces = async () => {
+      setLoadingProvinces(true);
+      try {
+        const data = await getProvinces();
+        if (!mounted) return;
+        setProvinces(data);
+      } finally {
+        if (mounted) setLoadingProvinces(false);
+      }
+    };
+
+    void loadProvinces();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!locationProv || provinces.length === 0) return;
+    const matched = provinces.find((p) => p.name === locationProv);
+    if (matched && matched.code !== selectedProvCode) {
+      setSelectedProvCode(matched.code);
+    }
+    return;
+  }, [locationProv, provinces, selectedProvCode]);
+
+  useEffect(() => {
+    if (!selectedProvCode) {
+      setCities([]);
+      setSelectedCityCode("");
+      return;
+    }
+
+    let mounted = true;
+    const loadCities = async () => {
+      setLoadingCities(true);
+      try {
+        const data = await getCitiesByProvince(selectedProvCode);
+        if (!mounted) return;
+        setCities(data);
+
+        const selectedProvince = provinces.find((p) => p.code === selectedProvCode);
+        if (selectedProvince) {
+          setProv(selectedProvince.name);
+        }
+
+        const matchedCity = data.find((x) => x.name === locationCity);
+        setSelectedCityCode(matchedCity?.code ?? "");
+      } finally {
+        if (mounted) setLoadingCities(false);
+      }
+    };
+
+    void loadCities();
+    return () => {
+      mounted = false;
+    };
+  }, [selectedProvCode, provinces, locationCity]);
+
+  useEffect(() => {
+    if (!selectedCityCode) {
+      setBarangays([]);
+      return;
+    }
+
+    let mounted = true;
+    const loadBarangays = async () => {
+      setLoadingBarangays(true);
+      try {
+        const data = await getBarangaysByCity(selectedCityCode);
+        if (!mounted) return;
+        setBarangays(data);
+
+        const selectedCity = cities.find((city) => city.code === selectedCityCode);
+        if (selectedCity) {
+          setCity(selectedCity.name);
+        }
+      } finally {
+        if (mounted) setLoadingBarangays(false);
+      }
+    };
+
+    void loadBarangays();
+    return () => {
+      mounted = false;
+    };
+  }, [selectedCityCode, cities]);
 
   // ── Validation ───────────────────────────────────────────────────────────────
   const validate = (s: number) => {
@@ -1077,20 +1197,62 @@ export default function ListingForm({ type, initialData, isEdit = false, listing
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
             <FieldLabel required>Province / Region</FieldLabel>
-            <StyledSelect value={locationProv} onChange={setProv}>
-              <option value="">Select province</option>
-              {PROVINCES.map((p) => <option key={p}>{p}</option>)}
+            <StyledSelect
+              value={selectedProvCode}
+              onChange={(code) => {
+                const selected = provinces.find((p) => p.code === code);
+                setSelectedProvCode(code);
+                setProv(selected?.name ?? "");
+                setSelectedCityCode("");
+                setCity("");
+                setBrgy("");
+              }}
+              disabled={loadingProvinces}
+            >
+              <option value="">{loadingProvinces ? "Loading provinces..." : "Select province"}</option>
+              {provinces.map((p) => <option key={p.code} value={p.code}>{p.name}</option>)}
             </StyledSelect>
             <ErrMsg msg={errors.locationProv} />
           </div>
           <div>
             <FieldLabel required>City / Municipality</FieldLabel>
-            <StyledInput value={locationCity} onChange={(e) => setCity(e.target.value)} placeholder="e.g. Calamba City" />
+            <StyledSelect
+              value={selectedCityCode}
+              onChange={(code) => {
+                const selected = cities.find((city) => city.code === code);
+                setSelectedCityCode(code);
+                setCity(selected?.name ?? "");
+                setBrgy("");
+              }}
+              disabled={!selectedProvCode || loadingCities}
+            >
+              <option value="">
+                {!selectedProvCode
+                  ? "Select province first"
+                  : loadingCities
+                    ? "Loading cities/municipalities..."
+                    : "Select city/municipality"}
+              </option>
+              {cities.map((city) => <option key={city.code} value={city.code}>{city.name}</option>)}
+            </StyledSelect>
             <ErrMsg msg={errors.locationCity} />
           </div>
           <div>
             <FieldLabel>Barangay <span className="text-stone-400 font-normal normal-case tracking-normal">(optional)</span></FieldLabel>
-            <StyledInput value={locationBrgy} onChange={(e) => setBrgy(e.target.value)} placeholder="e.g. Bgry. Uno" />
+            <StyledSelect
+              value={locationBrgy}
+              onChange={setBrgy}
+              disabled={!selectedCityCode || loadingBarangays}
+            >
+              <option value="">
+                {!selectedCityCode
+                  ? "Select city first"
+                  : loadingBarangays
+                    ? "Loading barangays..."
+                    : "Select barangay (optional)"}
+              </option>
+              {barangays.map((brgy) => <option key={brgy.code} value={brgy.name}>{brgy.name}</option>)}
+            </StyledSelect>
           </div>
         </div>
         <FieldHint>Only your city and province are shown publicly — your exact address stays private.</FieldHint>

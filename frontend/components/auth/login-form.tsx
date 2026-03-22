@@ -48,17 +48,18 @@ export function LoginForm() {
 
       // Role-based redirect
       const role = data.user?.role;
-      if (role === "SUPERADMIN" || role === "ADMIN") {
-        router.push("/admin");
-      } else {
-        router.push("/");
+      if (role === "SUPER_ADMIN" || role === "ADMIN") router.push("/admin");
+      else router.push("/");
+
+    } catch (error: any) {
+      if (error === "Failed to fetch") {
+        error = "Login failed. Please contact support.";
       }
-      } catch (error: any) {
-        toast.error(error, { position: "top-center" });
-      } finally {
-        setLoading(false);
-      }
+      toast.error(error, { position: "top-center" });
+    } finally {
+      setLoading(false);
     }
+  }
   
   return (
     <Card className="overflow-hidden p-0">

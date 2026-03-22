@@ -146,8 +146,12 @@ function VerifyEmailForm() {
       sessionStorage.removeItem("pending_signup");
       sessionStorage.removeItem("otp_expires_at");
       router.replace("/");
-    } catch (err: any) {
-      showErrorToast(err.data?.message || "An unexpected error occurred. Please try again later.");
+    } catch (error: any) {
+      if (error === "Failed to fetch") {
+        error = "Failed to verify email. Please contact support.";
+      }
+
+      showErrorToast(error);
       setOtp(["", "", "", "", "", ""]);
       inputRefs.current[0]?.focus();
     } finally {
@@ -164,8 +168,11 @@ function VerifyEmailForm() {
       sessionStorage.setItem("otp_expires_at", expiresAt.toString());
       setOtpTimeLeft(10 * 60);
       setOtpResendCooldown(60); // 60 second cooldown
-    } catch (err: any) {
-      showErrorToast(err.data?.message || "An unexpected error occurred. Please try again later.");
+    } catch (error: any) {
+      if (error === "Failed to fetch") {
+        error = "Failed to resend OTP. Please try again later.";
+      }
+      showErrorToast(error);
     }
   };
 

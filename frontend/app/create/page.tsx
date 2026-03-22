@@ -69,11 +69,11 @@ export default function CreateListingPage() {
   if (!isAuth) return null;
 
   return (
-    <div className="min-h-screen bg-stone-50 dark:bg-[#111827]">
+    <div className="min-h-fit bg-stone-50 dark:bg-[#111827]">
 
       {/* ── Header band ──────────────────────────────────────────────────────── */}
       <div className="bg-[#1a2235] border-b border-white/10">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-4 sm:py-8">
           <p className="text-xs font-semibold uppercase tracking-widest text-amber-500 mb-2">
             Post a Listing
           </p>
@@ -83,16 +83,6 @@ export default function CreateListingPage() {
           <p className="text-stone-400 text-sm mt-2">
             Choose the listing type that best fits what you want to offer.
           </p>
-
-          {/* Trust row */}
-          <div className="flex flex-wrap gap-x-6 gap-y-1.5 mt-5">
-            {TRUST_ITEMS.map(({ icon: Icon, text }) => (
-              <div key={text} className="flex items-center gap-1.5 text-xs text-stone-400">
-                <Icon size={12} className="text-amber-500 shrink-0" />
-                {text}
-              </div>
-            ))}
-          </div>
         </div>
       </div>
 
@@ -133,18 +123,9 @@ export default function CreateListingPage() {
                 {t.description}
               </p>
 
-              {/* Example tags */}
-              <div className="flex flex-wrap gap-1.5 mt-4">
-                {t.examples.slice(0, 3).map((ex) => (
-                  <span key={ex} className={cn("text-[10px] font-semibold px-2 py-0.5 rounded-full", t.badgeCls)}>
-                    {ex}
-                  </span>
-                ))}
-              </div>
-
               {/* CTA row */}
               <div className={cn(
-                "flex items-center gap-1 mt-5 text-sm font-semibold transition-colors",
+                "flex items-center gap-1 mt-2 text-sm font-semibold transition-colors",
                 t.arrowCls
               )}>
                 Get started
@@ -157,9 +138,9 @@ export default function CreateListingPage() {
         {/* Bottom note */}
         <p className="text-center text-xs text-stone-400 dark:text-stone-500 mt-8">
           By posting a listing, you agree to our{" "}
-          <a href="#" className="underline underline-offset-2 hover:text-stone-600">Terms of Service</a>{" "}
+          <Link href="#" className="underline underline-offset-2 hover:text-stone-600">Terms of Service</Link>{" "}
           and{" "}
-          <a href="#" className="underline underline-offset-2 hover:text-stone-600">Community Guidelines</a>.
+          <Link href="#" className="underline underline-offset-2 hover:text-stone-600">Community Guidelines</Link>.
         </p>
       </div>
     </div>

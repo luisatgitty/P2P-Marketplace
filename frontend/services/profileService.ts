@@ -45,6 +45,8 @@ export interface ProfilePayload {
   listings: ProfileListingItem[];
   bookmarks: ProfileListingItem[];
   reviews: ProfileReviewItem[];
+  receivedReviews?: ProfileReviewItem[];
+  personalReviews?: ProfileReviewItem[];
 }
 
 export interface UpdateProfilePayload {
@@ -80,6 +82,8 @@ export interface UpdateProfileImagesPayload {
     mimeType: string;
     data: string;
   };
+  removeProfileImage?: boolean;
+  removeCoverImage?: boolean;
 }
 
 export async function getProfileData(): Promise<ProfilePayload> {

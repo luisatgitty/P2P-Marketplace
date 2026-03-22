@@ -12,8 +12,9 @@ type AppChromeProps = {
 export default function AppChrome({ slot }: AppChromeProps) {
   const pathname = usePathname();
   const isAdminRoute = pathname === "/admin" || pathname.startsWith("/admin/");
+  const isNotFoundRoute = pathname === "/not-found";
 
-  if (isAdminRoute) {
+  if (isAdminRoute || isNotFoundRoute) {
     return null;
   }
 

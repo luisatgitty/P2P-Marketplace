@@ -5,8 +5,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import {
-  MapPin, Mail, Calendar, Eye, EyeOff, MessageCircle, Star,
-  Edit2, Plus, ShieldCheck, Package, Bookmark,
+  MapPin, Mail, Calendar, Eye, EyeOff, Star,
+  Edit2, Plus, Package, Bookmark,
   Camera, Trash2, AlertTriangle,
 } from "lucide-react";
 import { useUser } from "@/utils/UserContext";
@@ -37,6 +37,7 @@ import { cn } from "@/lib/utils";
 type VerificationState = "unverified" | "pending" | "verified" | "rejected";
 type ListingTab = "all" | "active" | "sold" | "booked";
 type ProfileTab = "listings" | "bookmarks" | "reviews";
+type ReviewTab = "received" | "personal";
 
 const SOLD_STATUSES = new Set(["sold", "rented", "completed"]);
 const BOOKED_STATUSES = new Set(["hidden"]);
@@ -153,15 +154,14 @@ function ProfileListingCard({ listing, showMeta = false, tab }: { listing: Profi
           </div>
         </div>
         <div className="p-3">
-          <p className="text-stone-800 dark:text-stone-100 font-semibold text-sm leading-tight truncate">{listing.title}</p>
+          <p className="text-stone-800 dark:text-stone-100 font-semibold text-sm leading-tight line-clamp-2">{listing.title}</p>
           <div className="flex items-baseline gap-1 mt-0.5">
-            <p className="text-stone-800 dark:text-stone-100 font-bold text-[15px]">{fmt.format(listing.price)}</p>
+            <p className="text-stone-800 dark:text-stone-100 font-bold text-sm">{fmt.format(listing.price)}</p>
             {listing.priceUnit && <span className="text-xs text-stone-400 dark:text-stone-500">{listing.priceUnit}</span>}
           </div>
           {showMeta ? (
             <div className="flex items-center gap-3 mt-2 text-[11px] text-stone-400 dark:text-stone-500">
               <span className="flex items-center gap-1"><Eye className="w-3 h-3" /> 142 views</span>
-              <span className="flex items-center gap-1"><MessageCircle className="w-3 h-3" /> 3 inquiries</span>
             </div>
           ) : (
             <div className="flex items-center justify-between mt-1.5">
@@ -267,7 +267,11 @@ function ProfileReviewCard({ review }: { review: ProfileReviewItem }) {
 }
 
 // ─── Image upload hook with remove support ────────────────────────────────────
-function useImageUpload(initialSrc?: string | null, onUploaded?: (file: File) => Promise<void>) {
+function useImageUpload(
+  initialSrc?: string | null,
+  onUploaded?: (file: File) => Promise<void>,
+  onRemoved?: () => Promise<void>,
+) {
   const [src, setSrc] = useState<string | null>(initialSrc ?? null);
   const [file, setFile] = useState<File | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -279,7 +283,13 @@ function useImageUpload(initialSrc?: string | null, onUploaded?: (file: File) =>
 
   function trigger() { inputRef.current?.click(); }
 
-  function remove() {
+  async function remove() {
+    if (onRemoved) {
+      await onRemoved();
+      setFile(null);
+      return;
+    }
+
     setSrc(null);
     setFile(null);
   }
@@ -288,22 +298,17 @@ function useImageUpload(initialSrc?: string | null, onUploaded?: (file: File) =>
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const previous = src;
     setFile(file);
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result as string;
-      setSrc(result);
-    };
-    reader.readAsDataURL(file);
-
     if (onUploaded) {
-      try {
-        await onUploaded(file);
-      } catch {
-        setSrc(previous ?? null);
-      }
+      await onUploaded(file);
+    } else {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = reader.result as string;
+        setSrc(result);
+      };
+      reader.readAsDataURL(file);
     }
 
     e.target.value = "";
@@ -407,9 +412,11 @@ export default function ProfilePage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [userListings, setUserListings] = useState<ProfileListingItem[]>([]);
   const [bookmarkListings, setBookmarkListings] = useState<ProfileListingItem[]>([]);
-  const [userReviews, setUserReviews] = useState<ProfileReviewItem[]>([]);
+  const [receivedReviews, setReceivedReviews] = useState<ProfileReviewItem[]>([]);
+  const [personalReviews, setPersonalReviews] = useState<ProfileReviewItem[]>([]);
   const [listingTab, setListingTab] = useState<ListingTab>("active");
   const [profileTab, setProfileTab] = useState<ProfileTab>("listings");
+  const [reviewTab, setReviewTab] = useState<ReviewTab>("received");
   const [showAvatarMenu, setShowAvatarMenu] = useState(false);
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [provinces, setProvinces] = useState<LocationOption[]>([]);
@@ -435,6 +442,7 @@ export default function ProfilePage() {
       const profileImage = await encodeFileToPayload(file);
       const updatedUser = await updateProfileImages({ profileImage });
       if (user) saveUserData({ ...user, ...updatedUser });
+      setProfileUser((prev) => ({ ...(prev ?? updatedUser), ...updatedUser }));
       showSuccessToast("Profile photo updated");
     } catch (err) {
       const message = typeof err === "string" ? err : (err instanceof Error ? err.message : "Failed to update profile photo");
@@ -451,6 +459,7 @@ export default function ProfilePage() {
       const coverImage = await encodeFileToPayload(file);
       const updatedUser = await updateProfileImages({ coverImage });
       if (user) saveUserData({ ...user, ...updatedUser });
+      setProfileUser((prev) => ({ ...(prev ?? updatedUser), ...updatedUser }));
       showSuccessToast("Cover photo updated");
     } catch (err) {
       const message = typeof err === "string" ? err : (err instanceof Error ? err.message : "Failed to update cover photo");
@@ -461,8 +470,44 @@ export default function ProfilePage() {
     }
   };
 
-  const avatar = useImageUpload(profileUser?.profileImageUrl ?? null, handleAvatarUpload);
-  const cover  = useImageUpload(profileUser?.coverImageUrl ?? null, handleCoverUpload);
+  const handleAvatarRemove = async () => {
+    if (uploadingAvatar) return;
+
+    setUploadingAvatar(true);
+    try {
+      const updatedUser = await updateProfileImages({ removeProfileImage: true });
+      if (user) saveUserData({ ...user, ...updatedUser });
+      setProfileUser((prev) => ({ ...(prev ?? updatedUser), ...updatedUser }));
+      showSuccessToast("Profile photo removed");
+    } catch (err) {
+      const message = typeof err === "string" ? err : (err instanceof Error ? err.message : "Failed to remove profile photo");
+      showErrorToast(message);
+      throw err;
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
+
+  const handleCoverRemove = async () => {
+    if (uploadingCover) return;
+
+    setUploadingCover(true);
+    try {
+      const updatedUser = await updateProfileImages({ removeCoverImage: true });
+      if (user) saveUserData({ ...user, ...updatedUser });
+      setProfileUser((prev) => ({ ...(prev ?? updatedUser), ...updatedUser }));
+      showSuccessToast("Cover photo removed");
+    } catch (err) {
+      const message = typeof err === "string" ? err : (err instanceof Error ? err.message : "Failed to remove cover photo");
+      showErrorToast(message);
+      throw err;
+    } finally {
+      setUploadingCover(false);
+    }
+  };
+
+  const avatar = useImageUpload(profileUser?.profileImageUrl ?? null, handleAvatarUpload, handleAvatarRemove);
+  const cover  = useImageUpload(profileUser?.coverImageUrl ?? null, handleCoverUpload, handleCoverRemove);
 
   useEffect(() => {
     if (!isViewingExternalProfile && user) {
@@ -477,6 +522,8 @@ export default function ProfilePage() {
   }, [isViewingExternalProfile]);
 
   useEffect(() => {
+    if (!editOpen || isViewingExternalProfile) return;
+
     const loadProvinces = async () => {
       try {
         const data = await getProvinces();
@@ -487,9 +534,11 @@ export default function ProfilePage() {
     };
 
     loadProvinces();
-  }, []);
+  }, [editOpen, isViewingExternalProfile]);
 
   useEffect(() => {
+    if (!editOpen || isViewingExternalProfile) return;
+
     if (!selectedProvCode) {
       setCities([]);
       setSelectedCityCode("");
@@ -509,9 +558,11 @@ export default function ProfilePage() {
     };
 
     loadCities();
-  }, [selectedProvCode]);
+  }, [editOpen, isViewingExternalProfile, selectedProvCode, form.locationCity]);
 
   useEffect(() => {
+    if (!editOpen || isViewingExternalProfile) return;
+
     if (!selectedCityCode) {
       setBarangays([]);
       return;
@@ -527,7 +578,7 @@ export default function ProfilePage() {
     };
 
     loadBarangays();
-  }, [selectedCityCode]);
+  }, [editOpen, isViewingExternalProfile, selectedCityCode]);
 
   useEffect(() => {
     const loadProfile = async () => {
@@ -540,7 +591,8 @@ export default function ProfilePage() {
         setProfileUser(payload.user);
         setUserListings(payload.listings);
         setBookmarkListings(isViewingExternalProfile ? [] : payload.bookmarks);
-        setUserReviews(payload.reviews ?? []);
+        setReceivedReviews(payload.receivedReviews ?? payload.reviews ?? []);
+        setPersonalReviews(payload.personalReviews ?? []);
         if (!isViewingExternalProfile) {
           saveUserData(payload.user);
         }
@@ -708,7 +760,8 @@ export default function ProfilePage() {
       setProfileUser(payload.user);
       setUserListings(payload.listings);
       setBookmarkListings(payload.bookmarks);
-      setUserReviews(payload.reviews ?? []);
+      setReceivedReviews(payload.receivedReviews ?? payload.reviews ?? []);
+      setPersonalReviews(payload.personalReviews ?? []);
       saveUserData(payload.user);
 
       const nextSnapshot: EditableProfileSnapshot = {
@@ -741,11 +794,11 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-stone-100 dark:bg-[#0f1117]">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 pb-20">
+    <div className="min-h-fit bg-stone-100 dark:bg-[#0f1117]">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
 
         {/* ── Profile header card ── */}
-        <div className="bg-white dark:bg-[#1c1f2e] rounded-2xl border border-stone-200 dark:border-[#2a2d3e] shadow-sm overflow-hidden mb-5">
+        <div className="bg-white dark:bg-[#1c1f2e] rounded-2xl border border-stone-200 dark:border-[#2a2d3e] shadow-sm overflow-hidden mb-4">
 
           {/* Cover photo */}
           <div className={cn("relative h-32 bg-linear-to-r from-[#1e2433] via-[#2a3650] to-[#1a2a3a] overflow-hidden group", !isViewingExternalProfile && "cursor-pointer")} onClick={() => !isViewingExternalProfile && cover.trigger()}>
@@ -762,7 +815,14 @@ export default function ProfilePage() {
             {/* Remove cover button */}
             {!isViewingExternalProfile && cover.src && (
               <button
-                onClick={(e) => { e.stopPropagation(); cover.remove(); showSuccessToast("Cover photo removed"); }}
+                onClick={async (e) => {
+                  e.stopPropagation();
+                  try {
+                    await cover.remove();
+                  } catch {
+                    // toast already handled in remove flow
+                  }
+                }}
                 className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/50 hover:bg-black/70 flex items-center justify-center text-white transition-colors opacity-0 group-hover:opacity-100"
                 title="Remove cover photo"
               >
@@ -816,7 +876,15 @@ export default function ProfilePage() {
                       {avatar.src && (
                         <button
                           className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors border-t border-stone-100 dark:border-[#2a2d3e]"
-                          onClick={() => { avatar.remove(); setShowAvatarMenu(false); showSuccessToast("Profile photo removed"); }}
+                          onClick={async () => {
+                            try {
+                              await avatar.remove();
+                            } catch {
+                              // toast already handled in remove flow
+                            } finally {
+                              setShowAvatarMenu(false);
+                            }
+                          }}
                         >
                           <Trash2 className="w-4 h-4" />
                           Remove Photo
@@ -974,21 +1042,12 @@ export default function ProfilePage() {
                     </div>
                     <div>
                       <label className={lbl}>Confirm New Password</label>
-                      <div className="relative">
-                        <Input
-                          type={showConfirmPassword ? "text" : "password"}
-                          value={form.confirmPassword}
-                          onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })}
-                          placeholder="Repeat new password"
-                        />
-                        <button
-                          type="button"
-                          className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm leading-5"
-                          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                        >
-                          {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                        </button>
-                      </div>
+                      <Input
+                        type={showConfirmPassword ? "text" : "password"}
+                        value={form.confirmPassword}
+                        onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })}
+                        placeholder="Repeat new password"
+                      />
                     </div>
                   </div>
                 </div>
@@ -1042,19 +1101,19 @@ export default function ProfilePage() {
           {profileTab === "listings" && (<>
             <div className="flex items-center justify-between px-4 pt-3 pb-2">
               <div className="flex gap-1">
-                {(["all", "active", "sold", "booked"] as const).map((t) => (
-                  <button key={t} onClick={() => setListingTab(t)}
-                    className={cn("text-xs font-medium px-3 py-1.5 rounded-full transition-colors capitalize",
-                      listingTab === t
-                        ? "bg-stone-900 dark:bg-stone-200 text-white dark:text-stone-900"
-                        : "text-stone-400 dark:text-stone-500 hover:text-stone-600 dark:hover:text-stone-300 hover:bg-stone-100 dark:hover:bg-[#252837]")}>
-                    {t === "all"
-                      ? `📋 All (${userListings.length})`
-                      : t === "active"
-                      ? `🟢 Active (${activeListings.length})`
-                      : t === "sold"
-                        ? `✅ Sold (${soldListings.length})`
-                        : `📝 Booked (${bookedListings.length})`}
+                {(["all", "active", "sold", "booked"] as const).map((tab) => (
+                  <button key={tab} onClick={() => setListingTab(tab)}
+                    className={cn("tab-page-base",
+                      listingTab === tab
+                        ? "tab-active"
+                        : "tab-inactive")}>
+                    {tab === "all"
+                      ? `All (${userListings.length})`
+                      : tab === "active"
+                      ? `Active (${activeListings.length})`
+                      : tab === "sold"
+                        ? `Sold (${soldListings.length})`
+                        : `Booked (${bookedListings.length})`}
                   </button>
                 ))}
               </div>
@@ -1094,11 +1153,46 @@ export default function ProfilePage() {
 
           {/* Reviews */}
           {profileTab === "reviews" && (
-            loadingProfile
-              ? <div className="text-center py-14"><p className="font-semibold text-stone-400 text-sm">Loading reviews...</p></div>
-              : userReviews.length > 0
-                ? <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-4">{userReviews.map((review) => <ProfileReviewCard key={review.id} review={review} />)}</div>
-                : <div className="text-center py-14 px-6"><Star className="w-10 h-10 text-stone-200 dark:text-stone-700 mx-auto mb-3" /><p className="font-semibold text-stone-400 text-sm">No reviews yet</p></div>
+            <>
+              <div className="flex items-center justify-between px-4 pt-3 pb-2">
+                <div className="flex gap-1">
+                  {([
+                    { key: "received", label: `Reviews by Others (${receivedReviews.length})` },
+                    { key: "personal", label: `Personal Reviews (${personalReviews.length})` },
+                  ] as const).map((tabItem) => (
+                    <button
+                      key={tabItem.key}
+                      onClick={() => setReviewTab(tabItem.key)}
+                      className={cn(
+                        "tab-page-base",
+                        reviewTab === tabItem.key
+                          ? "tab-active"
+                          : "tab-inactive"
+                      )}
+                    >
+                      {tabItem.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {loadingProfile ? (
+                <div className="text-center py-14"><p className="font-semibold text-stone-400 text-sm">Loading reviews...</p></div>
+              ) : (reviewTab === "received" ? receivedReviews : personalReviews).length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-4">
+                  {(reviewTab === "received" ? receivedReviews : personalReviews).map((review) => (
+                    <ProfileReviewCard key={`${reviewTab}-${review.id}`} review={review} />
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-14 px-6">
+                  <Star className="w-10 h-10 text-stone-200 dark:text-stone-700 mx-auto mb-3" />
+                  <p className="font-semibold text-stone-400 text-sm">
+                    {reviewTab === "received" ? "No reviews by others yet" : "No personal reviews yet"}
+                  </p>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>

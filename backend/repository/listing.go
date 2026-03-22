@@ -1014,7 +1014,7 @@ func RemoveBookmark(userId, listingId string) error {
 	return nil
 }
 
-func GetAllListings(excludeUserId string) ([]model.HomeListingFromDb, error) {
+func GetAllListings(excludeUserId string, filter model.ListingsFilter) ([]model.HomeListingFromDb, error) {
 	db := middleware.DBConn
 	listings := make([]model.HomeListingFromDb, 0)
 
@@ -1064,14 +1064,82 @@ func GetAllListings(excludeUserId string) ([]model.HomeListingFromDb, error) {
 
 	query := baseQuery
 	args := make([]any, 0)
-	if strings.TrimSpace(excludeUserId) != "" {
-		query += "\n\t\t\tAND l.user_id <> $1"
-		args = append(args, excludeUserId)
+	addArg := func(value any) string {
+		args = append(args, value)
+		return fmt.Sprintf("$%d", len(args))
 	}
 
-	query += `
-		ORDER BY l.created_at DESC
-	`
+	if strings.TrimSpace(excludeUserId) != "" {
+		query += "\n\t\t\tAND l.user_id <> " + addArg(excludeUserId)
+	}
+
+	listingType := strings.ToLower(strings.TrimSpace(filter.Type))
+	if listingType != "" && listingType != "all" {
+		query += "\n\t\t\tAND LOWER(l.listing_type::text) = " + addArg(listingType)
+	}
+
+	keyword := strings.ToLower(strings.TrimSpace(filter.Keyword))
+	if keyword != "" {
+		query += "\n\t\t\tAND LOWER(l.title) LIKE " + addArg("%"+keyword+"%")
+	}
+
+	category := strings.ToLower(strings.TrimSpace(filter.Category))
+	if category != "" && category != "all categories" {
+		query += "\n\t\t\tAND LOWER(COALESCE(c.name, 'Others')) = " + addArg(category)
+	}
+
+	conditionRaw := strings.TrimSpace(filter.Condition)
+	if conditionRaw != "" && !strings.EqualFold(conditionRaw, "Any Condition") {
+		conditionDbValue := ""
+		switch strings.ToLower(conditionRaw) {
+		case "new":
+			conditionDbValue = "NEW"
+		case "like new":
+			conditionDbValue = "LIKE_NEW"
+		case "lightly used":
+			conditionDbValue = "LIGHTLY_USED"
+		case "well used":
+			conditionDbValue = "WELL_USED"
+		case "heavily used":
+			conditionDbValue = "HEAVILY_USED"
+		}
+
+		if conditionDbValue != "" {
+			query += "\n\t\t\tAND COALESCE(lsd.condition::text, '') = " + addArg(conditionDbValue)
+		}
+	}
+
+	province := strings.ToLower(strings.TrimSpace(filter.Province))
+	if province != "" && province != "province" {
+		query += "\n\t\t\tAND LOWER(COALESCE(l.location_province, '')) = " + addArg(province)
+	}
+
+	city := strings.ToLower(strings.TrimSpace(filter.City))
+	if city != "" && city != "city/municipality" {
+		query += "\n\t\t\tAND LOWER(COALESCE(l.location_city, '')) = " + addArg(city)
+	}
+
+	if filter.PriceMin != nil {
+		query += "\n\t\t\tAND l.price >= " + addArg(*filter.PriceMin)
+	}
+
+	if filter.PriceMax != nil {
+		query += "\n\t\t\tAND l.price <= " + addArg(*filter.PriceMax)
+	}
+
+	orderBy := "l.created_at DESC"
+	switch strings.ToLower(strings.TrimSpace(filter.Sort)) {
+	case "latest":
+		orderBy = "l.created_at DESC"
+	case "cheapest":
+		orderBy = "l.price ASC, l.created_at DESC"
+	case "expensive":
+		orderBy = "l.price DESC, l.created_at DESC"
+	case "top-rated":
+		orderBy = "COALESCE(rv.avg_rating, 0) DESC, l.created_at DESC"
+	}
+
+	query += "\n\t\tORDER BY " + orderBy
 
 	if err := db.Raw(query, args...).Scan(&listings).Error; err != nil {
 		return nil, fmt.Errorf("Failed to retrieve listings")

@@ -144,7 +144,7 @@ func GetUserBookmarks(userId string) ([]model.ProfileListingFromDb, error) {
 	return bookmarks, nil
 }
 
-func GetUserReviews(userId string) ([]model.ProfileReviewFromDb, error) {
+func GetUserReceivedReviews(userId string) ([]model.ProfileReviewFromDb, error) {
 	db := middleware.DBConn
 	reviews := make([]model.ProfileReviewFromDb, 0)
 
@@ -180,6 +180,47 @@ func GetUserReviews(userId string) ([]model.ProfileReviewFromDb, error) {
 
 	if err := db.Raw(selectQuery, userId).Scan(&reviews).Error; err != nil {
 		return nil, fmt.Errorf("Failed to retrieve reviews")
+	}
+
+	return reviews, nil
+}
+
+func GetUserPersonalReviews(userId string) ([]model.ProfileReviewFromDb, error) {
+	db := middleware.DBConn
+	reviews := make([]model.ProfileReviewFromDb, 0)
+
+	selectQuery := `
+		SELECT
+			r.id,
+			r.reviewer_id::text AS reviewer_id,
+			TRIM(BOTH ' ' FROM CONCAT(COALESCE(ru.first_name, ''), ' ', COALESCE(ru.last_name, ''))) AS reviewer_name,
+			COALESCE(ru.profile_image_url, '') AS reviewer_image_url,
+			r.rating,
+			COALESCE(r.comment, '') AS comment,
+			TO_CHAR(r.created_at, 'Mon DD, YYYY') AS review_date,
+			l.id::text AS listing_id,
+			COALESCE(l.title, '') AS listing_title,
+			COALESCE(l.price, 0) AS listing_price,
+			COALESCE(l.price_unit, '') AS listing_price_unit,
+			COALESCE(li.image_url, '') AS listing_image_url
+		FROM public.reviews r
+		INNER JOIN public.users ru
+			ON ru.id = r.reviewer_id
+		INNER JOIN public.listings l
+			ON l.id = r.listing_id
+		LEFT JOIN LATERAL (
+			SELECT image_url
+			FROM public.listing_images
+			WHERE listing_id = l.id
+			ORDER BY is_primary DESC, id ASC
+			LIMIT 1
+		) li ON TRUE
+		WHERE r.reviewer_id = $1
+		ORDER BY r.created_at DESC
+	`
+
+	if err := db.Raw(selectQuery, userId).Scan(&reviews).Error; err != nil {
+		return nil, fmt.Errorf("Failed to retrieve personal reviews")
 	}
 
 	return reviews, nil
@@ -284,9 +325,23 @@ func UpdateProfileImages(userId string, body model.UpdateProfileImagesBody) erro
 		}
 	}()
 
-	if body.ProfileImage == nil && body.CoverImage == nil {
+	if body.ProfileImage == nil && body.CoverImage == nil && !body.RemoveProfileImage && !body.RemoveCoverImage {
 		tx.Rollback()
 		return fmt.Errorf("No image provided")
+	}
+
+	if body.RemoveProfileImage {
+		if err := clearUserImageTx(tx, userId, "profile_image_url"); err != nil {
+			tx.Rollback()
+			return err
+		}
+	}
+
+	if body.RemoveCoverImage {
+		if err := clearUserImageTx(tx, userId, "cover_image_url"); err != nil {
+			tx.Rollback()
+			return err
+		}
 	}
 
 	if err := upsertUserImageTx(tx, userId, body.ProfileImage, "profile_image_url", "profiles"); err != nil {
@@ -301,6 +356,29 @@ func UpdateProfileImages(userId string, body model.UpdateProfileImagesBody) erro
 
 	if err := tx.Commit().Error; err != nil {
 		return err
+	}
+
+	return nil
+}
+
+func clearUserImageTx(tx *gorm.DB, userId, columnName string) error {
+	if columnName != "profile_image_url" && columnName != "cover_image_url" {
+		return fmt.Errorf("Invalid image column")
+	}
+
+	uploadRoot := getUploadRootDir()
+
+	var previousURL sql.NullString
+	selectQuery := fmt.Sprintf("SELECT %s FROM public.users WHERE id = $1", columnName)
+	if err := tx.Raw(selectQuery, userId).Scan(&previousURL).Error; err != nil {
+		return fmt.Errorf("Failed to retrieve previous user image")
+	}
+
+	removeLocalUpload(uploadRoot, previousURL.String)
+
+	updateQuery := fmt.Sprintf("UPDATE public.users SET %s = NULL, updated_at = $1 WHERE id = $2", columnName)
+	if err := tx.Exec(updateQuery, time.Now(), userId).Error; err != nil {
+		return fmt.Errorf("Failed to clear user image reference")
 	}
 
 	return nil

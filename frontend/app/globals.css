@@ -113,6 +113,10 @@
   --sidebar-ring: #555968;
 }
 
+.dark [aria-invalid="true"] {
+  border-color: var(--destructive) !important;
+}
+
 /* ── Base resets ── */
 @layer base {
   * {
@@ -185,3 +189,29 @@
 .card-hover { transition: transform .18s ease, box-shadow .18s ease; }
 .card-hover:hover      { transform: translateY(-3px); box-shadow: 0 8px 28px rgba(0,0,0,.1); }
 .dark .card-hover:hover { box-shadow: 0 8px 28px rgba(0,0,0,.45); }
+
+@layer components {
+  .tab-nav-base {
+    @apply flex items-center gap-1.5 px-2.5 sm:px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all duration-150 select-none;
+  }
+
+  .tab-nav-active {
+    @apply text-white bg-amber-700 hover:bg-amber-700;
+  }
+
+  .tab-nav-inactive {
+    @apply text-stone-400 hover:bg-white/10 hover:text-white;
+  }
+
+  .tab-page-base {
+    @apply text-sm font-medium px-3 py-1.5 rounded-md;
+  }
+
+  .tab-active {
+    @apply text-white bg-[#1a2235] dark:bg-amber-700 hover:bg-[#1a2235] dark:hover:bg-amber-700;
+  }
+
+  .tab-inactive {
+    @apply text-stone-500 dark:text-stone-400 hover:bg-stone-200 dark:hover:bg-white/10 hover:text-stone-700 dark:hover:text-white;
+  }
+}

@@ -46,3 +46,13 @@ export function validateSignupForm(form: SignupForm) {
   const passwordError  = isValidPassword(form.password, form.confirmPassword);
   if (passwordError) return passwordError;
 }
+
+export function validateImageURL(url: string): string {
+  if (url.startsWith("/uploads/") || url.startsWith("uploads/")) {
+    const apiBase = (process.env.NEXT_PUBLIC_API_URL ?? "").replace(/\/$/, "");
+    const normalized = url.startsWith("/") ? url : `/${url}`;
+    return apiBase ? `${apiBase}${normalized}` : normalized;
+  }
+
+  return url;
+}

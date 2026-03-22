@@ -48,8 +48,10 @@ type UpdateProfileBody struct {
 }
 
 type UpdateProfileImagesBody struct {
-	ProfileImage *ListingImageBody `json:"profileImage,omitempty"`
-	CoverImage   *ListingImageBody `json:"coverImage,omitempty"`
+	ProfileImage       *ListingImageBody `json:"profileImage,omitempty"`
+	CoverImage         *ListingImageBody `json:"coverImage,omitempty"`
+	RemoveProfileImage bool              `json:"removeProfileImage,omitempty"`
+	RemoveCoverImage   bool              `json:"removeCoverImage,omitempty"`
 }
 
 type LocationOption struct {
@@ -205,6 +207,129 @@ type HomeListingFromDb struct {
 	SellerName   string    `gorm:"column:seller_name"`
 	SellerRating float64   `gorm:"column:seller_rating"`
 	SellerIsPro  bool      `gorm:"column:seller_is_pro"`
+}
+
+type ListingsFilter struct {
+	Type      string
+	Keyword   string
+	Category  string
+	Condition string
+	Province  string
+	City      string
+	PriceMin  *int
+	PriceMax  *int
+	Sort      string
+}
+
+type AdminDashboardStatsFromDb struct {
+	TotalUsers                    int `gorm:"column:total_users" json:"totalUsers"`
+	ActiveUsers                   int `gorm:"column:active_users" json:"activeUsers"`
+	InactiveUsers                 int `gorm:"column:inactive_users" json:"inactiveUsers"`
+	VerifiedUsers                 int `gorm:"column:verified_users" json:"verifiedUsers"`
+	LockedUsers                   int `gorm:"column:locked_users" json:"lockedUsers"`
+	NewUsersThisWeek              int `gorm:"column:new_users_this_week" json:"newUsersThisWeek"`
+	NewUsersLastWeek              int `gorm:"column:new_users_last_week" json:"newUsersLastWeek"`
+	ActiveListings                int `gorm:"column:active_listings" json:"activeListings"`
+	NewListingsThisWeek           int `gorm:"column:new_listings_this_week" json:"newListingsThisWeek"`
+	NewListingsLastWeek           int `gorm:"column:new_listings_last_week" json:"newListingsLastWeek"`
+	PendingReports                int `gorm:"column:pending_reports" json:"pendingReports"`
+	PendingReportsToday           int `gorm:"column:pending_reports_today" json:"pendingReportsToday"`
+	PendingReportsYesterday       int `gorm:"column:pending_reports_yesterday" json:"pendingReportsYesterday"`
+	PendingVerifications          int `gorm:"column:pending_verifications" json:"pendingVerifications"`
+	PendingVerificationsToday     int `gorm:"column:pending_verifications_today" json:"pendingVerificationsToday"`
+	PendingVerificationsYesterday int `gorm:"column:pending_verifications_yesterday" json:"pendingVerificationsYesterday"`
+}
+
+type AdminWeeklyNewUsersFromDb struct {
+	Day      string `gorm:"column:day" json:"day"`
+	Count    int    `gorm:"column:count" json:"count"`
+	DayOrder int    `gorm:"column:day_order" json:"-"`
+}
+
+type AdminListingTypeCountFromDb struct {
+	ListingType string `gorm:"column:listing_type" json:"listingType"`
+	Count       int    `gorm:"column:count" json:"count"`
+}
+
+type AdminListingTypeBreakdownItem struct {
+	Type  string  `json:"type"`
+	Count int     `json:"count"`
+	Pct   float64 `json:"pct"`
+}
+
+type AdminUserListItemFromDb struct {
+	Id              string     `gorm:"column:id" json:"id"`
+	FirstName       string     `gorm:"column:first_name" json:"first_name"`
+	LastName        string     `gorm:"column:last_name" json:"last_name"`
+	ProfileImageURL string     `gorm:"column:profile_image_url" json:"profile_image_url"`
+	Email           string     `gorm:"column:email" json:"email"`
+	Phone           string     `gorm:"column:phone" json:"phone"`
+	Role            string     `gorm:"column:role" json:"role"`
+	Verification    string     `gorm:"column:verification" json:"verification"`
+	IsActive        bool       `gorm:"column:is_active" json:"is_active"`
+	IsEmailVerified bool       `gorm:"column:is_email_verified" json:"is_email_verified"`
+	FailedLogin     int        `gorm:"column:failed_login" json:"failed_login"`
+	Listings        int        `gorm:"column:listings" json:"listings"`
+	LastLogin       *time.Time `gorm:"column:last_login" json:"last_login"`
+	Joined          time.Time  `gorm:"column:joined" json:"joined"`
+	Location        string     `gorm:"column:location" json:"location"`
+}
+
+type AdminSetUserActiveBody struct {
+	IsActive *bool `json:"isActive"`
+}
+
+type AdminAccountListItemFromDb struct {
+	Id        string     `gorm:"column:id" json:"id"`
+	FirstName string     `gorm:"column:first_name" json:"first_name"`
+	LastName  string     `gorm:"column:last_name" json:"last_name"`
+	Email     string     `gorm:"column:email" json:"email"`
+	Role      string     `gorm:"column:role" json:"role"`
+	IsActive  bool       `gorm:"column:is_active" json:"is_active"`
+	CreatedAt time.Time  `gorm:"column:created_at" json:"created_at"`
+	LastLogin *time.Time `gorm:"column:last_login" json:"last_login"`
+}
+
+type AdminCreateAdminBody struct {
+	FirstName string `json:"firstName"`
+	LastName  string `json:"lastName"`
+	Email     string `json:"email"`
+	Role      string `json:"role"`
+	Password  string `json:"password"`
+}
+
+type AdminListingListItemFromDb struct {
+	Id       string    `gorm:"column:id" json:"id"`
+	Title    string    `gorm:"column:title" json:"title"`
+	Type     string    `gorm:"column:type" json:"type"`
+	Category string    `gorm:"column:category" json:"category"`
+	Price    int       `gorm:"column:price" json:"price"`
+	Unit     string    `gorm:"column:unit" json:"unit"`
+	Location string    `gorm:"column:location" json:"location"`
+	Status   string    `gorm:"column:status" json:"status"`
+	Seller   string    `gorm:"column:seller" json:"seller"`
+	Views    int       `gorm:"column:views" json:"views"`
+	Created  time.Time `gorm:"column:created" json:"created"`
+}
+
+type AdminReportListItemFromDb struct {
+	Id             string     `gorm:"column:id" json:"id"`
+	Reporter       string     `gorm:"column:reporter" json:"reporter"`
+	TargetType     string     `gorm:"column:target_type" json:"target_type"`
+	TargetName     string     `gorm:"column:target_name" json:"target_name"`
+	TargetId       string     `gorm:"column:target_id" json:"target_id"`
+	ListingOwner   string     `gorm:"column:listing_owner" json:"listing_owner"`
+	Reason         string     `gorm:"column:reason" json:"reason"`
+	Description    *string    `gorm:"column:description" json:"description"`
+	Status         string     `gorm:"column:status" json:"status"`
+	ReviewedBy     *string    `gorm:"column:reviewed_by" json:"reviewed_by"`
+	ReviewedAt     *time.Time `gorm:"column:reviewed_at" json:"reviewed_at"`
+	CreatedAt      time.Time  `gorm:"column:created_at" json:"created_at"`
+	ReportedUserId *string    `gorm:"column:reported_user_id" json:"reported_user_id"`
+}
+
+type AdminSetReportStatusBody struct {
+	Status string `json:"status"`
 }
 
 type ListingDetailFromDb struct {

@@ -7,6 +7,7 @@ import { useUser } from "@/utils/UserContext";
 import { useTheme } from "next-themes";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { getConversations } from "@/services/messagingService";
+import { LogoutModal } from "@/components/auth/logout-modal";
 import {
   Sun, Moon, MessageCircle, LogOut, User, Home,
   ChevronDown, Tag, Store, Wrench, LayoutGrid, UserPlus, ShieldCheck,
@@ -49,13 +50,8 @@ function NavTabsInner() {
           <button
             key={tab.value}
             onClick={() => handleTabClick(tab.value)}
-            className={cn(
-              "flex items-center gap-1.5 px-2.5 sm:px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all duration-150 select-none",
-              isActive
-                ? "bg-amber-700 text-white shadow-sm"
-                : "text-stone-400 hover:text-white hover:bg-white/10"
-            )}
-          >
+            className={cn("tab-nav-base", 
+              isActive ? "tab-nav-active" : "tab-nav-inactive")}>
             <tab.icon size={14} className="shrink-0" />
             <span className="hidden sm:inline">{tab.label}</span>
           </button>
@@ -78,15 +74,20 @@ function TabsFallback() {
 
 // ─── Main Navbar ───────────────────────────────────────────────────────────────
 export default function Navbar() {
-  const { clearUserData, isAuth, user } = useUser();
+  const { isAuth, user } = useUser();
   const { theme, setTheme } = useTheme();
   const pathname = usePathname();
   const isVerifiedSeller = (user?.status ?? "").toLowerCase() === "verified";
-  const [dropdownOpen, setDropdownOpen]     = useState(false);
-  const [mounted, setMounted]               = useState(false);
-  const [profileImageSrc, setProfileImageSrc] = useState("/profile-icon.png");
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [logoutModalOpen, setLogoutModalOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const [hasUnreadMessages, setHasUnreadMessages] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const handleLogOut = () => {
+    setLogoutModalOpen(true);
+    setDropdownOpen(false);
+  }
 
   const refreshUnreadState = useCallback(async () => {
     if (!isAuth) {
@@ -102,29 +103,6 @@ export default function Navbar() {
       // Keep current state on transient errors.
     }
   }, [isAuth]);
-
-  useEffect(() => {
-    const raw = (user?.profileImageUrl ?? "").trim();
-    const apiBase = (process.env.NEXT_PUBLIC_API_URL ?? "").replace(/\/$/, "");
-
-    if (!raw) {
-      setProfileImageSrc("/profile-icon.png");
-      return;
-    }
-
-    if (raw.startsWith("http://") || raw.startsWith("https://")) {
-      setProfileImageSrc(raw);
-      return;
-    }
-
-    if (raw.startsWith("/uploads/") || raw.startsWith("uploads/")) {
-      const normalized = raw.startsWith("/") ? raw : `/${raw}`;
-      setProfileImageSrc(apiBase ? `${apiBase}${normalized}` : normalized);
-      return;
-    }
-
-    setProfileImageSrc(raw.startsWith("/") ? raw : `/${raw}`);
-  }, [user?.profileImageUrl]);
 
   // Avoid hydration mismatch for theme
   useEffect(() => setMounted(true), []);
@@ -162,11 +140,16 @@ export default function Navbar() {
 
   return (
     <>
+      <LogoutModal
+        open={logoutModalOpen}
+        onClose={() => setLogoutModalOpen(false)}
+      />
+
       {/* Amber accent stripe */}
       <div className="fixed top-0 left-0 right-0 z-50 h-1 bg-amber-800" />
 
       {/* Main navbar */}
-      <nav className="fixed top-1 left-0 right-0 z-50 bg-[#1a2235]/95 backdrop-blur-sm text-white shadow-lg border-b border-white/5">
+      <nav className="fixed top-1 left-0 right-0 z-50 bg-[#1a2235]/95 backdrop-blur-xs text-white shadow-lg border-b border-white/5">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-3">
 
           {/* ── LEFT: Branding ─────────────────────────────────── */}
@@ -201,12 +184,11 @@ export default function Navbar() {
                 <div className="relative w-7 h-7">
                   <div className="w-7 h-7 rounded-full bg-stone-600 overflow-hidden border border-white/20">
                   <Image
-                    src={profileImageSrc}
+                    src={user?.profileImageUrl || "/profile-icon.png"}
                     alt="Profile"
                     width={28}
                     height={28}
                     className="w-full h-full object-cover"
-                    onError={() => setProfileImageSrc("/profile-icon.png")}
                   />
                   </div>
                   {isAuth && hasUnreadMessages && (
@@ -290,23 +272,23 @@ export default function Navbar() {
                             Become a Seller
                           </Link>
                         )}
+                        {mounted && (
+                          <button
+                            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                            className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-stone-200 hover:bg-white/10 hover:text-white transition-colors"
+                          >
+                            {theme === "dark"
+                              ? <Sun size={15} className="text-amber-400" />
+                              : <Moon size={15} className="text-stone-300" />
+                            }
+                            {theme === "dark" ? "Light Mode" : "Dark Mode"}
+                          </button>
+                        )}
                       </div>
 
                       <div className="border-t border-white/10" />
-                      {mounted && (
-                        <button
-                          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-                          className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-stone-200 hover:bg-white/10 hover:text-white transition-colors"
-                        >
-                          {theme === "dark"
-                            ? <Sun size={15} className="text-amber-400" />
-                            : <Moon size={15} className="text-stone-300" />
-                          }
-                          {theme === "dark" ? "Light Mode" : "Dark Mode"}
-                        </button>
-                      )}
                       <button
-                        onClick={() => { clearUserData(); setDropdownOpen(false); }}
+                        onClick={handleLogOut}
                         className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors"
                       >
                         <LogOut size={15} />
@@ -361,7 +343,7 @@ export default function Navbar() {
       </nav>
 
       {/* Spacer for fixed navbar (1px stripe + 56px nav) */}
-      <div className="h-14.25" />
+      <div className="h-15" />
     </>
   );
 }

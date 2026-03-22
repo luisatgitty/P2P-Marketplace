@@ -478,7 +478,7 @@ export default function ListingDetailPage() {
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 pb-20">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 pb-8">
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6">
 
           {/* ══ LEFT COLUMN ══════════════════════════════════════════════════ */}
@@ -617,7 +617,7 @@ export default function ListingDetailPage() {
             {related.length > 0 && (
               <div>
                 <h2 className="font-bold text-stone-900 dark:text-stone-50 text-base mb-3">You might also like</h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                   {related.map((l) => <RelatedCard key={l.id} listing={l} />)}
                 </div>
               </div>

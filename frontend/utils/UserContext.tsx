@@ -4,6 +4,7 @@ import { createContext, useCallback, useContext, useState, useEffect } from "rea
 import { useRouter, usePathname } from "next/navigation";
 import { User } from "@/types/forms";
 import { LoadingPage } from "@/components/loading";
+import { validateImageURL } from "@/utils/validation";
 import { sendDeleteRequest, sendGetRequest } from "@/services/authService";
 
 interface UserContextType {
@@ -11,7 +12,7 @@ interface UserContextType {
   isAuth: boolean;
   isUserOnline: (userId?: string | null) => boolean;
   saveUserData: (userData: User) => void;
-  clearUserData: () => void;
+  clearUserData: () => Promise<void>;
 }
 
 const UserContext = createContext<UserContextType | null>(null);
@@ -23,6 +24,7 @@ const PUBLIC_ROUTES = [
   "/reset-password",
   "/verify-email",
   "/listing",
+  "/not-found",
 ];
 const AUTH_ROUTES = [
   "/signup",
@@ -31,7 +33,26 @@ const AUTH_ROUTES = [
   "/reset-password",
   "/verify-email",
 ];
-const ADMIN_ROUTES = ["/admin"];
+const ADMIN_ROUTES = [
+  "/",
+  "/admin",
+  "/listing",
+  "/profile",
+];
+const KNOWN_APP_ROUTES = [
+  "/",
+  "/signup",
+  "/login",
+  "/forgot-password",
+  "/reset-password",
+  "/verify-email",
+  "/listing",
+  "/create",
+  "/messages",
+  "/profile",
+  "/admin",
+  "/not-found",
+];
 const STORAGE_KEY = "auth_user";
 
 function setRoleCookie(role?: string) {
@@ -105,7 +126,8 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const isPublicRoute = PUBLIC_ROUTES.some(isRouteRootMatch);
   const isAuthRoute = AUTH_ROUTES.some(isRouteRootMatch);
   const isAdminRoute = ADMIN_ROUTES.some(isRouteRootMatch);
-  const isAdminRole = ["ADMIN", "SUPERADMIN"].includes((user?.role ?? "").toUpperCase());
+  const isKnownAppRoute = KNOWN_APP_ROUTES.some(isRouteRootMatch);
+  const isAdminRole = ["ADMIN", "SUPER_ADMIN"].includes((user?.role ?? "").toUpperCase());
 
   useEffect(() => {
     if (!isAuth) return;
@@ -296,6 +318,30 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     validateUser();
   }, []);
 
+  useEffect(() => {
+    setUser((prev) => {
+      if (!prev) return prev;
+
+      const profile_image_url = (prev.profileImageUrl ?? "/profile-icon.png").trim();
+      const cover_image_url = (prev.coverImageUrl ?? "/cover-placeholder.jpg").trim();
+      const nextProfileImageUrl = validateImageURL(profile_image_url);
+      const nextCoverImageUrl = validateImageURL(cover_image_url);
+
+      if (
+        prev.profileImageUrl === nextProfileImageUrl &&
+        prev.coverImageUrl === nextCoverImageUrl
+      ) {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        profileImageUrl: nextProfileImageUrl,
+        coverImageUrl: nextCoverImageUrl,
+      };
+    });
+  }, [user]);
+
   // Handle route protection on client navigation/history traversal
   useEffect(() => {
     if (isLoading) return;
@@ -316,9 +362,13 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     }
 
     if (!isAuth && !isPublicRoute) {
+      if (!isKnownAppRoute) {
+        router.replace("/not-found");
+        return;
+      }
       router.replace("/login");
     }
-  }, [isAdminRole, isAdminRoute, isAuth, isAuthRoute, isPublicRoute, isLoading, router]);
+  }, [isAdminRole, isAdminRoute, isAuth, isAuthRoute, isKnownAppRoute, isPublicRoute, isLoading, router]);
 
   // Guard against BFCache restoring a protected page after logout
   useEffect(() => {
@@ -349,6 +399,8 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     </UserContext.Provider>
   );
 }
+
+
 
 export function useUser(): UserContextType {
   const context = useContext(UserContext);
