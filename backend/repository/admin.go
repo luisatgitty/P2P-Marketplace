@@ -187,7 +187,7 @@ func GetAdminUsers() ([]model.AdminUserListItemFromDb, error) {
 			COALESCE(lc.listings, 0)::int AS listings,
 			u.last_login_at AS last_login,
 			u.created_at AS joined,
-			TRIM(BOTH ', ' FROM CONCAT_WS(', ', NULLIF(TRIM(u.location_city), ''), NULLIF(TRIM(u.location_province), ''))) AS location
+			TRIM(BOTH ', ' FROM CONCAT_WS(', ', NULLIF(TRIM(u.location_barangay), ''), NULLIF(TRIM(u.location_city), ''), NULLIF(TRIM(u.location_province), ''))) AS location
 		FROM public.users u
 		LEFT JOIN (
 			SELECT user_id, COUNT(*)::int AS listings
@@ -277,6 +277,7 @@ func GetAdminAccounts() ([]model.AdminAccountListItemFromDb, error) {
 			u.id::text AS id,
 			u.first_name,
 			u.last_name,
+			COALESCE(u.profile_image_url, '') AS profile_image_url,
 			u.email,
 			u.role::text AS role,
 			u.is_active,
@@ -348,6 +349,7 @@ func CreateAdminAccount(body model.AdminCreateAdminBody) (model.AdminAccountList
 			id::text AS id,
 			first_name,
 			last_name,
+			COALESCE(profile_image_url, '') AS profile_image_url,
 			email,
 			role::text AS role,
 			is_active,

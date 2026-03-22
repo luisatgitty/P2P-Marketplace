@@ -154,142 +154,6 @@ const EMPTY_LISTING_TYPE_BREAKDOWN: AdminListingTypeBreakdown[] = [
   { type: "SERVICE", count: 0, pct: 0 },
 ];
 
-const USER_ROLES = [
-  { label: "Regular Users", count: 1229, pct: 98.5, color: "bg-blue-500" },
-  { label: "Admins", count: 17, pct: 1.4, color: "bg-violet-500" },
-  { label: "Super Admins", count: 1, pct: 0.1, color: "bg-amber-500" },
-];
-
-const RECENT_USERS = [
-  {
-    id: "1",
-    name: "Juan Miguel Dela Cruz",
-    email: "juan@email.com",
-    role: "USER",
-    verification: "VERIFIED",
-    joined: "Mar 19, 2026",
-  },
-  {
-    id: "2",
-    name: "Maria Cristina Santos",
-    email: "maria@email.com",
-    role: "USER",
-    verification: "PENDING",
-    joined: "Mar 19, 2026",
-  },
-  {
-    id: "3",
-    name: "Pedro Jose Reyes",
-    email: "pedro@email.com",
-    role: "USER",
-    verification: "VERIFIED",
-    joined: "Mar 18, 2026",
-  },
-  {
-    id: "4",
-    name: "Ana Liza Bautista",
-    email: "ana@email.com",
-    role: "USER",
-    verification: "UNVERIFIED",
-    joined: "Mar 18, 2026",
-  },
-  {
-    id: "5",
-    name: "Carlos Rafael Mendoza",
-    email: "carlos@email.com",
-    role: "USER",
-    verification: "VERIFIED",
-    joined: "Mar 17, 2026",
-  },
-];
-
-const RECENT_REPORTS = [
-  {
-    id: "1",
-    reporter: "Juan dela Cruz",
-    target: "Scam listing — iPhone 16",
-    reason: "Scam / Fraud",
-    status: "PENDING",
-    ago: "2h ago",
-  },
-  {
-    id: "2",
-    reporter: "Maria Santos",
-    target: "User: fake_seller_99",
-    reason: "Fake Account",
-    status: "PENDING",
-    ago: "5h ago",
-  },
-  {
-    id: "3",
-    reporter: "Pedro Reyes",
-    target: "Honda Beat — wrong description",
-    reason: "Misleading Info",
-    status: "PENDING",
-    ago: "8h ago",
-  },
-  {
-    id: "4",
-    reporter: "Ana Bautista",
-    target: "Studio Unit — Makati",
-    reason: "Prohibited Item",
-    status: "RESOLVED",
-    ago: "1d ago",
-  },
-  {
-    id: "5",
-    reporter: "Carlos Mendoza",
-    target: "Aircon Cleaning",
-    reason: "Spam / Duplicate",
-    status: "DISMISSED",
-    ago: "2d ago",
-  },
-];
-
-// ── Shared badge components ────────────────────────────────────────────────────
-function VerifBadge({ status }: { status: string }) {
-  const map: Record<string, string> = {
-    VERIFIED:
-      "bg-teal-100 dark:bg-teal-900/40 text-teal-700 dark:text-teal-300",
-    PENDING:
-      "bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300",
-    UNVERIFIED:
-      "bg-stone-100 dark:bg-stone-800 text-stone-500 dark:text-stone-400",
-    REJECTED: "bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400",
-  };
-  return (
-    <span
-      className={cn(
-        "text-[10px] font-bold px-2 py-0.5 rounded-full",
-        map[status] ?? map.UNVERIFIED,
-      )}
-    >
-      {status.charAt(0) + status.slice(1).toLowerCase()}
-    </span>
-  );
-}
-
-function ReportBadge({ status }: { status: string }) {
-  const map: Record<string, string> = {
-    PENDING:
-      "bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300",
-    RESOLVED:
-      "bg-teal-100 dark:bg-teal-900/40 text-teal-700 dark:text-teal-300",
-    DISMISSED:
-      "bg-stone-100 dark:bg-stone-800 text-stone-500 dark:text-stone-400",
-  };
-  return (
-    <span
-      className={cn(
-        "text-[10px] font-bold px-2 py-0.5 rounded-full",
-        map[status] ?? map.PENDING,
-      )}
-    >
-      {status.charAt(0) + status.slice(1).toLowerCase()}
-    </span>
-  );
-}
-
 export default function DashboardPage() {
   const [stats, setStats] = useState<AdminDashboardStats>(EMPTY_STATS);
   const [weeklyNewUsers, setWeeklyNewUsers] = useState<AdminWeeklyNewUsers[]>(EMPTY_WEEKLY_NEW_USERS);
@@ -403,21 +267,24 @@ export default function DashboardPage() {
   ];
 
   return (
-    <div className="p-5 sm:p-6 space-y-6">
+    <div className="p-5 sm:p-6 space-y-4">
       {/* ── Page header ── */}
       <div>
         <h2 className="text-xl font-extrabold text-stone-900 dark:text-stone-50">
           Dashboard
         </h2>
+        <p className="text-sm text-stone-500 dark:text-stone-400">
+          Overview of key metrics and recent activity
+        </p>
       </div>
 
       {/* ── Stat cards ── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 pt-1">
         {statCards.map(({ label, value, sub, trend, Icon, color, bg, href }) => (
           <Link
             key={label}
             href={href}
-            className="bg-white dark:bg-[#1c1f2e] rounded-2xl border border-stone-200 dark:border-[#2a2d3e] p-5 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 group"
+            className="bg-white dark:bg-[#1c1f2e] rounded-lg border border-stone-200 dark:border-[#2a2d3e] p-4 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 group"
           >
             <div className="flex items-start justify-between mb-3">
               <div
@@ -441,12 +308,12 @@ export default function DashboardPage() {
             <p className="text-2xl font-extrabold text-stone-900 dark:text-stone-50 leading-none">
               {value}
             </p>
-            <p className="text-xs font-medium text-stone-500 dark:text-stone-400 mt-1">
+            <p className="text-sm font-medium text-stone-500 dark:text-stone-400 mt-1">
               {label}
             </p>
             <p
               className={cn(
-                "text-[11px] font-semibold mt-1.5 flex items-center gap-1",
+                "text-xs font-semibold mt-1.5 flex items-center gap-1",
                 trend === "up"
                   ? "text-teal-600 dark:text-teal-400"
                   : trend === "down"
@@ -468,18 +335,18 @@ export default function DashboardPage() {
       {/* ── Charts row ── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* New users this week */}
-        <div className="lg:col-span-2 bg-white dark:bg-[#1c1f2e] rounded-2xl border border-stone-200 dark:border-[#2a2d3e] p-5">
+        <div className="lg:col-span-2 bg-white dark:bg-[#1c1f2e] rounded-lg border border-stone-200 dark:border-[#2a2d3e] p-4">
           <div className="flex items-center justify-between mb-5">
             <div>
-              <p className="text-sm font-bold text-stone-900 dark:text-stone-50">
+              <p className="text-md font-bold text-stone-900 dark:text-stone-50">
                 New Users This Week
               </p>
-              <p className="text-xs text-stone-400 dark:text-stone-500 mt-0.5">
+              <p className="text-sm text-stone-400 dark:text-stone-500 mt-0.5">
                 {totalWeeklyRegistrations.toLocaleString()} total registrations
               </p>
             </div>
             <span className={cn(
-              "text-xs font-bold px-2.5 py-1 rounded-full",
+              "text-sm font-bold px-2.5 py-1 rounded-full",
               weeklyTrend === "up" && "text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-950/30",
               weeklyTrend === "down" && "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30",
               weeklyTrend === "neutral" && "text-stone-500 dark:text-stone-400 bg-stone-100 dark:bg-stone-800/60",
@@ -493,7 +360,7 @@ export default function DashboardPage() {
                 key={day}
                 className="flex-1 flex flex-col items-center gap-1.5"
               >
-                <span className="text-[10px] font-bold text-stone-500 dark:text-stone-400">
+                <span className="text-sm font-bold text-stone-500 dark:text-stone-400">
                   {count}
                 </span>
                 <div
@@ -503,7 +370,7 @@ export default function DashboardPage() {
                     minHeight: 6,
                   }}
                 />
-                <span className="text-[10px] text-stone-400 dark:text-stone-500">
+                <span className="text-sm text-stone-400 dark:text-stone-500">
                   {day}
                 </span>
               </div>
@@ -512,37 +379,42 @@ export default function DashboardPage() {
         </div>
 
         {/* User health */}
-        <div className="grid grid-cols-2 gap-4 bg-white dark:bg-[#1c1f2e] rounded-2xl border border-stone-200 dark:border-[#2a2d3e] p-4">
-          {userHealthCards.map(({ Icon, label, value, color }) => (
-            <div
-              key={label}
-              className="bg-stone-50 dark:bg-[#13151f] rounded-xl p-2.5 text-center flex flex-col items-center justify-center"
-            >
-              <Icon className={cn("w-4 h-4 mx-auto mb-1", color)} />
-              <p className="text-xs font-bold text-stone-800 dark:text-stone-100">
-                {value}
-              </p>
-              <p className="text-[10px] text-stone-400 dark:text-stone-500">
-                {label}
-              </p>
-            </div>
-          ))}
+        <div className="bg-white dark:bg-[#1c1f2e] rounded-lg border border-stone-200 dark:border-[#2a2d3e] p-4">
+          <p className="text-md font-bold text-stone-900 dark:text-stone-50 mb-4">
+            User Health Breakdown
+          </p>
+          <div className="grid grid-cols-2 gap-4 bg-white dark:bg-[#1c1f2e] rounded-lg">
+            {userHealthCards.map(({ Icon, label, value, color }) => (
+              <div
+                key={label}
+                className="bg-stone-50 dark:bg-[#13151f] rounded-xl p-2.5 text-center flex flex-col items-center justify-center"
+              >
+                <Icon className={cn("w-4 h-4 mx-auto mb-1", color)} />
+                <p className="text-sm font-bold text-stone-800 dark:text-stone-100">
+                  {value}
+                </p>
+                <p className="text-xs text-stone-400 dark:text-stone-500">
+                  {label}
+                </p>
+              </div>
+            ))}
+          </div>
         </div>
 
       {/* ── Second row ── */}
         {/* New listings created this week */}
-        <div className="lg:col-span-2 bg-white dark:bg-[#1c1f2e] rounded-2xl border border-stone-200 dark:border-[#2a2d3e] p-5">
+        <div className="lg:col-span-2 bg-white dark:bg-[#1c1f2e] rounded-lg border border-stone-200 dark:border-[#2a2d3e] p-4">
           <div className="flex items-center justify-between mb-5">
             <div>
-              <p className="text-sm font-bold text-stone-900 dark:text-stone-50">
+              <p className="text-md font-bold text-stone-900 dark:text-stone-50">
                 New Listings This Week
               </p>
-              <p className="text-xs text-stone-400 dark:text-stone-500 mt-0.5">
+              <p className="text-sm text-stone-400 dark:text-stone-500 mt-0.5">
                 {totalWeeklyListings.toLocaleString()} total listings
               </p>
             </div>
             <span className={cn(
-              "text-xs font-bold px-2.5 py-1 rounded-full",
+              "text-sm font-bold px-2.5 py-1 rounded-full",
               weeklyListingsTrend === "up" && "text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-950/30",
               weeklyListingsTrend === "down" && "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30",
               weeklyListingsTrend === "neutral" && "text-stone-500 dark:text-stone-400 bg-stone-100 dark:bg-stone-800/60",
@@ -556,7 +428,7 @@ export default function DashboardPage() {
                 key={day}
                 className="flex-1 flex flex-col items-center gap-1.5"
               >
-                <span className="text-[10px] font-bold text-stone-500 dark:text-stone-400">
+                <span className="text-sm font-bold text-stone-500 dark:text-stone-400">
                   {count}
                 </span>
                 <div
@@ -566,7 +438,7 @@ export default function DashboardPage() {
                     minHeight: 6,
                   }}
                 />
-                <span className="text-[10px] text-stone-400 dark:text-stone-500">
+                <span className="text-sm text-stone-400 dark:text-stone-500">
                   {day}
                 </span>
               </div>
@@ -575,12 +447,9 @@ export default function DashboardPage() {
         </div>
 
         {/* Listing type breakdown */}
-        <div className="bg-white dark:bg-[#1c1f2e] rounded-2xl border border-stone-200 dark:border-[#2a2d3e] p-5">
-          <p className="text-sm font-bold text-stone-900 dark:text-stone-50 mb-1">
+        <div className="bg-white dark:bg-[#1c1f2e] rounded-lg border border-stone-200 dark:border-[#2a2d3e] p-4">
+          <p className="text-md font-bold text-stone-900 dark:text-stone-50 mb-4">
             Listings by Type
-          </p>
-          <p className="text-xs text-stone-400 dark:text-stone-500 mb-5">
-            {listingTypeTotalActive.toLocaleString()} total active
           </p>
           <div className="space-y-4">
             {listingTypeRows.map(({ type, label, count, pct, color, text, Icon }) => (
@@ -588,11 +457,11 @@ export default function DashboardPage() {
                 <div className="flex items-center justify-between mb-1.5">
                   <div className="flex items-center gap-2">
                     <Icon className={cn("w-3.5 h-3.5", text)} />
-                    <span className="text-xs font-semibold text-stone-700 dark:text-stone-200">
+                    <span className="text-sm font-semibold text-stone-700 dark:text-stone-200">
                       {label}
                     </span>
                   </div>
-                  <span className="text-xs font-bold text-stone-500 dark:text-stone-400">
+                  <span className="text-sm font-bold text-stone-500 dark:text-stone-400">
                     {count.toLocaleString()}
                   </span>
                 </div>
@@ -605,7 +474,7 @@ export default function DashboardPage() {
                     style={{ width: `${pct}%` }}
                   />
                 </div>
-                <p className="text-[10px] text-stone-400 dark:text-stone-500 mt-0.5 text-right">
+                <p className="text-xs text-stone-400 dark:text-stone-500 mt-0.5 text-right">
                   {pct.toFixed(1)}%
                 </p>
               </div>

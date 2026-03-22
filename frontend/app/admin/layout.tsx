@@ -118,7 +118,7 @@ function SidebarContent({
             <p className="text-sm font-bold text-white leading-none">
               P2P Marketplace
             </p>
-            <p className="text-[10px] text-slate-400 mt-0.5">Admin Panel</p>
+            <p className="text-xs text-slate-400 mt-0.5">Admin Panel</p>
           </div>
         )}
 
@@ -218,27 +218,6 @@ function SidebarContent({
               "animate-in fade-in slide-in-from-bottom-2 duration-150",
             )}
           >
-            {/* User identity header */}
-            <div className="flex items-center gap-3 px-4 py-3.5 border-b border-white/10">
-              <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0">
-                <Image
-                  src={user?.profileImageUrl || "/profile-icon.png"}
-                  alt="Profile"
-                  width={32}
-                  height={32}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-bold text-slate-100 truncate">
-                  {user?.firstName} {user?.lastName}
-                </p>
-                <p className="text-[10px] text-slate-400 truncate">
-                  {user?.email}
-                </p>
-              </div>
-            </div>
-
             {/* User menu items */}
             <div className="py-1.5">
               {filteredUserMenu.map(({ href, label, Icon }) => (
@@ -249,7 +228,7 @@ function SidebarContent({
                     setDropdown(false);
                     onNavigate?.();
                   }}
-                  className="flex items-center gap-3 px-4 py-2.5 text-xs font-medium text-slate-300 hover:bg-white/5 hover:text-white transition-colors"
+                  className="flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-slate-300 hover:bg-white/5 hover:text-white transition-colors"
                 >
                   <Icon className="w-3.5 h-3.5 flex-shrink-0 text-slate-400" />
                   {label}
@@ -259,7 +238,7 @@ function SidebarContent({
               <button
                 type="button"
                 onClick={() => setTheme(isDarkMode ? "light" : "dark")}
-                className="flex items-center gap-3 w-full px-4 py-2.5 text-xs font-medium text-slate-300 hover:bg-white/5 hover:text-white transition-colors"
+                className="flex items-center gap-3 w-full px-4 py-2.5 text-sm font-medium text-slate-300 hover:bg-white/5 hover:text-white transition-colors"
               >
                 {isDarkMode ? (
                   <Sun className="w-3.5 h-3.5 shrink-0 text-slate-400" />
@@ -278,7 +257,7 @@ function SidebarContent({
                   setDropdown(false);
                   clearUserData();
                 }}
-                className="flex items-center gap-3 w-full px-4 py-2.5 text-xs font-medium text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors"
+                className="flex items-center gap-3 w-full px-4 py-2.5 text-sm font-medium text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors"
               >
                 <LogOut className="w-3.5 h-3.5 flex-shrink-0" />
                 Log Out
@@ -312,10 +291,10 @@ function SidebarContent({
           {!collapsed && (
             <>
               <div className="flex-1 min-w-0 text-left">
-                <p className="text-xs font-bold text-white truncate leading-tight">
+                <p className="text-sm font-bold text-white truncate leading-tight">
                   {user?.firstName} {user?.lastName}
                 </p>
-                <p className="text-[10px] text-slate-400 truncate mt-0.5">
+                <p className="text-xs text-slate-400 truncate mt-0.5">
                   {user?.email}
                 </p>
               </div>
