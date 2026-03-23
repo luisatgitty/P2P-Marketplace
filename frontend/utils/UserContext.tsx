@@ -34,8 +34,9 @@ const AUTH_ROUTES = [
   "/verify-email",
 ];
 const ADMIN_ROUTES = [
-  "/",
   "/admin",
+];
+const SHARED_AUTH_ROUTES = [
   "/listing",
   "/profile",
 ];
@@ -126,6 +127,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const isPublicRoute = PUBLIC_ROUTES.some(isRouteRootMatch);
   const isAuthRoute = AUTH_ROUTES.some(isRouteRootMatch);
   const isAdminRoute = ADMIN_ROUTES.some(isRouteRootMatch);
+  const isSharedAuthRoute = SHARED_AUTH_ROUTES.some(isRouteRootMatch);
   const isKnownAppRoute = KNOWN_APP_ROUTES.some(isRouteRootMatch);
   const isAdminRole = ["ADMIN", "SUPER_ADMIN"].includes((user?.role ?? "").toUpperCase());
 
@@ -351,7 +353,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    if (isAuth && isAdminRole && !isAdminRoute) {
+    if (isAuth && isAdminRole && !isAdminRoute && !isSharedAuthRoute) {
       router.replace("/admin");
       return;
     }
@@ -368,7 +370,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       }
       router.replace("/login");
     }
-  }, [isAdminRole, isAdminRoute, isAuth, isAuthRoute, isKnownAppRoute, isPublicRoute, isLoading, router]);
+  }, [isAdminRole, isAdminRoute, isAuth, isAuthRoute, isKnownAppRoute, isPublicRoute, isSharedAuthRoute, isLoading, router]);
 
   // Guard against BFCache restoring a protected page after logout
   useEffect(() => {
