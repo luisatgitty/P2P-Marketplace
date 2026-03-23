@@ -40,6 +40,7 @@ interface AdminAccount {
   name:       string;
   profile_image_url: string;
   email:      string;
+  phone:      string;
   role:       AdminRole;
   is_active:  boolean;
   created_at: string;
@@ -53,13 +54,14 @@ const PER_PAGE = 8;
 // ── Add Admin Modal ────────────────────────────────────────────────────────────
 interface AddModalProps {
   onClose: () => void;
-  onAdd:   (admin: { firstName: string; lastName: string; email: string; role: AdminRole; password: string }) => Promise<void>;
+  onAdd:   (admin: { firstName: string; lastName: string; email: string; phone?: string; role: AdminRole; password: string }) => Promise<void>;
 }
 
 function AddAdminModal({ onClose, onAdd }: AddModalProps) {
   const [firstName, setFirstName] = useState("");
   const [lastName,  setLastName]  = useState("");
   const [email,     setEmail]     = useState("");
+  const [phone,     setPhone]     = useState("");
   const [role,      setRole]      = useState<AdminRole>("ADMIN");
   const [password,  setPassword]  = useState("");
   const [confirm,   setConfirm]   = useState("");
@@ -78,7 +80,14 @@ function AddAdminModal({ onClose, onAdd }: AddModalProps) {
     if (password !== confirm) { setError("Passwords do not match."); return; }
     setSaving(true);
     try {
-      await onAdd({ firstName: firstName.trim(), lastName: lastName.trim(), email: email.trim(), role, password });
+      await onAdd({
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        email: email.trim(),
+        phone: phone.trim() || undefined,
+        role,
+        password,
+      });
     } finally {
       setSaving(false);
     }
@@ -111,7 +120,7 @@ function AddAdminModal({ onClose, onAdd }: AddModalProps) {
         {/* Body */}
         <div className="flex-1 overflow-y-auto p-6 space-y-4">
 
-          {/* Name row */}
+          {/* Name */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest">
@@ -153,6 +162,22 @@ function AddAdminModal({ onClose, onAdd }: AddModalProps) {
               placeholder="Enter email address"
               name="email"
               autoComplete="email"
+              className="dark:bg-[#13151f] dark:border-[#2a2d3e]"
+            />
+          </div>
+
+          {/* Contact Number */}
+          <div className="space-y-1.5">
+            <Label className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest">
+              Contact Number (optional)
+            </Label>
+            <Input
+              type="tel"
+              value={phone}
+              onChange={e => setPhone(e.target.value)}
+              placeholder="Enter contact number"
+              name="phone"
+              autoComplete="tel"
               className="dark:bg-[#13151f] dark:border-[#2a2d3e]"
             />
           </div>
@@ -297,6 +322,7 @@ export default function AdminsPage() {
       name:       `${record.first_name} ${record.last_name}`.trim(),
       profile_image_url: record.profile_image_url,
       email:      record.email,
+      phone:      record.phone,
       role:       record.role,
       is_active:  record.is_active,
       created_at: formatDate(record.created_at),
@@ -345,11 +371,11 @@ export default function AdminsPage() {
   useMemo(() => { setPage(1); }, [search, roleFilter]);
 
   // ── Actions ───────────────────────────────────────────────────────────────────
-  async function handleAdd({ firstName, lastName, email, role, password }: {
-    firstName: string; lastName: string; email: string; role: AdminRole; password: string;
+  async function handleAdd({ firstName, lastName, email, phone, role, password }: {
+    firstName: string; lastName: string; email: string; phone?: string; role: AdminRole; password: string;
   }) {
     try {
-      const created  = await createAdminAccount({ firstName, lastName, email, role, password });
+      const created  = await createAdminAccount({ firstName, lastName, email, phone, role, password });
       const newAdmin = mapAdminRecord(created);
       setAdmins(as => [newAdmin, ...as]);
       setShowAdd(false);
@@ -517,7 +543,7 @@ export default function AdminsPage() {
                       key={admin.id}
                       className="border-stone-100 dark:border-[#2a2d3e] hover:bg-stone-50 dark:hover:bg-[#252837] transition-colors"
                     >
-                      {/* Name + email */}
+                      {/* Name + email + number */}
                       <TableCell className="py-2">
                         <div className="flex items-center gap-3">
                           <Image
@@ -525,7 +551,7 @@ export default function AdminsPage() {
                             alt="Profile"
                             width={32}
                             height={32}
-                            className="w-8 h-8 rounded-full object-cover border border-stone-200 dark:border-[#2a2d3e] shrink-0"
+                            className="w-10 h-10 rounded-full object-cover border border-stone-200 dark:border-[#2a2d3e] shrink-0"
                           />
                           <div className="min-w-0">
                             <p className="text-sm font-bold text-stone-800 dark:text-stone-100 truncate">
@@ -534,6 +560,11 @@ export default function AdminsPage() {
                             <p className="text-xs text-stone-400 dark:text-stone-500 truncate">
                               {admin.email}
                             </p>
+                            {admin.phone && (
+                              <p className="text-xs text-stone-400 dark:text-stone-500">
+                                {admin.phone}
+                              </p>
+                            )}
                           </div>
                         </div>
                       </TableCell>

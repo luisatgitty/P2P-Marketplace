@@ -4,6 +4,7 @@ export type AdminAccountRecord = {
   last_name: string;
   profile_image_url: string;
   email: string;
+  phone: string;
   role: "ADMIN" | "SUPER_ADMIN";
   is_active: boolean;
   created_at: string;
@@ -14,6 +15,7 @@ export type CreateAdminPayload = {
   firstName: string;
   lastName: string;
   email: string;
+  phone?: string;
   role: "ADMIN" | "SUPER_ADMIN";
   password: string;
 };

@@ -279,6 +279,7 @@ func GetAdminAccounts() ([]model.AdminAccountListItemFromDb, error) {
 			u.last_name,
 			COALESCE(u.profile_image_url, '') AS profile_image_url,
 			u.email,
+			COALESCE(u.phone_number, '') AS phone,
 			u.role::text AS role,
 			u.is_active,
 			u.created_at,
@@ -335,6 +336,7 @@ func CreateAdminAccount(body model.AdminCreateAdminBody) (model.AdminAccountList
 			first_name,
 			last_name,
 			email,
+			phone_number,
 			password_hash,
 			role,
 			is_email_verified,
@@ -343,7 +345,7 @@ func CreateAdminAccount(body model.AdminCreateAdminBody) (model.AdminAccountList
 			updated_at
 		)
 		VALUES (
-			$1, $2, $3, $4, $5::user_role, TRUE, TRUE, now(), now()
+			$1, $2, $3, NULLIF(TRIM($4), ''), $5, $6::user_role, TRUE, TRUE, now(), now()
 		)
 		RETURNING
 			id::text AS id,
@@ -351,13 +353,14 @@ func CreateAdminAccount(body model.AdminCreateAdminBody) (model.AdminAccountList
 			last_name,
 			COALESCE(profile_image_url, '') AS profile_image_url,
 			email,
+			COALESCE(phone_number, '') AS phone,
 			role::text AS role,
 			is_active,
 			created_at,
 			last_login_at AS last_login
 	`
 
-	if err := db.Raw(insertQuery, userInput.FirstName, userInput.LastName, userInput.Email, hashedPassword, role).Scan(&created).Error; err != nil {
+	if err := db.Raw(insertQuery, userInput.FirstName, userInput.LastName, userInput.Email, strings.TrimSpace(body.Phone), hashedPassword, role).Scan(&created).Error; err != nil {
 		if strings.Contains(strings.ToLower(err.Error()), "duplicate") || strings.Contains(strings.ToLower(err.Error()), "unique") {
 			return created, fmt.Errorf("User with email %s already exists", userInput.Email)
 		}
@@ -535,14 +538,18 @@ func GetAdminReports() ([]model.AdminReportListItemFromDb, error) {
 	query := `
 		SELECT
 			r.id::text AS id,
+			COALESCE(r.reporter_id::text, '') AS reporter_id,
 			TRIM(BOTH ' ' FROM CONCAT_WS(' ', NULLIF(TRIM(rep.first_name), ''), NULLIF(TRIM(rep.last_name), ''))) AS reporter,
+			COALESCE(rep.profile_image_url, '') AS reporter_profile_image_url,
 			CASE WHEN r.reported_listing_id IS NOT NULL THEN 'LISTING' ELSE 'USER' END AS target_type,
 			CASE
 				WHEN r.reported_listing_id IS NOT NULL THEN COALESCE(l.title, 'Unknown Listing')
 				ELSE COALESCE(NULLIF(TRIM(CONCAT_WS(' ', NULLIF(TRIM(ru.first_name), ''), NULLIF(TRIM(ru.last_name), ''))), ''), ru.email, 'Unknown User')
 			END AS target_name,
 			COALESCE(r.reported_listing_id::text, r.reported_user_id::text, '') AS target_id,
+			COALESCE(owner.id::text, '') AS listing_owner_id,
 			COALESCE(NULLIF(TRIM(CONCAT_WS(' ', NULLIF(TRIM(owner.first_name), ''), NULLIF(TRIM(owner.last_name), ''))), ''), owner.email, '—') AS listing_owner,
+			COALESCE(owner.profile_image_url, '') AS listing_owner_profile_image_url,
 			r.reason,
 			r.description,
 			r.status::text AS status,
