@@ -29,6 +29,7 @@ export function proxy(request: NextRequest) {
     "/reset-password",
     "/verify-email",
     "/listing",
+    "/become-seller",
     "/create",
     "/messages",
     "/profile",

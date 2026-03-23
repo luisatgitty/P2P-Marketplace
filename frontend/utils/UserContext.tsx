@@ -48,6 +48,7 @@ const KNOWN_APP_ROUTES = [
   "/reset-password",
   "/verify-email",
   "/listing",
+  "/become-seller",
   "/create",
   "/messages",
   "/profile",
@@ -90,8 +91,6 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const [isAuth, setIsAuth] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [presenceByUserId, setPresenceByUserId] = useState<Record<string, boolean>>({});
-  const lastValidatedAt = useRef<number>(0);
-  const REVALIDATE_INTERVAL_MS = 3 * 60 * 1000; // 3 minutes
 
   const applyPresenceUpdate = useCallback((userId?: string, isOnline?: boolean) => {
     const normalizedUserId = (userId ?? "").trim();

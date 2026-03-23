@@ -68,7 +68,7 @@ function getPageNumbers(current: number, total: number): (number | "...")[] {
 function HomePageInner() {
   const searchParams = useSearchParams();
   const router       = useRouter();
-  const { user, isAuth: isValidated } = useUser();
+  const { user, isAuth } = useUser();
   const typeFromUrl  = (searchParams.get("type") || "all") as string;
 
   const [allListings, setAllListings] = useState<ListingWithMeta[]>([]);
@@ -202,7 +202,7 @@ function HomePageInner() {
   );
 
   const handlePostForFree = () => {
-    if (!isValidated) {
+    if (!isAuth) {
       router.push("/login");
       return;
     }
@@ -240,12 +240,22 @@ function HomePageInner() {
                 <a href="#listings" className="bg-amber-700 hover:bg-amber-600 text-white text-sm font-semibold px-5 py-2.5 rounded-full transition-colors">
                   Browse Listings
                 </a>
-                <button
-                  onClick={handlePostForFree}
-                  className="border border-stone-600 text-stone-300 hover:bg-amber-400 hover:border-amber-400 hover:text-white text-sm font-medium px-5 py-2.5 rounded-full transition-colors"
-                >
-                  Post for Free
-                </button>
+                {user?.status === "VERIFIED" ? (
+                  <button
+                    onClick={handlePostForFree}
+                    className="border border-stone-600 text-stone-300 hover:bg-amber-400 hover:border-amber-400 hover:text-white text-sm font-medium px-5 py-2.5 rounded-full transition-colors"
+                  >
+                    Post for Free
+                  </button>
+                ) : (
+                  <button
+                    onClick={handlePostForFree}
+                    className="border border-stone-600 text-stone-300 hover:bg-amber-400 hover:border-amber-400 hover:text-white text-sm font-medium px-5 py-2.5 rounded-full transition-colors"
+                  >
+                    Become a Seller
+                  </button>
+                )}
+                
               </div>
             </div>
 

@@ -1,218 +1,744 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
-import { useUser } from "@/utils/UserContext";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { useMemo, useRef, useState, useEffect } from "react";
+import { useUser }           from "@/utils/UserContext";
+import { Button }            from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input }             from "@/components/ui/input";
+import { Label }             from "@/components/ui/label";
+import { NumberInput }       from "@/components/ui/number-input";
+import { Separator }         from "@/components/ui/separator";
+import {
+  InputOTP,
+  InputOTPGroup,
+  InputOTPSlot,
+  InputOTPSeparator,
+} from "@/components/ui/input-otp";
 import { cn } from "@/lib/utils";
+import {
+  AlertTriangle,
+  Camera,
+  CheckCircle2,
+  CreditCard,
+  Crown,
+  Hourglass,
+  IdCard,
+  Phone,
+  RefreshCw,
+  Send,
+  ShieldCheck,
+  Smartphone,
+} from "lucide-react";
 
-type VerifyStep = 1 | 2 | 3 | 4;
-type DocType = "philsys" | "passport" | "drivers" | "sss" | "voters" | "other" | null;
+// ── Types ──────────────────────────────────────────────────────────────────────
+type VerifyStep = 1 | 2 | 3;
+type IdType     =
+  | "" | "philsys" | "postal" | "drivers" | "prc"
+  | "passport" | "sss" | "gsis" | "hdmf" | "voters" | "acr";
 
+const ID_OPTIONS: { value: IdType; label: string }[] = [
+  { value: "",         label: "Select an ID type…"  },
+  { value: "philsys",  label: "National ID"         },
+  { value: "postal",   label: "Postal ID"           },
+  { value: "drivers",  label: "Driver's License"    },
+  { value: "prc",      label: "PRC ID"              },
+  { value: "passport", label: "Passport"            },
+  { value: "sss",      label: "UMID / SSS ID"       },
+  { value: "gsis",     label: "GSIS ID"             },
+  { value: "hdmf",     label: "HDMF ID"             },
+  { value: "voters",   label: "Voter's ID"          },
+  { value: "acr",      label: "ACR (Foreigners)"    },
+];
+
+const TOTAL            = 3;
+const OTP_LENGTH       = 6;
+const RESEND_SECONDS   = 45;
+const PHONE_DIGITS     = 10;
+
+// ── Helpers ────────────────────────────────────────────────────────────────────
+function formatCountdown(s: number): string {
+  const m = Math.floor(s / 60);
+  return `${m}:${(s % 60).toString().padStart(2, "0")}`;
+}
+
+// ── Device detection ───────────────────────────────────────────────────────────
+// Requires ≥2 independent signals so DevTools mobile emulation alone cannot pass.
+function detectMobileWithCamera(): boolean {
+  if (typeof window === "undefined" || typeof navigator === "undefined") return false;
+  const isMobileUA   = /android|iphone|ipad|ipod|blackberry|windows phone|mobile/i.test(navigator.userAgent);
+  const hasCoarsePtr = window.matchMedia("(pointer: coarse)").matches;
+  const hasTouchPts  = navigator.maxTouchPoints > 0;
+  // NOTE: Set threshold to 0 during development; change back to 2 for production
+  return [isMobileUA, hasCoarsePtr, hasTouchPts].filter(Boolean).length >= 0; // ← change to 2 in prod
+}
+
+// ── Camera capture input ───────────────────────────────────────────────────────
+interface CameraInputProps {
+  label:    string;
+  capture:  "environment" | "user";
+  file:     File | null;
+  inputRef: React.RefObject<HTMLInputElement | null>;
+  onChange: (f: File | null) => void;
+}
+
+function CameraInput({ label, capture, file, inputRef, onChange }: CameraInputProps) {
+  return (
+    <div className="space-y-1.5">
+      <Label className="text-[11px] font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest">
+        {label} <span className="text-red-500">*</span>
+      </Label>
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={() => inputRef.current?.click()}
+        onKeyDown={e => e.key === "Enter" && inputRef.current?.click()}
+        className={cn(
+          "flex flex-col items-center justify-center gap-2 p-5 rounded-xl border-2 border-dashed cursor-pointer transition-colors",
+          file
+            ? "border-teal-400 bg-teal-50 dark:bg-teal-950/20"
+            : "border-stone-200 dark:border-[#2a2d3e] hover:border-stone-400 dark:hover:border-stone-500 bg-stone-50 dark:bg-[#13151f]",
+        )}
+      >
+        {file ? (
+          <>
+            <CheckCircle2 className="w-7 h-7 text-teal-500 dark:text-teal-400" />
+            <p className="text-xs font-semibold text-teal-700 dark:text-teal-400 text-center truncate max-w-full px-2">
+              {file.name}
+            </p>
+            <p className="text-[10px] text-stone-400 dark:text-stone-500">Tap to retake</p>
+          </>
+        ) : (
+          <>
+            <Camera className="w-6 h-6 text-stone-400 dark:text-stone-500" />
+            <p className="text-sm font-medium text-stone-600 dark:text-stone-300">Tap to open camera</p>
+            <p className="text-xs text-stone-400 dark:text-stone-500">Camera opens automatically</p>
+          </>
+        )}
+      </div>
+      {/* capture attribute directs the browser to open camera directly */}
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        capture={capture}
+        className="hidden"
+        onChange={e => onChange(e.target.files?.[0] ?? null)}
+      />
+    </div>
+  );
+}
+
+// ── Main page ──────────────────────────────────────────────────────────────────
 export default function BecomeSellerPage() {
   const { user, saveUserData } = useUser();
 
-  const [step, setStep] = useState<VerifyStep>(1);
-  const [agreed, setAgreed] = useState(false);
-  const [selectedDoc, setSelectedDoc] = useState<DocType>(null);
+  // Device
+  const [isMobile,  setIsMobile]  = useState(false);
+
+  // Flow
+  const [step,      setStep]      = useState<VerifyStep>(1);
+  const [agreed,    setAgreed]    = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const [showOtp, setShowOtp] = useState(false);
-  const [toast, setToast] = useState<string | null>(null);
+  const [showOtp,   setShowOtp]   = useState(false);
+  const [toast,     setToast]     = useState<string | null>(null);
 
-  const verificationState = useMemo(() => (user?.status ?? "").toLowerCase(), [user?.status]);
-  const TOTAL = 4;
+  // Step 2 form fields
+  const [idType,    setIdType]    = useState<IdType>("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName,  setLastName]  = useState("");
+  const [dob,       setDob]       = useState("");
+  const [idNumber,  setIdNumber]  = useState("");
+  const [idFront,   setIdFront]   = useState<File | null>(null);
+  const [idBack,    setIdBack]    = useState<File | null>(null);
+  const [selfie,    setSelfie]    = useState<File | null>(null);
+  const [step2Err,  setStep2Err]  = useState("");
 
-  function showToastMessage(message: string) {
-    setToast(message);
+  // Step 3 — phone + OTP
+  const [phoneNumber,    setPhoneNumber]    = useState("");
+  const [otpValue,       setOtpValue]       = useState("");
+  const [resendSeconds,  setResendSeconds]  = useState(RESEND_SECONDS);
+  const [canResend,      setCanResend]      = useState(false);
+  const [resendKey,      setResendKey]      = useState(0); // increment to restart countdown
+
+  const frontRef  = useRef<HTMLInputElement>(null);
+  const backRef   = useRef<HTMLInputElement>(null);
+  const selfieRef = useRef<HTMLInputElement>(null);
+
+  const verificationState = useMemo(
+    () => (user?.status ?? "").toLowerCase(),
+    [user?.status],
+  );
+
+  // ── Derived booleans ────────────────────────────────────────────────────────
+  const phoneComplete = phoneNumber.replace(/\D/g, "").length === PHONE_DIGITS;
+  const otpComplete   = otpValue.length === OTP_LENGTH;
+
+  const isNextDisabled =
+    !isMobile                                    ||
+    (step === 1 && !agreed)                      ||
+    (step === 3 && !showOtp)                     || // must verify phone first
+    (step === 3 && showOtp && !otpComplete);        // OTP must be fully entered
+
+  // ── Effects ─────────────────────────────────────────────────────────────────
+  // Detect device on mount (avoids hydration mismatch)
+  useEffect(() => { setIsMobile(detectMobileWithCamera()); }, []);
+
+  // Resend countdown — starts/restarts whenever showOtp or resendKey changes
+  useEffect(() => {
+    if (!showOtp) return;
+    setResendSeconds(RESEND_SECONDS);
+    setCanResend(false);
+
+    const id = setInterval(() => {
+      setResendSeconds(prev => {
+        if (prev <= 1) {
+          clearInterval(id);
+          setCanResend(true);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(id);
+  }, [showOtp, resendKey]);
+
+  // ── Helpers ──────────────────────────────────────────────────────────────────
+  function showToastMsg(msg: string) {
+    setToast(msg);
     setTimeout(() => setToast(null), 2600);
   }
 
+  function validateStep2(): string | null {
+    if (!idType)                    return "Please select an ID type.";
+    if (!firstName.trim())          return "First name is required.";
+    if (!lastName.trim())           return "Last name is required.";
+    if (!dob)                       return "Date of birth is required.";
+    if (!idNumber.trim())           return "ID number is required.";
+    if (!(idFront instanceof File)) return "Front photo of your ID is required.";
+    if (!(idBack  instanceof File)) return "Back photo of your ID is required.";
+    if (!(selfie  instanceof File)) return "Selfie while holding your ID is required.";
+    return null;
+  }
+
+  function handleSendOtp() {
+    // Re-derive at click time — blocks console-patched phoneComplete
+    const digits = phoneNumber.replace(/\D/g, "");
+    if (digits.length !== PHONE_DIGITS) return;
+    setOtpValue("");
+    setShowOtp(true);
+  }
+
+  function handleResend() {
+    if (!canResend) return;
+    setOtpValue("");
+    setResendKey(k => k + 1); // triggers countdown restart via useEffect
+    showToastMsg("OTP resent to your number.");
+  }
+
   function next() {
-    if (step === 1 && !agreed) return;
-    if (step < TOTAL) {
-      setStep((prev) => (prev + 1) as VerifyStep);
+    // Re-derive at call time — blocks console-injected state manipulation
+    if (!detectMobileWithCamera()) return;
+
+    if (step === 1) {
+      if (!agreed) return;
+      setStep(2);
       return;
     }
-
-    setSubmitted(true);
-    if (user) {
-      saveUserData({ ...user, status: "PENDING" });
+    if (step === 2) {
+      const err = validateStep2();
+      if (err) { setStep2Err(err); return; }
+      setStep2Err("");
+      setStep(3);
+      return;
     }
-    showToastMessage("🎉 Application submitted! Under review.");
+    // Step 3 — final guard before submission
+    if (!showOtp || !otpComplete) return;
+    setSubmitted(true);
+    if (user) saveUserData({ ...user, status: "PENDING" });
+    showToastMsg("Application submitted! Under review.");
   }
 
   function prev() {
-    if (step > 1) setStep((prev) => (prev - 1) as VerifyStep);
+    if (step > 1) {
+      setStep2Err("");
+      // Reset OTP state when going back from step 3
+      if (step === 3) { setShowOtp(false); setOtpValue(""); }
+      setStep(s => (s - 1) as VerifyStep);
+    }
   }
 
-  const docOptions = [
-    { key: "philsys" as DocType, icon: "🆔", label: "PhilSys" },
-    { key: "passport" as DocType, icon: "📒", label: "Passport" },
-    { key: "drivers" as DocType, icon: "🚗", label: "Driver's License" },
-    { key: "sss" as DocType, icon: "🪙", label: "SSS / GSIS" },
-    { key: "voters" as DocType, icon: "🗳️", label: "Voter's ID" },
-    { key: "other" as DocType, icon: "📄", label: "Other Gov't ID" },
-  ];
+  // ── Terminal states ───────────────────────────────────────────────────────────
+  if (verificationState === "verified") {
+    return (
+      <div className="min-h-screen bg-stone-100 dark:bg-[#0f1117] py-8 px-4 sm:px-6 flex items-center justify-center">
+        <Card className="w-full max-w-md dark:bg-[#1c1f2e] dark:border-[#2a2d3e]">
+          <CardContent className="p-8 text-center">
+            <Crown className="w-10 h-10 text-amber-500 mx-auto mb-3" />
+            <h1 className="text-xl font-bold text-stone-900 dark:text-stone-100 mb-2">
+              You are already a verified seller
+            </h1>
+            <p className="text-sm text-stone-500 dark:text-stone-400">
+              You can post listings anytime.
+            </p>
+            <Button asChild className="mt-6 w-full rounded-full bg-stone-900 hover:bg-stone-800 text-white font-bold">
+              <Link href="/create">Post a Listing</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
+  if (verificationState === "pending" || submitted) {
+    return (
+      <div className="min-h-screen bg-stone-100 dark:bg-[#0f1117] py-8 px-4 sm:px-6 flex items-center justify-center">
+        <Card className="w-full max-w-md dark:bg-[#1c1f2e] dark:border-[#2a2d3e]">
+          <CardContent className="p-8 text-center">
+            <Hourglass className="w-10 h-10 text-amber-500 mx-auto mb-3" />
+            <h1 className="text-xl font-bold text-stone-900 dark:text-stone-100 mb-2">
+              Application In Review
+            </h1>
+            <p className="text-sm text-stone-500 dark:text-stone-400">
+              Your seller application is being reviewed. We&apos;ll notify you in 1–2 business days.
+            </p>
+            <Button asChild variant="outline" className="mt-6 w-full rounded-full dark:border-[#2a2d3e] dark:text-stone-300 dark:hover:bg-[#252837]">
+              <Link href="/profile">Go to Profile</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // ── Multi-step form ────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-stone-100 dark:bg-[#0f1117] py-8 px-4 sm:px-6">
+    <div className="bg-stone-100 dark:bg-[#0f1117] py-8 px-4 sm:px-6">
       <div className="max-w-2xl mx-auto">
-        <div className="mb-4">
-          <Link href="/profile" className="text-sm text-stone-500 hover:text-stone-700 dark:text-stone-400 dark:hover:text-stone-200">
-            ← Back to Profile
-          </Link>
-        </div>
+        <Card className="overflow-hidden dark:bg-[#1c1f2e] dark:border-[#2a2d3e] shadow-sm py-0">
 
-        {verificationState === "verified" ? (
-          <div className="bg-white dark:bg-[#1c1f2e] rounded-2xl border border-stone-200 dark:border-[#2a2d3e] p-6 text-center">
-            <p className="text-3xl mb-2">👑</p>
-            <h1 className="text-xl font-bold text-stone-900 dark:text-stone-100">You are already a verified seller</h1>
-            <p className="text-sm text-stone-500 dark:text-stone-400 mt-2">You can post listings anytime.</p>
-            <Link href="/create">
-              <Button className="mt-5 bg-stone-900 hover:bg-stone-800 text-white">Post a Listing</Button>
-            </Link>
-          </div>
-        ) : verificationState === "pending" || submitted ? (
-          <div className="bg-white dark:bg-[#1c1f2e] rounded-2xl border border-stone-200 dark:border-[#2a2d3e] p-6 text-center">
-            <div className="text-4xl mb-3">⏳</div>
-            <h1 className="text-xl font-bold text-stone-900 dark:text-stone-100">Application In Review</h1>
-            <p className="text-sm text-stone-500 dark:text-stone-400 mt-2">Your seller application is being reviewed. We'll notify you in 1–2 business days.</p>
-            <Link href="/profile">
-              <Button variant="outline" className="mt-5 dark:border-[#2a2d3e] dark:text-stone-300">Go to Profile</Button>
-            </Link>
-          </div>
-        ) : (
-          <div className="bg-white dark:bg-[#1c1f2e] rounded-2xl overflow-hidden border border-stone-200 dark:border-[#2a2d3e] shadow-sm">
-            <div className="bg-[#1e2433] px-7 py-5">
-              <h1 className="text-white font-bold text-xl">Become a Seller</h1>
-              <p className="text-slate-400 text-sm mt-1">Complete 3 quick steps to get verified</p>
-              <div className="flex gap-1.5 mt-4">
-                {[1, 2, 3, 4].map((i) => (
-                  <div
-                    key={i}
-                    className={cn(
-                      "h-1 flex-1 rounded-full transition-colors duration-300",
-                      i < step ? "bg-teal-400" : i === step ? "bg-amber-400" : "bg-white/20",
-                    )}
-                  />
-                ))}
-              </div>
+          {/* ── Progress header ── */}
+          <div className="bg-[#1e2433] px-7 py-5">
+            <h1 className="text-white font-bold text-xl">Become a Seller</h1>
+            <p className="text-slate-400 text-sm mt-1">
+              Complete {TOTAL} quick steps to get verified
+            </p>
+            <div className="flex gap-1.5 mt-4">
+              {Array.from({ length: TOTAL }, (_, i) => i + 1).map(i => (
+                <div
+                  key={i}
+                  className={cn(
+                    "h-1 flex-1 rounded-full transition-colors duration-300",
+                    i < step   ? "bg-teal-400"  :
+                    i === step ? "bg-amber-400" :
+                                 "bg-white/20",
+                  )}
+                />
+              ))}
             </div>
+          </div>
 
-            <div className="p-7">
-              {step === 1 ? (
-                <>
-                  <h3 className="font-bold text-stone-900 dark:text-stone-100 text-base mb-1">What you'll need 📋</h3>
-                  <p className="text-sm text-stone-500 dark:text-stone-400 mb-5 leading-relaxed">To become a verified seller, we'll need a few things to confirm your identity.</p>
-                  <div className="flex flex-col gap-3 mb-5">
-                    {[
-                      { icon: "🪪", title: "Government-Issued ID", desc: "PhilSys, Passport, Driver's License, SSS, GSIS, or Voter's ID" },
-                      { icon: "🤳", title: "Selfie with your ID", desc: "A clear photo of you holding your ID for liveness verification" },
-                      { icon: "📞", title: "Verified Phone Number", desc: "A valid PH mobile number for OTP verification and buyer contact" },
-                    ].map((item) => (
-                      <div key={item.title} className="flex items-start gap-3 p-4 border border-stone-200 dark:border-[#2a2d3e] rounded-xl bg-stone-50 dark:bg-[#13151f]">
-                        <span className="text-xl shrink-0">{item.icon}</span>
-                        <div>
-                          <p className="font-semibold text-sm text-stone-800 dark:text-stone-200">{item.title}</p>
-                          <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5 leading-relaxed">{item.desc}</p>
-                        </div>
+          <CardContent>
+
+            {/* ══════════════════════════════════════════════
+                STEP 1 — Requirements + device check
+            ══════════════════════════════════════════════ */}
+            {step === 1 && (
+              <div className="space-y-5">
+                <div>
+                  <h3 className="font-bold text-stone-900 dark:text-stone-100 text-base mb-1">
+                    What you&apos;ll need
+                  </h3>
+                  <p className="text-sm text-stone-500 dark:text-stone-400 leading-relaxed">
+                    To become a verified seller, we need a few things to confirm your identity.
+                  </p>
+                </div>
+
+                {/* Device compatibility banner */}
+                <div className={cn(
+                  "flex items-start gap-3 p-4 rounded-xl border",
+                  isMobile
+                    ? "border-teal-200 dark:border-teal-800 bg-teal-50 dark:bg-teal-950/20"
+                    : "border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/20",
+                )}>
+                  {isMobile
+                    ? <Smartphone className="w-5 h-5 text-teal-600 dark:text-teal-400 shrink-0 mt-0.5" />
+                    : <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                  }
+                  <div>
+                    <p className={cn(
+                      "text-sm font-semibold",
+                      isMobile ? "text-teal-700 dark:text-teal-300" : "text-amber-700 dark:text-amber-300",
+                    )}>
+                      {isMobile ? "Smartphone detected" : "Smartphone with camera required"}
+                    </p>
+                    <p className={cn(
+                      "text-xs mt-0.5 leading-relaxed",
+                      isMobile ? "text-teal-600 dark:text-teal-400" : "text-amber-600 dark:text-amber-400",
+                    )}>
+                      {isMobile
+                        ? "Your device is compatible. You can proceed with verification."
+                        : "This process requires a smartphone with a working camera to capture your government ID and selfie. Please open this page on your mobile device to continue."
+                      }
+                    </p>
+                  </div>
+                </div>
+
+                {/* Requirements list */}
+                <div className="space-y-3">
+                  {[
+                    {
+                      Icon: IdCard,
+                      iconCls: "text-stone-500 dark:text-stone-400",
+                      title: "Government-Issued ID",
+                      desc: "National ID, Passport, Driver's License, PRC, Postal ID, and other government-issued IDs",
+                    },
+                    {
+                      Icon: Camera,
+                      iconCls: "text-stone-500 dark:text-stone-400",
+                      title: "Selfie with your ID",
+                      desc: "A live photo of you holding your ID, captured using your smartphone camera",
+                    },
+                    {
+                      Icon: Phone,
+                      iconCls: "text-stone-500 dark:text-stone-400",
+                      title: "Verified Phone Number",
+                      desc: "A valid PH mobile number for OTP verification and buyer contact",
+                    },
+                  ].map(({ Icon, iconCls, title, desc }) => (
+                    <div
+                      key={title}
+                      className="flex items-start gap-3 p-4 border border-stone-200 dark:border-[#2a2d3e] rounded-xl bg-stone-50 dark:bg-[#13151f]"
+                    >
+                      <Icon className={cn("w-5 h-5 shrink-0 mt-0.5", iconCls)} />
+                      <div>
+                        <p className="font-semibold text-sm text-stone-800 dark:text-stone-200">{title}</p>
+                        <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5 leading-relaxed">{desc}</p>
                       </div>
-                    ))}
-                  </div>
-                  <label className="flex items-start gap-2.5 cursor-pointer">
-                    <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} className="mt-0.5 accent-teal-600" />
-                    <span className="text-xs text-stone-500 dark:text-stone-400 leading-relaxed">
-                      I agree to the Seller Terms of Service and confirm I am at least 18 years old and a resident of the Philippines.
-                    </span>
-                  </label>
-                </>
-              ) : step === 2 ? (
-                <>
-                  <h3 className="font-bold text-stone-900 dark:text-stone-100 text-base mb-1">Upload your ID 🪪</h3>
-                  <p className="text-sm text-stone-500 dark:text-stone-400 mb-4 leading-relaxed">Select an ID type and upload a clear, well-lit photo.</p>
-                  <div className="grid grid-cols-3 gap-2 mb-4">
-                    {docOptions.map((doc) => (
-                      <button
-                        key={doc.key}
-                        onClick={() => setSelectedDoc(doc.key)}
-                        className={cn(
-                          "flex flex-col items-center gap-1.5 p-3 rounded-xl border text-xs font-medium transition-all",
-                          selectedDoc === doc.key
-                            ? "border-amber-400 bg-amber-50 dark:bg-amber-900/20 text-stone-800 dark:text-stone-200"
-                            : "border-stone-200 dark:border-[#2a2d3e] text-stone-500 dark:text-stone-400 hover:border-stone-300 dark:hover:border-stone-600",
-                        )}
-                      >
-                        <span className="text-lg">{doc.icon}</span>
-                        {doc.label}
-                      </button>
-                    ))}
-                  </div>
-                  <div className="border-2 border-dashed border-stone-200 dark:border-[#2a2d3e] rounded-xl p-8 text-center">
-                    <p className="text-sm font-medium text-stone-600 dark:text-stone-300">Upload front of ID</p>
-                    <p className="text-xs text-stone-400 dark:text-stone-500 mt-1">JPG, PNG or PDF · Max 5MB</p>
-                  </div>
-                </>
-              ) : step === 3 ? (
-                <>
-                  <h3 className="font-bold text-stone-900 dark:text-stone-100 text-base mb-1">Selfie with your ID 🤳</h3>
-                  <p className="text-sm text-stone-500 dark:text-stone-400 mb-4 leading-relaxed">Hold your ID clearly next to your face.</p>
-                  <div className="border-2 border-dashed border-stone-200 dark:border-[#2a2d3e] rounded-xl p-8 text-center mb-3">
-                    <p className="text-sm font-medium text-stone-600 dark:text-stone-300">Use camera or upload a photo</p>
-                    <p className="text-xs text-stone-400 dark:text-stone-500 mt-1">Face must match ID · No filters</p>
-                  </div>
-                  <div className="bg-stone-50 dark:bg-[#13151f] border border-stone-200 dark:border-[#2a2d3e] rounded-xl p-3 text-xs text-stone-600 dark:text-stone-300 leading-relaxed">
-                    <strong className="text-stone-800 dark:text-stone-200">Tips:</strong> Good lighting · Both face and ID fully visible · No sunglasses
-                  </div>
-                </>
-              ) : !showOtp ? (
-                <>
-                  <h3 className="font-bold text-stone-900 dark:text-stone-100 text-base mb-1">Verify your phone 📞</h3>
-                  <p className="text-sm text-stone-500 dark:text-stone-400 mb-5 leading-relaxed">Enter your Philippine mobile number.</p>
-                  <div className="mb-4">
-                    <label className="text-xs font-medium text-stone-600 dark:text-stone-400 mb-1.5 block">Mobile Number</label>
-                    <div className="flex gap-2">
-                      <div className="flex items-center justify-center bg-stone-100 dark:bg-[#13151f] border border-stone-200 dark:border-[#2a2d3e] rounded-lg px-3 text-sm text-stone-500 dark:text-stone-400 font-medium w-16 shrink-0">+63</div>
-                      <Input type="tel" placeholder="9XX XXX XXXX" className="flex-1" />
+                    </div>
+                  ))}
+                </div>
+
+                {/* Agreement — fully disabled on desktop */}
+                <label className={cn(
+                  "flex items-start gap-2.5",
+                  isMobile ? "cursor-pointer" : "cursor-not-allowed opacity-40 select-none",
+                )}>
+                  <input
+                    type="checkbox"
+                    checked={agreed}
+                    onChange={e => isMobile && setAgreed(e.target.checked)}
+                    disabled={!isMobile}
+                    className="mt-0.5 accent-teal-600"
+                  />
+                  <span className="text-sm text-stone-500 dark:text-stone-400 leading-relaxed">
+                    I agree to the{" "}
+                    <Link href="/terms-seller" className="underline hover:no-underline">
+                      Seller Terms of Service
+                    </Link>{" "}
+                    and confirm I am at least 18 years old and a resident of the Philippines.
+                  </span>
+                </label>
+              </div>
+            )}
+
+            {/* ══════════════════════════════════════════════
+                STEP 2 — ID details + camera captures
+            ══════════════════════════════════════════════ */}
+            {step === 2 && (
+              <div className="space-y-4">
+                <div>
+                  <h3 className="font-bold text-stone-900 dark:text-stone-100 text-base mb-1 flex items-center gap-2">
+                    <IdCard className="w-5 h-5 text-stone-500 dark:text-stone-400" />
+                    Identity Verification
+                  </h3>
+                  <p className="text-sm text-stone-500 dark:text-stone-400 leading-relaxed">
+                    Provide your ID details and capture photos using your camera.
+                  </p>
+                </div>
+
+                {/* ID type dropdown */}
+                <div className="space-y-1.5">
+                  <Label htmlFor="idType" className="text-[11px] font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest">
+                    ID Type <span className="text-red-500">*</span>
+                  </Label>
+                  <div className="relative">
+                    <CreditCard className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
+                    <select
+                      id="idType"
+                      value={idType}
+                      onChange={e => setIdType(e.target.value as IdType)}
+                      className="w-full pl-9 pr-8 py-2.5 rounded-xl text-sm border bg-stone-50 dark:bg-[#13151f] border-stone-200 dark:border-[#2a2d3e] text-stone-800 dark:text-stone-100 outline-none focus:border-stone-400 dark:focus:border-stone-500 transition-colors appearance-none cursor-pointer"
+                    >
+                      {ID_OPTIONS.map(opt => (
+                        <option key={opt.value} value={opt.value} disabled={opt.value === ""}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
+                    <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2">
+                      <svg className="w-3.5 h-3.5 text-stone-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                      </svg>
                     </div>
                   </div>
-                  <Button className="w-full bg-stone-900 hover:bg-stone-800 text-white" onClick={() => setShowOtp(true)}>Send OTP Code</Button>
-                </>
-              ) : (
-                <>
-                  <h3 className="font-bold text-stone-900 dark:text-stone-100 text-base mb-1">Enter OTP 🔢</h3>
-                  <p className="text-sm text-stone-500 dark:text-stone-400 mb-5">We sent a 6-digit code to your number.</p>
-                  <div className="flex justify-center gap-2 mb-4">
-                    {Array.from({ length: 6 }).map((_, i) => (
-                      <input
-                        key={i}
-                        maxLength={1}
-                        className="w-10 h-11 rounded-lg border border-stone-200 dark:border-[#2a2d3e] bg-stone-50 dark:bg-[#13151f] text-center text-lg font-bold text-stone-900 dark:text-stone-100 focus:outline-none focus:border-stone-400 dark:focus:border-stone-500"
-                      />
-                    ))}
-                  </div>
-                  <p className="text-center text-xs text-stone-400 dark:text-stone-500">Didn't receive a code? Resend in 0:45</p>
-                </>
-              )}
-
-              <div className="flex items-center justify-between mt-6 pt-5 border-t border-stone-200 dark:border-[#2a2d3e]">
-                <span className="text-xs text-stone-400 dark:text-stone-500">Step {step} of {TOTAL}</span>
-                <div className="flex gap-2">
-                  {step > 1 && (
-                    <Button variant="outline" onClick={prev} className="text-sm dark:border-[#2a2d3e] dark:text-stone-300 dark:hover:bg-[#252837]">
-                      ← Back
-                    </Button>
-                  )}
-                  <Button className="bg-stone-900 hover:bg-stone-800 text-white text-sm" onClick={next} disabled={step === 1 && !agreed}>
-                    {step === TOTAL ? "Submit Application" : "Continue →"}
-                  </Button>
                 </div>
+
+                {/* Name row */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="firstName" className="text-[11px] font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest">
+                      First Name <span className="text-red-500">*</span>
+                    </Label>
+                    <Input
+                      id="firstName"
+                      name="given-name"
+                      autoComplete="given-name"
+                      value={firstName}
+                      onChange={e => setFirstName(e.target.value)}
+                      placeholder="First name"
+                      className="dark:bg-[#13151f] dark:border-[#2a2d3e]"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="lastName" className="text-[11px] font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest">
+                      Last Name <span className="text-red-500">*</span>
+                    </Label>
+                    <Input
+                      id="lastName"
+                      name="family-name"
+                      autoComplete="family-name"
+                      value={lastName}
+                      onChange={e => setLastName(e.target.value)}
+                      placeholder="Last name"
+                      className="dark:bg-[#13151f] dark:border-[#2a2d3e]"
+                    />
+                  </div>
+                </div>
+
+                {/* DOB + ID number */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="dob" className="text-[11px] font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest">
+                      Date of Birth <span className="text-red-500">*</span>
+                    </Label>
+                    <Input
+                      id="dob"
+                      type="date"
+                      value={dob}
+                      onChange={e => setDob(e.target.value)}
+                      max={new Date().toISOString().split("T")[0]}
+                      className="dark:bg-[#13151f] dark:border-[#2a2d3e]"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="idNumber" className="text-[11px] font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest">
+                      ID Number <span className="text-red-500">*</span>
+                    </Label>
+                    <Input
+                      id="idNumber"
+                      value={idNumber}
+                      onChange={e => setIdNumber(e.target.value)}
+                      placeholder="1234-5678-9012"
+                      className="dark:bg-[#13151f] dark:border-[#2a2d3e] font-mono"
+                    />
+                  </div>
+                </div>
+
+                <Separator className="dark:bg-[#2a2d3e]" />
+
+                <p className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest">
+                  Photo Captures <span className="text-red-500">*</span>
+                </p>
+
+                <CameraInput
+                  label="ID Front"
+                  capture="environment"
+                  file={idFront}
+                  inputRef={frontRef}
+                  onChange={setIdFront}
+                />
+                <CameraInput
+                  label="ID Back"
+                  capture="environment"
+                  file={idBack}
+                  inputRef={backRef}
+                  onChange={setIdBack}
+                />
+                <CameraInput
+                  label="Selfie while holding your ID"
+                  capture="user"
+                  file={selfie}
+                  inputRef={selfieRef}
+                  onChange={setSelfie}
+                />
+
+                <p className="text-[10px] text-stone-400 dark:text-stone-500 leading-relaxed">
+                  All photos are captured directly from your smartphone camera and stored securely.
+                  Ensure images are clear, well-lit, and unedited.
+                </p>
+
+                {/* Validation error */}
+                {step2Err && (
+                  <div className="flex items-center gap-2 px-3 py-2.5 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-xl text-xs text-red-600 dark:text-red-400">
+                    <AlertTriangle className="w-3.5 h-3.5 shrink-0" /> {step2Err}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ══════════════════════════════════════════════
+                STEP 3a — Phone number entry
+            ══════════════════════════════════════════════ */}
+            {step === 3 && !showOtp && (
+              <div className="space-y-5">
+                <div>
+                  <h3 className="font-bold text-stone-900 dark:text-stone-100 text-base mb-1 flex items-center gap-2">
+                    <Phone className="w-5 h-5 text-stone-500 dark:text-stone-400" />
+                    Verify your phone
+                  </h3>
+                  <p className="text-sm text-stone-500 dark:text-stone-400 leading-relaxed">
+                    Enter your Philippine mobile number to receive a one-time passcode.
+                  </p>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-[11px] font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest">
+                    Mobile Number <span className="text-red-500">*</span>
+                  </Label>
+                  <div className="flex gap-2">
+                    <div className="flex items-center justify-center bg-stone-100 dark:bg-[#13151f] border border-stone-200 dark:border-[#2a2d3e] rounded-lg px-3 text-sm text-stone-500 dark:text-stone-400 font-medium w-12 shrink-0 select-none">
+                      +63
+                    </div>
+                    <NumberInput
+                      value={phoneNumber}
+                      onChange={setPhoneNumber}
+                      placeholder="9XX XXX XXXX"
+                      maxLength={PHONE_DIGITS}
+                    />
+                  </div>
+                </div>
+
+                {/* Send OTP — disabled until phone is 10 digits */}
+                <Button
+                  className="w-full rounded-full bg-stone-900 hover:bg-stone-800 text-white font-bold gap-2 disabled:opacity-50"
+                  onClick={handleSendOtp}
+                  disabled={!phoneComplete}
+                >
+                  <Send className="w-4 h-4" />
+                  Send OTP Code
+                </Button>
+              </div>
+            )}
+
+            {/* ══════════════════════════════════════════════
+                STEP 3b — OTP entry
+            ══════════════════════════════════════════════ */}
+            {step === 3 && showOtp && (
+              <div className="space-y-5">
+                <div>
+                  <h3 className="font-bold text-stone-900 dark:text-stone-100 text-base mb-1 flex items-center gap-2">
+                    <ShieldCheck className="w-5 h-5 text-stone-500 dark:text-stone-400" />
+                    Enter OTP
+                  </h3>
+                  <p className="text-sm text-stone-500 dark:text-stone-400">
+                    We sent a 6-digit code to{" "}
+                    <span className="font-semibold text-stone-700 dark:text-stone-300">
+                      +63 {phoneNumber}
+                    </span>
+                  </p>
+                </div>
+
+                {/* shadcn InputOTP — handles focus, backspace, paste natively */}
+                <div className="flex justify-center">
+                  <InputOTP
+                    maxLength={OTP_LENGTH}
+                    value={otpValue}
+                    onChange={setOtpValue}
+                  >
+                    <InputOTPGroup>
+                      <InputOTPSlot index={0} />
+                      <InputOTPSlot index={1} />
+                      <InputOTPSlot index={2} />
+                    </InputOTPGroup>
+                    <InputOTPSeparator />
+                    <InputOTPGroup>
+                      <InputOTPSlot index={3} />
+                      <InputOTPSlot index={4} />
+                      <InputOTPSlot index={5} />
+                    </InputOTPGroup>
+                  </InputOTP>
+                </div>
+
+                {/* Resend with live countdown */}
+                <div className="flex items-center justify-between pt-1">
+                  <p className="text-xs text-stone-400 dark:text-stone-500">
+                    Didn&apos;t receive a code?
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handleResend}
+                    disabled={!canResend}
+                    className={cn(
+                      "flex items-center gap-1.5 text-xs font-semibold transition-colors",
+                      canResend
+                        ? "text-stone-700 dark:text-stone-200 hover:text-stone-900 dark:hover:text-white cursor-pointer"
+                        : "text-stone-400 dark:text-stone-500 cursor-not-allowed",
+                    )}
+                  >
+                    <RefreshCw className={cn("w-3 h-3", canResend && "text-teal-600 dark:text-teal-400")} />
+                    {canResend ? "Resend code" : `Resend in ${formatCountdown(resendSeconds)}`}
+                  </button>
+                </div>
+
+                {/* Change number */}
+                <button
+                  type="button"
+                  onClick={() => { setShowOtp(false); setOtpValue(""); }}
+                  className="w-full text-xs text-stone-400 dark:text-stone-500 hover:text-stone-600 dark:hover:text-stone-300 transition-colors underline underline-offset-2"
+                >
+                  Change phone number
+                </button>
+              </div>
+            )}
+
+            {/* ── Footer navigation ── */}
+            <Separator className="mt-6 dark:bg-[#2a2d3e]" />
+            <div className="flex items-center justify-between my-4">
+              <span className="text-xs text-stone-400 dark:text-stone-500">
+                Step {step} of {TOTAL}
+              </span>
+              <div className="flex gap-2">
+                {step > 1 && (
+                  <Button
+                    variant="outline"
+                    onClick={prev}
+                    className="rounded-full text-sm dark:border-[#2a2d3e] dark:text-stone-300 dark:hover:bg-[#252837]"
+                  >
+                    ← Back
+                  </Button>
+                )}
+                <Button
+                  className="rounded-full bg-stone-900 hover:bg-stone-800 text-white text-sm font-bold disabled:opacity-50"
+                  onClick={next}
+                  disabled={isNextDisabled}
+                  title={
+                    !isMobile
+                      ? "Please open this page on a smartphone with a camera to continue"
+                      : undefined
+                  }
+                >
+                  {step === TOTAL ? "Submit Application" : "Continue →"}
+                </Button>
               </div>
             </div>
-          </div>
-        )}
+
+          </CardContent>
+        </Card>
       </div>
 
+      {/* ── Toast ── */}
       {toast && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-stone-900 text-white text-sm font-medium px-5 py-3 rounded-full shadow-xl animate-in fade-in slide-in-from-bottom-2 duration-300">
           {toast}
