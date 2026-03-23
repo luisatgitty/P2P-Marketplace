@@ -430,6 +430,69 @@ func DeleteAdminAccount(userId string) error {
 	return nil
 }
 
+func SetAdminAccountActive(userId string, isActive bool) error {
+	db := middleware.DBConn
+
+	var targetRole string
+	roleResult := db.Raw(`
+		SELECT role::text
+		FROM public.users
+		WHERE id = $1
+			AND deleted_at IS NULL
+			AND role IN ('ADMIN', 'SUPER_ADMIN')
+		LIMIT 1
+	`, userId).Scan(&targetRole)
+	if roleResult.Error != nil {
+		return fmt.Errorf("Failed to validate admin account")
+	}
+	if roleResult.RowsAffected == 0 {
+		return fmt.Errorf("Admin account not found")
+	}
+
+	if strings.EqualFold(strings.TrimSpace(targetRole), "SUPER_ADMIN") && !isActive {
+		var activeSuperAdminCount int
+		if err := db.Raw(`
+			SELECT COUNT(*)::int
+			FROM public.users
+			WHERE deleted_at IS NULL
+				AND role = 'SUPER_ADMIN'
+				AND is_active = TRUE
+		`).Scan(&activeSuperAdminCount).Error; err != nil {
+			return fmt.Errorf("Failed to validate super admin count")
+		}
+		if activeSuperAdminCount <= 1 {
+			return fmt.Errorf("Cannot deactivate the last active super admin account")
+		}
+	}
+
+	result := db.Exec(`
+		UPDATE public.users
+		SET
+			is_active = $1,
+			updated_at = now(),
+			failed_login_attempts = CASE WHEN $1 THEN 0 ELSE failed_login_attempts END,
+			account_locked_until = CASE WHEN $1 THEN NULL ELSE account_locked_until END
+		WHERE id = $2
+			AND deleted_at IS NULL
+			AND role IN ('ADMIN', 'SUPER_ADMIN')
+	`, isActive, userId)
+
+	if result.Error != nil {
+		return fmt.Errorf("Failed to update admin account status")
+	}
+	if result.RowsAffected == 0 {
+		return fmt.Errorf("Admin account not found")
+	}
+
+	if !isActive {
+		if err := DeleteUserSessions(userId); err != nil {
+			return fmt.Errorf("Failed to revoke admin sessions")
+		}
+	}
+
+	return nil
+}
+
 func GetAdminListings() ([]model.AdminListingListItemFromDb, error) {
 	db := middleware.DBConn
 	listings := make([]model.AdminListingListItemFromDb, 0)

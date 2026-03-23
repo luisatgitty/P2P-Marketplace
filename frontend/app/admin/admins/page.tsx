@@ -5,7 +5,7 @@ import Image from "next/image";
 import {
   Search, Plus, Trash2, Eye, EyeOff, X, UserCog,
   Shield, ShieldCheck, CheckCircle2, AlertTriangle,
-  ChevronLeft, ChevronRight,
+  ChevronLeft, ChevronRight, UserX, UserCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -14,6 +14,7 @@ import {
   createAdminAccount,
   deleteAdminAccount,
   getAdminAccounts,
+  setAdminAccountActive,
   type AdminAccountRecord,
 } from "@/services/adminAdminsService";
 
@@ -306,6 +307,7 @@ export default function AdminsPage() {
   const [addSuccess,   setAddSuccess]   = useState<string | null>(null);
   const [loadingAdmins,setLoadingAdmins]= useState(true);
   const [removingId,   setRemovingId]   = useState<string | null>(null);
+  const [actionLoadingUserId, setActionLoadingUserId] = useState<string | null>(null);
   const [page,         setPage]         = useState(1);
 
   // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -401,6 +403,26 @@ export default function AdminsPage() {
       toast.error(message, { position: "top-center" });
     } finally {
       setRemovingId(null);
+    }
+  }
+
+  async function handleToggleActive(id: string) {
+    const target = admins.find((admin) => admin.id === id);
+    if (!target || target.role === "SUPER_ADMIN") return;
+
+    const nextActive = !target.is_active;
+    setActionLoadingUserId(id);
+    try {
+      await setAdminAccountActive(id, nextActive);
+      setAdmins((as) => as.map((admin) => (
+        admin.id === id ? { ...admin, is_active: nextActive } : admin
+      )));
+      toast.success(`Admin account ${nextActive ? "activated" : "deactivated"} successfully`, { position: "top-center" });
+    } catch (err) {
+      const message = typeof err === "string" ? err : "Failed to update admin account status";
+      toast.error(message, { position: "top-center" });
+    } finally {
+      setActionLoadingUserId(null);
     }
   }
 
@@ -507,6 +529,9 @@ export default function AdminsPage() {
                     Role
                   </TableHead>
                   <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest whitespace-nowrap">
+                    Status
+                  </TableHead>
+                  <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest whitespace-nowrap">
                     Created
                   </TableHead>
                   <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest whitespace-nowrap">
@@ -522,7 +547,7 @@ export default function AdminsPage() {
                 {loadingAdmins ? (
                   <TableRow>
                     <TableCell
-                      colSpan={5}
+                      colSpan={6}
                       className="py-16 text-center text-sm text-stone-400 dark:text-stone-500"
                     >
                       Loading admin accounts…
@@ -531,7 +556,7 @@ export default function AdminsPage() {
                 ) : paged.length === 0 ? (
                   <TableRow>
                     <TableCell
-                      colSpan={5}
+                      colSpan={6}
                       className="py-16 text-center text-sm text-stone-400 dark:text-stone-500"
                     >
                       No admin accounts found.
@@ -585,6 +610,18 @@ export default function AdminsPage() {
                         </span>
                       </TableCell>
 
+                      {/* Active status */}
+                      <TableCell className="py-3.5 whitespace-nowrap">
+                        <span className={cn(
+                          "inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full",
+                          admin.is_active
+                            ? "bg-teal-100 dark:bg-teal-900/40 text-teal-700 dark:text-teal-300"
+                            : "bg-stone-200 dark:bg-stone-700 text-stone-700 dark:text-stone-300",
+                        )}>
+                          {admin.is_active ? "Active" : "Inactive"}
+                        </span>
+                      </TableCell>
+
                       {/* Created */}
                       <TableCell className="py-3.5 text-sm text-stone-500 dark:text-stone-400 whitespace-nowrap">
                         {admin.created_at}
@@ -604,18 +641,36 @@ export default function AdminsPage() {
                             Protected
                           </span>
                         ) : (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            title={removingId === admin.id ? "Removing…" : "Remove admin"}
-                            aria-label={removingId === admin.id ? "Removing…" : "Remove admin"}
-                            onClick={() => void handleDelete(admin.id, admin.name)}
-                            disabled={removingId === admin.id}
-                            className="w-7 h-7 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 hover:text-red-600 disabled:opacity-50"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
+                          <div className="inline-flex items-center gap-1">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              title={admin.is_active ? "Deactivate" : "Activate"}
+                              aria-label={admin.is_active ? "Deactivate" : "Activate"}
+                              onClick={() => void handleToggleActive(admin.id)}
+                              disabled={actionLoadingUserId === admin.id || removingId === admin.id}
+                              className="w-7 h-7 hover:bg-stone-100 dark:hover:bg-[#252837] disabled:opacity-50"
+                            >
+                              {admin.is_active
+                                ? <UserX className="w-4 h-4 text-amber-500 hover:text-amber-800" />
+                                : <UserCheck className="w-4 h-4 text-teal-500 hover:text-teal-800" />
+                              }
+                            </Button>
+
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              title={removingId === admin.id ? "Removing..." : "Remove admin"}
+                              aria-label={removingId === admin.id ? "Removing..." : "Remove admin"}
+                              onClick={() => void handleDelete(admin.id, admin.name)}
+                              disabled={removingId === admin.id || actionLoadingUserId === admin.id}
+                              className="w-7 h-7 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 hover:text-red-600 disabled:opacity-50"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
                         )}
                       </TableCell>
                     </TableRow>

@@ -325,3 +325,42 @@ func DeleteAdminAccount(c *fiber.Ctx) error {
 		"adminId": targetUserId,
 	})
 }
+
+func SetAdminAccountActive(c *fiber.Ctx) error {
+	adminUserId, authErr := requireSuperAdmin(c)
+	if authErr != nil {
+		return authErr
+	}
+
+	targetUserId := strings.TrimSpace(c.Params("id"))
+	if targetUserId == "" {
+		return SendErrorResponse(c, 400, "Admin ID is required", nil)
+	}
+	if targetUserId == adminUserId {
+		return SendErrorResponse(c, 400, "You cannot update your own active status", nil)
+	}
+
+	var body model.AdminSetUserActiveBody
+	if err := c.BodyParser(&body); err != nil {
+		return SendErrorResponse(c, 400, "Invalid request body", err)
+	}
+	if body.IsActive == nil {
+		return SendErrorResponse(c, 400, "isActive is required", nil)
+	}
+
+	if err := repository.SetAdminAccountActive(targetUserId, *body.IsActive); err != nil {
+		message := strings.TrimSpace(err.Error())
+		if strings.EqualFold(message, "Admin account not found") {
+			return SendErrorResponse(c, 404, message, err)
+		}
+		if strings.Contains(strings.ToLower(message), "last super admin") {
+			return SendErrorResponse(c, 400, message, err)
+		}
+		return SendErrorResponse(c, 500, message, err)
+	}
+
+	return SendSuccessResponse(c, 200, "Admin account status updated successfully", map[string]any{
+		"adminId":   targetUserId,
+		"is_active": *body.IsActive,
+	})
+}
