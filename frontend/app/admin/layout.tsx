@@ -6,6 +6,7 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
 import { useUser } from "@/utils/UserContext";
+import { LogoutModal } from "@/components/auth/logout-modal";
 import {
   LayoutDashboard,
   Users,
@@ -65,16 +66,18 @@ interface SidebarContentProps {
   onNavigate?: () => void;
   collapsed?: boolean;
   onToggleCollapse?: () => void;
+  onRequestLogout?: () => void;
 }
 
 function SidebarContent({
   onNavigate,
   collapsed = false,
   onToggleCollapse,
+  onRequestLogout,
 }: SidebarContentProps) {
   const pathname = usePathname();
   const { theme, resolvedTheme, setTheme } = useTheme();
-  const { user, clearUserData } = useUser();
+  const { user } = useUser();
   const [dropdownOpen, setDropdown] = useState(false);
   const effectiveTheme = resolvedTheme ?? theme;
   const isDarkMode = effectiveTheme === "dark";
@@ -255,7 +258,7 @@ function SidebarContent({
                 type="button"
                 onClick={() => {
                   setDropdown(false);
-                  clearUserData();
+                  onRequestLogout?.();
                 }}
                 className="flex items-center gap-3 w-full px-4 py-2.5 text-sm font-medium text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors"
               >
@@ -324,6 +327,7 @@ export default function AdminLayout({
 }) {
   const [collapsed, setCollapsed] = useState(false);
   const [isSmallScreen, setIsSmallScreen] = useState(false);
+  const [logoutModalOpen, setLogoutModalOpen] = useState(false);
 
   useEffect(() => {
     const checkScreen = () => {
@@ -338,27 +342,35 @@ export default function AdminLayout({
   const effectiveCollapsed = isSmallScreen ? true : collapsed;
 
   return (
-    <div className="fixed inset-0 z-[100] flex bg-stone-100 dark:bg-[#0f1117] overflow-hidden">
-      {/* ── Sidebar ─────────────────────────────────────────────────────── */}
-      <div
-        className={cn(
-          "flex flex-col flex-shrink-0 bg-[#1e2433] h-full",
-          "transition-all duration-300 ease-in-out",
-          effectiveCollapsed ? "w-16" : "w-60",
-        )}
-      >
-        <SidebarContent
-          collapsed={effectiveCollapsed}
-          onToggleCollapse={
-            isSmallScreen ? undefined : () => setCollapsed((c) => !c)
-          }
-        />
-      </div>
+    <>
+      <LogoutModal
+        open={logoutModalOpen}
+        onClose={() => setLogoutModalOpen(false)}
+      />
 
-      {/* ── Main area ───────────────────────────────────────────────────── */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <main className="flex-1 overflow-y-auto">{children}</main>
+      <div className="fixed inset-0 z-[100] flex bg-stone-100 dark:bg-[#0f1117] overflow-hidden">
+        {/* ── Sidebar ─────────────────────────────────────────────────────── */}
+        <div
+          className={cn(
+            "flex flex-col flex-shrink-0 bg-[#1e2433] h-full",
+            "transition-all duration-300 ease-in-out",
+            effectiveCollapsed ? "w-16" : "w-60",
+          )}
+        >
+          <SidebarContent
+            collapsed={effectiveCollapsed}
+            onToggleCollapse={
+              isSmallScreen ? undefined : () => setCollapsed((c) => !c)
+            }
+            onRequestLogout={() => setLogoutModalOpen(true)}
+          />
+        </div>
+
+        {/* ── Main area ───────────────────────────────────────────────────── */}
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <main className="flex-1 overflow-y-auto">{children}</main>
+        </div>
       </div>
-    </div>
+    </>
   );
 }
