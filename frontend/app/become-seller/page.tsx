@@ -16,6 +16,7 @@ import {
   InputOTPSeparator,
 } from "@/components/ui/input-otp";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 import {
   AlertTriangle,
   Camera,
@@ -31,6 +32,7 @@ import {
   Smartphone,
 } from "lucide-react";
 import { getDeviceInfo } from "@/utils/device";
+import { submitVerification, type VerificationImagePayload } from "@/services/verificationService";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 type VerifyStep = 1 | 2 | 3;
@@ -56,6 +58,8 @@ const TOTAL            = 3;
 const OTP_LENGTH       = 6;
 const RESEND_SECONDS   = 45;
 const PHONE_DIGITS     = 10;
+const VERIFICATION_IMAGE_MAX_DIMENSION = 1400;
+const VERIFICATION_IMAGE_QUALITY = 0.8;
 
 const device = getDeviceInfo();
 // NOTE: Temporary override to bypass device check during development
@@ -66,6 +70,75 @@ device.isMobile = true;
 function formatCountdown(s: number): string {
   const m = Math.floor(s / 60);
   return `${m}:${(s % 60).toString().padStart(2, "0")}`;
+}
+
+async function compressVerificationImage(file: File): Promise<Blob> {
+  const objectUrl = URL.createObjectURL(file);
+
+  try {
+    const bitmap = await createImageBitmap(file);
+    const scale = Math.min(
+      1,
+      VERIFICATION_IMAGE_MAX_DIMENSION / Math.max(bitmap.width, bitmap.height),
+    );
+
+    const width = Math.max(1, Math.round(bitmap.width * scale));
+    const height = Math.max(1, Math.round(bitmap.height * scale));
+
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+
+    const context = canvas.getContext("2d");
+    if (!context) {
+      throw new Error("Failed to initialize image compression canvas.");
+    }
+
+    context.drawImage(bitmap, 0, 0, width, height);
+
+    const compressedBlob = await new Promise<Blob | null>((resolve) => {
+      canvas.toBlob((output) => resolve(output), "image/webp", VERIFICATION_IMAGE_QUALITY);
+    });
+
+    if (!compressedBlob) {
+      throw new Error("Failed to compress image.");
+    }
+
+    return compressedBlob;
+  } catch {
+    // Fall back to the original file when compression is unavailable.
+    return file;
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
+}
+
+async function blobToBase64(blob: Blob): Promise<string> {
+  return await new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = typeof reader.result === "string" ? reader.result : "";
+      const data = result.split(",")[1] ?? "";
+      if (!data) {
+        reject(new Error("Failed to encode image."));
+        return;
+      }
+      resolve(data);
+    };
+    reader.onerror = () => reject(new Error("Failed to read image data."));
+    reader.readAsDataURL(blob);
+  });
+}
+
+async function fileToVerificationImagePayload(file: File, fieldName: string): Promise<VerificationImagePayload> {
+  const compressed = await compressVerificationImage(file);
+  const data = await blobToBase64(compressed);
+
+  return {
+    name: `${fieldName}.webp`,
+    mimeType: "image/webp",
+    data,
+  };
 }
 
 // ── Camera capture input ───────────────────────────────────────────────────────
@@ -136,7 +209,8 @@ export default function BecomeSellerPage() {
   const [agreed,    setAgreed]    = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [showOtp,   setShowOtp]   = useState(false);
-  const [toast,     setToast]     = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // Step 2 form fields
   const [idType,    setIdType]    = useState<IdType>("");
@@ -173,7 +247,8 @@ export default function BecomeSellerPage() {
     !isMobile                                    ||
     (step === 1 && !agreed)                      ||
     (step === 3 && !showOtp)                     || // must verify phone first
-    (step === 3 && showOtp && !otpComplete);        // OTP must be fully entered
+    (step === 3 && showOtp && !otpComplete)      || // OTP must be fully entered
+    submitting;
 
   // ── Effects ─────────────────────────────────────────────────────────────────
   // Detect device on mount (avoids hydration mismatch)
@@ -201,8 +276,8 @@ export default function BecomeSellerPage() {
 
   // ── Helpers ──────────────────────────────────────────────────────────────────
   function showToastMsg(msg: string) {
-    setToast(msg);
-    setTimeout(() => setToast(null), 2600);
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 2600);
   }
 
   function validateStep2(): string | null {
@@ -232,7 +307,7 @@ export default function BecomeSellerPage() {
     showToastMsg("OTP resent to your number.");
   }
 
-  function next() {
+  async function next() {
     // Re-derive at call time — blocks console-injected state manipulation
     if (!device.isMobile) return;
 
@@ -250,9 +325,59 @@ export default function BecomeSellerPage() {
     }
     // Step 3 — final guard before submission
     if (!showOtp || !otpComplete) return;
-    setSubmitted(true);
-    if (user) saveUserData({ ...user, status: "PENDING" });
-    showToastMsg("Application submitted! Under review.");
+
+    const digits = phoneNumber.replace(/\D/g, "");
+    if (digits.length !== PHONE_DIGITS) return;
+    if (!(idFront instanceof File) || !(idBack instanceof File) || !(selfie instanceof File)) return;
+
+    setSubmitting(true);
+    try {
+      const sessionMetaResponse = await fetch("/api/session", {
+        method: "GET",
+        credentials: "include",
+      });
+
+      if (!sessionMetaResponse.ok) {
+        throw new Error("Failed to collect session metadata.");
+      }
+
+      const sessionMeta = (await sessionMetaResponse.json()) as {
+        ipAddress?: string;
+        userAgent?: string;
+      };
+
+      const [idImageFront, idImageBack, selfieImage] = await Promise.all([
+        fileToVerificationImagePayload(idFront, "id_front"),
+        fileToVerificationImagePayload(idBack, "id_back"),
+        fileToVerificationImagePayload(selfie, "selfie"),
+      ]);
+
+      await submitVerification({
+        idType: idType.trim(),
+        idNumber: idNumber.trim(),
+        idFirstName: firstName.trim(),
+        idLastName: lastName.trim(),
+        idBirthdate: dob,
+        mobileNumber: "0" + digits,
+        ipAddress: (sessionMeta.ipAddress ?? "unknown").trim() || "unknown",
+        userAgent: (sessionMeta.userAgent ?? "unknown").trim() || "unknown",
+        hardwareInfo: String(getDeviceInfo({ asJson: true })),
+        idImageFront,
+        idImageBack,
+        selfieImage,
+      });
+
+      setSubmitted(true);
+      if (user) saveUserData({ ...user, status: "PENDING" });
+      showToastMsg("Application submitted! Under review.");
+    } catch (error) {
+      const message = error instanceof Error && error.message
+        ? error.message
+        : "Failed to submit seller verification.";
+      toast.error(message, { position: "top-center" });
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   function prev() {
@@ -716,7 +841,7 @@ export default function BecomeSellerPage() {
                 )}
                 <Button
                   className="rounded-full bg-stone-900 hover:bg-stone-800 text-white text-sm font-bold disabled:opacity-50"
-                  onClick={next}
+                  onClick={() => void next()}
                   disabled={isNextDisabled}
                   title={
                     !isMobile
@@ -724,7 +849,7 @@ export default function BecomeSellerPage() {
                       : undefined
                   }
                 >
-                  {step === TOTAL ? "Submit Application" : "Continue →"}
+                  {step === TOTAL ? (submitting ? "Submitting..." : "Submit Application") : "Continue →"}
                 </Button>
               </div>
             </div>
@@ -734,9 +859,9 @@ export default function BecomeSellerPage() {
       </div>
 
       {/* ── Toast ── */}
-      {toast && (
+      {toastMessage && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-stone-900 text-white text-sm font-medium px-5 py-3 rounded-full shadow-xl animate-in fade-in slide-in-from-bottom-2 duration-300">
-          {toast}
+          {toastMessage}
         </div>
       )}
     </div>

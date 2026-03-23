@@ -54,6 +54,21 @@ type UpdateProfileImagesBody struct {
 	RemoveCoverImage   bool              `json:"removeCoverImage,omitempty"`
 }
 
+type SubmitVerificationBody struct {
+	IdType       string            `json:"idType"`
+	IdNumber     string            `json:"idNumber"`
+	IdFirstName  string            `json:"idFirstName"`
+	IdLastName   string            `json:"idLastName"`
+	IdBirthdate  string            `json:"idBirthdate"`
+	MobileNumber string            `json:"mobileNumber"`
+	UserAgent    string            `json:"userAgent"`
+	IpAddress    string            `json:"ipAddress"`
+	HardwareInfo string            `json:"hardwareInfo"`
+	IdImageFront *ListingImageBody `json:"idImageFront"`
+	IdImageBack  *ListingImageBody `json:"idImageBack"`
+	SelfieImage  *ListingImageBody `json:"selfieImage"`
+}
+
 type LocationOption struct {
 	Code string `json:"code"`
 	Name string `json:"name"`
