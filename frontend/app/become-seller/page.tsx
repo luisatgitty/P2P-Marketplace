@@ -30,6 +30,7 @@ import {
   ShieldCheck,
   Smartphone,
 } from "lucide-react";
+import { getDeviceInfo } from "@/utils/device";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 type VerifyStep = 1 | 2 | 3;
@@ -56,21 +57,15 @@ const OTP_LENGTH       = 6;
 const RESEND_SECONDS   = 45;
 const PHONE_DIGITS     = 10;
 
+const device = getDeviceInfo();
+// NOTE: Temporary override to bypass device check during development
+// Remove this line in production
+device.isMobile = true; 
+
 // ── Helpers ────────────────────────────────────────────────────────────────────
 function formatCountdown(s: number): string {
   const m = Math.floor(s / 60);
   return `${m}:${(s % 60).toString().padStart(2, "0")}`;
-}
-
-// ── Device detection ───────────────────────────────────────────────────────────
-// Requires ≥2 independent signals so DevTools mobile emulation alone cannot pass.
-function detectMobileWithCamera(): boolean {
-  if (typeof window === "undefined" || typeof navigator === "undefined") return false;
-  const isMobileUA   = /android|iphone|ipad|ipod|blackberry|windows phone|mobile/i.test(navigator.userAgent);
-  const hasCoarsePtr = window.matchMedia("(pointer: coarse)").matches;
-  const hasTouchPts  = navigator.maxTouchPoints > 0;
-  // NOTE: Set threshold to 0 during development; change back to 2 for production
-  return [isMobileUA, hasCoarsePtr, hasTouchPts].filter(Boolean).length >= 0; // ← change to 2 in prod
 }
 
 // ── Camera capture input ───────────────────────────────────────────────────────
@@ -182,7 +177,7 @@ export default function BecomeSellerPage() {
 
   // ── Effects ─────────────────────────────────────────────────────────────────
   // Detect device on mount (avoids hydration mismatch)
-  useEffect(() => { setIsMobile(detectMobileWithCamera()); }, []);
+  useEffect(() => { setIsMobile(device.isMobile); }, []);
 
   // Resend countdown — starts/restarts whenever showOtp or resendKey changes
   useEffect(() => {
@@ -239,7 +234,7 @@ export default function BecomeSellerPage() {
 
   function next() {
     // Re-derive at call time — blocks console-injected state manipulation
-    if (!detectMobileWithCamera()) return;
+    if (!device.isMobile) return;
 
     if (step === 1) {
       if (!agreed) return;
