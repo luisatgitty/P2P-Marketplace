@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import {
   Search, X, CheckCircle2, XCircle, ShieldCheck, Clock,
   Eye, AlertTriangle, IdCard, ChevronLeft, ChevronRight,
@@ -8,6 +8,13 @@ import {
   Cpu, CreditCard, ChevronDown, ChevronUp,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
+import { validateImageURL } from "@/utils/validation";
+import {
+  getAdminVerifications,
+  setAdminVerificationStatus,
+  type AdminVerificationRecord,
+} from "@/services/adminVerificationsService";
 
 // ── shadcn ─────────────────────────────────────────────────────────────────────
 import { Button }            from "@/components/ui/button";
@@ -30,19 +37,22 @@ interface AdminVerification {
   // Registered profile
   user_name:         string;
   user_email:        string;
-  profile_image_url: string | null;
+  profile_image_url: string;
   // Submitted personal info (from become-seller form)
-  first_name:        string;
-  last_name:         string;
-  date_of_birth:     string;
+  id_first_name:     string;
+  id_last_name:      string;
+  id_birthdate:      string;
   mobile_number:     string;
   // ID document
   id_type:           string;
   id_number:         string;
+  id_image_front_url:string;
+  id_image_back_url: string;
+  selfie_url:        string;
   // Submission metadata
-  ip_address:        string | null;
-  user_agent:        string | null;
-  hardware_info:     string | null;   // JSON string from getDeviceInfo()
+  ip_address:        string;
+  user_agent:        string;
+  hardware_info:     string;   // JSON string from getDeviceInfo()
   // Review state
   status:            VerifStatus;
   rejection_reason:  string | null;
@@ -50,72 +60,6 @@ interface AdminVerification {
   reviewed_at:       string | null;
   submitted_at:      string;
 }
-
-// ── Static data ────────────────────────────────────────────────────────────────
-const VERIFICATIONS: AdminVerification[] = [
-  {
-    id: "v1", user_id: "u1",
-    user_name: "Juan Miguel Dela Cruz", user_email: "juan@email.com", profile_image_url: null,
-    first_name: "Juan Miguel", last_name: "Dela Cruz", date_of_birth: "1995-04-12", mobile_number: "9171234567",
-    id_type: "PhilSys ID", id_number: "1234-5678-9012",
-    ip_address: "112.200.45.11",
-    user_agent: "Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36",
-    hardware_info: JSON.stringify({ deviceType: "mobile", isMobile: true, signals: { mobileUserAgent: true, coarsePointer: true, maxTouchPoints: 5, screenWidthPx: 412, devicePixelRatio: 2.625, orientation: "portrait-primary", touchEventsExist: true } }),
-    status: "PENDING", rejection_reason: null, reviewed_by: null, reviewed_at: null, submitted_at: "Mar 19, 2026 · 8:00 AM",
-  },
-  {
-    id: "v2", user_id: "u2",
-    user_name: "Maria Cristina Santos", user_email: "maria@email.com", profile_image_url: null,
-    first_name: "Maria Cristina", last_name: "Santos", date_of_birth: "1990-11-23", mobile_number: "9181234567",
-    id_type: "Passport", id_number: "P1234567A",
-    ip_address: "175.45.22.88",
-    user_agent: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Mobile/15E148 Safari/604.1",
-    hardware_info: JSON.stringify({ deviceType: "mobile", isMobile: true, signals: { mobileUserAgent: true, coarsePointer: true, maxTouchPoints: 5, screenWidthPx: 390, devicePixelRatio: 3, orientation: "portrait-primary", touchEventsExist: true } }),
-    status: "PENDING", rejection_reason: null, reviewed_by: null, reviewed_at: null, submitted_at: "Mar 18, 2026 · 4:30 PM",
-  },
-  {
-    id: "v3", user_id: "u7",
-    user_name: "Ramon Torres", user_email: "ramon@email.com", profile_image_url: null,
-    first_name: "Ramon", last_name: "Torres", date_of_birth: "1988-07-05", mobile_number: "9201234567",
-    id_type: "Driver's License", id_number: "N07-89-012345",
-    ip_address: "103.10.5.200",
-    user_agent: "Mozilla/5.0 (Linux; Android 14; Samsung Galaxy S24) AppleWebKit/537.36",
-    hardware_info: JSON.stringify({ deviceType: "mobile", isMobile: true, signals: { mobileUserAgent: true, coarsePointer: true, maxTouchPoints: 10, screenWidthPx: 360, devicePixelRatio: 3, orientation: "portrait-primary", touchEventsExist: true } }),
-    status: "PENDING", rejection_reason: null, reviewed_by: null, reviewed_at: null, submitted_at: "Mar 17, 2026 · 2:00 PM",
-  },
-  {
-    id: "v4", user_id: "u3",
-    user_name: "Pedro Jose Reyes", user_email: "pedro@email.com", profile_image_url: null,
-    first_name: "Pedro Jose", last_name: "Reyes", date_of_birth: "1992-02-18", mobile_number: "9991234567",
-    id_type: "SSS ID", id_number: "34-1234567-8",
-    ip_address: "180.191.40.3",
-    user_agent: "Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X)",
-    hardware_info: null,
-    status: "VERIFIED", rejection_reason: null, reviewed_by: "Admin One", reviewed_at: "Mar 15, 2026", submitted_at: "Mar 12, 2026 · 10:00 AM",
-  },
-  {
-    id: "v5", user_id: "u4",
-    user_name: "Ana Liza Bautista", user_email: "ana@email.com", profile_image_url: null,
-    first_name: "Ana Liza", last_name: "Bautista", date_of_birth: "1997-09-30", mobile_number: "9151234567",
-    id_type: "Voter's ID", id_number: "1234-56-789-0123",
-    ip_address: "202.90.9.44",
-    user_agent: "Mozilla/5.0 (Linux; Android 12; Redmi Note 11)",
-    hardware_info: null,
-    status: "VERIFIED", rejection_reason: null, reviewed_by: "Admin One", reviewed_at: "Mar 10, 2026", submitted_at: "Mar 7, 2026 · 9:00 AM",
-  },
-  {
-    id: "v6", user_id: "u6",
-    user_name: "Luisa Mae Garcia", user_email: "luisa@email.com", profile_image_url: null,
-    first_name: "Luisa Mae", last_name: "Garcia", date_of_birth: "2000-01-14", mobile_number: "9061234567",
-    id_type: "PhilSys ID", id_number: "9876-5432-1098",
-    ip_address: "136.158.3.12",
-    user_agent: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_2 like Mac OS X)",
-    hardware_info: null,
-    status: "REJECTED",
-    rejection_reason: "Uploaded ID image is blurry and cannot be verified. Selfie does not clearly show the ID. Please resubmit with clearer photos.",
-    reviewed_by: "Admin One", reviewed_at: "Mar 18, 2026", submitted_at: "Mar 16, 2026 · 11:00 AM",
-  },
-];
 
 const STATUS_CONFIG: Record<VerifStatus, { cls: string; label: string; Icon: React.ElementType }> = {
   PENDING:  { cls: "bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300", label: "Pending",  Icon: Clock       },
@@ -158,16 +102,33 @@ function InfoRow({ icon: Icon, label, value, mono = false }: {
   );
 }
 
-function IdImageCard({ label }: { label: string }) {
+function IdImageCard({ label, imageUrl }: { label: string; imageUrl?: string | null }) {
+  const resolvedUrl = imageUrl ? validateImageURL(imageUrl) : "";
+
   return (
     <div className="space-y-1.5">
       <p className="text-[10px] font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest">
         {label}
       </p>
-      <div className="aspect-[4/3] rounded-xl bg-stone-100 dark:bg-[#13151f] border-2 border-dashed border-stone-200 dark:border-[#2a2d3e] flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-stone-200 dark:hover:bg-[#252837] transition-colors group">
-        <IdCard className="w-9 h-9 text-stone-300 dark:text-stone-600 group-hover:text-stone-400 dark:group-hover:text-stone-500 transition-colors" />
-        <span className="text-xs font-medium text-stone-400 dark:text-stone-500">Click to view</span>
-      </div>
+      {resolvedUrl ? (
+        <button
+          type="button"
+          onClick={() => window.open(resolvedUrl, "_blank", "noopener,noreferrer")}
+          className="aspect-[4/3] w-full rounded-xl overflow-hidden border border-stone-200 dark:border-[#2a2d3e] bg-stone-100 dark:bg-[#13151f] hover:opacity-95 transition-opacity"
+          title="View full image"
+        >
+          <img
+            src={resolvedUrl}
+            alt={label}
+            className="w-full h-full object-cover"
+          />
+        </button>
+      ) : (
+        <div className="aspect-[4/3] rounded-xl bg-stone-100 dark:bg-[#13151f] border-2 border-dashed border-stone-200 dark:border-[#2a2d3e] flex flex-col items-center justify-center gap-2">
+          <IdCard className="w-9 h-9 text-stone-300 dark:text-stone-600" />
+          <span className="text-xs font-medium text-stone-400 dark:text-stone-500">No image</span>
+        </div>
+      )}
     </div>
   );
 }
@@ -197,13 +158,14 @@ function FilterSelect({ value, onChange, options }: {
 
 // ── Detail modal ───────────────────────────────────────────────────────────────
 interface DetailModalProps {
-  verif:     AdminVerification;
-  onClose:   () => void;
-  onApprove: (id: string) => void;
-  onReject:  (id: string, reason: string) => void;
+  verif:          AdminVerification;
+  onClose:        () => void;
+  onApprove:      (id: string, reason: string) => Promise<void>;
+  onReject:       (id: string, reason: string) => Promise<void>;
+  actionLoading?: boolean;
 }
 
-function DetailModal({ verif, onClose, onApprove, onReject }: DetailModalProps) {
+function DetailModal({ verif, onClose, onApprove, onReject, actionLoading = false }: DetailModalProps) {
   const [rejectReason, setRejectReason] = useState(
     // Pre-fill when viewing a previously rejected submission
     verif.status === "REJECTED" ? (verif.rejection_reason ?? "") : "",
@@ -213,8 +175,9 @@ function DetailModal({ verif, onClose, onApprove, onReject }: DetailModalProps) 
   const sc   = STATUS_CONFIG[verif.status];
   const Icon = sc.Icon;
 
-  const submittedName = `${verif.first_name} ${verif.last_name}`.trim();
+  const submittedName = `${verif.id_first_name} ${verif.id_last_name}`.trim();
   const nameMatch     = submittedName.toLowerCase() === verif.user_name.toLowerCase();
+  const hasReason = rejectReason.trim().length > 0;
 
   const hardwarePretty = useMemo(() => {
     if (!verif.hardware_info) return null;
@@ -277,7 +240,7 @@ function DetailModal({ verif, onClose, onApprove, onReject }: DetailModalProps) 
                       <div className="flex items-center gap-2.5">
                         {verif.profile_image_url ? (
                           <img
-                            src={verif.profile_image_url}
+                            src={validateImageURL(verif.profile_image_url)}
                             alt={verif.user_name}
                             className="w-10 h-10 rounded-full object-cover border border-stone-200 dark:border-[#2a2d3e] shrink-0"
                           />
@@ -350,7 +313,7 @@ function DetailModal({ verif, onClose, onApprove, onReject }: DetailModalProps) 
               <div className="space-y-3.5">
                 <InfoRow icon={CreditCard} label="ID Type"       value={verif.id_type}               />
                 <InfoRow icon={Hash}       label="ID Number"     value={verif.id_number}      mono   />
-                <InfoRow icon={Calendar}   label="Date of Birth" value={verif.date_of_birth}          />
+                <InfoRow icon={Calendar}   label="Date of Birth" value={verif.id_birthdate}           />
                 <InfoRow icon={Phone}      label="Mobile Number" value={`+63 ${verif.mobile_number}`} />
                 <InfoRow icon={Mail}       label="Email Address" value={verif.user_email}             />
               </div>
@@ -416,9 +379,9 @@ function DetailModal({ verif, onClose, onApprove, onReject }: DetailModalProps) 
             <div>
               <SectionLabel>Uploaded Photos</SectionLabel>
               <div className="space-y-4">
-                <IdImageCard label="ID — Front"              />
-                <IdImageCard label="ID — Back"               />
-                <IdImageCard label="Selfie while holding ID" />
+                <IdImageCard label="ID — Front" imageUrl={verif.id_image_front_url} />
+                <IdImageCard label="ID — Back" imageUrl={verif.id_image_back_url} />
+                <IdImageCard label="Selfie while holding ID" imageUrl={verif.selfie_url} />
               </div>
               <p className="text-[10px] text-stone-400 dark:text-stone-500 mt-2.5">
                 Click any image to view full size · Served from secure storage
@@ -433,7 +396,7 @@ function DetailModal({ verif, onClose, onApprove, onReject }: DetailModalProps) 
                   <Label className="text-[10px] font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest">
                     Rejection Reason
                     <span className="normal-case font-normal text-stone-400 dark:text-stone-600 ml-1.5">
-                      — required to reject
+                      — required for approve/reject
                     </span>
                   </Label>
                   <Textarea
@@ -466,11 +429,8 @@ function DetailModal({ verif, onClose, onApprove, onReject }: DetailModalProps) 
             <div className="flex items-center gap-2.5 ml-auto">
               <Button
                 type="button" variant="outline"
-                disabled={!rejectReason.trim()}
-                onClick={() => {
-                  if (!rejectReason.trim()) return;
-                  onReject(verif.id, rejectReason.trim());
-                }}
+                disabled={!hasReason || actionLoading}
+                onClick={() => void onReject(verif.id, rejectReason.trim())}
                 className="rounded-full border-red-200 dark:border-red-800 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 hover:text-red-600 hover:border-red-300 disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 <XCircle className="w-4 h-4 mr-1.5" />
@@ -478,7 +438,8 @@ function DetailModal({ verif, onClose, onApprove, onReject }: DetailModalProps) 
               </Button>
               <Button
                 type="button"
-                onClick={() => onApprove(verif.id)}
+                disabled={!hasReason || actionLoading}
+                onClick={() => void onApprove(verif.id, rejectReason.trim())}
                 className="rounded-full bg-teal-700 hover:bg-teal-600 text-white font-bold"
               >
                 <CheckCircle2 className="w-4 h-4 mr-1.5" />
@@ -495,12 +456,65 @@ function DetailModal({ verif, onClose, onApprove, onReject }: DetailModalProps) 
 
 // ── Main page ──────────────────────────────────────────────────────────────────
 export default function VerificationsPage() {
-  const [search,       setSearch]       = useState("");
+  const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
-  const [page,         setPage]         = useState(1);
-  const [selected,     setSelected]     = useState<AdminVerification | null>(null);
-  const [records,      setRecords]      = useState<AdminVerification[]>(VERIFICATIONS);
+  const [page, setPage] = useState(1);
+  const [selected, setSelected] = useState<AdminVerification | null>(null);
+  const [records, setRecords] = useState<AdminVerification[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState(false);
   const PER_PAGE = 8;
+
+  const mapRecord = useCallback((record: AdminVerificationRecord): AdminVerification => {
+    const submitted = new Date(record.submitted_at);
+    const reviewed = record.reviewed_at ? new Date(record.reviewed_at) : null;
+
+    return {
+      id: record.id,
+      user_id: record.user_id,
+      user_name: record.user_name,
+      user_email: record.user_email,
+      profile_image_url: record.profile_image_url,
+      id_first_name: record.id_first_name,
+      id_last_name: record.id_last_name,
+      id_birthdate: record.id_birthdate ? new Date(record.id_birthdate).toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" }) : "",
+      mobile_number: record.mobile_number,
+      id_type: record.id_type,
+      id_number: record.id_number,
+      id_image_front_url: record.id_image_front_url,
+      id_image_back_url: record.id_image_back_url,
+      selfie_url: record.selfie_url,
+      ip_address: record.ip_address,
+      user_agent: record.user_agent,
+      hardware_info: record.hardware_info,
+      status: record.status,
+      rejection_reason: record.rejection_reason,
+      reviewed_by: record.reviewed_by,
+      reviewed_at: reviewed && !Number.isNaN(reviewed.getTime())
+        ? reviewed.toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" })
+        : null,
+      submitted_at: !Number.isNaN(submitted.getTime())
+        ? `${submitted.toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" })} · ${submitted.toLocaleTimeString("en-PH", { hour: "numeric", minute: "2-digit" })}`
+        : record.submitted_at,
+    };
+  }, []);
+
+  const loadVerifications = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await getAdminVerifications();
+      setRecords((data ?? []).map(mapRecord));
+    } catch (error) {
+      const message = typeof error === "string" ? error : "Failed to load verification records";
+      toast.error(message, { position: "top-center" });
+    } finally {
+      setLoading(false);
+    }
+  }, [mapRecord]);
+
+  useEffect(() => {
+    void loadVerifications();
+  }, [loadVerifications]);
 
   const filtered = useMemo(() => {
     let data = [...records];
@@ -520,22 +534,38 @@ export default function VerificationsPage() {
   const rejectedCount = records.filter(r => r.status === "REJECTED").length;
   const hasActiveFilters = search || statusFilter !== "ALL";
 
-  function handleApprove(id: string) {
-    setRecords(rs => rs.map(r =>
-      r.id === id
-        ? { ...r, status: "VERIFIED" as VerifStatus, reviewed_by: "Admin One", reviewed_at: new Date().toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" }) }
-        : r,
-    ));
-    setSelected(null);
+  async function handleApprove(id: string, reason: string) {
+    if (!window.confirm("Approve this verification request? This action cannot be changed from this table.")) return;
+
+    setActionLoading(true);
+    try {
+      await setAdminVerificationStatus(id, { status: "VERIFIED", reason });
+      await loadVerifications();
+      setSelected(null);
+      toast.success("Verification approved successfully", { position: "top-center" });
+    } catch (error) {
+      const message = typeof error === "string" ? error : "Failed to approve verification";
+      toast.error(message, { position: "top-center" });
+    } finally {
+      setActionLoading(false);
+    }
   }
 
-  function handleReject(id: string, reason: string) {
-    setRecords(rs => rs.map(r =>
-      r.id === id
-        ? { ...r, status: "REJECTED" as VerifStatus, rejection_reason: reason, reviewed_by: "Admin One", reviewed_at: new Date().toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" }) }
-        : r,
-    ));
-    setSelected(null);
+  async function handleReject(id: string, reason: string) {
+    if (!window.confirm("Reject this verification request? This action cannot be changed from this table.")) return;
+
+    setActionLoading(true);
+    try {
+      await setAdminVerificationStatus(id, { status: "REJECTED", reason });
+      await loadVerifications();
+      setSelected(null);
+      toast.success("Verification rejected successfully", { position: "top-center" });
+    } catch (error) {
+      const message = typeof error === "string" ? error : "Failed to reject verification";
+      toast.error(message, { position: "top-center" });
+    } finally {
+      setActionLoading(false);
+    }
   }
 
   return (
@@ -624,7 +654,13 @@ export default function VerificationsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {paged.length === 0 ? (
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="py-16 text-center text-sm text-stone-400 dark:text-stone-500">
+                      Loading verification requests...
+                    </TableCell>
+                  </TableRow>
+                ) : paged.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={6} className="py-16 text-center text-sm text-stone-400 dark:text-stone-500">
                       No verification requests found.
@@ -638,9 +674,17 @@ export default function VerificationsPage() {
                       <TableRow key={verif.id} className="border-stone-100 dark:border-[#2a2d3e] hover:bg-stone-50 dark:hover:bg-[#252837] transition-colors">
                         <TableCell className="py-2">
                           <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#3a4a6a] to-[#1e2a40] flex items-center justify-center text-white text-[10px] font-bold shrink-0">
-                              {verif.user_name.charAt(0)}
-                            </div>
+                            {verif.profile_image_url ? (
+                              <img
+                                src={validateImageURL(verif.profile_image_url)}
+                                alt={verif.user_name}
+                                className="w-8 h-8 rounded-full object-cover border border-stone-200 dark:border-[#2a2d3e] shrink-0"
+                              />
+                            ) : (
+                              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#3a4a6a] to-[#1e2a40] flex items-center justify-center text-white text-[10px] font-bold shrink-0">
+                                {verif.user_name.charAt(0)}
+                              </div>
+                            )}
                             <div>
                               <p className="text-sm font-bold text-stone-800 dark:text-stone-100">{verif.user_name}</p>
                               <p className="text-xs text-stone-400 dark:text-stone-500">{verif.user_email}</p>
@@ -737,6 +781,7 @@ export default function VerificationsPage() {
           onClose={() => setSelected(null)}
           onApprove={handleApprove}
           onReject={handleReject}
+          actionLoading={actionLoading}
         />
       )}
     </div>

@@ -354,6 +354,36 @@ type AdminSetReportStatusBody struct {
 	Status string `json:"status"`
 }
 
+type AdminVerificationListItemFromDb struct {
+	Id              string     `gorm:"column:id" json:"id"`
+	UserId          string     `gorm:"column:user_id" json:"user_id"`
+	UserName        string     `gorm:"column:user_name" json:"user_name"`
+	UserEmail       string     `gorm:"column:user_email" json:"user_email"`
+	ProfileImageURL string     `gorm:"column:profile_image_url" json:"profile_image_url"`
+	IdFirstName     string     `gorm:"column:id_first_name" json:"id_first_name"`
+	IdLastName      string     `gorm:"column:id_last_name" json:"id_last_name"`
+	IdBirthdate     time.Time  `gorm:"column:id_birthdate" json:"id_birthdate"`
+	MobileNumber    string     `gorm:"column:mobile_number" json:"mobile_number"`
+	IdType          string     `gorm:"column:id_type" json:"id_type"`
+	IdNumber        string     `gorm:"column:id_number" json:"id_number"`
+	IdImageFrontURL string     `gorm:"column:id_image_front_url" json:"id_image_front_url"`
+	IdImageBackURL  string     `gorm:"column:id_image_back_url" json:"id_image_back_url"`
+	SelfieURL       string     `gorm:"column:selfie_url" json:"selfie_url"`
+	IPAddress       string     `gorm:"column:ip_address" json:"ip_address"`
+	UserAgent       string     `gorm:"column:user_agent" json:"user_agent"`
+	HardwareInfo    string     `gorm:"column:hardware_info" json:"hardware_info"`
+	Status          string     `gorm:"column:status" json:"status"`
+	RejectionReason *string    `gorm:"column:rejection_reason" json:"rejection_reason"`
+	ReviewedBy      *string    `gorm:"column:reviewed_by" json:"reviewed_by"`
+	ReviewedAt      *time.Time `gorm:"column:reviewed_at" json:"reviewed_at"`
+	SubmittedAt     time.Time  `gorm:"column:submitted_at" json:"submitted_at"`
+}
+
+type AdminSetVerificationStatusBody struct {
+	Status string `json:"status"`
+	Reason string `json:"reason"`
+}
+
 type ListingDetailFromDb struct {
 	Id                 string     `gorm:"column:id"`
 	SellerId           string     `gorm:"column:seller_id"`

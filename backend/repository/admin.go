@@ -670,3 +670,141 @@ func SetAdminReportStatus(reportId, reviewedById, status string) error {
 
 	return nil
 }
+
+func GetAdminVerifications() ([]model.AdminVerificationListItemFromDb, error) {
+	db := middleware.DBConn
+	rows := make([]model.AdminVerificationListItemFromDb, 0)
+
+	query := `
+		SELECT
+			uv.id::text AS id,
+			uv.user_id::text AS user_id,
+			TRIM(BOTH ' ' FROM CONCAT_WS(' ', NULLIF(TRIM(u.first_name), ''), NULLIF(TRIM(u.last_name), ''))) AS user_name,
+			COALESCE(u.email, '') AS user_email,
+			COALESCE(u.profile_image_url, '') AS profile_image_url,
+			COALESCE(uv.id_first_name, '') AS id_first_name,
+			COALESCE(uv.id_last_name, '') AS id_last_name,
+			uv.id_birthdate,
+			COALESCE(uv.mobile_number, '') AS mobile_number,
+			COALESCE(uv.id_type, '') AS id_type,
+			COALESCE(uv.id_number, '') AS id_number,
+			COALESCE(uv.id_image_front_url, '') AS id_image_front_url,
+			COALESCE(uv.id_image_back_url, '') AS id_image_back_url,
+			COALESCE(uv.selfie_url, '') AS selfie_url,
+			COALESCE(uv.ip_address, '') AS ip_address,
+			COALESCE(uv.user_agent, '') AS user_agent,
+			COALESCE(uv.hardware_info, '') AS hardware_info,
+			uv.verification_status::text AS status,
+			NULLIF(TRIM(uv.reason), '') AS rejection_reason,
+			NULLIF(TRIM(CONCAT_WS(' ', NULLIF(TRIM(rev.first_name), ''), NULLIF(TRIM(rev.last_name), ''))), '') AS reviewed_by,
+			uv.reviewed_at,
+			uv.submitted_at
+		FROM public.user_verifications uv
+		INNER JOIN public.users u ON u.id = uv.user_id
+		LEFT JOIN public.users rev ON rev.id = uv.reviewed_by_id
+		ORDER BY uv.submitted_at DESC
+	`
+
+	if err := db.Raw(query).Scan(&rows).Error; err != nil {
+		return nil, fmt.Errorf("Failed to fetch verifications")
+	}
+
+	for i := range rows {
+		rows[i].Status = strings.ToUpper(strings.TrimSpace(rows[i].Status))
+		if strings.TrimSpace(rows[i].UserName) == "" {
+			rows[i].UserName = strings.TrimSpace(rows[i].IdFirstName + " " + rows[i].IdLastName)
+		}
+	}
+
+	return rows, nil
+}
+
+func SetAdminVerificationStatus(verificationId, reviewedById, status, reason string) error {
+	db := middleware.DBConn
+	tx := db.Begin()
+	if tx.Error != nil {
+		return tx.Error
+	}
+
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	normalizedStatus := strings.ToUpper(strings.TrimSpace(status))
+	trimmedReason := strings.TrimSpace(reason)
+
+	if normalizedStatus != "VERIFIED" && normalizedStatus != "REJECTED" {
+		tx.Rollback()
+		return fmt.Errorf("Invalid verification status")
+	}
+	if trimmedReason == "" {
+		tx.Rollback()
+		return fmt.Errorf("Reason is required")
+	}
+
+	var verificationRow struct {
+		Status string `gorm:"column:status"`
+		UserID string `gorm:"column:user_id"`
+	}
+	if err := tx.Raw(`
+		SELECT verification_status::text AS status, user_id::text AS user_id
+		FROM public.user_verifications
+		WHERE id = $1
+		LIMIT 1
+	`, verificationId).Scan(&verificationRow).Error; err != nil {
+		tx.Rollback()
+		return fmt.Errorf("Failed to validate verification")
+	}
+	if strings.TrimSpace(verificationRow.UserID) == "" {
+		tx.Rollback()
+		return fmt.Errorf("Verification not found")
+	}
+	if !strings.EqualFold(strings.TrimSpace(verificationRow.Status), "PENDING") {
+		tx.Rollback()
+		return fmt.Errorf("Verification is already reviewed")
+	}
+
+	storedReason := ""
+	if normalizedStatus == "REJECTED" {
+		storedReason = trimmedReason
+	}
+
+	updateResult := tx.Exec(`
+		UPDATE public.user_verifications
+		SET
+			verification_status = $1::verification_status,
+			reason = NULLIF(TRIM($2), ''),
+			reviewed_by_id = $3,
+			reviewed_at = now()
+		WHERE id = $4
+			AND verification_status = 'PENDING'
+	`, normalizedStatus, storedReason, reviewedById, verificationId)
+
+	if updateResult.Error != nil {
+		tx.Rollback()
+		return fmt.Errorf("Failed to update verification status")
+	}
+	if updateResult.RowsAffected == 0 {
+		tx.Rollback()
+		return fmt.Errorf("Verification is already reviewed")
+	}
+
+	if err := tx.Exec(`
+		UPDATE public.users
+		SET
+			verification_status = $1::verification_status,
+			updated_at = now()
+		WHERE id = $2
+	`, normalizedStatus, verificationRow.UserID).Error; err != nil {
+		tx.Rollback()
+		return fmt.Errorf("Failed to update user verification status")
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		return err
+	}
+
+	return nil
+}
