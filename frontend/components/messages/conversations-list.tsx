@@ -17,7 +17,7 @@ function filterByTab(conversations: Conversation[], tab: MessageTab): Conversati
     case "selling":  return conversations.filter((c) =>  c.isSeller && c.listing.listingType === "SELL");
     case "rental":   return conversations.filter((c) => c.listing.listingType === "RENT");
     case "services": return conversations.filter((c) => c.listing.listingType === "SERVICE");
-    default:         return conversations; // "all"
+    default:         return conversations;
   }
 }
 
@@ -30,11 +30,11 @@ interface ConversationsListProps {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function ConversationsList({ activeTab }: ConversationsListProps) {
-  const pathname   = usePathname();
+  const pathname     = usePathname();
   const activeConvId = pathname.startsWith("/messages/") ? pathname.split("/")[2] : null;
 
-  const [allConversations, setAllConversations]   = useState<Conversation[]>([]);
-  const [search, setSearch] = useState("");
+  const [allConversations, setAllConversations] = useState<Conversation[]>([]);
+  const [search,  setSearch]  = useState("");
   const [loading, setLoading] = useState(true);
 
   const loadConvs = useCallback(async () => {
@@ -52,11 +52,8 @@ export default function ConversationsList({ activeTab }: ConversationsListProps)
   useEffect(() => { loadConvs(); }, [loadConvs]);
 
   useEffect(() => {
-    const refresh = () => {
-      loadConvs();
-    };
-
-    window.addEventListener("messages:updated", refresh);
+    const refresh = () => { loadConvs(); };
+    // window.addEventListener("messages:updated", refresh);
     return () => window.removeEventListener("messages:updated", refresh);
   }, [loadConvs]);
 
@@ -90,8 +87,8 @@ export default function ConversationsList({ activeTab }: ConversationsListProps)
               placeholder="Search conversations…"
               className={cn(
                 "w-full pl-8 pr-7 py-2 text-xs rounded-lg bg-stone-100 dark:bg-[#13151f] border border-transparent",
-                "[&::-webkit-search-cancel-button]:appearance-none [&::-webkit-search-decoration]:appearance-none", // Remove default "x" button in WebKit browsers
-                "[&::-ms-clear]:hidden [&::-ms-reveal]:hidden", // Remove default "x" button in IE/Edge
+                "[&::-webkit-search-cancel-button]:appearance-none [&::-webkit-search-decoration]:appearance-none",
+                "[&::-ms-clear]:hidden [&::-ms-reveal]:hidden",
                 "placeholder:text-stone-400 dark:placeholder:text-stone-600",
                 "text-stone-800 dark:text-stone-100",
                 "focus:outline-none focus:ring-1 focus:ring-amber-500/50 focus:border-amber-500/50",
@@ -114,10 +111,15 @@ export default function ConversationsList({ activeTab }: ConversationsListProps)
       {/* ── List ────────────────────────────────────────────────────── */}
       <div className="flex-1 overflow-y-auto no-scroll">
         {loading ? (
-          // Skeleton
-          <div className="flex flex-col gap-0">
+
+          // Skeleton — staggered fade-in so it feels intentional
+          <div className="flex flex-col gap-0 animate-in fade-in duration-150">
             {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="flex items-start gap-3 px-4 py-3 border-l-2 border-l-transparent">
+              <div
+                key={i}
+                className="flex items-start gap-3 px-4 py-3 border-l-2 border-l-transparent animate-in fade-in duration-300"
+                style={{ animationDelay: `${i * 50}ms`, animationFillMode: "both" }}
+              >
                 <div className="w-11 h-11 rounded-full bg-stone-100 dark:bg-[#252837] animate-pulse shrink-0" />
                 <div className="flex-1 space-y-1.5">
                   <div className="h-3 w-32 rounded bg-stone-100 dark:bg-[#252837] animate-pulse" />
@@ -127,18 +129,29 @@ export default function ConversationsList({ activeTab }: ConversationsListProps)
               </div>
             ))}
           </div>
-        ) : filtered.length === 0 ? (
-          <EmptyState tab={activeTab} hasSearch={!!search} />
+
         ) : (
-          <div className="divide-y divide-border/50">
-            {filtered.map((conv) => (
-              <ConversationItem
-                key={conv.id}
-                conversation={conv}
-                isActive={conv.id === activeConvId}
-              />
-            ))}
+
+          // Content — fades up in from slightly below when loading ends
+          // `key="content"` forces React to unmount/remount this node each time
+          // loading flips to false, which re-triggers the animation classes
+          <div
+            key="content"
+            className="divide-y divide-border/50 animate-in fade-in duration-300 ease-out"
+          >
+            {filtered.length === 0 ? (
+              <EmptyState tab={activeTab} hasSearch={!!search} />
+            ) : (
+              filtered.map((conv) => (
+                <ConversationItem
+                  key={conv.id}
+                  conversation={conv}
+                  isActive={conv.id === activeConvId}
+                />
+              ))
+            )}
           </div>
+
         )}
       </div>
     </div>
