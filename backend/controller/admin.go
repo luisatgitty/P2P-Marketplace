@@ -252,6 +252,68 @@ func SetAdminReportStatus(c *fiber.Ctx) error {
 	})
 }
 
+func GetAdminVerifications(c *fiber.Ctx) error {
+	_, authErr := requireAdmin(c)
+	if authErr != nil {
+		return authErr
+	}
+
+	verifications, err := repository.GetAdminVerifications()
+	if err != nil {
+		return SendErrorResponse(c, 500, err.Error(), err)
+	}
+
+	return SendSuccessResponse(c, 200, "Verifications fetched successfully", map[string]any{
+		"verifications": verifications,
+	})
+}
+
+func SetAdminVerificationStatus(c *fiber.Ctx) error {
+	reviewedById, authErr := requireAdmin(c)
+	if authErr != nil {
+		return authErr
+	}
+
+	verificationId := strings.TrimSpace(c.Params("id"))
+	if verificationId == "" {
+		return SendErrorResponse(c, 400, "Verification ID is required", nil)
+	}
+
+	var body model.AdminSetVerificationStatusBody
+	if err := c.BodyParser(&body); err != nil {
+		return SendErrorResponse(c, 400, "Invalid request body", err)
+	}
+
+	normalizedStatus := strings.ToUpper(strings.TrimSpace(body.Status))
+	reason := strings.TrimSpace(body.Reason)
+
+	if normalizedStatus != "VERIFIED" && normalizedStatus != "REJECTED" {
+		return SendErrorResponse(c, 400, "Status must be VERIFIED or REJECTED", nil)
+	}
+	if reason == "" {
+		return SendErrorResponse(c, 400, "Reason is required", nil)
+	}
+
+	if err := repository.SetAdminVerificationStatus(verificationId, reviewedById, normalizedStatus, reason); err != nil {
+		message := strings.TrimSpace(err.Error())
+		if strings.EqualFold(message, "Verification not found") {
+			return SendErrorResponse(c, 404, message, err)
+		}
+		if strings.EqualFold(message, "Verification is already reviewed") {
+			return SendErrorResponse(c, 400, message, err)
+		}
+		if strings.Contains(strings.ToLower(message), "invalid") || strings.Contains(strings.ToLower(message), "required") {
+			return SendErrorResponse(c, 400, message, err)
+		}
+		return SendErrorResponse(c, 500, message, err)
+	}
+
+	return SendSuccessResponse(c, 200, "Verification status updated successfully", map[string]any{
+		"verificationId": verificationId,
+		"status":         normalizedStatus,
+	})
+}
+
 func GetAdminAccounts(c *fiber.Ctx) error {
 	_, authErr := requireSuperAdmin(c)
 	if authErr != nil {
@@ -323,5 +385,44 @@ func DeleteAdminAccount(c *fiber.Ctx) error {
 
 	return SendSuccessResponse(c, 200, "Admin account removed successfully", map[string]any{
 		"adminId": targetUserId,
+	})
+}
+
+func SetAdminAccountActive(c *fiber.Ctx) error {
+	adminUserId, authErr := requireSuperAdmin(c)
+	if authErr != nil {
+		return authErr
+	}
+
+	targetUserId := strings.TrimSpace(c.Params("id"))
+	if targetUserId == "" {
+		return SendErrorResponse(c, 400, "Admin ID is required", nil)
+	}
+	if targetUserId == adminUserId {
+		return SendErrorResponse(c, 400, "You cannot update your own active status", nil)
+	}
+
+	var body model.AdminSetUserActiveBody
+	if err := c.BodyParser(&body); err != nil {
+		return SendErrorResponse(c, 400, "Invalid request body", err)
+	}
+	if body.IsActive == nil {
+		return SendErrorResponse(c, 400, "isActive is required", nil)
+	}
+
+	if err := repository.SetAdminAccountActive(targetUserId, *body.IsActive); err != nil {
+		message := strings.TrimSpace(err.Error())
+		if strings.EqualFold(message, "Admin account not found") {
+			return SendErrorResponse(c, 404, message, err)
+		}
+		if strings.Contains(strings.ToLower(message), "last super admin") {
+			return SendErrorResponse(c, 400, message, err)
+		}
+		return SendErrorResponse(c, 500, message, err)
+	}
+
+	return SendSuccessResponse(c, 200, "Admin account status updated successfully", map[string]any{
+		"adminId":   targetUserId,
+		"is_active": *body.IsActive,
 	})
 }

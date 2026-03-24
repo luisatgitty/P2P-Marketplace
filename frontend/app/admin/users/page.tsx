@@ -379,13 +379,22 @@ export default function UsersPage() {
                       {/* Name + email + phone */}
                       <TableCell className="py-2">
                         <div className="flex items-center gap-3 min-w-0">
-                          <Image
-                            src={validateImageURL(user.profile_image_url) || "/profile-icon.png"}
-                            alt="Profile"
-                            width={32}
-                            height={32}
-                            className="w-10 h-10 rounded-full object-cover border border-stone-200 dark:border-[#2a2d3e] shrink-0"
-                          />
+                          <Link
+                            href={`/profile?userId=${user.id}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            title="Open profile"
+                            aria-label="Open profile"
+                            className="shrink-0"
+                          >
+                            <Image
+                              src={validateImageURL(user.profile_image_url) || "/profile-icon.png"}
+                              alt="Profile"
+                              width={32}
+                              height={32}
+                              className="w-10 h-10 rounded-full object-cover border border-stone-200 dark:border-[#2a2d3e]"
+                            />
+                          </Link>
                           <div className="min-w-0">
                             <p className="text-sm font-bold text-stone-800 dark:text-stone-100 truncate max-w-40">
                               {user.first_name} {user.last_name}
@@ -446,24 +455,6 @@ export default function UsersPage() {
                       <TableCell className="py-3.5">
                         <div className="flex items-center justify-end gap-1">
 
-                          {/* View profile */}
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            asChild
-                            className="w-7 h-7 text-stone-500 dark:text-stone-300 hover:text-stone-700 dark:hover:text-stone-100 hover:bg-stone-100 dark:hover:bg-[#252837]"
-                          >
-                            <Link
-                              href={`/profile?userId=${user.id}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              title="View profile"
-                              aria-label="View profile"
-                            >
-                              <ExternalLink className="w-4 h-4" />
-                            </Link>
-                          </Button>
-
                           {/* Activate / deactivate */}
                           <Button
                             variant="ghost"
@@ -476,8 +467,8 @@ export default function UsersPage() {
                             className="w-7 h-7 hover:bg-stone-100 dark:hover:bg-[#252837] disabled:opacity-50"
                           >
                             {user.is_active
-                              ? <UserX     className="w-4 h-4 text-amber-500" />
-                              : <UserCheck className="w-4 h-4 text-teal-500"  />
+                              ? <UserX     className="w-4 h-4 text-amber-500 hover:text-amber-800" />
+                              : <UserCheck className="w-4 h-4 text-teal-500 hover:text-teal-800"  />
                             }
                           </Button>
 

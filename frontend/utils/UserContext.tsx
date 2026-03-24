@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useState, useEffect } from "react";
+import { createContext, useCallback, useContext, useState, useEffect, useRef } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { User } from "@/types/forms";
 import { LoadingPage } from "@/components/loading";
@@ -34,8 +34,9 @@ const AUTH_ROUTES = [
   "/verify-email",
 ];
 const ADMIN_ROUTES = [
-  "/",
   "/admin",
+];
+const SHARED_AUTH_ROUTES = [
   "/listing",
   "/profile",
 ];
@@ -47,6 +48,7 @@ const KNOWN_APP_ROUTES = [
   "/reset-password",
   "/verify-email",
   "/listing",
+  "/become-seller",
   "/create",
   "/messages",
   "/profile",
@@ -126,6 +128,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const isPublicRoute = PUBLIC_ROUTES.some(isRouteRootMatch);
   const isAuthRoute = AUTH_ROUTES.some(isRouteRootMatch);
   const isAdminRoute = ADMIN_ROUTES.some(isRouteRootMatch);
+  const isSharedAuthRoute = SHARED_AUTH_ROUTES.some(isRouteRootMatch);
   const isKnownAppRoute = KNOWN_APP_ROUTES.some(isRouteRootMatch);
   const isAdminRole = ["ADMIN", "SUPER_ADMIN"].includes((user?.role ?? "").toUpperCase());
 
@@ -143,9 +146,11 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     const connect = () => {
       if (closedByCleanup) return;
 
+      let wasEverOpen = false;
       ws = new WebSocket(wsUrl);
 
       ws.onopen = () => {
+        wasEverOpen = true;
         window.dispatchEvent(new Event("messages:updated"));
 
         if (pingInterval) clearInterval(pingInterval);
@@ -235,15 +240,26 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         }
       };
 
-      ws.onclose = () => {
+      ws.onclose = (event) => {
         if (pingInterval) {
           clearInterval(pingInterval);
           pingInterval = null;
         }
 
-        if (!closedByCleanup) {
-          reconnectTimeout = setTimeout(connect, 2000);
+        if (closedByCleanup) return;
+
+        // If the connection was never successfully opened, the server rejected the WebSocket handshake
+        // Most likely because the session is invalid or the account was deactivated.
+        const isAuthRejection =
+          !wasEverOpen &&
+          (event.code === 1006 || (event.code >= 4000 && event.code <= 4099));
+
+        if (isAuthRejection) {
+          void clearUserData();
+          return;
         }
+
+        reconnectTimeout = setTimeout(connect, 2000);
       };
 
       ws.onerror = () => {
@@ -251,6 +267,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       };
     };
 
+    
     connect();
 
     return () => {
@@ -351,7 +368,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    if (isAuth && isAdminRole && !isAdminRoute) {
+    if (isAuth && isAdminRole && !isAdminRoute && !isSharedAuthRoute) {
       router.replace("/admin");
       return;
     }
@@ -368,7 +385,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       }
       router.replace("/login");
     }
-  }, [isAdminRole, isAdminRoute, isAuth, isAuthRoute, isKnownAppRoute, isPublicRoute, isLoading, router]);
+  }, [isAdminRole, isAdminRoute, isAuth, isAuthRoute, isKnownAppRoute, isPublicRoute, isSharedAuthRoute, isLoading, router]);
 
   // Guard against BFCache restoring a protected page after logout
   useEffect(() => {

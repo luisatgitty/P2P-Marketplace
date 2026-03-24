@@ -2,6 +2,7 @@
 
 import { Fragment, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import {
   Search,
   X,
@@ -17,6 +18,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { validateImageURL } from "@/utils/validation";
 import {
   getAdminReports,
   setAdminReportStatus,
@@ -43,11 +45,15 @@ type ReportTarget = "LISTING" | "USER";
 
 interface AdminReport {
   id:            string;
+  reporter_id:   string;
   reporter:      string;
+  reporter_profile_image_url: string;
   target_type:   ReportTarget;
   target_name:   string;
   target_id:     string;
+  listing_owner_id: string;
   listing_owner: string;
+  listing_owner_profile_image_url: string;
   reason:        string;
   description:   string | null;
   status:        ReportStatus;
@@ -317,9 +323,31 @@ export default function ReportsPage() {
                           {/* Reporter */}
                           <TableCell className="py-3.5">
                             <div className="flex items-center gap-2.5">
-                              <div className="w-7 h-7 rounded-full bg-stone-200 dark:bg-stone-700 flex items-center justify-center text-xs font-bold text-stone-600 dark:text-stone-200 shrink-0">
-                                {report.reporter.charAt(0)}
-                              </div>
+                              {report.reporter_id ? (
+                                <Link
+                                  href={`/profile?userId=${report.reporter_id}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  title="Open reporter profile"
+                                  aria-label="Open reporter profile"
+                                >
+                                  <Image
+                                    src={validateImageURL(report.reporter_profile_image_url) || "/profile-icon.png"}
+                                    alt="Profile"
+                                    width={32}
+                                    height={32}
+                                    className="w-8 h-8 rounded-full object-cover border border-stone-200 dark:border-[#2a2d3e] shrink-0"
+                                  />
+                                </Link>
+                              ) : (
+                                <Image
+                                  src={validateImageURL(report.reporter_profile_image_url) || "/profile-icon.png"}
+                                  alt="Profile"
+                                  width={32}
+                                  height={32}
+                                  className="w-8 h-8 rounded-full object-cover border border-stone-200 dark:border-[#2a2d3e] shrink-0"
+                                />
+                              )}
                               <span className="text-sm font-semibold text-stone-800 dark:text-stone-100 whitespace-nowrap">
                                 {report.reporter}
                               </span>
@@ -327,7 +355,7 @@ export default function ReportsPage() {
                           </TableCell>
 
                           {/* Reported listing */}
-                          <TableCell className="py-3.5 max-w-[260px]">
+                          <TableCell className="py-3.5 max-w-65">
                             {report.target_type === "LISTING" ? (
                               <p className="text-xs text-stone-600 dark:text-stone-300 line-clamp-2">
                                 {report.target_name}
@@ -339,7 +367,38 @@ export default function ReportsPage() {
 
                           {/* Listing owner */}
                           <TableCell className="py-3.5 text-sm text-stone-600 dark:text-stone-300 whitespace-nowrap">
-                            {report.target_type === "LISTING" ? report.listing_owner : "—"}
+                            {report.target_type === "LISTING" ? (
+                              <div className="flex items-center gap-2.5">
+                                {report.listing_owner_id ? (
+                                  <Link
+                                    href={`/profile?userId=${report.listing_owner_id}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    title="Open listing owner profile"
+                                    aria-label="Open listing owner profile"
+                                  >
+                                    <Image
+                                      src={validateImageURL(report.listing_owner_profile_image_url) || "/profile-icon.png"}
+                                      alt="Profile"
+                                      width={32}
+                                      height={32}
+                                      className="w-8 h-8 rounded-full object-cover border border-stone-200 dark:border-[#2a2d3e] shrink-0"
+                                    />
+                                  </Link>
+                                ) : (
+                                  <Image
+                                    src={validateImageURL(report.listing_owner_profile_image_url) || "/profile-icon.png"}
+                                    alt="Profile"
+                                    width={32}
+                                    height={32}
+                                    className="w-8 h-8 rounded-full object-cover border border-stone-200 dark:border-[#2a2d3e] shrink-0"
+                                  />
+                                )}
+                                <span className="text-sm font-semibold text-stone-800 dark:text-stone-100 whitespace-nowrap">
+                                  {report.listing_owner}
+                                </span>
+                              </div>
+                            ) : "—"}
                           </TableCell>
 
                           {/* Reason */}

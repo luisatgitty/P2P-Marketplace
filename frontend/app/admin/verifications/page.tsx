@@ -1,61 +1,65 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import {
-  Search,
-  X,
-  CheckCircle2,
-  XCircle,
-  ShieldCheck,
-  Clock,
-  Eye,
-  AlertTriangle,
-  IdCard,
-  ChevronLeft,
-  ChevronRight,
+  Search, X, CheckCircle2, XCircle, ShieldCheck, Clock,
+  Eye, AlertTriangle, IdCard, ChevronLeft, ChevronRight,
+  User, Phone, Mail, Calendar, Hash, Monitor, Globe,
+  Cpu, CreditCard, ChevronDown, ChevronUp,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
+import { validateImageURL } from "@/utils/validation";
+import {
+  getAdminVerifications,
+  setAdminVerificationStatus,
+  type AdminVerificationRecord,
+} from "@/services/adminVerificationsService";
 
-// ── shadcn components ──────────────────────────────────────────────────────────
+// ── shadcn ─────────────────────────────────────────────────────────────────────
 import { Button }            from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input }             from "@/components/ui/input";
+import { Label }             from "@/components/ui/label";
 import { Separator }         from "@/components/ui/separator";
+import { Textarea }          from "@/components/ui/textarea";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  Table, TableBody, TableCell,
+  TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 type VerifStatus = "PENDING" | "VERIFIED" | "REJECTED";
 
 interface AdminVerification {
-  id:               string;
-  user_id:          string;
-  user_name:        string;
-  user_email:       string;
-  id_type:          string;
-  id_number:        string;
-  status:           VerifStatus;
-  rejection_reason: string | null;
-  reviewed_by:      string | null;
-  reviewed_at:      string | null;
-  submitted_at:     string;
+  id:                string;
+  user_id:           string;
+  // Registered profile
+  user_name:         string;
+  user_email:        string;
+  profile_image_url: string;
+  // Submitted personal info (from become-seller form)
+  id_first_name:     string;
+  id_last_name:      string;
+  id_birthdate:      string;
+  mobile_number:     string;
+  // ID document
+  id_type:           string;
+  id_number:         string;
+  id_image_front_url:string;
+  id_image_back_url: string;
+  selfie_url:        string;
+  // Submission metadata
+  ip_address:        string;
+  user_agent:        string;
+  hardware_info:     string;   // JSON string from getDeviceInfo()
+  // Review state
+  status:            VerifStatus;
+  rejection_reason:  string | null;
+  reviewed_by:       string | null;
+  reviewed_at:       string | null;
+  submitted_at:      string;
 }
-
-// ── Static data ────────────────────────────────────────────────────────────────
-const VERIFICATIONS: AdminVerification[] = [
-  { id: "v1", user_id: "u1", user_name: "Juan Miguel Dela Cruz",  user_email: "juan@email.com",  id_type: "PhilSys ID",        id_number: "1234-5678-9012",  status: "PENDING",  rejection_reason: null, reviewed_by: null,       reviewed_at: null,           submitted_at: "Mar 19, 2026 · 8:00 AM"  },
-  { id: "v2", user_id: "u2", user_name: "Maria Cristina Santos",  user_email: "maria@email.com", id_type: "Passport",          id_number: "P1234567A",       status: "PENDING",  rejection_reason: null, reviewed_by: null,       reviewed_at: null,           submitted_at: "Mar 18, 2026 · 4:30 PM"  },
-  { id: "v3", user_id: "u7", user_name: "Ramon Torres",           user_email: "ramon@email.com", id_type: "Driver's License",  id_number: "N07-89-012345",   status: "PENDING",  rejection_reason: null, reviewed_by: null,       reviewed_at: null,           submitted_at: "Mar 17, 2026 · 2:00 PM"  },
-  { id: "v4", user_id: "u3", user_name: "Pedro Jose Reyes",       user_email: "pedro@email.com", id_type: "SSS ID",            id_number: "34-1234567-8",    status: "VERIFIED", rejection_reason: null, reviewed_by: "Admin One", reviewed_at: "Mar 15, 2026", submitted_at: "Mar 12, 2026 · 10:00 AM" },
-  { id: "v5", user_id: "u4", user_name: "Ana Liza Bautista",      user_email: "ana@email.com",   id_type: "Voter's ID",        id_number: "1234-56-789-0123",status: "VERIFIED", rejection_reason: null, reviewed_by: "Admin One", reviewed_at: "Mar 10, 2026", submitted_at: "Mar 7, 2026 · 9:00 AM"   },
-  { id: "v6", user_id: "u6", user_name: "Luisa Mae Garcia",       user_email: "luisa@email.com", id_type: "PhilSys ID",        id_number: "9876-5432-1098",  status: "REJECTED", rejection_reason: "Uploaded ID image is blurry and cannot be verified. Selfie does not clearly show the ID. Please resubmit with clearer photos.", reviewed_by: "Admin One", reviewed_at: "Mar 18, 2026", submitted_at: "Mar 16, 2026 · 11:00 AM" },
-];
 
 const STATUS_CONFIG: Record<VerifStatus, { cls: string; label: string; Icon: React.ElementType }> = {
   PENDING:  { cls: "bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300", label: "Pending",  Icon: Clock       },
@@ -63,12 +67,73 @@ const STATUS_CONFIG: Record<VerifStatus, { cls: string; label: string; Icon: Rea
   REJECTED: { cls: "bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400",         label: "Rejected", Icon: XCircle     },
 };
 
-// ── Shared filter select ───────────────────────────────────────────────────────
-function FilterSelect({
-  value,
-  onChange,
-  options,
-}: {
+// ── Shared sub-components ──────────────────────────────────────────────────────
+
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="text-xs font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest mb-2.5">
+      {children}
+    </p>
+  );
+}
+
+function InfoRow({ icon: Icon, label, value, mono = false }: {
+  icon:  React.ElementType;
+  label: string;
+  value: string | null | undefined;
+  mono?: boolean;
+}) {
+  return (
+    <div className="flex items-start gap-2.5">
+      <Icon className="w-4 h-4 text-stone-400 dark:text-stone-500 shrink-0 mt-2" />
+      <div className="min-w-0 flex-1">
+        <p className="text-xs font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest leading-none mb-0.5">
+          {label}
+        </p>
+        <p className={cn(
+          "text-sm break-words",
+          mono ? "font-mono text-stone-700 dark:text-stone-200" : "text-stone-700 dark:text-stone-200",
+          !value && "text-stone-400 dark:text-stone-600 italic font-normal",
+        )}>
+          {value ?? "—"}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function IdImageCard({ label, imageUrl }: { label: string; imageUrl?: string | null }) {
+  const resolvedUrl = imageUrl ? validateImageURL(imageUrl) : "";
+
+  return (
+    <div className="space-y-1.5">
+      <p className="text-xs font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest">
+        {label}
+      </p>
+      {resolvedUrl ? (
+        <button
+          type="button"
+          onClick={() => window.open(resolvedUrl, "_blank", "noopener,noreferrer")}
+          className="aspect-[4/3] w-full rounded-xl overflow-hidden border border-stone-200 dark:border-[#2a2d3e] bg-stone-100 dark:bg-[#13151f] hover:opacity-95 transition-opacity"
+          title="View full image"
+        >
+          <img
+            src={resolvedUrl}
+            alt={label}
+            className="w-full h-full object-cover"
+          />
+        </button>
+      ) : (
+        <div className="aspect-[4/3] rounded-xl bg-stone-100 dark:bg-[#13151f] border-2 border-dashed border-stone-200 dark:border-[#2a2d3e] flex flex-col items-center justify-center gap-2">
+          <IdCard className="w-9 h-9 text-stone-300 dark:text-stone-600" />
+          <span className="text-xs font-medium text-stone-400 dark:text-stone-500">No image</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function FilterSelect({ value, onChange, options }: {
   value:    string;
   onChange: (v: string) => void;
   options:  [string, string][];
@@ -80,9 +145,7 @@ function FilterSelect({
         onChange={e => onChange(e.target.value)}
         className="pl-3 pr-8 py-2 h-9 bg-transparent border border-stone-200 dark:border-[#2a2d3e] rounded-md text-sm text-stone-700 dark:text-stone-200 outline-none focus:border-stone-400 transition-colors appearance-none cursor-pointer dark:bg-[#13151f]"
       >
-        {options.map(([v, l]) => (
-          <option key={v} value={v}>{l}</option>
-        ))}
+        {options.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
       </select>
       <div className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2">
         <svg className="w-3.5 h-3.5 text-stone-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -95,200 +158,295 @@ function FilterSelect({
 
 // ── Detail modal ───────────────────────────────────────────────────────────────
 interface DetailModalProps {
-  verif:     AdminVerification;
-  onClose:   () => void;
-  onApprove: (id: string) => void;
-  onReject:  (id: string, reason: string) => void;
+  verif:          AdminVerification;
+  onClose:        () => void;
+  onApprove:      (id: string, reason: string) => Promise<void>;
+  onReject:       (id: string, reason: string) => Promise<void>;
+  actionLoading?: boolean;
 }
 
-function DetailModal({ verif, onClose, onApprove, onReject }: DetailModalProps) {
-  const [rejectMode,   setRejectMode]   = useState(false);
-  const [rejectReason, setRejectReason] = useState("");
+function DetailModal({ verif, onClose, onApprove, onReject, actionLoading = false }: DetailModalProps) {
+  const [rejectReason, setRejectReason] = useState(
+    // Pre-fill when viewing a previously rejected submission
+    verif.status === "REJECTED" ? (verif.rejection_reason ?? "") : "",
+  );
+  const [hardwareOpen, setHardwareOpen] = useState(false);
+
   const sc   = STATUS_CONFIG[verif.status];
   const Icon = sc.Icon;
 
+  const submittedName = `${verif.id_first_name} ${verif.id_last_name}`.trim();
+  const nameMatch     = submittedName.toLowerCase() === verif.user_name.toLowerCase();
+  const hasReason = rejectReason.trim().length > 0;
+
+  const hardwarePretty = useMemo(() => {
+    if (!verif.hardware_info) return null;
+    try   { return JSON.stringify(JSON.parse(verif.hardware_info), null, 2); }
+    catch { return verif.hardware_info; }
+  }, [verif.hardware_info]);
+
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
       onClick={e => e.target === e.currentTarget && onClose()}
     >
-      <div className="bg-white dark:bg-[#1c1f2e] rounded-t-3xl sm:rounded-2xl w-full sm:max-w-lg shadow-2xl flex flex-col max-h-[90vh]">
+      {/* ── Modal shell — max-w-5xl two-column ── */}
+      <div className="bg-white dark:bg-[#1c1f2e] rounded-2xl w-full max-w-5xl shadow-2xl flex flex-col max-h-[92vh] overflow-hidden">
 
-        {/* Header */}
-        <div className="bg-[#1e2433] px-6 py-5 flex items-start justify-between shrink-0 rounded-t-3xl sm:rounded-t-2xl">
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <IdCard className="w-4 h-4 text-amber-400" />
-              <h2 className="text-white font-bold text-base">Verification Request</h2>
+        {/* ── Header ─────────────────────────────────────────────────────────── */}
+        <div className="bg-[#1e2433] px-6 py-4 flex items-center justify-between shrink-0 rounded-t-2xl">
+          <div className="flex items-center gap-3 min-w-0">
+            <IdCard className="w-4 h-4 text-amber-400 shrink-0" />
+            <div className="min-w-0">
+              <h2 className="text-white font-bold text-base leading-none">Verification Request</h2>
+              <p className="text-slate-400 text-sm mt-0.5 truncate">
+                By {verif.user_name} · Submitted on {verif.submitted_at}
+              </p>
             </div>
-            <p className="text-slate-400 text-xs">
-              {verif.user_name} · {verif.submitted_at}
-            </p>
+            <span className={cn(
+              "ml-2 text-xs font-bold px-2.5 py-1 rounded-full inline-flex items-center gap-1 shrink-0",
+              sc.cls,
+            )}>
+              <Icon className="w-3 h-3" /> {sc.label}
+            </span>
           </div>
           <Button
-            type="button"
-            variant="ghost"
-            size="icon"
+            type="button" variant="ghost" size="icon"
             onClick={onClose}
-            className="text-slate-400 hover:text-white hover:bg-white/10 h-7 w-7 mt-0.5"
+            className="text-slate-400 hover:text-white hover:bg-white/10 h-7 w-7 shrink-0 ml-3"
           >
             <X className="w-4 h-4" />
           </Button>
         </div>
 
-        {/* Body */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-5">
+        {/* ── Two-column body ─────────────────────────────────────────────────── */}
+        <div className="flex-1 overflow-hidden flex flex-col lg:flex-row min-h-0">
 
-          {/* User info chip */}
-          <div className="flex items-center gap-3 p-4 bg-stone-50 dark:bg-[#13151f] rounded-xl border border-stone-200 dark:border-[#2a2d3e]">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#3a4a6a] to-[#1e2a40] flex items-center justify-center text-white text-sm font-bold shrink-0">
-              {verif.user_name.charAt(0)}
-            </div>
-            <div className="min-w-0">
-              <p className="text-sm font-bold text-stone-800 dark:text-stone-100">{verif.user_name}</p>
-              <p className="text-xs text-stone-500 dark:text-stone-400">{verif.user_email}</p>
-            </div>
-            <span className={cn(
-              "ml-auto text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 shrink-0",
-              sc.cls,
-            )}>
-              <Icon className="w-2.5 h-2.5" /> {sc.label}
-            </span>
-          </div>
+          {/* ════ LEFT — Personal + metadata ════ */}
+          <div className="lg:w-[35%] overflow-y-auto border-b lg:border-b-0 lg:border-r border-stone-200 dark:border-[#2a2d3e] p-5 space-y-5">
 
-          {/* Submitted documents */}
-          <div>
-            <p className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest mb-3">
-              Submitted Documents
-            </p>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="bg-stone-50 dark:bg-[#13151f] rounded-xl p-3 border border-stone-200 dark:border-[#2a2d3e]">
-                <p className="text-[10px] font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest mb-1">ID Type</p>
-                <p className="text-sm font-bold text-stone-800 dark:text-stone-100">{verif.id_type}</p>
+            {/* ── Profile vs. Submitted comparison card ── */}
+            <div> 
+              <SectionLabel>Identity Comparison</SectionLabel>
+              <Card className="py-0 overflow-hidden dark:bg-[#13151f] dark:border-[#2a2d3e]">
+                <CardContent className="p-0">
+                  <div className="grid divide-x divide-stone-200 dark:divide-[#2a2d3e]">
+
+                    {/* Registered profile side */}
+                    <div className="p-3.5 space-y-2.5">
+                      <p className="text-xs font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest">
+                        Profile
+                      </p>
+                      <div className="flex items-center gap-2.5">
+                        {verif.profile_image_url ? (
+                          <img
+                            src={validateImageURL(verif.profile_image_url)}
+                            alt={verif.user_name}
+                            className="w-10 h-10 rounded-full object-cover border border-stone-200 dark:border-[#2a2d3e] shrink-0"
+                          />
+                        ) : (
+                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#3a4a6a] to-[#1e2a40] flex items-center justify-center text-white text-sm font-bold shrink-0">
+                            {verif.user_name.charAt(0)}
+                          </div>
+                        )}
+                        <div className="min-w-0">
+                          <p className="text-sm font-bold text-stone-800 dark:text-stone-100 truncate">
+                            {verif.user_name}
+                          </p>
+                          <p className="text-xs text-stone-400 dark:text-stone-500 truncate">
+                            {verif.user_email}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <Separator />
+
+                    {/* Submitted info side */}
+                    <div className="p-3.5 space-y-2.5">
+                      <p className="text-xs font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest">
+                        Submitted
+                      </p>
+                      <div className="space-y-1.5">
+                        <div className="flex items-center gap-1.5">
+                          <User className="w-4 h-4 text-stone-400 shrink-0" />
+                          <p className={cn(
+                            "text-sm font-semibold truncate",
+                            nameMatch ? "text-teal-700 dark:text-teal-400" : "text-amber-700 dark:text-amber-400",
+                          )}>
+                            {submittedName}
+                          </p>
+                          {nameMatch
+                            ? <CheckCircle2  className="w-4 h-4 text-teal-500 shrink-0"  />
+                            : <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />
+                          }
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <Phone className="w-4 h-4 text-stone-400 shrink-0" />
+                          <p className="text-sm font-mono text-stone-700 dark:text-stone-200 truncate">
+                            {verif.mobile_number}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Match verdict strip */}
+                  <div className={cn(
+                    "px-3.5 py-2 text-sm font-semibold flex items-center gap-1.5 border-t border-stone-200 dark:border-[#2a2d3e]",
+                    nameMatch
+                      ? "bg-teal-50 dark:bg-teal-950/20 text-teal-700 dark:text-teal-400"
+                      : "bg-amber-50 dark:bg-amber-950/20 text-amber-700 dark:text-amber-400",
+                  )}>
+                    {nameMatch
+                      ? <><CheckCircle2 className="w-4 h-4" />  Name matches registered profile</>
+                      : <><AlertTriangle className="w-4 h-4" /> Name differs from registered profile</>
+                    }
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            <Separator className="dark:bg-[#2a2d3e]" />
+
+            {/* ── ID document details ── */}
+            <div>
+              <SectionLabel>ID Document Details</SectionLabel>
+              <div className="space-y-3.5">
+                <InfoRow icon={CreditCard} label="ID Type"       value={verif.id_type}               />
+                <InfoRow icon={Hash}       label="ID Number"     value={verif.id_number}      mono   />
+                <InfoRow icon={Calendar}   label="Date of Birth" value={verif.id_birthdate}           />
+                <InfoRow icon={Phone}      label="Mobile Number" value={verif.mobile_number} />
               </div>
-              <div className="bg-stone-50 dark:bg-[#13151f] rounded-xl p-3 border border-stone-200 dark:border-[#2a2d3e]">
-                <p className="text-[10px] font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest mb-1">ID Number</p>
-                <p className="text-sm font-bold text-stone-800 dark:text-stone-100 font-mono">{verif.id_number}</p>
-              </div>
             </div>
-          </div>
 
-          {/* Image placeholders */}
-          <div>
-            <p className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest mb-3">
-              Uploaded Images
-            </p>
-            <div className="grid grid-cols-3 gap-2">
-              {["ID — Front", "ID — Back", "Selfie with ID"].map(label => (
-                <div
-                  key={label}
-                  className="aspect-square rounded-xl bg-stone-100 dark:bg-[#13151f] border border-stone-200 dark:border-[#2a2d3e] flex flex-col items-center justify-center gap-1.5 cursor-pointer hover:bg-stone-200 dark:hover:bg-[#252837] transition-colors"
-                >
-                  <IdCard className="w-6 h-6 text-stone-300 dark:text-stone-600" />
-                  <span className="text-[10px] text-stone-400 dark:text-stone-500 text-center px-1">{label}</span>
+            <Separator className="dark:bg-[#2a2d3e]" />
+
+            {/* ── Submission metadata ── */}
+            <div>
+              <SectionLabel>Submission Metadata</SectionLabel>
+              <div className="space-y-3.5">
+                <InfoRow icon={Globe}   label="IP Address" value={verif.ip_address} mono />
+                <InfoRow icon={Monitor} label="User Agent" value={verif.user_agent}      />
+              </div>
+
+              {/* Hardware JSON — collapsible */}
+              {hardwarePretty && (
+                <div className="mt-4">
+                  <button
+                    type="button"
+                    onClick={() => setHardwareOpen(v => !v)}
+                    className="w-full flex items-center gap-1.5 text-xs font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest hover:text-stone-600 dark:hover:text-stone-300 transition-colors mb-2"
+                  >
+                    <Cpu className="w-4 h-4" />
+                    Device Hardware Info
+                    {hardwareOpen
+                      ? <ChevronUp   className="w-3 h-3 ml-auto" />
+                      : <ChevronDown className="w-3 h-3 ml-auto" />
+                    }
+                  </button>
+                  {hardwareOpen && (
+                    <pre className="text-sm leading-relaxed font-mono bg-stone-100 dark:bg-[#13151f] border border-stone-200 dark:border-[#2a2d3e] rounded-xl p-3 overflow-x-auto text-stone-600 dark:text-stone-300 whitespace-pre-wrap break-all">
+                      {hardwarePretty}
+                    </pre>
+                  )}
                 </div>
-              ))}
-            </div>
-            <p className="text-[10px] text-stone-400 dark:text-stone-500 mt-2">
-              Click any image to view full size · Images served from secure storage
-            </p>
-          </div>
-
-          {/* Rejection reason (already rejected) */}
-          {verif.status === "REJECTED" && verif.rejection_reason && (
-            <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-xl p-4">
-              <p className="text-xs font-bold text-red-700 dark:text-red-400 mb-1.5">Rejection Reason</p>
-              <p className="text-xs text-red-600 dark:text-red-400 leading-relaxed">{verif.rejection_reason}</p>
-              {verif.reviewed_by && (
-                <p className="text-[10px] text-red-400 dark:text-red-500 mt-2">
-                  Reviewed by {verif.reviewed_by} · {verif.reviewed_at}
-                </p>
               )}
             </div>
-          )}
 
-          {/* Reject form */}
-          {rejectMode && (
-            <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-xl p-4">
-              <p className="text-xs font-bold text-red-700 dark:text-red-400 mb-2">Rejection Reason</p>
-              <textarea
-                rows={3}
-                value={rejectReason}
-                onChange={e => setRejectReason(e.target.value)}
-                placeholder="Explain clearly why the submission is being rejected so the user can resubmit correctly…"
-                className="w-full bg-white dark:bg-[#1c1f2e] border border-red-200 dark:border-red-800 rounded-xl px-3 py-2.5 text-xs text-stone-800 dark:text-stone-100 placeholder-stone-400 outline-none focus:border-red-400 resize-none transition-colors"
-              />
+            {/* ── Existing rejection reason (read-only, REJECTED state) ── */}
+            {verif.status === "REJECTED" && verif.rejection_reason && (
+              <>
+                <Separator className="dark:bg-[#2a2d3e]" />
+                <div className="rounded-xl bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 p-3.5 space-y-1.5">
+                  <SectionLabel>Rejection Reason</SectionLabel>
+                  <p className="text-sm text-red-600 dark:text-red-400 leading-relaxed">
+                    {verif.rejection_reason}
+                  </p>
+                  {verif.reviewed_by && (
+                    <p className="text-xs text-red-400 dark:text-red-500 mt-1">
+                      By {verif.reviewed_by} · {verif.reviewed_at}
+                    </p>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* ════ RIGHT — ID images + reject input ════ */}
+          <div className="flex-1 overflow-y-auto p-5 flex flex-col gap-5">
+
+            {/* ID photo captures — larger for easier review */}
+            <div>
+              <SectionLabel>Uploaded Photos</SectionLabel>
+              <div className="space-y-4">
+                <IdImageCard label="ID — Front" imageUrl={verif.id_image_front_url} />
+                <IdImageCard label="ID — Back" imageUrl={verif.id_image_back_url} />
+                <IdImageCard label="Selfie while holding ID" imageUrl={verif.selfie_url} />
+              </div>
+            </div>
+
+            {/* ── Reject reason field — visible for PENDING only ── */}
+            {verif.status === "PENDING" && (
+              <>
+                <Separator className="dark:bg-[#2a2d3e]" />
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest">
+                    Rejection Reason
+                    <span className="normal-case font-normal text-stone-400 dark:text-stone-600 ml-1.5">
+                      — required for approve/reject
+                    </span>
+                  </Label>
+                  <Textarea
+                    rows={4}
+                    value={rejectReason}
+                    onChange={e => setRejectReason(e.target.value)}
+                    placeholder="Explain clearly why the submission is being rejected so the user can resubmit correctly…"
+                    className="resize-none text-xs dark:bg-[#13151f] dark:border-[#2a2d3e] dark:text-stone-100 dark:placeholder-stone-600"
+                  />
+                  <p className="text-xs text-stone-400 dark:text-stone-500">
+                    This message will be shown to the applicant.
+                  </p>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* ── Footer actions ───────────────────────────────────────────────────── */}
+        <div className="shrink-0 border-t border-stone-200 dark:border-[#2a2d3e] px-6 py-4 flex items-center gap-2.5 rounded-b-2xl bg-white dark:bg-[#1c1f2e]">
+          <Button
+            type="button" variant="outline"
+            onClick={onClose}
+            className="rounded-full dark:border-[#2a2d3e] dark:text-stone-300 dark:hover:bg-[#252837]"
+          >
+            Close
+          </Button>
+
+          {verif.status === "PENDING" && (
+            <div className="flex items-center gap-2.5 ml-auto">
+              <Button
+                type="button" variant="outline"
+                disabled={!hasReason || actionLoading}
+                onClick={() => void onReject(verif.id, rejectReason.trim())}
+                className="rounded-full border-red-200 dark:border-red-800 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 hover:text-red-600 hover:border-red-300 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <XCircle className="w-4 h-4 mr-1.5" />
+                Reject
+              </Button>
+              <Button
+                type="button"
+                disabled={!hasReason || actionLoading}
+                onClick={() => void onApprove(verif.id, rejectReason.trim())}
+                className="rounded-full bg-teal-700 hover:bg-teal-600 text-white font-bold"
+              >
+                <CheckCircle2 className="w-4 h-4 mr-1.5" />
+                Approve
+              </Button>
             </div>
           )}
         </div>
 
-        {/* Footer — pending */}
-        {verif.status === "PENDING" && (
-          <div className="px-6 pb-6 pt-3 border-t border-stone-100 dark:border-[#252837] flex gap-2.5 shrink-0">
-            {!rejectMode ? (
-              <>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={onClose}
-                  className="flex-1 rounded-full dark:border-[#2a2d3e] dark:text-stone-300 dark:hover:bg-[#252837]"
-                >
-                  Close
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setRejectMode(true)}
-                  className="flex-1 rounded-full border-red-200 dark:border-red-800 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 hover:text-red-600 hover:border-red-300"
-                >
-                  Reject
-                </Button>
-                <Button
-                  type="button"
-                  onClick={() => onApprove(verif.id)}
-                  className="flex-1 rounded-full bg-teal-700 hover:bg-teal-600 text-white font-bold"
-                >
-                  Approve ✓
-                </Button>
-              </>
-            ) : (
-              <>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setRejectMode(false)}
-                  className="flex-1 rounded-full dark:border-[#2a2d3e] dark:text-stone-300 dark:hover:bg-[#252837]"
-                >
-                  ← Back
-                </Button>
-                <Button
-                  type="button"
-                  onClick={() => {
-                    if (!rejectReason.trim()) { window.alert("Please provide a rejection reason."); return; }
-                    onReject(verif.id, rejectReason.trim());
-                  }}
-                  className="flex-1 rounded-full bg-red-600 hover:bg-red-500 text-white font-bold"
-                >
-                  Confirm Rejection
-                </Button>
-              </>
-            )}
-          </div>
-        )}
-
-        {/* Footer — non-pending */}
-        {verif.status !== "PENDING" && (
-          <div className="px-6 pb-6 pt-3 border-t border-stone-100 dark:border-[#252837]">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onClose}
-              className="w-full rounded-full dark:border-[#2a2d3e] dark:text-stone-300 dark:hover:bg-[#252837]"
-            >
-              Close
-            </Button>
-          </div>
-        )}
       </div>
     </div>
   );
@@ -296,14 +454,66 @@ function DetailModal({ verif, onClose, onApprove, onReject }: DetailModalProps) 
 
 // ── Main page ──────────────────────────────────────────────────────────────────
 export default function VerificationsPage() {
-  const [search,       setSearch]       = useState("");
+  const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
-  const [page,         setPage]         = useState(1);
-  const [selected,     setSelected]     = useState<AdminVerification | null>(null);
-  const [records,      setRecords]      = useState<AdminVerification[]>(VERIFICATIONS);
+  const [page, setPage] = useState(1);
+  const [selected, setSelected] = useState<AdminVerification | null>(null);
+  const [records, setRecords] = useState<AdminVerification[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState(false);
   const PER_PAGE = 8;
 
-  // ── Filter + paginate ─────────────────────────────────────────────────────────
+  const mapRecord = useCallback((record: AdminVerificationRecord): AdminVerification => {
+    const submitted = new Date(record.submitted_at);
+    const reviewed = record.reviewed_at ? new Date(record.reviewed_at) : null;
+
+    return {
+      id: record.id,
+      user_id: record.user_id,
+      user_name: record.user_name,
+      user_email: record.user_email,
+      profile_image_url: record.profile_image_url,
+      id_first_name: record.id_first_name,
+      id_last_name: record.id_last_name,
+      id_birthdate: record.id_birthdate ? new Date(record.id_birthdate).toLocaleDateString("en-PH", { month: "long", day: "numeric", year: "numeric" }) : "",
+      mobile_number: record.mobile_number,
+      id_type: record.id_type,
+      id_number: record.id_number,
+      id_image_front_url: record.id_image_front_url,
+      id_image_back_url: record.id_image_back_url,
+      selfie_url: record.selfie_url,
+      ip_address: record.ip_address,
+      user_agent: record.user_agent,
+      hardware_info: record.hardware_info,
+      status: record.status,
+      rejection_reason: record.rejection_reason,
+      reviewed_by: record.reviewed_by,
+      reviewed_at: reviewed && !Number.isNaN(reviewed.getTime())
+        ? reviewed.toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" })
+        : null,
+      submitted_at: !Number.isNaN(submitted.getTime())
+        ? `${submitted.toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" })} · ${submitted.toLocaleTimeString("en-PH", { hour: "numeric", minute: "2-digit" })}`
+        : record.submitted_at,
+    };
+  }, []);
+
+  const loadVerifications = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await getAdminVerifications();
+      setRecords((data ?? []).map(mapRecord));
+    } catch (error) {
+      const message = typeof error === "string" ? error : "Failed to load verification records";
+      toast.error(message, { position: "top-center" });
+    } finally {
+      setLoading(false);
+    }
+  }, [mapRecord]);
+
+  useEffect(() => {
+    void loadVerifications();
+  }, [loadVerifications]);
+
   const filtered = useMemo(() => {
     let data = [...records];
     if (search)
@@ -315,39 +525,51 @@ export default function VerificationsPage() {
     return data;
   }, [records, search, statusFilter]);
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
-  const paged      = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
-
+  const totalPages    = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
+  const paged         = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
   const pendingCount  = records.filter(r => r.status === "PENDING").length;
   const verifiedCount = records.filter(r => r.status === "VERIFIED").length;
   const rejectedCount = records.filter(r => r.status === "REJECTED").length;
-
-  // ── Actions ───────────────────────────────────────────────────────────────────
-  function handleApprove(id: string) {
-    setRecords(rs => rs.map(r =>
-      r.id === id
-        ? { ...r, status: "VERIFIED", reviewed_by: "Admin One", reviewed_at: new Date().toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" }) }
-        : r,
-    ));
-    setSelected(null);
-  }
-
-  function handleReject(id: string, reason: string) {
-    setRecords(rs => rs.map(r =>
-      r.id === id
-        ? { ...r, status: "REJECTED", rejection_reason: reason, reviewed_by: "Admin One", reviewed_at: new Date().toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" }) }
-        : r,
-    ));
-    setSelected(null);
-  }
-
   const hasActiveFilters = search || statusFilter !== "ALL";
 
-  // ── Render ────────────────────────────────────────────────────────────────────
+  async function handleApprove(id: string, reason: string) {
+    if (!window.confirm("Approve this verification request? This action cannot be changed from this table.")) return;
+
+    setActionLoading(true);
+    try {
+      await setAdminVerificationStatus(id, { status: "VERIFIED", reason });
+      await loadVerifications();
+      setSelected(null);
+      toast.success("Verification approved successfully", { position: "top-center" });
+    } catch (error) {
+      const message = typeof error === "string" ? error : "Failed to approve verification";
+      toast.error(message, { position: "top-center" });
+    } finally {
+      setActionLoading(false);
+    }
+  }
+
+  async function handleReject(id: string, reason: string) {
+    if (!window.confirm("Reject this verification request? This action cannot be changed from this table.")) return;
+
+    setActionLoading(true);
+    try {
+      await setAdminVerificationStatus(id, { status: "REJECTED", reason });
+      await loadVerifications();
+      setSelected(null);
+      toast.success("Verification rejected successfully", { position: "top-center" });
+    } catch (error) {
+      const message = typeof error === "string" ? error : "Failed to reject verification";
+      toast.error(message, { position: "top-center" });
+    } finally {
+      setActionLoading(false);
+    }
+  }
+
   return (
     <div className="p-5 sm:p-6 space-y-5">
 
-      {/* ── Page header ── */}
+      {/* Page header */}
       <div>
         <h2 className="text-xl font-extrabold text-stone-900 dark:text-stone-50">
           User Verifications
@@ -357,7 +579,7 @@ export default function VerificationsPage() {
         </p>
       </div>
 
-      {/* ── Summary cards — clickable to filter by status ── */}
+      {/* Summary cards */}
       <div className="grid grid-cols-3 gap-3">
         {[
           { label: "Pending",  count: pendingCount,  status: "PENDING",  color: "text-amber-600 dark:text-amber-400", bg: "bg-amber-50 dark:bg-amber-950/20", border: "border-amber-200 dark:border-amber-800", Icon: AlertTriangle },
@@ -382,10 +604,8 @@ export default function VerificationsPage() {
         ))}
       </div>
 
-      {/* ── Search + filter bar ── */}
+      {/* Search + filter */}
       <div className="flex flex-col sm:flex-row gap-3">
-
-        {/* Search */}
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400 pointer-events-none" />
           <Input
@@ -395,25 +615,18 @@ export default function VerificationsPage() {
             className="pl-9 dark:bg-[#13151f] dark:border-[#2a2d3e]"
           />
         </div>
-
         <div className="flex gap-2">
-          {/* Status filter */}
           <FilterSelect
             value={statusFilter}
             onChange={v => { setStatusFilter(v); setPage(1); }}
             options={[
-              ["ALL",       "All Status" ],
-              ["PENDING",   "Pending"    ],
-              ["VERIFIED",  "Verified"   ],
-              ["REJECTED",  "Rejected"   ],
+              ["ALL", "All Status"], ["PENDING", "Pending"],
+              ["VERIFIED", "Verified"], ["REJECTED", "Rejected"],
             ]}
           />
-
-          {/* Clear */}
           {hasActiveFilters && (
             <Button
-              variant="outline"
-              size="sm"
+              variant="outline" size="sm"
               onClick={() => { setSearch(""); setStatusFilter("ALL"); setPage(1); }}
               className="gap-1.5 border-red-200 dark:border-red-800 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 hover:text-red-600 hover:border-red-300"
             >
@@ -423,36 +636,29 @@ export default function VerificationsPage() {
         </div>
       </div>
 
-      {/* ── Table ── */}
+      {/* Table */}
       <Card className="p-0 rounded-lg dark:bg-[#1c1f2e] dark:border-[#2a2d3e] overflow-hidden">
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow className="border-stone-200 dark:border-[#2a2d3e] bg-stone-50 dark:bg-[#13151f] hover:bg-stone-50 dark:hover:bg-[#13151f]">
-                  <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest">
-                    Applicant
-                  </TableHead>
-                  <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest whitespace-nowrap">
-                    ID Type
-                  </TableHead>
-                  <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest">
-                    Status
-                  </TableHead>
-                  <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest whitespace-nowrap">
-                    Submitted
-                  </TableHead>
-                  <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest whitespace-nowrap">
-                    Reviewed By
-                  </TableHead>
-                  <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest text-right">
-                    Actions
-                  </TableHead>
+                  <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest">Applicant</TableHead>
+                  <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest whitespace-nowrap">ID Type</TableHead>
+                  <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest">Status</TableHead>
+                  <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest whitespace-nowrap">Submitted</TableHead>
+                  <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest whitespace-nowrap">Reviewed By</TableHead>
+                  <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
-
               <TableBody>
-                {paged.length === 0 ? (
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="py-16 text-center text-sm text-stone-400 dark:text-stone-500">
+                      Loading verification requests...
+                    </TableCell>
+                  </TableRow>
+                ) : paged.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={6} className="py-16 text-center text-sm text-stone-400 dark:text-stone-500">
                       No verification requests found.
@@ -463,62 +669,49 @@ export default function VerificationsPage() {
                     const sc         = STATUS_CONFIG[verif.status];
                     const StatusIcon = sc.Icon;
                     return (
-                      <TableRow
-                        key={verif.id}
-                        className="border-stone-100 dark:border-[#2a2d3e] hover:bg-stone-50 dark:hover:bg-[#252837] transition-colors"
-                      >
-                        {/* Applicant */}
+                      <TableRow key={verif.id} className="border-stone-100 dark:border-[#2a2d3e] hover:bg-stone-50 dark:hover:bg-[#252837] transition-colors">
                         <TableCell className="py-2">
                           <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#3a4a6a] to-[#1e2a40] flex items-center justify-center text-white text-[10px] font-bold shrink-0">
-                              {verif.user_name.charAt(0)}
-                            </div>
+                            {verif.profile_image_url ? (
+                              <img
+                                src={validateImageURL(verif.profile_image_url)}
+                                alt={verif.user_name}
+                                className="w-8 h-8 rounded-full object-cover border border-stone-200 dark:border-[#2a2d3e] shrink-0"
+                              />
+                            ) : (
+                              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#3a4a6a] to-[#1e2a40] flex items-center justify-center text-white text-[10px] font-bold shrink-0">
+                                {verif.user_name.charAt(0)}
+                              </div>
+                            )}
                             <div>
                               <p className="text-sm font-bold text-stone-800 dark:text-stone-100">{verif.user_name}</p>
                               <p className="text-xs text-stone-400 dark:text-stone-500">{verif.user_email}</p>
                             </div>
                           </div>
                         </TableCell>
-
-                        {/* ID type */}
                         <TableCell className="py-3.5">
                           <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-stone-600 dark:text-stone-300 bg-stone-100 dark:bg-[#13151f] px-2 py-1 rounded-lg">
                             <IdCard className="w-3 h-3 text-stone-400" /> {verif.id_type}
                           </span>
                         </TableCell>
-
-                        {/* Status badge */}
                         <TableCell className="py-3.5 whitespace-nowrap">
-                          <span className={cn(
-                            "inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full",
-                            sc.cls,
-                          )}>
+                          <span className={cn("inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full", sc.cls)}>
                             <StatusIcon className="w-2.5 h-2.5" /> {sc.label}
                           </span>
                         </TableCell>
-
-                        {/* Submitted */}
                         <TableCell className="py-3.5 text-sm text-stone-500 dark:text-stone-400 whitespace-nowrap">
                           {verif.submitted_at}
                         </TableCell>
-
-                        {/* Reviewed by */}
                         <TableCell className="py-3.5 text-sm text-stone-500 dark:text-stone-400 whitespace-nowrap">
                           {verif.reviewed_by
-                            ? <span>{verif.reviewed_by} · {verif.reviewed_at}</span>
+                            ? <div className="leading-tight"><p className="text-sm font-semibold">{verif.reviewed_by}</p><p>{verif.reviewed_at}</p></div>
                             : <span className="text-stone-300 dark:text-stone-600">Not yet reviewed</span>
                           }
                         </TableCell>
-
-                        {/* Actions */}
                         <TableCell className="py-3.5">
                           <div className="flex items-center justify-end gap-1">
-
-                            {/* View / Review */}
                             <Button
-                              variant="ghost"
-                              size="icon"
-                              type="button"
+                              variant="ghost" size="icon" type="button"
                               title={verif.status === "PENDING" ? "Review" : "View"}
                               aria-label={verif.status === "PENDING" ? "Review" : "View"}
                               onClick={() => setSelected(verif)}
@@ -526,34 +719,6 @@ export default function VerificationsPage() {
                             >
                               <Eye className="w-4 h-4" />
                             </Button>
-
-                            {/* Approve + reject (pending only) */}
-                            {verif.status === "PENDING" && (
-                              <>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  type="button"
-                                  title="Approve"
-                                  aria-label="Approve"
-                                  onClick={() => handleApprove(verif.id)}
-                                  className="w-7 h-7 text-teal-600 dark:text-teal-400 hover:bg-teal-50 dark:hover:bg-teal-950/30 hover:text-teal-700"
-                                >
-                                  <CheckCircle2 className="w-4 h-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  type="button"
-                                  title="Reject"
-                                  aria-label="Reject"
-                                  onClick={() => setSelected(verif)}
-                                  className="w-7 h-7 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 hover:text-red-600"
-                                >
-                                  <XCircle className="w-4 h-4" />
-                                </Button>
-                              </>
-                            )}
                           </div>
                         </TableCell>
                       </TableRow>
@@ -564,7 +729,7 @@ export default function VerificationsPage() {
             </Table>
           </div>
 
-          {/* ── Pagination ── */}
+          {/* Pagination */}
           <Separator className="dark:bg-[#2a2d3e]" />
           <div className="flex items-center justify-between px-4 py-3">
             <p className="text-sm text-stone-400 dark:text-stone-500">
@@ -572,20 +737,17 @@ export default function VerificationsPage() {
             </p>
             <div className="flex items-center gap-1.5">
               <Button
-                variant="outline"
-                size="sm"
+                variant="outline" size="sm"
                 onClick={() => setPage(p => Math.max(1, p - 1))}
                 disabled={page === 1}
                 className="h-8 w-8 p-0 rounded-lg dark:border-[#2a2d3e] dark:text-stone-300 dark:hover:bg-[#252837]"
               >
                 <ChevronLeft className="w-4 h-4" />
               </Button>
-
               {Array.from({ length: totalPages }, (_, i) => i + 1).map(n => (
                 <Button
                   key={n}
-                  variant={page === n ? "default" : "ghost"}
-                  size="sm"
+                  variant={page === n ? "default" : "ghost"} size="sm"
                   onClick={() => setPage(n)}
                   className={cn(
                     "h-8 w-8 p-0 rounded-lg text-sm font-bold",
@@ -597,10 +759,8 @@ export default function VerificationsPage() {
                   {n}
                 </Button>
               ))}
-
               <Button
-                variant="outline"
-                size="sm"
+                variant="outline" size="sm"
                 onClick={() => setPage(p => Math.min(totalPages, p + 1))}
                 disabled={page === totalPages}
                 className="h-8 w-8 p-0 rounded-lg dark:border-[#2a2d3e] dark:text-stone-300 dark:hover:bg-[#252837]"
@@ -612,13 +772,14 @@ export default function VerificationsPage() {
         </CardContent>
       </Card>
 
-      {/* ── Detail modal ── */}
+      {/* Detail modal */}
       {selected && (
         <DetailModal
           verif={selected}
           onClose={() => setSelected(null)}
           onApprove={handleApprove}
           onReject={handleReject}
+          actionLoading={actionLoading}
         />
       )}
     </div>
