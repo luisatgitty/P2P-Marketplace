@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useState, useEffect, useRef } from "react";
+import { createContext, useCallback, useContext, useState, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { User } from "@/types/forms";
 import { LoadingPage } from "@/components/loading";
@@ -132,8 +132,37 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const isKnownAppRoute = KNOWN_APP_ROUTES.some(isRouteRootMatch);
   const isAdminRole = ["ADMIN", "SUPER_ADMIN"].includes((user?.role ?? "").toUpperCase());
 
+  // Save user data during login
+  const saveUserData = (userData: User) => {
+    console.log("Logged User Data:", userData);
+    setUser(userData);
+    setIsAuth(true);
+    setIsLoading(false);
+    setRoleCookie(userData.role);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(userData));
+  };
+
+  // Clear user saved data after logout
+  const clearUserData = async () => {
+    try {
+      await sendDeleteRequest("/auth/logout");
+    }  catch {
+      // Ignore errors during logout since we will clear client state regardless
+    } finally {
+      // Clear user data and validation state regardless of logout success
+      // But the session cookie will remain incase of server error
+      setUser(null);
+      setIsAuth(false);
+      setIsLoading(false);
+      setPresenceByUserId({});
+      setRoleCookie("");
+      localStorage.removeItem(STORAGE_KEY);
+      router.replace("/login");
+    }
+  };
+
   useEffect(() => {
-    if (!isAuth) return;
+    // if (!isAuth) return;
 
     let ws: WebSocket | null = null;
     let pingInterval: ReturnType<typeof setInterval> | null = null;
@@ -149,7 +178,11 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       let wasEverOpen = false;
       ws = new WebSocket(wsUrl);
 
-      ws.onopen = () => {
+      ws.onopen = async () => {
+        // Update user local storage of account data
+        const user = await sendGetRequest("/auth/me", true);
+        saveUserData(user);
+        
         wasEverOpen = true;
         window.dispatchEvent(new Event("messages:updated"));
 
@@ -266,7 +299,6 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         ws?.close();
       };
     };
-
     
     connect();
 
@@ -277,63 +309,6 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       ws?.close();
     };
   }, [applyPresenceUpdate, isAuth]);
-
-  // Save user data during login
-  const saveUserData = (userData: User) => {
-    console.log("Logged User Data:", userData);
-    setUser(userData);
-    setIsAuth(true);
-    setRoleCookie(userData.role);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(userData));
-  };
-
-  // Clear user saved data after logout
-  const clearUserData = async () => {
-    try {
-      await sendDeleteRequest("/auth/logout");
-    } finally {
-      // Clear user data and validation state regardless of logout success
-      // But the session cookie will remain incase of server error
-      setUser(null);
-      setIsAuth(false);
-      setPresenceByUserId({});
-      setRoleCookie("");
-      localStorage.removeItem(STORAGE_KEY);
-      router.replace("/login");
-    }
-  };
-
-  // Validate user on mount
-  useEffect(() => {
-    const validateUser = async () => {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        const userData = JSON.parse(stored) as User;
-        if (userData) {
-          saveUserData(userData);
-          setIsLoading(false);
-          return;
-        }
-      }
-
-      try {
-        // If the client has a stored session cookie (HTTP only)
-        if (document.cookie.includes("session_token")) {
-          const user = await sendGetRequest("/auth/me", true);
-          saveUserData(user);
-        }
-      } catch {
-        setUser(null);
-        setIsAuth(false);
-        setPresenceByUserId({});
-        setRoleCookie("");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    validateUser();
-  }, []);
 
   useEffect(() => {
     setUser((prev) => {
@@ -416,8 +391,6 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     </UserContext.Provider>
   );
 }
-
-
 
 export function useUser(): UserContextType {
   const context = useContext(UserContext);
