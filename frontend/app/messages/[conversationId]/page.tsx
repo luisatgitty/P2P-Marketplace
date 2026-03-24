@@ -277,8 +277,6 @@ export default function ConversationPage() {
   const [mediaViewerIndex, setMediaViewerIndex] = useState<number | null>(null);
   const [animatedReadMarkerId, setAnimatedReadMarkerId] = useState<string | null>(null);
 
-  const bottomRef = useRef<HTMLDivElement>(null);
-
   const load = useCallback(async () => {
     if (!conversationId) return;
     setLoading(true);
@@ -319,10 +317,6 @@ export default function ConversationPage() {
   }, [conversationId, draftListingId, isDraftConversation, router]);
 
   useEffect(() => { load(); }, [load]);
-
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
 
   const effectiveCurrentUserId = useMemo(() => {
     if (currentUserId) return currentUserId;
@@ -677,75 +671,77 @@ export default function ConversationPage() {
         <ListingContextCard listing={conversation.listing} isSeller={conversation.isSeller} onMarkedSold={handleMarkedSold} />
 
         {/* Messages area */}
-        <div className="flex-1 overflow-y-auto no-scroll px-4 py-3">
-          <div className="min-h-full flex flex-col justify-end">
-            {messages.length === 0 && (
-              <div className="flex flex-1 flex-col items-center justify-center gap-2 text-center">
-                <p className="text-xs text-stone-400 dark:text-stone-600">No messages yet. Say hello!</p>
-              </div>
-            )}
+        <div className="flex-1 overflow-y-auto no-scroll px-4 py-3 flex flex-col-reverse">
+          {messages.length === 0 && (
+            <div className="flex flex-col items-center justify-center gap-2 text-center h-full my-auto">
+              <p className="text-xs text-stone-400 dark:text-stone-600">No messages yet. Say hello!</p>
+            </div>
+          )}
 
-            {messages.map((msg, i) => {
-              const prev     = messages[i - 1];
-              const next     = messages[i + 1];
-              const showDate = !prev || !isSameDay(prev.createdAt, msg.createdAt);
-              const showTime =
-                !next ||
-                next.senderId !== msg.senderId ||
-                new Date(next.createdAt).getTime() - new Date(msg.createdAt).getTime() > 60_000;
+          {/* Map through a REVERSED array so the newest message is first in the DOM */}
+          {[...messages].reverse().map((msg, reversedIndex) => {
+            
+            // Re-calculate the original index so your Date and Time separation logic works perfectly
+            const originalIndex = messages.length - 1 - reversedIndex;
+            const prev = messages[originalIndex - 1];
+            const next = messages[originalIndex + 1];
+            
+            const showDate = !prev || !isSameDay(prev.createdAt, msg.createdAt);
+            const showTime =
+              !next ||
+              next.senderId !== msg.senderId ||
+              new Date(next.createdAt).getTime() - new Date(msg.createdAt).getTime() > 60_000;
 
-              return (
-                <div key={msg.id}>
-                  {showDate && (
-                    <div className="flex items-center gap-3 my-4">
-                      <div className="flex-1 h-px bg-border" />
-                      <span className="text-[11px] font-medium text-stone-400 dark:text-stone-500 px-2">
-                        {formatDateSeparator(msg.createdAt)}
+            return (
+              <div key={msg.id}>
+                {showDate && (
+                  <div className="flex items-center gap-3 my-4">
+                    <div className="flex-1 h-px bg-border" />
+                    <span className="text-[11px] font-medium text-stone-400 dark:text-stone-500 px-2">
+                      {formatDateSeparator(msg.createdAt)}
+                    </span>
+                    <div className="flex-1 h-px bg-border" />
+                  </div>
+                )}
+                
+                <MessageBubble
+                  message={msg}
+                  currentUserId={effectiveCurrentUserId}
+                  showTime={showTime}
+                  otherName={otherName}
+                  onReply={handleReply}
+                  onReact={handleReact}
+                  onEdit={handleEdit}
+                  onDelete={handleDelete}
+                  onOpenMediaViewer={handleOpenMediaViewer}
+                />
+
+                {msg.senderId === effectiveCurrentUserId && conversation.otherLastReadMessageId === msg.id && (
+                  <div className="flex justify-end pr-1 mt-0.5">
+                    {conversation.otherParticipant.profileImageUrl ? (
+                      <img
+                        src={conversation.otherParticipant.profileImageUrl}
+                        alt={`${conversation.otherParticipant.firstName} read receipt`}
+                        className={cn(
+                          "w-3.5 h-3.5 rounded-full object-cover border border-border",
+                          animatedReadMarkerId === msg.id && "animate-read-drop"
+                        )}
+                      />
+                    ) : (
+                      <span
+                        className={cn(
+                          "w-3.5 h-3.5 rounded-full border border-border bg-stone-200 dark:bg-stone-700 text-[8px] font-bold text-stone-700 dark:text-stone-100 inline-flex items-center justify-center",
+                          animatedReadMarkerId === msg.id && "animate-read-drop"
+                        )}
+                      >
+                        {conversation.otherParticipant.firstName.charAt(0).toUpperCase()}
                       </span>
-                      <div className="flex-1 h-px bg-border" />
-                    </div>
-                  )}
-                  <MessageBubble
-                    message={msg}
-                    currentUserId={effectiveCurrentUserId}
-                    showTime={showTime}
-                    otherName={otherName}
-                    onReply={handleReply}
-                    onReact={handleReact}
-                    onEdit={handleEdit}
-                    onDelete={handleDelete}
-                    onOpenMediaViewer={handleOpenMediaViewer}
-                  />
-
-                  {msg.senderId === effectiveCurrentUserId && conversation.otherLastReadMessageId === msg.id && (
-                    <div className="flex justify-end pr-1 mt-0.5">
-                      {conversation.otherParticipant.profileImageUrl ? (
-                        <img
-                          src={conversation.otherParticipant.profileImageUrl}
-                          alt={`${conversation.otherParticipant.firstName} read receipt`}
-                          className={cn(
-                            "w-3.5 h-3.5 rounded-full object-cover border border-border",
-                            animatedReadMarkerId === msg.id && "animate-read-drop"
-                          )}
-                        />
-                      ) : (
-                        <span
-                          className={cn(
-                            "w-3.5 h-3.5 rounded-full border border-border bg-stone-200 dark:bg-stone-700 text-[8px] font-bold text-stone-700 dark:text-stone-100 inline-flex items-center justify-center",
-                            animatedReadMarkerId === msg.id && "animate-read-drop"
-                          )}
-                        >
-                          {conversation.otherParticipant.firstName.charAt(0).toUpperCase()}
-                        </span>
-                      )}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-
-            <div ref={bottomRef} />
-          </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
 
         <MessageInput
