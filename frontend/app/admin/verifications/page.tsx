@@ -71,7 +71,7 @@ const STATUS_CONFIG: Record<VerifStatus, { cls: string; label: string; Icon: Rea
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <p className="text-[10px] font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest mb-2.5">
+    <p className="text-xs font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest mb-2.5">
       {children}
     </p>
   );
@@ -85,13 +85,13 @@ function InfoRow({ icon: Icon, label, value, mono = false }: {
 }) {
   return (
     <div className="flex items-start gap-2.5">
-      <Icon className="w-3.5 h-3.5 text-stone-400 dark:text-stone-500 shrink-0 mt-[3px]" />
+      <Icon className="w-4 h-4 text-stone-400 dark:text-stone-500 shrink-0 mt-2" />
       <div className="min-w-0 flex-1">
-        <p className="text-[10px] font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest leading-none mb-0.5">
+        <p className="text-xs font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest leading-none mb-0.5">
           {label}
         </p>
         <p className={cn(
-          "text-xs break-words",
+          "text-sm break-words",
           mono ? "font-mono text-stone-700 dark:text-stone-200" : "text-stone-700 dark:text-stone-200",
           !value && "text-stone-400 dark:text-stone-600 italic font-normal",
         )}>
@@ -107,7 +107,7 @@ function IdImageCard({ label, imageUrl }: { label: string; imageUrl?: string | n
 
   return (
     <div className="space-y-1.5">
-      <p className="text-[10px] font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest">
+      <p className="text-xs font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest">
         {label}
       </p>
       {resolvedUrl ? (
@@ -199,12 +199,12 @@ function DetailModal({ verif, onClose, onApprove, onReject, actionLoading = fals
             <IdCard className="w-4 h-4 text-amber-400 shrink-0" />
             <div className="min-w-0">
               <h2 className="text-white font-bold text-base leading-none">Verification Request</h2>
-              <p className="text-slate-400 text-xs mt-0.5 truncate">
-                {verif.user_name} · Submitted {verif.submitted_at}
+              <p className="text-slate-400 text-sm mt-0.5 truncate">
+                By {verif.user_name} · Submitted on {verif.submitted_at}
               </p>
             </div>
             <span className={cn(
-              "ml-2 text-[10px] font-bold px-2.5 py-1 rounded-full inline-flex items-center gap-1 shrink-0",
+              "ml-2 text-xs font-bold px-2.5 py-1 rounded-full inline-flex items-center gap-1 shrink-0",
               sc.cls,
             )}>
               <Icon className="w-3 h-3" /> {sc.label}
@@ -223,18 +223,18 @@ function DetailModal({ verif, onClose, onApprove, onReject, actionLoading = fals
         <div className="flex-1 overflow-hidden flex flex-col lg:flex-row min-h-0">
 
           {/* ════ LEFT — Personal + metadata ════ */}
-          <div className="lg:w-[44%] overflow-y-auto border-b lg:border-b-0 lg:border-r border-stone-200 dark:border-[#2a2d3e] p-5 space-y-5">
+          <div className="lg:w-[35%] overflow-y-auto border-b lg:border-b-0 lg:border-r border-stone-200 dark:border-[#2a2d3e] p-5 space-y-5">
 
             {/* ── Profile vs. Submitted comparison card ── */}
-            <div>
+            <div> 
               <SectionLabel>Identity Comparison</SectionLabel>
-              <Card className="overflow-hidden dark:bg-[#13151f] dark:border-[#2a2d3e]">
+              <Card className="py-0 overflow-hidden dark:bg-[#13151f] dark:border-[#2a2d3e]">
                 <CardContent className="p-0">
-                  <div className="grid grid-cols-2 divide-x divide-stone-200 dark:divide-[#2a2d3e]">
+                  <div className="grid divide-x divide-stone-200 dark:divide-[#2a2d3e]">
 
                     {/* Registered profile side */}
                     <div className="p-3.5 space-y-2.5">
-                      <p className="text-[10px] font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest">
+                      <p className="text-xs font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest">
                         Profile
                       </p>
                       <div className="flex items-center gap-2.5">
@@ -250,39 +250,41 @@ function DetailModal({ verif, onClose, onApprove, onReject, actionLoading = fals
                           </div>
                         )}
                         <div className="min-w-0">
-                          <p className="text-xs font-bold text-stone-800 dark:text-stone-100 truncate">
+                          <p className="text-sm font-bold text-stone-800 dark:text-stone-100 truncate">
                             {verif.user_name}
                           </p>
-                          <p className="text-[11px] text-stone-400 dark:text-stone-500 truncate">
+                          <p className="text-xs text-stone-400 dark:text-stone-500 truncate">
                             {verif.user_email}
                           </p>
                         </div>
                       </div>
                     </div>
 
+                    <Separator />
+
                     {/* Submitted info side */}
                     <div className="p-3.5 space-y-2.5">
-                      <p className="text-[10px] font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest">
+                      <p className="text-xs font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest">
                         Submitted
                       </p>
                       <div className="space-y-1.5">
                         <div className="flex items-center gap-1.5">
-                          <User className="w-3 h-3 text-stone-400 shrink-0" />
+                          <User className="w-4 h-4 text-stone-400 shrink-0" />
                           <p className={cn(
-                            "text-xs font-semibold truncate",
+                            "text-sm font-semibold truncate",
                             nameMatch ? "text-teal-700 dark:text-teal-400" : "text-amber-700 dark:text-amber-400",
                           )}>
                             {submittedName}
                           </p>
                           {nameMatch
-                            ? <CheckCircle2  className="w-3 h-3 text-teal-500 shrink-0"  />
-                            : <AlertTriangle className="w-3 h-3 text-amber-500 shrink-0" />
+                            ? <CheckCircle2  className="w-4 h-4 text-teal-500 shrink-0"  />
+                            : <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />
                           }
                         </div>
                         <div className="flex items-center gap-1.5">
-                          <Phone className="w-3 h-3 text-stone-400 shrink-0" />
-                          <p className="text-xs font-mono text-stone-700 dark:text-stone-200 truncate">
-                            +63 {verif.mobile_number}
+                          <Phone className="w-4 h-4 text-stone-400 shrink-0" />
+                          <p className="text-sm font-mono text-stone-700 dark:text-stone-200 truncate">
+                            {verif.mobile_number}
                           </p>
                         </div>
                       </div>
@@ -291,14 +293,14 @@ function DetailModal({ verif, onClose, onApprove, onReject, actionLoading = fals
 
                   {/* Match verdict strip */}
                   <div className={cn(
-                    "px-3.5 py-2 text-[11px] font-semibold flex items-center gap-1.5 border-t border-stone-200 dark:border-[#2a2d3e]",
+                    "px-3.5 py-2 text-sm font-semibold flex items-center gap-1.5 border-t border-stone-200 dark:border-[#2a2d3e]",
                     nameMatch
                       ? "bg-teal-50 dark:bg-teal-950/20 text-teal-700 dark:text-teal-400"
                       : "bg-amber-50 dark:bg-amber-950/20 text-amber-700 dark:text-amber-400",
                   )}>
                     {nameMatch
-                      ? <><CheckCircle2 className="w-3.5 h-3.5" />  Name matches registered profile</>
-                      : <><AlertTriangle className="w-3.5 h-3.5" /> Name differs from registered profile</>
+                      ? <><CheckCircle2 className="w-4 h-4" />  Name matches registered profile</>
+                      : <><AlertTriangle className="w-4 h-4" /> Name differs from registered profile</>
                     }
                   </div>
                 </CardContent>
@@ -314,8 +316,7 @@ function DetailModal({ verif, onClose, onApprove, onReject, actionLoading = fals
                 <InfoRow icon={CreditCard} label="ID Type"       value={verif.id_type}               />
                 <InfoRow icon={Hash}       label="ID Number"     value={verif.id_number}      mono   />
                 <InfoRow icon={Calendar}   label="Date of Birth" value={verif.id_birthdate}           />
-                <InfoRow icon={Phone}      label="Mobile Number" value={`+63 ${verif.mobile_number}`} />
-                <InfoRow icon={Mail}       label="Email Address" value={verif.user_email}             />
+                <InfoRow icon={Phone}      label="Mobile Number" value={verif.mobile_number} />
               </div>
             </div>
 
@@ -335,9 +336,9 @@ function DetailModal({ verif, onClose, onApprove, onReject, actionLoading = fals
                   <button
                     type="button"
                     onClick={() => setHardwareOpen(v => !v)}
-                    className="w-full flex items-center gap-1.5 text-[10px] font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest hover:text-stone-600 dark:hover:text-stone-300 transition-colors mb-2"
+                    className="w-full flex items-center gap-1.5 text-xs font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest hover:text-stone-600 dark:hover:text-stone-300 transition-colors mb-2"
                   >
-                    <Cpu className="w-3.5 h-3.5" />
+                    <Cpu className="w-4 h-4" />
                     Device Hardware Info
                     {hardwareOpen
                       ? <ChevronUp   className="w-3 h-3 ml-auto" />
@@ -345,7 +346,7 @@ function DetailModal({ verif, onClose, onApprove, onReject, actionLoading = fals
                     }
                   </button>
                   {hardwareOpen && (
-                    <pre className="text-[10px] leading-relaxed font-mono bg-stone-100 dark:bg-[#13151f] border border-stone-200 dark:border-[#2a2d3e] rounded-xl p-3 overflow-x-auto text-stone-600 dark:text-stone-300 whitespace-pre-wrap break-all">
+                    <pre className="text-sm leading-relaxed font-mono bg-stone-100 dark:bg-[#13151f] border border-stone-200 dark:border-[#2a2d3e] rounded-xl p-3 overflow-x-auto text-stone-600 dark:text-stone-300 whitespace-pre-wrap break-all">
                       {hardwarePretty}
                     </pre>
                   )}
@@ -359,11 +360,11 @@ function DetailModal({ verif, onClose, onApprove, onReject, actionLoading = fals
                 <Separator className="dark:bg-[#2a2d3e]" />
                 <div className="rounded-xl bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 p-3.5 space-y-1.5">
                   <SectionLabel>Rejection Reason</SectionLabel>
-                  <p className="text-xs text-red-600 dark:text-red-400 leading-relaxed">
+                  <p className="text-sm text-red-600 dark:text-red-400 leading-relaxed">
                     {verif.rejection_reason}
                   </p>
                   {verif.reviewed_by && (
-                    <p className="text-[10px] text-red-400 dark:text-red-500 mt-1">
+                    <p className="text-xs text-red-400 dark:text-red-500 mt-1">
                       By {verif.reviewed_by} · {verif.reviewed_at}
                     </p>
                   )}
@@ -383,9 +384,6 @@ function DetailModal({ verif, onClose, onApprove, onReject, actionLoading = fals
                 <IdImageCard label="ID — Back" imageUrl={verif.id_image_back_url} />
                 <IdImageCard label="Selfie while holding ID" imageUrl={verif.selfie_url} />
               </div>
-              <p className="text-[10px] text-stone-400 dark:text-stone-500 mt-2.5">
-                Click any image to view full size · Served from secure storage
-              </p>
             </div>
 
             {/* ── Reject reason field — visible for PENDING only ── */}
@@ -393,7 +391,7 @@ function DetailModal({ verif, onClose, onApprove, onReject, actionLoading = fals
               <>
                 <Separator className="dark:bg-[#2a2d3e]" />
                 <div className="space-y-1.5">
-                  <Label className="text-[10px] font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest">
+                  <Label className="text-xs font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest">
                     Rejection Reason
                     <span className="normal-case font-normal text-stone-400 dark:text-stone-600 ml-1.5">
                       — required for approve/reject
@@ -406,7 +404,7 @@ function DetailModal({ verif, onClose, onApprove, onReject, actionLoading = fals
                     placeholder="Explain clearly why the submission is being rejected so the user can resubmit correctly…"
                     className="resize-none text-xs dark:bg-[#13151f] dark:border-[#2a2d3e] dark:text-stone-100 dark:placeholder-stone-600"
                   />
-                  <p className="text-[10px] text-stone-400 dark:text-stone-500">
+                  <p className="text-xs text-stone-400 dark:text-stone-500">
                     This message will be shown to the applicant.
                   </p>
                 </div>
@@ -477,7 +475,7 @@ export default function VerificationsPage() {
       profile_image_url: record.profile_image_url,
       id_first_name: record.id_first_name,
       id_last_name: record.id_last_name,
-      id_birthdate: record.id_birthdate ? new Date(record.id_birthdate).toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" }) : "",
+      id_birthdate: record.id_birthdate ? new Date(record.id_birthdate).toLocaleDateString("en-PH", { month: "long", day: "numeric", year: "numeric" }) : "",
       mobile_number: record.mobile_number,
       id_type: record.id_type,
       id_number: record.id_number,
