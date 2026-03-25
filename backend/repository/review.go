@@ -22,13 +22,8 @@ func getReviewContext(listingId string) (reviewContext, error) {
 		SELECT
 			l.user_id::text AS listing_owner_id,
 			LOWER(l.listing_type::text) AS listing_type,
-			CASE
-				WHEN l.listing_type = 'SELL' THEN LOWER(COALESCE(lsd.sell_status::text, 'available'))
-				ELSE LOWER(l.status::text)
-			END AS listing_status
+			LOWER(COALESCE(l.status::text, 'available')) AS listing_status
 		FROM public.listings l
-		LEFT JOIN public.listing_sell_details lsd
-			ON lsd.listing_id = l.id
 		WHERE l.id = $1
 		LIMIT 1
 	`

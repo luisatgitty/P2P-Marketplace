@@ -409,10 +409,8 @@ func UpdateListing(userId, listingId string, body model.CreateListingBody) error
 	ownerCheckQuery := `
 		SELECT
 			LOWER(l.listing_type::text) AS listing_type,
-			COALESCE(lsd.sell_status::text, '') AS sell_status
+			LOWER(COALESCE(l.status::text, '')) AS sell_status
 		FROM public.listings l
-		LEFT JOIN public.listing_sell_details lsd
-			ON lsd.listing_id = l.id
 		WHERE l.id = $1 AND l.user_id = $2
 		LIMIT 1
 	`
@@ -670,10 +668,8 @@ func DeleteListing(userId, listingId string) error {
 		SELECT
 			l.id,
 			LOWER(l.listing_type::text) AS listing_type,
-			COALESCE(lsd.sell_status::text, '') AS sell_status
+			LOWER(COALESCE(l.status::text, '')) AS sell_status
 		FROM public.listings l
-		LEFT JOIN public.listing_sell_details lsd
-			ON lsd.listing_id = l.id
 		WHERE l.id = $1 AND l.user_id = $2
 		LIMIT 1
 	`
@@ -753,10 +749,8 @@ func MarkListingAsSold(userId, listingId string) error {
 		SELECT
 			l.user_id::text AS owner_id,
 			LOWER(l.listing_type::text) AS listing_type,
-			COALESCE(lsd.sell_status, 'AVAILABLE') AS sell_status
+			COALESCE(l.status::text, 'AVAILABLE') AS sell_status
 		FROM public.listings l
-		LEFT JOIN public.listing_sell_details lsd
-			ON lsd.listing_id = l.id
 		WHERE l.id = $1
 		LIMIT 1
 	`
@@ -780,21 +774,6 @@ func MarkListingAsSold(userId, listingId string) error {
 	if strings.EqualFold(strings.TrimSpace(sellStatus), "SOLD") {
 		tx.Rollback()
 		return fmt.Errorf("Listing is already marked as sold")
-	}
-
-	updateSellStatusQuery := `
-		UPDATE public.listing_sell_details
-		SET sell_status = 'SOLD'
-		WHERE listing_id = $1
-	`
-	result := tx.Exec(updateSellStatusQuery, listingId)
-	if result.Error != nil {
-		tx.Rollback()
-		return fmt.Errorf("Failed to update sell status")
-	}
-	if result.RowsAffected == 0 {
-		tx.Rollback()
-		return fmt.Errorf("Sell details not found")
 	}
 
 	updateListingQuery := `
@@ -834,12 +813,8 @@ func GetListingDetailById(listingId string) (model.ListingDetailFromDb, error) {
 			l.location_province,
 			l.created_at,
 			l.view_count,
-			CASE
-				WHEN l.listing_type = 'SELL' AND COALESCE(lsd.sell_status, 'AVAILABLE') = 'SOLD'
-					THEN 'sold'
-				ELSE LOWER(l.status::text)
-			END AS status,
-			LOWER(COALESCE(lsd.sell_status::text, '')) AS sell_status,
+			LOWER(l.status::text) AS status,
+			LOWER(COALESCE(l.status::text, '')) AS sell_status,
 			COALESCE(l.highlights, '[]') AS highlights,
 			COALESCE(l.included, '[]') AS included,
 			COALESCE(lsd.condition::text, '') AS condition,
@@ -941,7 +916,7 @@ func GetRelatedListings(listingId, categoryId, listingType, excludeUserId string
 			AND (l.category_id = $2 OR l.listing_type::text = $3)
 			AND NOT (
 				l.listing_type = 'SELL'
-				AND COALESCE(lsd.sell_status, 'AVAILABLE') = 'SOLD'
+				AND l.status = 'SOLD'
 			)
 	`
 
@@ -1025,11 +1000,7 @@ func GetAllListings(excludeUserId string, filter model.ListingsFilter) ([]model.
 			l.price,
 			COALESCE(l.price_unit, '') AS price_unit,
 			LOWER(l.listing_type::text) AS type,
-			CASE
-				WHEN l.listing_type = 'SELL' AND COALESCE(lsd.sell_status, 'AVAILABLE') = 'SOLD'
-					THEN 'sold'
-				ELSE LOWER(l.status::text)
-			END AS status,
+			LOWER(l.status::text) AS status,
 			COALESCE(c.name, 'Others') AS category,
 			COALESCE(lsd.condition::text, '') AS condition,
 			COALESCE(l.location_city, '') AS location_city,
@@ -1058,7 +1029,7 @@ func GetAllListings(excludeUserId string, filter model.ListingsFilter) ([]model.
 		WHERE l.status <> 'HIDDEN'
 			AND NOT (
 				l.listing_type = 'SELL'
-				AND COALESCE(lsd.sell_status, 'AVAILABLE') = 'SOLD'
+				AND l.status = 'SOLD'
 			)
 	`
 

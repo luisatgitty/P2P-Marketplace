@@ -37,5 +37,5 @@ next-env.d.ts
 
 # misc
 /backend/uploads
-create-db.sql
+/database
 /.github
