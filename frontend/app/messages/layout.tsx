@@ -6,6 +6,52 @@ import { cn } from "@/lib/utils";
 import type { MessageTab } from "@/types/messaging";
 import MessagesTabNav from "@/components/messages/messages-tab-nav";
 import ConversationsList from "@/components/messages/conversations-list";
+import ChatHeader from "@/components/messages/chat-header";
+import ListingContextCard from "@/components/messages/listing-context-card";
+import MessageInput from "@/components/messages/message-input";
+import { MessageShellProvider, useMessageShell } from "@/components/messages/message-shell-context";
+
+function ConversationShell({ children }: { children: React.ReactNode }) {
+  const { shellState } = useMessageShell();
+  const {
+    conversation,
+    onDelete,
+    onMarkedSold,
+    onSend,
+    inputDisabled,
+    replyTo,
+    onCancelReply,
+  } = shellState;
+
+  return (
+    <div className="flex flex-col h-full overflow-hidden bg-white dark:bg-[#0f1117]">
+      {conversation ? (
+        <>
+          <ChatHeader conversation={conversation} onDelete={onDelete} onMarkedSold={onMarkedSold} />
+          <div className="relative flex-1 overflow-hidden">
+            <div className="absolute top-2 left-0 right-0 z-20 px-4 pointer-events-auto">
+              <ListingContextCard
+                listing={conversation.listing}
+                isSeller={conversation.isSeller}
+                onMarkedSold={onMarkedSold}
+              />
+            </div>
+            {children}
+          </div>
+          <MessageInput
+            onSend={onSend}
+            disabled={inputDisabled}
+            replyTo={replyTo}
+            onCancelReply={onCancelReply}
+          />
+          <div className="h-14 md:h-0 shrink-0" />
+        </>
+      ) : (
+        children
+      )}
+    </div>
+  );
+}
 
 export default function MessagesLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -24,8 +70,8 @@ export default function MessagesLayout({ children }: { children: React.ReactNode
   };
 
   return (
-    // Takes exactly the viewport height below the fixed navbar (1px stripe + 56px nav = 57px)
-    <div className="h-[calc(100vh-57px)] flex overflow-hidden bg-background">
+    <MessageShellProvider>
+    <div className="h-[calc(100vh-60px)] flex overflow-hidden bg-background">
 
       {/* ══════════════════════════════════════════════
           LEFT — vertical tab sidebar (md+)
@@ -79,7 +125,7 @@ export default function MessagesLayout({ children }: { children: React.ReactNode
           !isInConversation && "hidden md:flex"
         )}
       >
-        {children}
+        {isInConversation ? <ConversationShell>{children}</ConversationShell> : children}
       </div>
 
       {/* ══════════════════════════════════════════════
@@ -110,5 +156,6 @@ export default function MessagesLayout({ children }: { children: React.ReactNode
         }
       `}</style>
     </div>
+    </MessageShellProvider>
   );
 }

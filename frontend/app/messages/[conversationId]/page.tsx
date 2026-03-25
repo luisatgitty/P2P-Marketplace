@@ -26,10 +26,8 @@ import {
   openOrCreateConversationFromListing,
 } from "@/services/messagingService";
 import { useUser } from "@/utils/UserContext";
-import ChatHeader         from "@/components/messages/chat-header";
-import ListingContextCard from "@/components/messages/listing-context-card";
 import MessageBubble      from "@/components/messages/message-bubble";
-import MessageInput       from "@/components/messages/message-input";
+import { useMessageShell } from "@/components/messages/message-shell-context";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -220,36 +218,6 @@ function MediaViewerModal({
   );
 }
 
-function ConversationSkeleton() {
-  return (
-    <div className="flex flex-col h-full overflow-hidden bg-white dark:bg-[#0f1117] animate-pulse">
-      <div className="h-14 shrink-0 border-b border-border bg-white dark:bg-[#1c1f2e] px-4 flex items-center gap-3">
-        <div className="w-8 h-8 rounded-full bg-stone-200 dark:bg-[#252837]" />
-        <div className="h-3 w-40 rounded bg-stone-200 dark:bg-[#252837]" />
-      </div>
-
-      <div className="h-16 shrink-0 border-b border-border px-4 py-3 bg-stone-50 dark:bg-[#13151f]">
-        <div className="h-3 w-56 rounded bg-stone-200 dark:bg-[#252837] mb-2" />
-        <div className="h-2.5 w-36 rounded bg-stone-200 dark:bg-[#252837]" />
-      </div>
-
-      <div className="flex-1 overflow-hidden px-4 py-3">
-        <div className="flex flex-col gap-3">
-          <div className="self-start h-14 w-[60%] rounded-2xl bg-stone-200 dark:bg-[#252837]" />
-          <div className="self-end h-14 w-[48%] rounded-2xl bg-stone-200 dark:bg-[#252837]" />
-          <div className="self-start h-20 w-[68%] rounded-2xl bg-stone-200 dark:bg-[#252837]" />
-          <div className="self-end h-12 w-[42%] rounded-2xl bg-stone-200 dark:bg-[#252837]" />
-        </div>
-      </div>
-
-      <div className="h-20 shrink-0 border-t border-border bg-white dark:bg-[#1c1f2e] px-3 py-2.5">
-        <div className="h-full rounded-2xl bg-stone-200 dark:bg-[#252837]" />
-      </div>
-      <div className="h-14 md:h-0 shrink-0" />
-    </div>
-  );
-}
-
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function ConversationPage() {
@@ -257,6 +225,7 @@ export default function ConversationPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user } = useUser();
+  const { setShellState } = useMessageShell();
   const currentUserId = user?.userId ?? "";
 
   const conversationId =
@@ -264,6 +233,7 @@ export default function ConversationPage() {
   const isDraftConversation = conversationId === DRAFT_CONVERSATION_ID;
   const draftListingId = (searchParams.get("listingId") ?? "").trim();
 
+  const [showSkeleton, setShowSkeleton] = useState(false);
   const [conversation, setConversation] = useState<Conversation | null>(null);
   const [messages,     setMessages]     = useState<Message[]>([]);
   const [loading,      setLoading]      = useState(true);
@@ -280,6 +250,7 @@ export default function ConversationPage() {
   const load = useCallback(async () => {
     if (!conversationId) return;
     setLoading(true);
+    setMessages([]);
     try {
       if (isDraftConversation) {
         if (!draftListingId) {
@@ -317,6 +288,22 @@ export default function ConversationPage() {
   }, [conversationId, draftListingId, isDraftConversation, router]);
 
   useEffect(() => { load(); }, [load]);
+
+  // 2. Add this effect to delay the skeleton by 250 milliseconds
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    
+    if (loading) {
+      // If loading starts, wait 250ms before showing the skeleton
+      timer = setTimeout(() => setShowSkeleton(true), 250);
+    } else {
+      // If loading finishes quickly, cancel the timer and hide skeleton
+      setShowSkeleton(false);
+    }
+
+    // Cleanup if the component unmounts or loading changes
+    return () => clearTimeout(timer);
+  }, [loading]);
 
   const effectiveCurrentUserId = useMemo(() => {
     if (currentUserId) return currentUserId;
@@ -524,7 +511,7 @@ export default function ConversationPage() {
 
   // ── Handlers ─────────────────────────────────────────────────────────────
 
-  const handleSend = async (content: string, attachments: Array<{ name: string; mimeType: string; data: string }>) => {
+  const handleSend = useCallback(async (content: string, attachments: Array<{ name: string; mimeType: string; data: string }>) => {
     if (sending) return;
     setSending(true);
     try {
@@ -552,7 +539,7 @@ export default function ConversationPage() {
     } finally {
       setSending(false);
     }
-  };
+  }, [sending, conversationId, isDraftConversation, draftListingId, replyTo, router]);
 
   const handleReply = (msg: Message) => {
     const senderName =
@@ -614,7 +601,7 @@ export default function ConversationPage() {
     }
   };
 
-  const handleDeleteConversation = async () => {
+  const handleDeleteConversation = useCallback(async () => {
     if (isDraftConversation) {
       router.push("/messages");
       return;
@@ -623,7 +610,7 @@ export default function ConversationPage() {
     await deleteConversation(conversationId);
     toast.success("Conversation deleted", { position: "top-center" });
     router.push("/messages");
-  };
+  }, [conversationId, isDraftConversation, router]);
 
   const handleOpenMediaViewer = (attachmentId: string) => {
     const idx = mediaItems.findIndex((item) => item.id === attachmentId);
@@ -632,7 +619,7 @@ export default function ConversationPage() {
     }
   };
 
-  const handleMarkedSold = () => {
+  const handleMarkedSold = useCallback(() => {
     setConversation((prev) => {
       if (!prev) return prev;
       return {
@@ -643,14 +630,66 @@ export default function ConversationPage() {
         },
       };
     });
-  };
+  }, []);
 
-  // ── Loading ───────────────────────────────────────────────────────────────
-  if (loading) {
-    return <ConversationSkeleton />;
-  }
+  const handleCancelReply = useCallback(() => {
+    setReplyTo(null);
+  }, []);
+
+  useEffect(() => {
+    if (conversation) {
+      setShellState((prev) => ({
+        ...prev,
+        conversation,
+      }));
+      return;
+    }
+
+    if (!loading) {
+      setShellState((prev) => ({
+        ...prev,
+        conversation: null,
+      }));
+    }
+  }, [conversation, loading, setShellState]);
+
+  useEffect(() => {
+    setShellState((prev) => ({
+      ...prev,
+      onDelete: handleDeleteConversation,
+      onMarkedSold: handleMarkedSold,
+      onSend: handleSend,
+      inputDisabled: loading || sending || !conversation,
+      replyTo,
+      onCancelReply: handleCancelReply,
+    }));
+  }, [conversation, handleCancelReply, handleDeleteConversation, handleMarkedSold, handleSend, loading, replyTo, sending, setShellState]);
+
+  useEffect(() => {
+    return () => {
+      setShellState((prev) => ({
+        ...prev,
+        onDelete: undefined,
+        onMarkedSold: undefined,
+        inputDisabled: true,
+        replyTo: null,
+        onCancelReply: undefined,
+      }));
+    };
+  }, [setShellState]);
 
   if (!conversation) {
+    if (loading) {
+      return (
+        <div className="h-full overflow-y-auto no-scroll px-4 pt-24 pb-3 flex flex-col-reverse gap-4 fade-in duration-100">
+          <div className="h-12 bg-stone-200 dark:bg-[#1f2230] rounded-lg w-2/3 ml-auto" />
+          <div className="h-16 bg-stone-200 dark:bg-[#1f2230] rounded-lg w-1/2" />
+          <div className="h-12 bg-stone-200 dark:bg-[#1f2230] rounded-lg w-3/4 ml-auto" />
+          <div className="h-20 bg-stone-200 dark:bg-[#1f2230] rounded-lg w-2/3" />
+        </div>
+      );
+    }
+
     return (
       <div className="flex-1 flex flex-col items-center justify-center gap-3 bg-stone-50 dark:bg-[#0f1117] p-8 text-center">
         <p className="text-sm font-semibold text-stone-600 dark:text-stone-400">Conversation not found</p>
@@ -665,27 +704,28 @@ export default function ConversationPage() {
 
   return (
     <>
-      <div className="flex flex-col h-full overflow-hidden bg-white dark:bg-[#0f1117]">
+      {showSkeleton && (
+        <div className="h-full overflow-y-auto no-scroll px-4 pt-24 pb-3 flex flex-col-reverse gap-4 fade-in duration-100">
+          <div className="h-12 bg-stone-200 dark:bg-[#1f2230] rounded-lg w-2/3 ml-auto" />
+          <div className="h-16 bg-stone-200 dark:bg-[#1f2230] rounded-lg w-1/2" />
+          <div className="h-12 bg-stone-200 dark:bg-[#1f2230] rounded-lg w-3/4 ml-auto" />
+          <div className="h-20 bg-stone-200 dark:bg-[#1f2230] rounded-lg w-2/3" />
+        </div>
+      )}
 
-        <ChatHeader conversation={conversation} onDelete={handleDeleteConversation} onMarkedSold={handleMarkedSold} />
-        <ListingContextCard listing={conversation.listing} isSeller={conversation.isSeller} onMarkedSold={handleMarkedSold} />
-
-        {/* Messages area */}
-        <div className="flex-1 overflow-y-auto no-scroll px-4 py-3 flex flex-col-reverse">
+      {!loading && (
+        <div key={conversationId} className="h-full overflow-y-auto no-scroll px-4 pt-24 pb-3 flex flex-col-reverse animate-in fade-in duration-500">
           {messages.length === 0 && (
             <div className="flex flex-col items-center justify-center gap-2 text-center h-full my-auto">
               <p className="text-xs text-stone-400 dark:text-stone-600">No messages yet. Say hello!</p>
             </div>
           )}
 
-          {/* Map through a REVERSED array so the newest message is first in the DOM */}
           {[...messages].reverse().map((msg, reversedIndex) => {
-            
-            // Re-calculate the original index so your Date and Time separation logic works perfectly
             const originalIndex = messages.length - 1 - reversedIndex;
             const prev = messages[originalIndex - 1];
             const next = messages[originalIndex + 1];
-            
+
             const showDate = !prev || !isSameDay(prev.createdAt, msg.createdAt);
             const showTime =
               !next ||
@@ -703,7 +743,7 @@ export default function ConversationPage() {
                     <div className="flex-1 h-px bg-border" />
                   </div>
                 )}
-                
+
                 <MessageBubble
                   message={msg}
                   currentUserId={effectiveCurrentUserId}
@@ -743,17 +783,7 @@ export default function ConversationPage() {
             );
           })}
         </div>
-
-        <MessageInput
-          onSend={handleSend}
-          disabled={sending}
-          replyTo={replyTo}
-          onCancelReply={() => setReplyTo(null)}
-        />
-
-        {/* Mobile nav spacer */}
-        <div className="h-14 md:h-0 shrink-0" />
-      </div>
+      )}
 
       {/* Edit modal */}
       {editTarget && (
