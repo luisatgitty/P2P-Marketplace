@@ -220,12 +220,14 @@ func GetListingById(c *fiber.Ctx) error {
 	case "rent":
 		extra["minPeriod"] = formatMinPeriod(listing.MinRentalPeriod)
 		if listing.AvailableFrom != nil {
+			extra["available_from"] = listing.AvailableFrom.Format("2006-01-02")
 			extra["availability"] = listing.AvailableFrom.Format("Jan 02, 2006")
 		}
 		extra["deposit"] = listing.Deposit
 		extra["amenities"] = included
 	case "service":
 		if listing.AvailableFrom != nil {
+			extra["available_from"] = listing.AvailableFrom.Format("2006-01-02")
 			extra["availability"] = listing.AvailableFrom.Format("Jan 02, 2006")
 		}
 		extra["turnaround"] = listing.Turnaround

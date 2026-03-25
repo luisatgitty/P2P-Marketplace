@@ -34,12 +34,14 @@ interface ExtraDetail {
   deliveryMethod: string;       // from form's deliveryMethod field
   // Rent-specific
   minPeriod?:     string;
+  available_from?: string;
   availability?:  string;
   deposit?:       string;
   amenities?:     string[];
   // Service-specific
   turnaround?:    string;
   serviceArea?:   string;
+  arrangement?:   string;
   inclusions?:    string[];
 }
 
@@ -52,6 +54,7 @@ function getDefaultExtra(listing: PostCardProps): ExtraDetail {
     views:          Math.floor(Math.random() * 200) + 20,
     offers:         Math.floor(Math.random() * 10),
     deliveryMethod: listing.type === "service" ? "On-site service" : "Meet-up or Delivery",
+    arrangement:    "",
   };
 }
 
@@ -112,20 +115,11 @@ function RentInfoCard({ extra }: { extra: ExtraDetail }) {
     <div className="bg-white dark:bg-[#1c1f2e] rounded-2xl border border-stone-200 dark:border-[#2a2d3e] shadow-sm p-6">
       <h2 className="font-bold text-stone-900 dark:text-stone-50 text-base mb-4">Rental Terms</h2>
       <div className="flex flex-col gap-4">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {extra.minPeriod && (
             <div className="bg-stone-50 dark:bg-[#13151f] rounded-xl p-3">
               <p className="text-[10px] font-semibold text-stone-400 dark:text-stone-500 uppercase tracking-widest mb-1">Min. Period</p>
               <p className="text-sm font-semibold text-stone-800 dark:text-stone-100">{extra.minPeriod}</p>
-            </div>
-          )}
-          {extra.availability && (
-            <div className="bg-stone-50 dark:bg-[#13151f] rounded-xl p-3">
-              <p className="text-[10px] font-semibold text-stone-400 dark:text-stone-500 uppercase tracking-widest mb-1">Available From</p>
-              <p className="text-sm font-semibold text-stone-800 dark:text-stone-100 flex items-center gap-1.5">
-                <CalendarDays className="w-3.5 h-3.5 text-teal-500 flex-shrink-0" />
-                {extra.availability}
-              </p>
             </div>
           )}
           {extra.deposit && (
@@ -597,7 +591,7 @@ export default function ListingDetailPage() {
                   icon:  <Truck className="w-4 h-4 text-stone-400" />,
                   label: isService ? "Arrangement" : "Meet-up / Delivery",
                   // Reflects the actual deliveryMethod the seller chose in the form
-                  value: extra.deliveryMethod,
+                  value: isService ? extra.arrangement : extra.deliveryMethod,
                 },
                 {
                   icon:  <Eye className="w-4 h-4 text-stone-400" />,

@@ -9,11 +9,13 @@ export interface ListingExtra {
   offers: number;
   deliveryMethod: string;
   minPeriod?: string;
+  available_from?: string;
   availability?: string;
   deposit?: string;
   amenities?: string[];
   turnaround?: string;
   serviceArea?: string;
+  arrangement?: string;
   inclusions?: string[];
 }
 
