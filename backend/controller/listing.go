@@ -93,6 +93,7 @@ func GetListingEditById(c *fiber.Ctx) error {
 		"deposit":        listing.Deposit,
 		"turnaround":     listing.Turnaround,
 		"serviceArea":    listing.ServiceArea,
+		"arrangement":    listing.Arrangement,
 		"inclusions":     []string{},
 		"amenities":      []string{},
 	}
@@ -224,8 +225,12 @@ func GetListingById(c *fiber.Ctx) error {
 		extra["deposit"] = listing.Deposit
 		extra["amenities"] = included
 	case "service":
+		if listing.AvailableFrom != nil {
+			extra["availability"] = listing.AvailableFrom.Format("Jan 02, 2006")
+		}
 		extra["turnaround"] = listing.Turnaround
 		extra["serviceArea"] = listing.ServiceArea
+		extra["arrangement"] = listing.Arrangement
 		extra["inclusions"] = included
 	default:
 		extra["inclusions"] = included

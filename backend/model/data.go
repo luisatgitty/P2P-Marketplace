@@ -127,8 +127,10 @@ type RentListingBody struct {
 }
 
 type ServiceListingBody struct {
-	Turnaround  string `json:"turnaround"`
-	ServiceArea string `json:"serviceArea"`
+	Availability string `json:"availability"`
+	Turnaround   string `json:"turnaround"`
+	ServiceArea  string `json:"serviceArea"`
+	Arrangement  string `json:"arrangement"`
 }
 
 type ListingImageBody struct {
@@ -409,6 +411,7 @@ type ListingDetailFromDb struct {
 	Deposit            string     `gorm:"column:deposit"`
 	Turnaround         string     `gorm:"column:turnaround_time"`
 	ServiceArea        string     `gorm:"column:service_area"`
+	Arrangement        string     `gorm:"column:arrangements"`
 	SellerName         string     `gorm:"column:seller_name"`
 	SellerProfileImage string     `gorm:"column:seller_profile_image_url"`
 	SellerRating       float64    `gorm:"column:seller_rating"`
@@ -435,5 +438,6 @@ type ListingEditFromDb struct {
 	Deposit         string     `gorm:"column:deposit"`
 	Turnaround      string     `gorm:"column:turnaround_time"`
 	ServiceArea     string     `gorm:"column:service_area"`
+	Arrangement     string     `gorm:"column:arrangements"`
 	Status          string     `gorm:"column:status"`
 }

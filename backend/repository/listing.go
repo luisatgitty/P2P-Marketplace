@@ -200,11 +200,28 @@ func insertTypeDetailsTx(tx *gorm.DB, listingId string, body model.CreateListing
 		if body.ServiceData == nil {
 			return fmt.Errorf("Missing service data")
 		}
+
+		if strings.TrimSpace(body.ServiceData.Availability) == "" {
+			return fmt.Errorf("Availability date is required")
+		}
+
+		parsedDate, err := time.Parse("2006-01-02", body.ServiceData.Availability)
+		if err != nil {
+			return fmt.Errorf("Invalid availability date")
+		}
+
 		insertServiceQuery := `
-			INSERT INTO public.listing_service_details (listing_id, turnaround_time, service_area)
-			VALUES ($1,$2,$3)
+			INSERT INTO public.listing_service_details (listing_id, available_from, turnaround_time, service_area, arrangements)
+			VALUES ($1,$2,$3,$4,$5)
 		`
-		return tx.Exec(insertServiceQuery, listingId, body.ServiceData.Turnaround, body.ServiceData.ServiceArea).Error
+		return tx.Exec(
+			insertServiceQuery,
+			listingId,
+			parsedDate,
+			body.ServiceData.Turnaround,
+			body.ServiceData.ServiceArea,
+			body.ServiceData.Arrangement,
+		).Error
 	default:
 		return fmt.Errorf("Invalid listing type")
 	}
@@ -365,10 +382,11 @@ func GetListingEditDataById(userId, listingId string) (model.ListingEditFromDb, 
 			COALESCE(lsd.condition::text, '') AS condition,
 			COALESCE(lsd.delivery_method::text, lrd.delivery_method::text, '') AS delivery_method,
 			COALESCE(lrd.min_rental_period, 0) AS min_rental_period,
-			lrd.available_from,
+			COALESCE(lrd.available_from, lsrv.available_from) AS available_from,
 			COALESCE(lrd.deposit, '') AS deposit,
 			COALESCE(lsrv.turnaround_time, '') AS turnaround_time,
 			COALESCE(lsrv.service_area, '') AS service_area,
+			COALESCE(lsrv.arrangements, '') AS arrangements,
 			LOWER(l.status::text) AS status
 		FROM public.listings l
 		LEFT JOIN public.categories c ON c.id = l.category_id
@@ -595,21 +613,45 @@ func updateTypeDetailsTx(tx *gorm.DB, listingId string, body model.CreateListing
 		if body.ServiceData == nil {
 			return fmt.Errorf("Missing service data")
 		}
+
+		if strings.TrimSpace(body.ServiceData.Availability) == "" {
+			return fmt.Errorf("Availability date is required")
+		}
+
+		parsedDate, err := time.Parse("2006-01-02", body.ServiceData.Availability)
+		if err != nil {
+			return fmt.Errorf("Invalid availability date")
+		}
+
 		updateServiceQuery := `
 			UPDATE public.listing_service_details
-			SET turnaround_time = $1, service_area = $2
-			WHERE listing_id = $3
+			SET available_from = $1, turnaround_time = $2, service_area = $3, arrangements = $4
+			WHERE listing_id = $5
 		`
-		res := tx.Exec(updateServiceQuery, body.ServiceData.Turnaround, body.ServiceData.ServiceArea, listingId)
+		res := tx.Exec(
+			updateServiceQuery,
+			parsedDate,
+			body.ServiceData.Turnaround,
+			body.ServiceData.ServiceArea,
+			body.ServiceData.Arrangement,
+			listingId,
+		)
 		if res.Error != nil {
 			return fmt.Errorf("Failed to update service details")
 		}
 		if res.RowsAffected == 0 {
 			insertServiceQuery := `
-				INSERT INTO public.listing_service_details (listing_id, turnaround_time, service_area)
-				VALUES ($1,$2,$3)
+				INSERT INTO public.listing_service_details (listing_id, available_from, turnaround_time, service_area, arrangements)
+				VALUES ($1,$2,$3,$4,$5)
 			`
-			if err := tx.Exec(insertServiceQuery, listingId, body.ServiceData.Turnaround, body.ServiceData.ServiceArea).Error; err != nil {
+			if err := tx.Exec(
+				insertServiceQuery,
+				listingId,
+				parsedDate,
+				body.ServiceData.Turnaround,
+				body.ServiceData.ServiceArea,
+				body.ServiceData.Arrangement,
+			).Error; err != nil {
 				return fmt.Errorf("Failed to update service details")
 			}
 		}
@@ -820,10 +862,11 @@ func GetListingDetailById(listingId string) (model.ListingDetailFromDb, error) {
 			COALESCE(lsd.condition::text, '') AS condition,
 			COALESCE(lsd.delivery_method::text, lrd.delivery_method::text, '') AS delivery_method,
 			COALESCE(lrd.min_rental_period, 0) AS min_rental_period,
-			lrd.available_from,
+			COALESCE(lrd.available_from, lsrv.available_from) AS available_from,
 			COALESCE(lrd.deposit, '') AS deposit,
 			COALESCE(lsrv.turnaround_time, '') AS turnaround_time,
 			COALESCE(lsrv.service_area, '') AS service_area,
+			COALESCE(lsrv.arrangements, '') AS arrangements,
 			TRIM(BOTH ' ' FROM CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, ''))) AS seller_name,
 			COALESCE(u.profile_image_url, '') AS seller_profile_image_url,
 			COALESCE(rv.avg_rating, 0) AS seller_rating,
