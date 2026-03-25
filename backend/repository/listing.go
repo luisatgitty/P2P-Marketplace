@@ -732,7 +732,7 @@ func DeleteListing(userId, listingId string) error {
 	return nil
 }
 
-func MarkListingAsSold(userId, listingId string) error {
+func MarkListingAsSold(userId, listingId, buyerId string) error {
 	db := middleware.DBConn
 	tx := db.Begin()
 	if tx.Error != nil {
@@ -772,6 +772,16 @@ func MarkListingAsSold(userId, listingId string) error {
 		return fmt.Errorf("Only the seller can mark this listing as sold")
 	}
 
+	if strings.TrimSpace(buyerId) == "" {
+		tx.Rollback()
+		return fmt.Errorf("Buyer ID is required")
+	}
+
+	if strings.TrimSpace(buyerId) == strings.TrimSpace(userId) {
+		tx.Rollback()
+		return fmt.Errorf("Seller cannot be the buyer")
+	}
+
 	if listingType != "sell" {
 		tx.Rollback()
 		return fmt.Errorf("Only For Sale listings can be marked as sold")
@@ -782,12 +792,34 @@ func MarkListingAsSold(userId, listingId string) error {
 		return fmt.Errorf("Listing is already marked as sold")
 	}
 
+	buyerValidationQuery := `
+		SELECT EXISTS (
+			SELECT 1
+			FROM public.conversations
+			WHERE listing_id = $1
+			  AND seller_id = $2
+			  AND buyer_id = $3
+		)
+	`
+
+	var isValidBuyer bool
+	if err := tx.Raw(buyerValidationQuery, listingId, userId, buyerId).Scan(&isValidBuyer).Error; err != nil {
+		tx.Rollback()
+		return fmt.Errorf("Failed to validate buyer")
+	}
+	if !isValidBuyer {
+		tx.Rollback()
+		return fmt.Errorf("Selected buyer is not associated with this listing")
+	}
+
 	updateSellStatusQuery := `
 		UPDATE public.listing_sell_details
-		SET sell_status = 'SOLD'
+		SET sell_status = 'SOLD',
+			buyer_id = $2,
+			sold_at = now()
 		WHERE listing_id = $1
 	`
-	result := tx.Exec(updateSellStatusQuery, listingId)
+	result := tx.Exec(updateSellStatusQuery, listingId, buyerId)
 	if result.Error != nil {
 		tx.Rollback()
 		return fmt.Errorf("Failed to update sell status")

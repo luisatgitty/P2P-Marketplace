@@ -306,12 +306,22 @@ func MarkListingAsSold(c *fiber.Ctx) error {
 		return SendErrorResponse(c, 400, "Listing ID is required", nil)
 	}
 
+	var body model.MarkListingAsSoldBody
+	if err := c.BodyParser(&body); err != nil {
+		return SendErrorResponse(c, 400, "Invalid request body. Please contact support.", err)
+	}
+
+	buyerId := strings.TrimSpace(body.BuyerId)
+	if buyerId == "" {
+		return SendErrorResponse(c, 400, "Buyer ID is required", nil)
+	}
+
 	userId := fmt.Sprintf("%v", c.Locals("userId"))
 	if strings.TrimSpace(userId) == "" || userId == "%!v(<nil>)" {
 		return SendErrorResponse(c, 401, "User is not authenticated", nil)
 	}
 
-	if err := repository.MarkListingAsSold(userId, listingId); err != nil {
+	if err := repository.MarkListingAsSold(userId, listingId, buyerId); err != nil {
 		return SendErrorResponse(c, 400, err.Error(), err)
 	}
 
@@ -332,6 +342,7 @@ func MarkListingAsSold(c *fiber.Ctx) error {
 
 	return SendSuccessResponse(c, 200, "Listing marked as sold successfully", map[string]any{
 		"listingId": listingId,
+		"buyerId":   buyerId,
 		"status":    "SOLD",
 	})
 }

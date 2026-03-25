@@ -148,6 +148,10 @@ type ReviewListingBody struct {
 	Comment string `json:"comment"`
 }
 
+type MarkListingAsSoldBody struct {
+	BuyerId string `json:"buyerId"`
+}
+
 type ListingReviewFromDb struct {
 	Id             string `gorm:"column:id"`
 	Rating         int    `gorm:"column:rating"`

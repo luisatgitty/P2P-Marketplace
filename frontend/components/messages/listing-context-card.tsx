@@ -20,11 +20,12 @@ import { ConfirmActionModal } from "@/components/confirm-action-modal";
 
 interface ListingContextCardProps {
   listing: ConversationListing;
+  buyerId?: string;
   isSeller?: boolean;
   onMarkedSold?: () => void;
 }
 
-export default function ListingContextCard({ listing, isSeller = false, onMarkedSold }: ListingContextCardProps) {
+export default function ListingContextCard({ listing, buyerId, isSeller = false, onMarkedSold }: ListingContextCardProps) {
   const fmt = (n: number) =>
     "₱" + n.toLocaleString("en-PH", { minimumFractionDigits: 0 });
 
@@ -155,11 +156,11 @@ export default function ListingContextCard({ listing, isSeller = false, onMarked
   };
 
   const handleConfirmMarkSold = async () => {
-    if (!canMarkAsSold || markingSold) return;
+    if (!canMarkAsSold || !buyerId || markingSold) return;
 
     setMarkingSold(true);
     try {
-      await markListingAsSold(listing.id);
+      await markListingAsSold(listing.id, buyerId);
       toast.success("Listing marked as sold.", { position: "top-center" });
       setConfirmOpen(false);
       onMarkedSold?.();

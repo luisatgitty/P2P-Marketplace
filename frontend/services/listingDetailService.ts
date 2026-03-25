@@ -140,11 +140,17 @@ export async function submitUserListingReport(
   }
 }
 
-export async function markListingAsSold(id: string): Promise<void> {
+export async function markListingAsSold(id: string, buyerId: string): Promise<void> {
   try {
     const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/listing/${id}/mark-sold`, {
       method: "PATCH",
       credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        buyerId,
+      }),
     });
 
     if (!res.ok) {

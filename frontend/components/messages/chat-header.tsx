@@ -78,7 +78,7 @@ export default function ChatHeader({ conversation, onDelete, onMarkedSold }: Cha
 
     setMarkingSold(true);
     try {
-      await markListingAsSold(listing.id);
+	  await markListingAsSold(listing.id, otherParticipant.id);
       toast.success("Listing marked as sold.", { position: "top-center" });
       setMarkSoldOpen(false);
       onMarkedSold?.();

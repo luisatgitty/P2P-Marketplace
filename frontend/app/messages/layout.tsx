@@ -32,6 +32,7 @@ function ConversationShell({ children }: { children: React.ReactNode }) {
             <div className="absolute top-2 left-0 right-0 z-20 px-4 pointer-events-auto">
               <ListingContextCard
                 listing={conversation.listing}
+                buyerId={conversation.otherParticipant.id}
                 isSeller={conversation.isSeller}
                 onMarkedSold={onMarkedSold}
               />
