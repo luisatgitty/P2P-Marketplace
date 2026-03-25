@@ -36,24 +36,36 @@ export default function ConversationsList({ activeTab }: ConversationsListProps)
   const [allConversations, setAllConversations] = useState<Conversation[]>([]);
   const [search,  setSearch]  = useState("");
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  const loadConvs = useCallback(async () => {
-    setLoading(true);
+  const loadConvs = useCallback(async (showSkeleton = false) => {
+    if (showSkeleton) {
+      setLoading(true);
+    } else {
+      setRefreshing(true);
+    }
+
     try {
       const data = await getConversations();
       setAllConversations(data);
     } catch {
-      setAllConversations([]);
+      if (showSkeleton) {
+        setAllConversations([]);
+      }
     } finally {
-      setLoading(false);
+      if (showSkeleton) {
+        setLoading(false);
+      } else {
+        setRefreshing(false);
+      }
     }
   }, []);
 
-  useEffect(() => { loadConvs(); }, [loadConvs]);
+  useEffect(() => { loadConvs(true); }, [loadConvs]);
 
   useEffect(() => {
-    const refresh = () => { loadConvs(); };
-    // window.addEventListener("messages:updated", refresh);
+    const refresh = () => { loadConvs(false); };
+    window.addEventListener("messages:updated", refresh);
     return () => window.removeEventListener("messages:updated", refresh);
   }, [loadConvs]);
 
@@ -110,6 +122,11 @@ export default function ConversationsList({ activeTab }: ConversationsListProps)
 
       {/* ── List ────────────────────────────────────────────────────── */}
       <div className="flex-1 overflow-y-auto no-scroll">
+        {refreshing && (
+          <div className="h-0.5 w-full bg-transparent overflow-hidden">
+            <div className="h-full w-1/3 bg-amber-500/50 animate-pulse" />
+          </div>
+        )}
         {loading ? (
 
           // Skeleton — staggered fade-in so it feels intentional
@@ -132,11 +149,7 @@ export default function ConversationsList({ activeTab }: ConversationsListProps)
 
         ) : (
 
-          // Content — fades up in from slightly below when loading ends
-          // `key="content"` forces React to unmount/remount this node each time
-          // loading flips to false, which re-triggers the animation classes
           <div
-            key="content"
             className="divide-y divide-border/50 animate-in fade-in duration-300 ease-out"
           >
             {filtered.length === 0 ? (
