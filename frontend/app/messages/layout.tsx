@@ -43,6 +43,7 @@ function ConversationShell({ children }: { children: React.ReactNode }) {
             disabled={inputDisabled}
             replyTo={replyTo}
             onCancelReply={onCancelReply}
+            autoFocusKey={conversation.id}
           />
           <div className="h-14 md:h-0 shrink-0" />
         </>

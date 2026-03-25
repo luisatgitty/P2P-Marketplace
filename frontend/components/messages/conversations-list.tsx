@@ -9,8 +9,6 @@ import { getConversations } from "@/services/messagingService";
 import ConversationItem from "./conversation-item";
 import EmptyState from "./empty-state";
 
-// ─── Tab filter logic ─────────────────────────────────────────────────────────
-
 function filterByTab(conversations: Conversation[], tab: MessageTab): Conversation[] {
   switch (tab) {
     case "buying":   return conversations.filter((c) => !c.isSeller && c.listing.listingType === "SELL");
@@ -21,13 +19,9 @@ function filterByTab(conversations: Conversation[], tab: MessageTab): Conversati
   }
 }
 
-// ─── Props ────────────────────────────────────────────────────────────────────
-
 interface ConversationsListProps {
   activeTab: MessageTab;
 }
-
-// ─── Component ────────────────────────────────────────────────────────────────
 
 export default function ConversationsList({ activeTab }: ConversationsListProps) {
   const pathname     = usePathname();
@@ -36,13 +30,10 @@ export default function ConversationsList({ activeTab }: ConversationsListProps)
   const [allConversations, setAllConversations] = useState<Conversation[]>([]);
   const [search,  setSearch]  = useState("");
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
 
   const loadConvs = useCallback(async (showSkeleton = false) => {
     if (showSkeleton) {
       setLoading(true);
-    } else {
-      setRefreshing(true);
     }
 
     try {
@@ -55,8 +46,6 @@ export default function ConversationsList({ activeTab }: ConversationsListProps)
     } finally {
       if (showSkeleton) {
         setLoading(false);
-      } else {
-        setRefreshing(false);
       }
     }
   }, []);
@@ -122,11 +111,6 @@ export default function ConversationsList({ activeTab }: ConversationsListProps)
 
       {/* ── List ────────────────────────────────────────────────────── */}
       <div className="flex-1 overflow-y-auto no-scroll">
-        {refreshing && (
-          <div className="h-0.5 w-full bg-transparent overflow-hidden">
-            <div className="h-full w-1/3 bg-amber-500/50 animate-pulse" />
-          </div>
-        )}
         {loading ? (
 
           // Skeleton — staggered fade-in so it feels intentional
