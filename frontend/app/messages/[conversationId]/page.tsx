@@ -289,19 +289,18 @@ export default function ConversationPage() {
 
   useEffect(() => { load(); }, [load]);
 
-  // 2. Add this effect to delay the skeleton by 250 milliseconds
+  // Delay skeleton so fast loads do not flicker.
   useEffect(() => {
     let timer: NodeJS.Timeout;
     
     if (loading) {
-      // If loading starts, wait 250ms before showing the skeleton
+      // If loading is still in progress after 500ms, show skeleton.
       timer = setTimeout(() => setShowSkeleton(true), 250);
     } else {
-      // If loading finishes quickly, cancel the timer and hide skeleton
+      // Loading completed before/after threshold; hide skeleton.
       setShowSkeleton(false);
     }
 
-    // Cleanup if the component unmounts or loading changes
     return () => clearTimeout(timer);
   }, [loading]);
 
@@ -680,6 +679,10 @@ export default function ConversationPage() {
 
   if (!conversation) {
     if (loading) {
+      if (!showSkeleton) {
+        return <div className="h-full" />;
+      }
+
       return (
         <div className="h-full overflow-y-auto no-scroll px-4 pt-24 pb-3 flex flex-col-reverse gap-4 fade-in duration-100">
           <div className="h-12 bg-stone-200 dark:bg-[#1f2230] rounded-lg w-2/3 ml-auto" />
