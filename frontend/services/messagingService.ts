@@ -156,6 +156,17 @@ export async function openOrCreateConversationFromListing(listingId: string, off
   return data.conversationId;
 }
 
+export async function updateConversationOfferAsOwner(conversationId: string, offerPrice?: number, offerMessage?: string): Promise<void> {
+  await apiFetch<{}>(`/messages/conversations/${conversationId}/offer`, {
+    method: "PATCH",
+    body: JSON.stringify({
+      offerPrice: Number.isFinite(offerPrice) && (offerPrice ?? 0) > 0 ? Math.trunc(offerPrice as number) : undefined,
+      offerMessage: (offerMessage ?? "").trim() || undefined,
+    }),
+  });
+  emitMessagesUpdate();
+}
+
 export async function toggleConversationDealAgreement(conversationId: string): Promise<void> {
   await apiFetch<{}>(`/messages/conversations/${conversationId}/deal`, {
     method: "PATCH",

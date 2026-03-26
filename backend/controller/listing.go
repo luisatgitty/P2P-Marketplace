@@ -318,7 +318,8 @@ func MarkListingAsSold(c *fiber.Ctx) error {
 		return SendErrorResponse(c, 401, "User is not authenticated", nil)
 	}
 
-	if err := repository.MarkListingAsSold(userId, listingId); err != nil {
+	affectedConversationIds, err := repository.MarkListingAsSold(userId, listingId)
+	if err != nil {
 		return SendErrorResponse(c, 400, err.Error(), err)
 	}
 
@@ -335,6 +336,26 @@ func MarkListingAsSold(c *fiber.Ctx) error {
 				},
 			})
 		}
+	}
+
+	for _, conversationId := range affectedConversationIds {
+		trimmedConversationId := strings.TrimSpace(conversationId)
+		if trimmedConversationId == "" {
+			continue
+		}
+
+		realtimeMessagePayload := map[string]any{
+			"type": "message:new",
+			"data": map[string]any{
+				"conversationId": trimmedConversationId,
+			},
+		}
+
+		peerUserId, peerErr := repository.GetConversationPeerUserId(userId, trimmedConversationId)
+		if peerErr == nil && strings.TrimSpace(peerUserId) != "" {
+			middleware.RealtimeHub.SendToUser(peerUserId, realtimeMessagePayload)
+		}
+		middleware.RealtimeHub.SendToUser(userId, realtimeMessagePayload)
 	}
 
 	return SendSuccessResponse(c, 200, "Listing marked as sold successfully", map[string]any{

@@ -66,6 +66,11 @@ type CreateConversationBody struct {
 	OfferMessage string `json:"offerMessage"`
 }
 
+type UpdateConversationOfferBody struct {
+	OfferPrice   *int   `json:"offerPrice"`
+	OfferMessage string `json:"offerMessage"`
+}
+
 type SendMessageBody struct {
 	Content     string                  `json:"content"`
 	Attachments []MessageAttachmentBody `json:"attachments"`

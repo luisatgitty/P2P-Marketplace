@@ -1144,6 +1144,195 @@ func GetOrCreateConversationByListing(userId, listingId string, offerPrice int, 
 	return conversationId, nil
 }
 
+func UpdateConversationOfferByOwner(userId, conversationId string, offerPrice int, offerMessage string) (model.TransactionAgreementState, error) {
+	db := middleware.DBConn
+	state := model.TransactionAgreementState{}
+
+	if offerPrice <= 0 {
+		return state, fmt.Errorf("Offer price must be greater than 0")
+	}
+
+	tx := db.Begin()
+	if tx.Error != nil {
+		return state, fmt.Errorf("Failed to start DB transaction")
+	}
+
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	var listingId string
+	var buyerId string
+	var sellerId string
+	var listingType string
+	var listingStatus string
+	conversationQuery := `
+		SELECT
+			c.listing_id::text,
+			c.buyer_id::text,
+			c.seller_id::text,
+			LOWER(l.listing_type::text) AS listing_type,
+			LOWER(COALESCE(l.status::text, 'available')) AS listing_status
+		FROM public.conversations c
+		JOIN public.listings l
+			ON l.id = c.listing_id
+		JOIN public.conversation_members cm
+			ON cm.conversation_id = c.id
+			AND cm.user_id = $2
+			AND cm.deleted_at IS NULL
+		WHERE c.id = $1
+		LIMIT 1
+	`
+	if err := tx.Raw(conversationQuery, conversationId, userId).Row().Scan(&listingId, &buyerId, &sellerId, &listingType, &listingStatus); err != nil {
+		tx.Rollback()
+		return state, fmt.Errorf("Conversation not found")
+	}
+
+	if strings.TrimSpace(userId) != strings.TrimSpace(sellerId) {
+		tx.Rollback()
+		return state, fmt.Errorf("Only the listing owner can update this offer")
+	}
+
+	if listingType != "sell" {
+		tx.Rollback()
+		return state, fmt.Errorf("Offers are only supported for For Sale listings")
+	}
+
+	if listingStatus == "sold" {
+		tx.Rollback()
+		return state, fmt.Errorf("This listing is already sold")
+	}
+
+	actorFirstName, err := getUserFirstNameTx(tx, userId)
+	if err != nil {
+		tx.Rollback()
+		return state, err
+	}
+
+	countActiveTransactionsQuery := `
+		SELECT COUNT(*)
+		FROM public.listing_transactions
+		WHERE listing_id = $1
+			AND client_id = $2
+			AND status <> 'COMPLETED'
+	`
+	var nonCompletedCount int
+	if err := tx.Raw(countActiveTransactionsQuery, listingId, buyerId).Scan(&nonCompletedCount).Error; err != nil {
+		tx.Rollback()
+		return state, fmt.Errorf("Failed to inspect existing transactions")
+	}
+
+	if nonCompletedCount == 0 {
+		insertTransactionQuery := `
+			INSERT INTO public.listing_transactions (
+				listing_id,
+				client_id,
+				total_price,
+				provider_agreed,
+				client_agreed,
+				status,
+				created_at
+			) VALUES (
+				$1,
+				$2,
+				$3,
+				FALSE,
+				FALSE,
+				'PENDING',
+				now()
+			)
+		`
+		if err := tx.Exec(insertTransactionQuery, listingId, buyerId, offerPrice).Error; err != nil {
+			tx.Rollback()
+			return state, fmt.Errorf("Failed to save offer transaction")
+		}
+	} else {
+		updateExistingTransactionQuery := `
+			UPDATE public.listing_transactions
+			SET
+				total_price = $2,
+				provider_agreed = FALSE,
+				client_agreed = FALSE,
+				status = 'PENDING',
+				cancelled_at = NULL,
+				cancelled_by_id = NULL,
+				completed_at = NULL,
+				created_at = now()
+			WHERE id = (
+				SELECT lt.id
+				FROM public.listing_transactions lt
+				WHERE lt.listing_id = $1
+					AND lt.client_id = $3
+					AND lt.status <> 'COMPLETED'
+				ORDER BY lt.created_at DESC
+				LIMIT 1
+			)
+		`
+		updateResult := tx.Exec(updateExistingTransactionQuery, listingId, offerPrice, buyerId)
+		if updateResult.Error != nil {
+			tx.Rollback()
+			return state, fmt.Errorf("Failed to update offer transaction")
+		}
+		if updateResult.RowsAffected == 0 {
+			tx.Rollback()
+			return state, fmt.Errorf("No eligible transaction found for update")
+		}
+	}
+
+	offerActionContent := fmt.Sprintf("__OFFER_ACTION__:%s offered ₱%s", actorFirstName, formatAmountWithCommas(offerPrice))
+	actionMessage, err := insertConversationMessageTx(tx, conversationId, userId, buyerId, offerActionContent)
+	if err != nil {
+		tx.Rollback()
+		return state, err
+	}
+
+	lastMessageID := actionMessage.Id
+	lastMessageText := strings.TrimSpace(actionMessage.Content)
+	lastMessageAt := actionMessage.CreatedAt
+
+	trimmedOfferMessage := strings.TrimSpace(offerMessage)
+	if trimmedOfferMessage != "" {
+		noteMessage, err := insertConversationMessageTx(tx, conversationId, userId, buyerId, trimmedOfferMessage)
+		if err != nil {
+			tx.Rollback()
+			return state, err
+		}
+		lastMessageID = noteMessage.Id
+		lastMessageText = strings.TrimSpace(noteMessage.Content)
+		lastMessageAt = noteMessage.CreatedAt
+	}
+
+	updateConversationQuery := `
+		UPDATE public.conversations
+		SET
+			last_message_id = $2,
+			last_message = $3,
+			last_message_sender_id = $4,
+			last_message_at = $5,
+			updated_at = now()
+		WHERE id = $1
+	`
+	if err := tx.Exec(updateConversationQuery, conversationId, lastMessageID, lastMessageText, userId, lastMessageAt).Error; err != nil {
+		tx.Rollback()
+		return state, fmt.Errorf("Failed to update conversation metadata")
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		return state, fmt.Errorf("Failed to finalize offer update")
+	}
+
+	state.ConversationId = strings.TrimSpace(conversationId)
+	state.ListingId = strings.TrimSpace(listingId)
+	state.TransactionStatus = "PENDING"
+	state.ProviderAgreed = false
+	state.ClientAgreed = false
+	state.UserAgreed = false
+
+	return state, nil
+}
+
 func ToggleConversationTransactionAgreement(userId, conversationId string) (model.TransactionAgreementState, error) {
 	db := middleware.DBConn
 	state := model.TransactionAgreementState{}

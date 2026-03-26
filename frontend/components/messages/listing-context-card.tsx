@@ -19,6 +19,7 @@ import {
 import {
   openOrCreateConversationFromListing,
   toggleConversationDealAgreement,
+  updateConversationOfferAsOwner,
 } from "@/services/messagingService";
 import { ConfirmActionModal } from "@/components/confirm-action-modal"; 
 import OfferModal from "@/components/offer-modal";
@@ -62,7 +63,7 @@ export default function ListingContextCard({ conversationId, listing, isSeller =
   const offeredPrice = Number(listing.offer ?? 0) > 0 ? Number(listing.offer) : listing.price;
   const scheduleValue = String(listing.schedule ?? "").trim();
   const [ newPrice, setNewPrice ] = useState(offeredPrice);
-  const isOfferChanged = Math.trunc(newPrice) !== Math.trunc(offeredPrice);
+  const isOfferChanged = Math.trunc(newPrice) !== Math.trunc(offeredPrice) || !hasTransaction;
 
   useEffect(() => {
     let mounted = true;
@@ -205,7 +206,11 @@ export default function ListingContextCard({ conversationId, listing, isSeller =
 
     setPriceSubmitting(true);
     try {
-      await openOrCreateConversationFromListing(listing.id, Math.trunc(newPrice), offerMessage);
+      if (isSeller && conversationId) {
+        await updateConversationOfferAsOwner(conversationId, Math.trunc(newPrice), offerMessage);
+      } else {
+        await openOrCreateConversationFromListing(listing.id, Math.trunc(newPrice), offerMessage);
+      }
       await onOfferUpdated?.();
       toast.success("Offer updated successfully.", { position: "top-center" });
       setEditPriceOpen(false);
@@ -291,7 +296,9 @@ export default function ListingContextCard({ conversationId, listing, isSeller =
             <span className="text-xs font-bold text-amber-700 dark:text-amber-500">
               {
                 listing.listingType === "SELL"
-                  ? fmt(offeredPrice)
+                  ? isSold || hasTransaction && (normalizedTransactionStatus === "PENDING" || normalizedTransactionStatus === "CONFIRMED")
+                    ? fmt(offeredPrice)
+                    : "No offer yet"
                   : (scheduleValue || "No schedule yet")
               }
             </span>
@@ -334,7 +341,9 @@ export default function ListingContextCard({ conversationId, listing, isSeller =
             className="px-2.5 py-2 rounded-md text-[11px] font-semibold text-white bg-blue-700 hover:bg-blue-600 transition-colors shrink-0 disabled:opacity-60 disabled:cursor-not-allowed"
             title="Edit offered price"
           >
-            Edit Price
+            {!isSold && hasTransaction && (normalizedTransactionStatus === "PENDING" || normalizedTransactionStatus === "CONFIRMED")
+              ? "Edit Price"
+              : "Offer Price"}
           </button>
         )}
 
