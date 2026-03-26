@@ -845,6 +845,19 @@ func MarkListingAsSold(userId, listingId string) error {
 		return fmt.Errorf("Failed to update listing status")
 	}
 
+	completeTransactionQuery := `
+		UPDATE public.listing_transactions
+		SET
+			status = 'COMPLETED',
+			completed_at = now()
+		WHERE listing_id = $1
+			AND status = 'CONFIRMED'
+	`
+	if err := tx.Exec(completeTransactionQuery, listingId).Error; err != nil {
+		tx.Rollback()
+		return fmt.Errorf("Failed to complete listing transaction")
+	}
+
 	if err := tx.Commit().Error; err != nil {
 		return err
 	}

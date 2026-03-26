@@ -326,15 +326,17 @@ export default function ListingContextCard({ conversationId, listing, isSeller =
           </button>
         )}
 
-        <button
-          type="button"
-          onClick={() => setEditPriceOpen(true)}
-          disabled={reviewLoading}
-          className="px-2.5 py-2 rounded-md text-[11px] font-semibold text-white bg-blue-700 hover:bg-blue-600 transition-colors shrink-0 disabled:opacity-60 disabled:cursor-not-allowed"
-          title="Edit offered price"
-        >
-          Edit Price
-        </button>
+        {!isSold && (
+          <button
+            type="button"
+            onClick={() => setEditPriceOpen(true)}
+            disabled={reviewLoading}
+            className="px-2.5 py-2 rounded-md text-[11px] font-semibold text-white bg-blue-700 hover:bg-blue-600 transition-colors shrink-0 disabled:opacity-60 disabled:cursor-not-allowed"
+            title="Edit offered price"
+          >
+            Edit Price
+          </button>
+        )}
 
         {canDeal && (
           <button

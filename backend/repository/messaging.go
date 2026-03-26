@@ -1028,28 +1028,20 @@ func GetOrCreateConversationByListing(userId, listingId string, offerPrice int, 
 			return "", err
 		}
 
-		updatePendingTransactionQuery := `
-			UPDATE public.listing_transactions
-			SET
-				total_price = $3,
-				provider_agreed = FALSE,
-				client_agreed = FALSE,
-				status = 'PENDING',
-				cancelled_at = NULL,
-				cancelled_by_id = NULL,
-				completed_at = NULL,
-				created_at = now()
+		countActiveTransactionsQuery := `
+			SELECT COUNT(*)
+			FROM public.listing_transactions
 			WHERE listing_id = $1
 				AND client_id = $2
-				AND status = 'PENDING'
+				AND status <> 'COMPLETED'
 		`
-		updateResult := tx.Exec(updatePendingTransactionQuery, listingId, userId, offerPrice)
-		if updateResult.Error != nil {
+		var nonCompletedCount int
+		if err := tx.Raw(countActiveTransactionsQuery, listingId, userId).Scan(&nonCompletedCount).Error; err != nil {
 			tx.Rollback()
-			return "", fmt.Errorf("Failed to update offer transaction")
+			return "", fmt.Errorf("Failed to inspect existing transactions")
 		}
 
-		if updateResult.RowsAffected == 0 {
+		if nonCompletedCount == 0 {
 			insertTransactionQuery := `
 				INSERT INTO public.listing_transactions (
 					listing_id,
@@ -1072,6 +1064,37 @@ func GetOrCreateConversationByListing(userId, listingId string, offerPrice int, 
 			if err := tx.Exec(insertTransactionQuery, listingId, userId, offerPrice).Error; err != nil {
 				tx.Rollback()
 				return "", fmt.Errorf("Failed to save offer transaction")
+			}
+		} else {
+			updateExistingTransactionQuery := `
+				UPDATE public.listing_transactions
+				SET
+					total_price = $2,
+					provider_agreed = FALSE,
+					client_agreed = FALSE,
+					status = 'PENDING',
+					cancelled_at = NULL,
+					cancelled_by_id = NULL,
+					completed_at = NULL,
+					created_at = now()
+				WHERE id = (
+					SELECT lt.id
+					FROM public.listing_transactions lt
+					WHERE lt.listing_id = $1
+						AND lt.client_id = $3
+						AND lt.status <> 'COMPLETED'
+					ORDER BY lt.created_at DESC
+					LIMIT 1
+				)
+			`
+			updateResult := tx.Exec(updateExistingTransactionQuery, listingId, offerPrice, userId)
+			if updateResult.Error != nil {
+				tx.Rollback()
+				return "", fmt.Errorf("Failed to update offer transaction")
+			}
+			if updateResult.RowsAffected == 0 {
+				tx.Rollback()
+				return "", fmt.Errorf("No eligible transaction found for update")
 			}
 		}
 
