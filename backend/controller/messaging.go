@@ -31,10 +31,40 @@ func toAbsoluteAssetURL(baseURL, raw string) string {
 	return strings.TrimRight(baseURL, "/") + "/" + strings.TrimLeft(trimmed, "/")
 }
 
+func formatConversationSchedule(start, end *time.Time) string {
+	if start == nil && end == nil {
+		return ""
+	}
+	if start != nil && end != nil {
+		return fmt.Sprintf("%s - %s", start.Format("Jan 02, 2006"), end.Format("Jan 02, 2006"))
+	}
+	if start != nil {
+		return start.Format("Jan 02, 2006")
+	}
+	return end.Format("Jan 02, 2006")
+}
+
+func toOfferActionText(content string) string {
+	trimmed := strings.TrimSpace(content)
+	if !strings.HasPrefix(trimmed, "__OFFER_ACTION__:") {
+		return ""
+	}
+	amount := strings.TrimSpace(strings.TrimPrefix(trimmed, "__OFFER_ACTION__:"))
+	if amount == "" {
+		return ""
+	}
+	return "Offered " + amount
+}
+
 func mapConversationPayload(baseURL string, row model.ConversationFromDb) map[string]any {
 	lastMessageAt := ""
 	if row.LastMessageAt != nil {
 		lastMessageAt = row.LastMessageAt.UTC().Format(time.RFC3339)
+	}
+
+	offerPrice := row.OfferPrice
+	if offerPrice <= 0 {
+		offerPrice = row.ListingPrice
 	}
 
 	return map[string]any{
@@ -43,6 +73,8 @@ func mapConversationPayload(baseURL string, row model.ConversationFromDb) map[st
 			"id":          row.ListingId,
 			"title":       row.ListingTitle,
 			"price":       row.ListingPrice,
+			"offer":       offerPrice,
+			"schedule":    formatConversationSchedule(row.ScheduleStart, row.ScheduleEnd),
 			"priceUnit":   row.ListingPriceUnit,
 			"listingType": strings.ToUpper(strings.TrimSpace(row.ListingType)),
 			"imageUrl":    toAbsoluteAssetURL(baseURL, row.ListingImageUrl),
@@ -55,7 +87,13 @@ func mapConversationPayload(baseURL string, row model.ConversationFromDb) map[st
 			"profileImageUrl": toAbsoluteAssetURL(baseURL, row.OtherProfileImgUrl),
 			"isOnline":        middleware.RealtimeHub.IsOnline(row.OtherUserId),
 		},
-		"lastMessage":            strings.TrimSpace(row.LastMessage),
+		"lastMessage": func() string {
+			actionText := toOfferActionText(row.LastMessage)
+			if actionText != "" {
+				return actionText
+			}
+			return strings.TrimSpace(row.LastMessage)
+		}(),
 		"lastMessageAt":          lastMessageAt,
 		"otherLastReadMessageId": strings.TrimSpace(row.OtherLastReadMsgId),
 		"unreadCount":            row.UnreadCount,
@@ -197,7 +235,13 @@ func CreateConversationFromListing(c *fiber.Ctx) error {
 		return SendErrorResponse(c, 401, err.Error(), nil)
 	}
 
-	conversationId, err := repository.GetOrCreateConversationByListing(userId, strings.TrimSpace(body.ListingId))
+	offerPrice := 0
+	if body.OfferPrice != nil {
+		offerPrice = *body.OfferPrice
+	}
+	offerMessage := strings.TrimSpace(body.OfferMessage)
+
+	conversationId, err := repository.GetOrCreateConversationByListing(userId, strings.TrimSpace(body.ListingId), offerPrice, offerMessage)
 	if err != nil {
 		return SendErrorResponse(c, 400, err.Error(), err)
 	}

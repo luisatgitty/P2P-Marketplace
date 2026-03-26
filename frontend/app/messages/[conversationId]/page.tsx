@@ -44,6 +44,18 @@ function isSameDay(a: string, b: string) {
   return new Date(a).toDateString() === new Date(b).toDateString();
 }
 
+function getOfferActionLabel(content?: string): string | null {
+  const raw = String(content ?? "").trim();
+  if (!raw.startsWith("__OFFER_ACTION__:")) {
+    return null;
+  }
+  const offered = raw.replace("__OFFER_ACTION__:", "").trim();
+  if (!offered) {
+    return null;
+  }
+  return `Offered ${offered}`;
+}
+
 const DRAFT_CONVERSATION_ID = "new";
 
 function splitSellerName(fullName: string): { firstName: string; lastName: string } {
@@ -631,6 +643,21 @@ export default function ConversationPage() {
     });
   }, []);
 
+  const handleOfferUpdated = useCallback(async () => {
+    if (isDraftConversation || !conversationId) return;
+
+    const [freshConversation, freshMessages] = await Promise.all([
+      getConversation(conversationId),
+      getMessages(conversationId),
+    ]);
+
+    if (freshConversation) {
+      setConversation(freshConversation);
+    }
+    setMessages(freshMessages);
+    await markConversationRead(conversationId);
+  }, [conversationId, isDraftConversation]);
+
   const handleCancelReply = useCallback(() => {
     setReplyTo(null);
   }, []);
@@ -657,12 +684,13 @@ export default function ConversationPage() {
       ...prev,
       onDelete: handleDeleteConversation,
       onMarkedSold: handleMarkedSold,
+      onOfferUpdated: handleOfferUpdated,
       onSend: handleSend,
       inputDisabled: loading || sending || !conversation,
       replyTo,
       onCancelReply: handleCancelReply,
     }));
-  }, [conversation, handleCancelReply, handleDeleteConversation, handleMarkedSold, handleSend, loading, replyTo, sending, setShellState]);
+  }, [conversation, handleCancelReply, handleDeleteConversation, handleMarkedSold, handleOfferUpdated, handleSend, loading, replyTo, sending, setShellState]);
 
   useEffect(() => {
     return () => {
@@ -670,6 +698,7 @@ export default function ConversationPage() {
         ...prev,
         onDelete: undefined,
         onMarkedSold: undefined,
+        onOfferUpdated: undefined,
         inputDisabled: true,
         replyTo: null,
         onCancelReply: undefined,
@@ -728,6 +757,7 @@ export default function ConversationPage() {
             const originalIndex = messages.length - 1 - reversedIndex;
             const prev = messages[originalIndex - 1];
             const next = messages[originalIndex + 1];
+            const actionLabel = getOfferActionLabel(msg.content);
 
             const showDate = !prev || !isSameDay(prev.createdAt, msg.createdAt);
             const showTime =
@@ -747,19 +777,27 @@ export default function ConversationPage() {
                   </div>
                 )}
 
-                <MessageBubble
-                  message={msg}
-                  currentUserId={effectiveCurrentUserId}
-                  showTime={showTime}
-                  otherName={otherName}
-                  onReply={handleReply}
-                  onReact={handleReact}
-                  onEdit={handleEdit}
-                  onDelete={handleDelete}
-                  onOpenMediaViewer={handleOpenMediaViewer}
-                />
+                {actionLabel ? (
+                  <div className="flex justify-center my-1.5">
+                    <span className="text-[11px] text-stone-400 dark:text-stone-500 bg-stone-100 dark:bg-[#1c1f2e] border border-border rounded-full px-3 py-1">
+                      {actionLabel}
+                    </span>
+                  </div>
+                ) : (
+                  <MessageBubble
+                    message={msg}
+                    currentUserId={effectiveCurrentUserId}
+                    showTime={showTime}
+                    otherName={otherName}
+                    onReply={handleReply}
+                    onReact={handleReact}
+                    onEdit={handleEdit}
+                    onDelete={handleDelete}
+                    onOpenMediaViewer={handleOpenMediaViewer}
+                  />
+                )}
 
-                {msg.senderId === effectiveCurrentUserId && conversation.otherLastReadMessageId === msg.id && (
+                {!actionLabel && msg.senderId === effectiveCurrentUserId && conversation.otherLastReadMessageId === msg.id && (
                   <div className="flex justify-end pr-1 mt-0.5">
                     {conversation.otherParticipant.profileImageUrl ? (
                       <img

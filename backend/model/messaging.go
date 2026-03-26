@@ -7,6 +7,9 @@ type ConversationFromDb struct {
 	ListingId          string     `gorm:"column:listing_id"`
 	ListingTitle       string     `gorm:"column:listing_title"`
 	ListingPrice       int        `gorm:"column:listing_price"`
+	OfferPrice         int        `gorm:"column:offer_price"`
+	ScheduleStart      *time.Time `gorm:"column:schedule_start"`
+	ScheduleEnd        *time.Time `gorm:"column:schedule_end"`
 	ListingPriceUnit   string     `gorm:"column:listing_price_unit"`
 	ListingType        string     `gorm:"column:listing_type"`
 	ListingStatus      string     `gorm:"column:listing_status"`
@@ -54,7 +57,9 @@ type MessageReactionFromDb struct {
 }
 
 type CreateConversationBody struct {
-	ListingId string `json:"listingId"`
+	ListingId    string `json:"listingId"`
+	OfferPrice   *int   `json:"offerPrice"`
+	OfferMessage string `json:"offerMessage"`
 }
 
 type SendMessageBody struct {

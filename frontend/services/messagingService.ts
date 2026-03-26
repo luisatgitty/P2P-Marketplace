@@ -143,10 +143,14 @@ export async function deleteConversation(conversationId: string): Promise<void> 
   emitMessagesUpdate();
 }
 
-export async function openOrCreateConversationFromListing(listingId: string): Promise<string> {
+export async function openOrCreateConversationFromListing(listingId: string, offerPrice?: number, offerMessage?: string): Promise<string> {
   const data = await apiFetch<{ conversationId: string }>("/messages/conversations/from-listing", {
     method: "POST",
-    body: JSON.stringify({ listingId }),
+    body: JSON.stringify({
+      listingId,
+      offerPrice: Number.isFinite(offerPrice) && (offerPrice ?? 0) > 0 ? Math.trunc(offerPrice as number) : undefined,
+      offerMessage: (offerMessage ?? "").trim() || undefined,
+    }),
   });
   emitMessagesUpdate();
   return data.conversationId;

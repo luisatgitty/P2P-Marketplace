@@ -17,6 +17,7 @@ function ConversationShell({ children }: { children: React.ReactNode }) {
     conversation,
     onDelete,
     onMarkedSold,
+    onOfferUpdated,
     onSend,
     inputDisabled,
     replyTo,
@@ -34,6 +35,7 @@ function ConversationShell({ children }: { children: React.ReactNode }) {
                 listing={conversation.listing}
                 isSeller={conversation.isSeller}
                 onMarkedSold={onMarkedSold}
+                onOfferUpdated={onOfferUpdated}
               />
             </div>
             {children}

@@ -13,12 +13,14 @@ type SendHandler = (content: string, attachments: OutgoingAttachment[]) => Promi
 
 type DeleteHandler = () => void | Promise<void>;
 type MarkSoldHandler = () => void;
+type OfferUpdatedHandler = () => void | Promise<void>;
 type CancelReplyHandler = () => void;
 
 export interface MessageShellState {
   conversation: Conversation | null;
   onDelete?: DeleteHandler;
   onMarkedSold?: MarkSoldHandler;
+  onOfferUpdated?: OfferUpdatedHandler;
   onSend: SendHandler;
   inputDisabled: boolean;
   replyTo: ReplyPreview | null;

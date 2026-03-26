@@ -35,6 +35,8 @@ export interface ConversationListing {
   id: string;
   title: string;
   price: number;
+  offer?: number;
+  schedule?: string;
   priceUnit?: string;
   listingType: ListingType;
   imageUrl?: string | null;
