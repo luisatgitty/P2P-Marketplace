@@ -254,6 +254,11 @@ func CreateConversationFromListing(c *fiber.Ctx) error {
 	}
 
 	if offerPrice > 0 {
+		conversation, convErr := repository.GetConversationById(userId, conversationId)
+		if convErr != nil {
+			return SendErrorResponse(c, 500, convErr.Error(), convErr)
+		}
+
 		realtimePayload := map[string]any{
 			"type": "message:new",
 			"data": map[string]any{
@@ -261,11 +266,25 @@ func CreateConversationFromListing(c *fiber.Ctx) error {
 			},
 		}
 
+		realtimeDealPayload := map[string]any{
+			"type": "conversation:deal-updated",
+			"data": map[string]any{
+				"conversationId":    conversationId,
+				"listingId":         conversation.ListingId,
+				"transactionStatus": strings.ToUpper(strings.TrimSpace(conversation.TransactionStatus)),
+				"providerAgreed":    conversation.ProviderAgreed,
+				"clientAgreed":      conversation.ClientAgreed,
+				"userAgreed":        conversation.UserAgreed,
+			},
+		}
+
 		peerUserId, peerErr := repository.GetConversationPeerUserId(userId, conversationId)
 		if peerErr == nil && strings.TrimSpace(peerUserId) != "" {
 			middleware.RealtimeHub.SendToUser(peerUserId, realtimePayload)
+			middleware.RealtimeHub.SendToUser(peerUserId, realtimeDealPayload)
 		}
 		middleware.RealtimeHub.SendToUser(userId, realtimePayload)
+		middleware.RealtimeHub.SendToUser(userId, realtimeDealPayload)
 	}
 
 	return SendSuccessResponse(c, 200, "Conversation is ready", map[string]any{"conversationId": conversationId})

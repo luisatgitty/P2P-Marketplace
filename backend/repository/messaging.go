@@ -1033,7 +1033,7 @@ func GetOrCreateConversationByListing(userId, listingId string, offerPrice int, 
 			SET
 				total_price = $3,
 				provider_agreed = FALSE,
-				client_agreed = TRUE,
+				client_agreed = FALSE,
 				status = 'PENDING',
 				cancelled_at = NULL,
 				cancelled_by_id = NULL,
@@ -1064,7 +1064,7 @@ func GetOrCreateConversationByListing(userId, listingId string, offerPrice int, 
 					$2,
 					$3,
 					FALSE,
-					TRUE,
+					FALSE,
 					'PENDING',
 					now()
 				)
