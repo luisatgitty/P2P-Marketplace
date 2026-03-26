@@ -155,3 +155,10 @@ export async function openOrCreateConversationFromListing(listingId: string, off
   emitMessagesUpdate();
   return data.conversationId;
 }
+
+export async function toggleConversationDealAgreement(conversationId: string): Promise<void> {
+  await apiFetch<{}>(`/messages/conversations/${conversationId}/deal`, {
+    method: "PATCH",
+  });
+  emitMessagesUpdate();
+}

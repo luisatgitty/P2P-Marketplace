@@ -27,6 +27,13 @@ func GetConversationsByUser(userId string) ([]model.ConversationFromDb, error) {
 			l.title AS listing_title,
 			l.price AS listing_price,
 			COALESCE(tx.total_price, 0) AS offer_price,
+			COALESCE(tx.status::text, '') AS transaction_status,
+			COALESCE(tx.provider_agreed, FALSE) AS provider_agreed,
+			COALESCE(tx.client_agreed, FALSE) AS client_agreed,
+			CASE
+				WHEN c.seller_id = $1 THEN COALESCE(tx.provider_agreed, FALSE)
+				ELSE COALESCE(tx.client_agreed, FALSE)
+			END AS user_agreed,
 			tx.start_date AS schedule_start,
 			tx.end_date AS schedule_end,
 			COALESCE(l.price_unit, '') AS listing_price_unit,
@@ -55,7 +62,7 @@ func GetConversationsByUser(userId string) ([]model.ConversationFromDb, error) {
 			LIMIT 1
 		) li ON TRUE
 		LEFT JOIN LATERAL (
-			SELECT total_price, start_date, end_date
+			SELECT total_price, start_date, end_date, status, provider_agreed, client_agreed
 			FROM public.listing_transactions lt
 			WHERE lt.listing_id = c.listing_id
 				AND lt.client_id = c.buyer_id
@@ -103,6 +110,13 @@ func GetConversationById(userId, conversationId string) (model.ConversationFromD
 			l.title AS listing_title,
 			l.price AS listing_price,
 			COALESCE(tx.total_price, 0) AS offer_price,
+			COALESCE(tx.status::text, '') AS transaction_status,
+			COALESCE(tx.provider_agreed, FALSE) AS provider_agreed,
+			COALESCE(tx.client_agreed, FALSE) AS client_agreed,
+			CASE
+				WHEN c.seller_id = $1 THEN COALESCE(tx.provider_agreed, FALSE)
+				ELSE COALESCE(tx.client_agreed, FALSE)
+			END AS user_agreed,
 			tx.start_date AS schedule_start,
 			tx.end_date AS schedule_end,
 			COALESCE(l.price_unit, '') AS listing_price_unit,
@@ -131,7 +145,7 @@ func GetConversationById(userId, conversationId string) (model.ConversationFromD
 			LIMIT 1
 		) li ON TRUE
 		LEFT JOIN LATERAL (
-			SELECT total_price, start_date, end_date
+			SELECT total_price, start_date, end_date, status, provider_agreed, client_agreed
 			FROM public.listing_transactions lt
 			WHERE lt.listing_id = c.listing_id
 				AND lt.client_id = c.buyer_id
@@ -1008,6 +1022,12 @@ func GetOrCreateConversationByListing(userId, listingId string, offerPrice int, 
 			return "", fmt.Errorf("Offers are only supported for For Sale listings")
 		}
 
+		actorFirstName, err := getUserFirstNameTx(tx, userId)
+		if err != nil {
+			tx.Rollback()
+			return "", err
+		}
+
 		updatePendingTransactionQuery := `
 			UPDATE public.listing_transactions
 			SET
@@ -1055,7 +1075,7 @@ func GetOrCreateConversationByListing(userId, listingId string, offerPrice int, 
 			}
 		}
 
-		offerActionContent := fmt.Sprintf("__OFFER_ACTION__:₱%s", formatAmountWithCommas(offerPrice))
+		offerActionContent := fmt.Sprintf("__OFFER_ACTION__:%s offered ₱%s", actorFirstName, formatAmountWithCommas(offerPrice))
 		actionMessage, err := insertConversationMessageTx(tx, conversationId, userId, sellerId, offerActionContent)
 		if err != nil {
 			tx.Rollback()
@@ -1099,6 +1119,165 @@ func GetOrCreateConversationByListing(userId, listingId string, offerPrice int, 
 	}
 
 	return conversationId, nil
+}
+
+func ToggleConversationTransactionAgreement(userId, conversationId string) (model.TransactionAgreementState, error) {
+	db := middleware.DBConn
+	state := model.TransactionAgreementState{}
+
+	tx := db.Begin()
+	if tx.Error != nil {
+		return state, fmt.Errorf("Failed to start DB transaction")
+	}
+
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	var listingId string
+	var buyerId string
+	var sellerId string
+	memberQuery := `
+		SELECT c.listing_id::text, c.buyer_id::text, c.seller_id::text
+		FROM public.conversations c
+		JOIN public.conversation_members cm
+			ON cm.conversation_id = c.id
+			AND cm.user_id = $2
+			AND cm.deleted_at IS NULL
+		WHERE c.id = $1
+		LIMIT 1
+	`
+	if err := tx.Raw(memberQuery, conversationId, userId).Row().Scan(&listingId, &buyerId, &sellerId); err != nil {
+		tx.Rollback()
+		return state, fmt.Errorf("Conversation not found")
+	}
+
+	if strings.TrimSpace(userId) != strings.TrimSpace(buyerId) && strings.TrimSpace(userId) != strings.TrimSpace(sellerId) {
+		tx.Rollback()
+		return state, fmt.Errorf("You are not part of this transaction")
+	}
+
+	actorFirstName, err := getUserFirstNameTx(tx, userId)
+	if err != nil {
+		tx.Rollback()
+		return state, err
+	}
+
+	var txId string
+	var currentStatus string
+	var providerAgreed bool
+	var clientAgreed bool
+	latestTxQuery := `
+		SELECT id::text, COALESCE(status::text, 'PENDING') AS status, provider_agreed, client_agreed
+		FROM public.listing_transactions
+		WHERE listing_id = $1
+			AND client_id = $2
+		ORDER BY created_at DESC
+		LIMIT 1
+	`
+	if err := tx.Raw(latestTxQuery, listingId, buyerId).Row().Scan(&txId, &currentStatus, &providerAgreed, &clientAgreed); err != nil {
+		tx.Rollback()
+		return state, fmt.Errorf("No listing transaction found for this conversation")
+	}
+
+	normalizedStatus := strings.ToUpper(strings.TrimSpace(currentStatus))
+	if normalizedStatus == "CANCELLED" || normalizedStatus == "COMPLETED" {
+		tx.Rollback()
+		return state, fmt.Errorf("This transaction can no longer be updated")
+	}
+
+	if strings.TrimSpace(userId) == strings.TrimSpace(sellerId) {
+		providerAgreed = !providerAgreed
+	} else {
+		clientAgreed = !clientAgreed
+	}
+
+	nextStatus := "PENDING"
+	if providerAgreed && clientAgreed {
+		nextStatus = "CONFIRMED"
+	}
+
+	updateQuery := `
+		UPDATE public.listing_transactions
+		SET
+			provider_agreed = $2,
+			client_agreed = $3,
+			status = $4::transaction_status
+		WHERE id = $1
+	`
+	if err := tx.Exec(updateQuery, txId, providerAgreed, clientAgreed, nextStatus).Error; err != nil {
+		tx.Rollback()
+		return state, fmt.Errorf("Failed to update transaction agreement")
+	}
+
+	receiverId := buyerId
+	userAgreedNow := false
+	if strings.TrimSpace(userId) == strings.TrimSpace(sellerId) {
+		receiverId = buyerId
+		userAgreedNow = providerAgreed
+	} else {
+		receiverId = sellerId
+		userAgreedNow = clientAgreed
+	}
+
+	actionSuffix := fmt.Sprintf("%s agreed to the offer", actorFirstName)
+	if !userAgreedNow {
+		actionSuffix = fmt.Sprintf("%s withdrew agreement", actorFirstName)
+	}
+
+	actionMessage, err := insertConversationMessageTx(tx, conversationId, userId, receiverId, "__DEAL_ACTION__:"+actionSuffix)
+	if err != nil {
+		tx.Rollback()
+		return state, err
+	}
+
+	updateConversationQuery := `
+		UPDATE public.conversations
+		SET
+			last_message_id = $2,
+			last_message = $3,
+			last_message_sender_id = $4,
+			last_message_at = $5,
+			updated_at = now()
+		WHERE id = $1
+	`
+	if err := tx.Exec(updateConversationQuery, conversationId, actionMessage.Id, strings.TrimSpace(actionMessage.Content), userId, actionMessage.CreatedAt).Error; err != nil {
+		tx.Rollback()
+		return state, fmt.Errorf("Failed to update conversation metadata")
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		return state, fmt.Errorf("Failed to finalize transaction agreement")
+	}
+
+	state.ConversationId = strings.TrimSpace(conversationId)
+	state.ListingId = strings.TrimSpace(listingId)
+	state.TransactionStatus = nextStatus
+	state.ProviderAgreed = providerAgreed
+	state.ClientAgreed = clientAgreed
+	state.UserAgreed = userAgreedNow
+
+	return state, nil
+}
+
+func getUserFirstNameTx(tx *gorm.DB, userId string) (string, error) {
+	var firstName string
+	query := `
+		SELECT COALESCE(NULLIF(TRIM(first_name), ''), 'User')
+		FROM public.users
+		WHERE id = $1
+		LIMIT 1
+	`
+	result := tx.Raw(query, userId).Scan(&firstName)
+	if result.Error != nil {
+		return "", fmt.Errorf("Failed to load user details")
+	}
+	if result.RowsAffected == 0 {
+		return "", fmt.Errorf("User not found")
+	}
+	return strings.TrimSpace(firstName), nil
 }
 
 func formatAmountWithCommas(amount int) string {

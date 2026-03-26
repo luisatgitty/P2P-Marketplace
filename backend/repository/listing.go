@@ -813,6 +813,22 @@ func MarkListingAsSold(userId, listingId string) error {
 		return fmt.Errorf("Only For Sale listings can be marked as sold")
 	}
 
+	var confirmedCount int
+	confirmedQuery := `
+		SELECT COUNT(*)
+		FROM public.listing_transactions
+		WHERE listing_id = $1
+			AND status = 'CONFIRMED'
+	`
+	if err := tx.Raw(confirmedQuery, listingId).Scan(&confirmedCount).Error; err != nil {
+		tx.Rollback()
+		return fmt.Errorf("Failed to verify listing transaction")
+	}
+	if confirmedCount == 0 {
+		tx.Rollback()
+		return fmt.Errorf("A confirmed transaction is required before marking this listing as sold")
+	}
+
 	if strings.EqualFold(strings.TrimSpace(sellStatus), "SOLD") {
 		tx.Rollback()
 		return fmt.Errorf("Listing is already marked as sold")

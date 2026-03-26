@@ -8,6 +8,10 @@ type ConversationFromDb struct {
 	ListingTitle       string     `gorm:"column:listing_title"`
 	ListingPrice       int        `gorm:"column:listing_price"`
 	OfferPrice         int        `gorm:"column:offer_price"`
+	TransactionStatus  string     `gorm:"column:transaction_status"`
+	ProviderAgreed     bool       `gorm:"column:provider_agreed"`
+	ClientAgreed       bool       `gorm:"column:client_agreed"`
+	UserAgreed         bool       `gorm:"column:user_agreed"`
 	ScheduleStart      *time.Time `gorm:"column:schedule_start"`
 	ScheduleEnd        *time.Time `gorm:"column:schedule_end"`
 	ListingPriceUnit   string     `gorm:"column:listing_price_unit"`
@@ -82,4 +86,13 @@ type EditMessageBody struct {
 
 type ReactMessageBody struct {
 	Reaction *string `json:"reaction"`
+}
+
+type TransactionAgreementState struct {
+	ConversationId    string `gorm:"column:conversation_id"`
+	ListingId         string `gorm:"column:listing_id"`
+	TransactionStatus string `gorm:"column:transaction_status"`
+	ProviderAgreed    bool   `gorm:"column:provider_agreed"`
+	ClientAgreed      bool   `gorm:"column:client_agreed"`
+	UserAgreed        bool   `gorm:"column:user_agreed"`
 }

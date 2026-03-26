@@ -36,6 +36,10 @@ export interface ConversationListing {
   title: string;
   price: number;
   offer?: number;
+  transactionStatus?: string;
+  providerAgreed?: boolean;
+  clientAgreed?: boolean;
+  userAgreed?: boolean;
   schedule?: string;
   priceUnit?: string;
   listingType: ListingType;

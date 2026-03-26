@@ -29,7 +29,8 @@ export default function ChatHeader({ conversation, onDelete, onMarkedSold }: Cha
   const [markingSold, setMarkingSold] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const profileHref = otherParticipant.id ? `/profile?userId=${otherParticipant.id}` : "/profile";
-  const canMarkAsSold = conversation.isSeller && listing.listingType === "SELL" && listing.status !== "SOLD";
+  const isTransactionConfirmed = String(listing.transactionStatus ?? "").trim().toUpperCase() === "CONFIRMED";
+  const canMarkAsSold = conversation.isSeller && listing.listingType === "SELL" && listing.status !== "SOLD" && isTransactionConfirmed;
 
   // Close menu on outside click
   useEffect(() => {

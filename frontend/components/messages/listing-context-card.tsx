@@ -16,19 +16,23 @@ import {
   updateListingReview,
   type ListingReviewPayload,
 } from "@/services/listingDetailService";
-import { openOrCreateConversationFromListing } from "@/services/messagingService";
+import {
+  openOrCreateConversationFromListing,
+  toggleConversationDealAgreement,
+} from "@/services/messagingService";
 import { ConfirmActionModal } from "@/components/confirm-action-modal"; 
 import OfferModal from "@/components/offer-modal";
 import { Separator } from "@/components/ui/separator";
 
 interface ListingContextCardProps {
+  conversationId?: string;
   listing: ConversationListing;
   isSeller?: boolean;
   onMarkedSold?: () => void;
   onOfferUpdated?: () => void | Promise<void>;
 }
 
-export default function ListingContextCard({ listing, isSeller = false, onMarkedSold, onOfferUpdated }: ListingContextCardProps) {
+export default function ListingContextCard({ conversationId, listing, isSeller = false, onMarkedSold, onOfferUpdated }: ListingContextCardProps) {
   const fmt = (n: number) =>
     "₱" + n.toLocaleString("en-PH", { minimumFractionDigits: 0 });
 
@@ -41,13 +45,19 @@ export default function ListingContextCard({ listing, isSeller = false, onMarked
   const [offerMessage, setOfferMessage] = useState("");
   const [reviewLoading, setReviewLoading] = useState(false);
   const [priceSubmitting, setPriceSubmitting] = useState(false);
+  const [dealSubmitting, setDealSubmitting] = useState(false);
   const [reviewSubmitting, setReviewSubmitting] = useState(false);
   const [reviewDeleting, setReviewDeleting] = useState(false);
   const [existingReview, setExistingReview] = useState<ListingReviewPayload | null>(null);
 
   const normalizedStatus = String(listing.status ?? "").trim().toUpperCase();
+  const normalizedTransactionStatus = String(listing.transactionStatus ?? "").trim().toUpperCase();
   const isSold = normalizedStatus === "SOLD";
-  const canMarkAsSold = isSeller && listing.listingType === "SELL" && !isSold;
+  const hasTransaction = normalizedTransactionStatus !== "";
+  const isTransactionConfirmed = normalizedTransactionStatus === "CONFIRMED";
+  const canMarkAsSold = isSeller && listing.listingType === "SELL" && !isSold && isTransactionConfirmed;
+  const canDeal = listing.listingType === "SELL" && !isSold && hasTransaction && (normalizedTransactionStatus === "PENDING" || normalizedTransactionStatus === "CONFIRMED");
+  const hasAgreed = Boolean(listing.userAgreed);
   const canReviewSoldItem = !isSeller && listing.listingType === "SELL" && isSold;
   const offeredPrice = Number(listing.offer ?? 0) > 0 ? Number(listing.offer) : listing.price;
   const scheduleValue = String(listing.schedule ?? "").trim();
@@ -215,6 +225,23 @@ export default function ListingContextCard({ listing, isSeller = false, onMarked
     setOfferMessage("");
   }
 
+  const handleDealAction = async () => {
+    if (dealSubmitting) return;
+    if (!conversationId || !canDeal) return;
+
+    setDealSubmitting(true);
+    try {
+      await toggleConversationDealAgreement(conversationId);
+      await onOfferUpdated?.();
+      toast.success("Deal agreement updated.", { position: "top-center" });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to update agreement.";
+      toast.error(message, { position: "top-center" });
+    } finally {
+      setDealSubmitting(false);
+    }
+  }
+
   return (
     <>
       <div
@@ -308,6 +335,22 @@ export default function ListingContextCard({ listing, isSeller = false, onMarked
         >
           Edit Price
         </button>
+
+        {canDeal && (
+          <button
+            type="button"
+            onClick={handleDealAction}
+            disabled={dealSubmitting}
+            className={`px-2.5 py-2 rounded-md text-[11px] font-semibold text-white transition-colors shrink-0 disabled:opacity-60 disabled:cursor-not-allowed ${hasAgreed ? "bg-emerald-700 hover:bg-emerald-600" : "bg-blue-700 hover:bg-blue-600"}`}
+            title="Deal with the offer"
+          >
+            {dealSubmitting
+              ? "Saving..."
+              : hasAgreed
+                ? "Agreed"
+                : "Deal"}
+          </button>
+        )}
 
         <Link
           href={`/listing/${listing.id}`}

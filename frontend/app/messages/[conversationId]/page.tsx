@@ -44,16 +44,18 @@ function isSameDay(a: string, b: string) {
   return new Date(a).toDateString() === new Date(b).toDateString();
 }
 
-function getOfferActionLabel(content?: string): string | null {
+function getSystemActionLabel(content?: string): string | null {
   const raw = String(content ?? "").trim();
-  if (!raw.startsWith("__OFFER_ACTION__:")) {
+  const actionPrefixes = ["__OFFER_ACTION__:", "__DEAL_ACTION__:"];
+  const matchedPrefix = actionPrefixes.find((prefix) => raw.startsWith(prefix));
+  if (!matchedPrefix) {
     return null;
   }
-  const offered = raw.replace("__OFFER_ACTION__:", "").trim();
-  if (!offered) {
+  const actionText = raw.replace(matchedPrefix, "").trim();
+  if (!actionText) {
     return null;
   }
-  return `Offered ${offered}`;
+  return actionText;
 }
 
 const DRAFT_CONVERSATION_ID = "new";
@@ -463,12 +465,28 @@ export default function ConversationPage() {
       });
     };
 
+    const onRealtimeDealUpdated = async (evt: Event) => {
+      const custom = evt as CustomEvent<{ conversationId?: string }>;
+      if (custom.detail?.conversationId !== conversationId) return;
+
+      const [freshConversation, freshMessages] = await Promise.all([
+        getConversation(conversationId),
+        getMessages(conversationId),
+      ]);
+
+      if (freshConversation) {
+        setConversation(freshConversation);
+      }
+      setMessages(freshMessages);
+    };
+
     window.addEventListener("realtime:reaction", onRealtimeReaction as EventListener);
     window.addEventListener("realtime:status", onRealtimeStatus as EventListener);
     window.addEventListener("realtime:read", onRealtimeRead as EventListener);
     window.addEventListener("realtime:message-edit", onRealtimeMessageEdit as EventListener);
     window.addEventListener("realtime:message-unsend", onRealtimeMessageUnsend as EventListener);
     window.addEventListener("realtime:listing-status", onRealtimeListingStatus as EventListener);
+    window.addEventListener("realtime:deal-updated", onRealtimeDealUpdated as EventListener);
 
     return () => {
       window.removeEventListener("realtime:reaction", onRealtimeReaction as EventListener);
@@ -477,6 +495,7 @@ export default function ConversationPage() {
       window.removeEventListener("realtime:message-edit", onRealtimeMessageEdit as EventListener);
       window.removeEventListener("realtime:message-unsend", onRealtimeMessageUnsend as EventListener);
       window.removeEventListener("realtime:listing-status", onRealtimeListingStatus as EventListener);
+      window.removeEventListener("realtime:deal-updated", onRealtimeDealUpdated as EventListener);
     };
   }, [conversationId, effectiveCurrentUserId, isDraftConversation]);
 
@@ -757,7 +776,7 @@ export default function ConversationPage() {
             const originalIndex = messages.length - 1 - reversedIndex;
             const prev = messages[originalIndex - 1];
             const next = messages[originalIndex + 1];
-            const actionLabel = getOfferActionLabel(msg.content);
+            const actionLabel = getSystemActionLabel(msg.content);
 
             const showDate = !prev || !isSameDay(prev.createdAt, msg.createdAt);
             const showTime =
