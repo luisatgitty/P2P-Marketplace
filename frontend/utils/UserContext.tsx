@@ -267,6 +267,12 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
           if (parsed.type === "listing:status") {
             window.dispatchEvent(new CustomEvent("realtime:listing-status", { detail: parsed.data }));
             window.dispatchEvent(new Event("messages:updated"));
+            return;
+          }
+
+          if (parsed.type === "conversation:deal-updated") {
+            window.dispatchEvent(new CustomEvent("realtime:deal-updated", { detail: parsed.data }));
+            window.dispatchEvent(new Event("messages:updated"));
           }
         } catch {
           // Ignore malformed realtime payloads.

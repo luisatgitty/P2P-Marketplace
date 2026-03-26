@@ -44,6 +44,20 @@ function isSameDay(a: string, b: string) {
   return new Date(a).toDateString() === new Date(b).toDateString();
 }
 
+function getSystemActionLabel(content?: string): string | null {
+  const raw = String(content ?? "").trim();
+  const actionPrefixes = ["__OFFER_ACTION__:", "__DEAL_ACTION__:"];
+  const matchedPrefix = actionPrefixes.find((prefix) => raw.startsWith(prefix));
+  if (!matchedPrefix) {
+    return null;
+  }
+  const actionText = raw.replace(matchedPrefix, "").trim();
+  if (!actionText) {
+    return null;
+  }
+  return actionText;
+}
+
 const DRAFT_CONVERSATION_ID = "new";
 
 function splitSellerName(fullName: string): { firstName: string; lastName: string } {
@@ -451,12 +465,28 @@ export default function ConversationPage() {
       });
     };
 
+    const onRealtimeDealUpdated = async (evt: Event) => {
+      const custom = evt as CustomEvent<{ conversationId?: string }>;
+      if (custom.detail?.conversationId !== conversationId) return;
+
+      const [freshConversation, freshMessages] = await Promise.all([
+        getConversation(conversationId),
+        getMessages(conversationId),
+      ]);
+
+      if (freshConversation) {
+        setConversation(freshConversation);
+      }
+      setMessages(freshMessages);
+    };
+
     window.addEventListener("realtime:reaction", onRealtimeReaction as EventListener);
     window.addEventListener("realtime:status", onRealtimeStatus as EventListener);
     window.addEventListener("realtime:read", onRealtimeRead as EventListener);
     window.addEventListener("realtime:message-edit", onRealtimeMessageEdit as EventListener);
     window.addEventListener("realtime:message-unsend", onRealtimeMessageUnsend as EventListener);
     window.addEventListener("realtime:listing-status", onRealtimeListingStatus as EventListener);
+    window.addEventListener("realtime:deal-updated", onRealtimeDealUpdated as EventListener);
 
     return () => {
       window.removeEventListener("realtime:reaction", onRealtimeReaction as EventListener);
@@ -465,6 +495,7 @@ export default function ConversationPage() {
       window.removeEventListener("realtime:message-edit", onRealtimeMessageEdit as EventListener);
       window.removeEventListener("realtime:message-unsend", onRealtimeMessageUnsend as EventListener);
       window.removeEventListener("realtime:listing-status", onRealtimeListingStatus as EventListener);
+      window.removeEventListener("realtime:deal-updated", onRealtimeDealUpdated as EventListener);
     };
   }, [conversationId, effectiveCurrentUserId, isDraftConversation]);
 
@@ -631,6 +662,21 @@ export default function ConversationPage() {
     });
   }, []);
 
+  const handleOfferUpdated = useCallback(async () => {
+    if (isDraftConversation || !conversationId) return;
+
+    const [freshConversation, freshMessages] = await Promise.all([
+      getConversation(conversationId),
+      getMessages(conversationId),
+    ]);
+
+    if (freshConversation) {
+      setConversation(freshConversation);
+    }
+    setMessages(freshMessages);
+    await markConversationRead(conversationId);
+  }, [conversationId, isDraftConversation]);
+
   const handleCancelReply = useCallback(() => {
     setReplyTo(null);
   }, []);
@@ -657,12 +703,13 @@ export default function ConversationPage() {
       ...prev,
       onDelete: handleDeleteConversation,
       onMarkedSold: handleMarkedSold,
+      onOfferUpdated: handleOfferUpdated,
       onSend: handleSend,
       inputDisabled: loading || sending || !conversation,
       replyTo,
       onCancelReply: handleCancelReply,
     }));
-  }, [conversation, handleCancelReply, handleDeleteConversation, handleMarkedSold, handleSend, loading, replyTo, sending, setShellState]);
+  }, [conversation, handleCancelReply, handleDeleteConversation, handleMarkedSold, handleOfferUpdated, handleSend, loading, replyTo, sending, setShellState]);
 
   useEffect(() => {
     return () => {
@@ -670,6 +717,7 @@ export default function ConversationPage() {
         ...prev,
         onDelete: undefined,
         onMarkedSold: undefined,
+        onOfferUpdated: undefined,
         inputDisabled: true,
         replyTo: null,
         onCancelReply: undefined,
@@ -728,6 +776,7 @@ export default function ConversationPage() {
             const originalIndex = messages.length - 1 - reversedIndex;
             const prev = messages[originalIndex - 1];
             const next = messages[originalIndex + 1];
+            const actionLabel = getSystemActionLabel(msg.content);
 
             const showDate = !prev || !isSameDay(prev.createdAt, msg.createdAt);
             const showTime =
@@ -747,19 +796,27 @@ export default function ConversationPage() {
                   </div>
                 )}
 
-                <MessageBubble
-                  message={msg}
-                  currentUserId={effectiveCurrentUserId}
-                  showTime={showTime}
-                  otherName={otherName}
-                  onReply={handleReply}
-                  onReact={handleReact}
-                  onEdit={handleEdit}
-                  onDelete={handleDelete}
-                  onOpenMediaViewer={handleOpenMediaViewer}
-                />
+                {actionLabel ? (
+                  <div className="flex justify-center my-1.5">
+                    <span className="text-[11px] text-stone-400 dark:text-stone-500 bg-stone-100 dark:bg-[#1c1f2e] border border-border rounded-full px-3 py-1">
+                      {actionLabel}
+                    </span>
+                  </div>
+                ) : (
+                  <MessageBubble
+                    message={msg}
+                    currentUserId={effectiveCurrentUserId}
+                    showTime={showTime}
+                    otherName={otherName}
+                    onReply={handleReply}
+                    onReact={handleReact}
+                    onEdit={handleEdit}
+                    onDelete={handleDelete}
+                    onOpenMediaViewer={handleOpenMediaViewer}
+                  />
+                )}
 
-                {msg.senderId === effectiveCurrentUserId && conversation.otherLastReadMessageId === msg.id && (
+                {!actionLabel && msg.senderId === effectiveCurrentUserId && conversation.otherLastReadMessageId === msg.id && (
                   <div className="flex justify-end pr-1 mt-0.5">
                     {conversation.otherParticipant.profileImageUrl ? (
                       <img

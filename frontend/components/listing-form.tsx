@@ -41,6 +41,7 @@ export interface ListingFormData {
   // Service
   turnaround:   string;
   serviceArea:  string;
+  arrangement:  string;
   inclusions:   string[];
 }
 
@@ -95,6 +96,7 @@ export interface ServiceFormData {
   // Service-specific
   turnaround:   string;
   serviceArea:  string;
+  arrangement:  string;
 }
 
 // ─── Per-type config ────────────────────────────────────────────────────────────
@@ -709,6 +711,7 @@ export default function ListingForm({ type, initialData, isEdit = false, listing
   // Service
   const [turnaround,  setTA]   = useState(initialData?.turnaround  ?? "");
   const [serviceArea, setSA]   = useState(initialData?.serviceArea ?? "");
+  const [arrangement, setArrangement]   = useState(initialData?.arrangement ?? "");
   const [inclusions,  setIncl] = useState<string[]>(initialData?.inclusions ?? [""]);
   // Images
   const [images, setImages] = useState<{ file: File; preview: string }[]>([]);
@@ -888,7 +891,7 @@ export default function ListingForm({ type, initialData, isEdit = false, listing
     const typeSpecific: {
       sellData?: { condition: string; deliveryMethod: string };
       rentData?: { minPeriod: string; availability: string; deposit: string; deliveryMethod: string };
-      serviceData?: { turnaround: string; serviceArea: string };
+      serviceData?: { availability: string; turnaround: string; serviceArea: string; arrangement: string };
     } = {};
 
     if (type === "sell") {
@@ -909,8 +912,10 @@ export default function ListingForm({ type, initialData, isEdit = false, listing
 
     if (type === "service") {
       typeSpecific.serviceData = {
+        availability,
         turnaround,
         serviceArea,
+        arrangement,
       };
     }
 
@@ -1163,9 +1168,19 @@ export default function ListingForm({ type, initialData, isEdit = false, listing
               <ErrMsg msg={errors.turnaround} />
             </div>
             <div>
+              <FieldLabel>Available From</FieldLabel>
+              <StyledInput type="date" value={availability} onChange={(e) => setAvail(e.target.value)} />
+            </div>
+            
+            <div>
               <FieldLabel required>Service Area</FieldLabel>
-              <StyledInput value={serviceArea} onChange={(e) => setSA(e.target.value)} placeholder="e.g. Laguna, Batangas, South Metro Manila" />
+              <StyledInput value={serviceArea} onChange={(e) => setSA(e.target.value)} placeholder="e.g. Around Laguna, Batangas, Manila" />
               <ErrMsg msg={errors.serviceArea} />
+            </div>
+            <div>
+              <FieldLabel>Arrangement</FieldLabel>
+              <StyledInput value={arrangement} onChange={(e) => setArrangement(e.target.value)} placeholder="e.g. Onsite, Remote, Home-Visit" />
+              <ErrMsg msg={errors.arrangement} />
             </div>
           </div>
         </Section>

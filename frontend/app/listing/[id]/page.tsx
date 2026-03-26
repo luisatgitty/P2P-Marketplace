@@ -19,6 +19,8 @@ import VerificationBadge from "@/components/verification-badge";
 import { LoadingPage } from "@/components/loading";
 import { RequestToRentModal, BookServiceModal } from "@/components/request-modals";
 import { ReportModal } from "@/components/report-modal";
+import OfferModal from "@/components/offer-modal";
+import { openOrCreateConversationFromListing } from "@/services/messagingService";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -34,12 +36,14 @@ interface ExtraDetail {
   deliveryMethod: string;       // from form's deliveryMethod field
   // Rent-specific
   minPeriod?:     string;
+  available_from?: string;
   availability?:  string;
   deposit?:       string;
   amenities?:     string[];
   // Service-specific
   turnaround?:    string;
   serviceArea?:   string;
+  arrangement?:   string;
   inclusions?:    string[];
 }
 
@@ -52,6 +56,7 @@ function getDefaultExtra(listing: PostCardProps): ExtraDetail {
     views:          Math.floor(Math.random() * 200) + 20,
     offers:         Math.floor(Math.random() * 10),
     deliveryMethod: listing.type === "service" ? "On-site service" : "Meet-up or Delivery",
+    arrangement:    "",
   };
 }
 
@@ -112,20 +117,11 @@ function RentInfoCard({ extra }: { extra: ExtraDetail }) {
     <div className="bg-white dark:bg-[#1c1f2e] rounded-2xl border border-stone-200 dark:border-[#2a2d3e] shadow-sm p-6">
       <h2 className="font-bold text-stone-900 dark:text-stone-50 text-base mb-4">Rental Terms</h2>
       <div className="flex flex-col gap-4">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {extra.minPeriod && (
             <div className="bg-stone-50 dark:bg-[#13151f] rounded-xl p-3">
               <p className="text-[10px] font-semibold text-stone-400 dark:text-stone-500 uppercase tracking-widest mb-1">Min. Period</p>
               <p className="text-sm font-semibold text-stone-800 dark:text-stone-100">{extra.minPeriod}</p>
-            </div>
-          )}
-          {extra.availability && (
-            <div className="bg-stone-50 dark:bg-[#13151f] rounded-xl p-3">
-              <p className="text-[10px] font-semibold text-stone-400 dark:text-stone-500 uppercase tracking-widest mb-1">Available From</p>
-              <p className="text-sm font-semibold text-stone-800 dark:text-stone-100 flex items-center gap-1.5">
-                <CalendarDays className="w-3.5 h-3.5 text-teal-500 flex-shrink-0" />
-                {extra.availability}
-              </p>
             </div>
           )}
           {extra.deposit && (
@@ -219,7 +215,8 @@ export default function ListingDetailPage() {
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [offerOpen,   setOfferOpen]  = useState(false);
   const [offerAmount, setOfferAmt]   = useState("");
-  const [offerSent,   setOfferSent]  = useState(false);
+  const [offerMessage, setOfferMessage] = useState("");
+  const [submittingOffer, setSubmittingOffer] = useState(false);
   const [rentOpen,  setRentOpen]  = useState(false);
   const [bookOpen,  setBookOpen]  = useState(false);
           const [reportOpen,  setReportOpen] = useState(false);
@@ -418,9 +415,31 @@ export default function ListingDetailPage() {
     setOfferOpen(true); // sell — unchanged
   }
 
-  function sendOffer() {
-    setOfferSent(true);
-    setTimeout(() => { setOfferOpen(false); setOfferSent(false); }, 2000);
+  async function sendOffer() {
+    if (!listing || submittingOffer) return;
+    if (!isAuth) {
+      router.push("/login");
+      return; 
+    }
+
+    const parsedOffer = Number.parseInt(String(offerAmount), 10);
+    if (!Number.isFinite(parsedOffer) || parsedOffer <= 0) {
+      toast.error("Please enter a valid offer amount.", { position: "top-center" });
+      return;
+    }
+
+    setSubmittingOffer(true);
+    try {
+      const conversationId = await openOrCreateConversationFromListing(listing.id, parsedOffer, offerMessage);
+      setOfferMessage("");
+      setOfferOpen(false);
+      router.push(`/messages/${conversationId}`);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to send offer.";
+      toast.error(message, { position: "top-center" });
+    } finally {
+      setSubmittingOffer(false);
+    }
   }
 
   async function handleRemoveListing() {
@@ -597,7 +616,7 @@ export default function ListingDetailPage() {
                   icon:  <Truck className="w-4 h-4 text-stone-400" />,
                   label: isService ? "Arrangement" : "Meet-up / Delivery",
                   // Reflects the actual deliveryMethod the seller chose in the form
-                  value: extra.deliveryMethod,
+                  value: isService ? extra.arrangement : extra.deliveryMethod,
                 },
                 {
                   icon:  <Eye className="w-4 h-4 text-stone-400" />,
@@ -822,86 +841,22 @@ export default function ListingDetailPage() {
         </div>
       </div>
 
-      {/* ══ OFFER MODAL ══════════════════════════════════════════════════════ */}
-      {offerOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
-          onClick={(e) => e.target === e.currentTarget && setOfferOpen(false)}>
-          <div className="bg-white dark:bg-[#1c1f2e] rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden">
-            <div className="bg-[#1e2433] px-6 py-5">
-              <h2 className="text-white font-bold text-lg">
-                {isSell ? "Make an Offer" : isRent ? "Request to Rent" : "Book Service"}
-              </h2>
-              <p className="text-slate-400 text-sm mt-1 truncate">{listing.title}</p>
-            </div>
-            <div className="p-6">
-              {offerSent ? (
-                <div className="text-center py-6">
-                  <div className="text-5xl mb-3">🎉</div>
-                  <p className="font-bold text-stone-900 dark:text-stone-50 text-lg">
-                    {isSell ? "Offer Sent!" : isRent ? "Request Sent!" : "Booking Sent!"}
-                  </p>
-                  <p className="text-sm text-stone-500 dark:text-stone-400 mt-1">The seller will respond shortly.</p>
-                </div>
-              ) : (
-                <>
-                  {isSell && (
-                    <div className="mb-4">
-                      <div className="flex justify-between text-xs text-stone-500 dark:text-stone-400 mb-2">
-                        <span>Your offer</span>
-                        <span>Listed at {fmt.format(listing.price)}</span>
-                      </div>
-                      <div className="flex items-center border-2 border-stone-200 dark:border-[#2a2d3e] rounded-xl overflow-hidden focus-within:border-stone-400 dark:focus-within:border-stone-500 transition-colors">
-                        <span className="px-4 text-stone-400 dark:text-stone-500 font-semibold text-sm bg-stone-50 dark:bg-[#13151f] py-3 border-r border-stone-200 dark:border-[#2a2d3e]">₱</span>
-                        <input
-                          type="number" value={offerAmount}
-                          onChange={(e) => setOfferAmt(e.target.value)}
-                          className="flex-1 px-4 py-3 text-stone-900 dark:text-stone-50 bg-transparent text-sm font-semibold outline-none"
-                        />
-                      </div>
-                      <div className="flex gap-2 mt-2">
-                        {[0.9, 0.85, 0.8].map((p) => (
-                          <button key={p}
-                            onClick={() => setOfferAmt(String(Math.round(listing.price * p)))}
-                            className="flex-1 text-xs py-1.5 rounded-full border border-stone-200 dark:border-[#2a2d3e] text-stone-500 dark:text-stone-400 hover:border-stone-400 hover:text-stone-700 dark:hover:text-stone-200 transition-colors">
-                            {Math.round(p * 100)}%
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  <div className="mb-4">
-                    <label className="text-xs font-medium text-stone-500 dark:text-stone-400 mb-1.5 block">
-                      {isSell ? "Add a message (optional)" : "Your message"}
-                    </label>
-                    <textarea
-                      rows={3}
-                      placeholder={
-                        isSell    ? "e.g. Can we meet up in SM Calamba on Saturday?"        :
-                        isRent    ? "e.g. I'd like to rent from Aug 1–7. Still available?"  :
-                                    "e.g. I need aircon cleaning for 2 units. When are you available?"
-                      }
-                      className="w-full bg-stone-50 dark:bg-[#13151f] border border-stone-200 dark:border-[#2a2d3e] rounded-xl px-3 py-2.5 text-sm text-stone-800 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-600 outline-none focus:border-stone-400 dark:focus:border-stone-500 resize-none"
-                    />
-                  </div>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => setOfferOpen(false)}
-                      className="flex-1 py-3 rounded-full border border-stone-200 dark:border-[#2a2d3e] text-stone-600 dark:text-stone-300 text-sm font-semibold hover:bg-stone-50 dark:hover:bg-[#252837] transition-colors">
-                      Cancel
-                    </button>
-                    <button
-                      onClick={sendOffer}
-                      className="flex-1 py-3 rounded-full bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 text-sm font-bold hover:opacity-90 transition-opacity">
-                      Send →
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+      <OfferModal
+        open={offerOpen}
+        title="Make an Offer"
+        subtitle={listing.title}
+        listedPrice={listing.price}
+        offerAmount={offerAmount}
+        onOfferAmountChange={setOfferAmt}
+        note={offerMessage}
+        onNoteChange={setOfferMessage}
+        noteLabel="Add a message (optional)"
+        notePlaceholder="e.g. Can we meet up in SM Calamba on Saturday?"
+        submitLabel="Send Offer"
+        submitting={submittingOffer}
+        onSubmit={sendOffer}
+        onClose={() => setOfferOpen(false)}
+      />
 
       {/* ══ REQUEST TO RENT MODAL ══════════════════════════════════════════════ */}
       <RequestToRentModal

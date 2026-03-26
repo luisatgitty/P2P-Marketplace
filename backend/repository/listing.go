@@ -200,11 +200,28 @@ func insertTypeDetailsTx(tx *gorm.DB, listingId string, body model.CreateListing
 		if body.ServiceData == nil {
 			return fmt.Errorf("Missing service data")
 		}
+
+		if strings.TrimSpace(body.ServiceData.Availability) == "" {
+			return fmt.Errorf("Availability date is required")
+		}
+
+		parsedDate, err := time.Parse("2006-01-02", body.ServiceData.Availability)
+		if err != nil {
+			return fmt.Errorf("Invalid availability date")
+		}
+
 		insertServiceQuery := `
-			INSERT INTO public.listing_service_details (listing_id, turnaround_time, service_area)
-			VALUES ($1,$2,$3)
+			INSERT INTO public.listing_service_details (listing_id, available_from, turnaround_time, service_area, arrangements)
+			VALUES ($1,$2,$3,$4,$5)
 		`
-		return tx.Exec(insertServiceQuery, listingId, body.ServiceData.Turnaround, body.ServiceData.ServiceArea).Error
+		return tx.Exec(
+			insertServiceQuery,
+			listingId,
+			parsedDate,
+			body.ServiceData.Turnaround,
+			body.ServiceData.ServiceArea,
+			body.ServiceData.Arrangement,
+		).Error
 	default:
 		return fmt.Errorf("Invalid listing type")
 	}
@@ -365,10 +382,11 @@ func GetListingEditDataById(userId, listingId string) (model.ListingEditFromDb, 
 			COALESCE(lsd.condition::text, '') AS condition,
 			COALESCE(lsd.delivery_method::text, lrd.delivery_method::text, '') AS delivery_method,
 			COALESCE(lrd.min_rental_period, 0) AS min_rental_period,
-			lrd.available_from,
+			COALESCE(lrd.available_from, lsrv.available_from) AS available_from,
 			COALESCE(lrd.deposit, '') AS deposit,
 			COALESCE(lsrv.turnaround_time, '') AS turnaround_time,
 			COALESCE(lsrv.service_area, '') AS service_area,
+			COALESCE(lsrv.arrangements, '') AS arrangements,
 			LOWER(l.status::text) AS status
 		FROM public.listings l
 		LEFT JOIN public.categories c ON c.id = l.category_id
@@ -409,10 +427,8 @@ func UpdateListing(userId, listingId string, body model.CreateListingBody) error
 	ownerCheckQuery := `
 		SELECT
 			LOWER(l.listing_type::text) AS listing_type,
-			COALESCE(lsd.sell_status::text, '') AS sell_status
+			LOWER(COALESCE(l.status::text, '')) AS sell_status
 		FROM public.listings l
-		LEFT JOIN public.listing_sell_details lsd
-			ON lsd.listing_id = l.id
 		WHERE l.id = $1 AND l.user_id = $2
 		LIMIT 1
 	`
@@ -597,21 +613,45 @@ func updateTypeDetailsTx(tx *gorm.DB, listingId string, body model.CreateListing
 		if body.ServiceData == nil {
 			return fmt.Errorf("Missing service data")
 		}
+
+		if strings.TrimSpace(body.ServiceData.Availability) == "" {
+			return fmt.Errorf("Availability date is required")
+		}
+
+		parsedDate, err := time.Parse("2006-01-02", body.ServiceData.Availability)
+		if err != nil {
+			return fmt.Errorf("Invalid availability date")
+		}
+
 		updateServiceQuery := `
 			UPDATE public.listing_service_details
-			SET turnaround_time = $1, service_area = $2
-			WHERE listing_id = $3
+			SET available_from = $1, turnaround_time = $2, service_area = $3, arrangements = $4
+			WHERE listing_id = $5
 		`
-		res := tx.Exec(updateServiceQuery, body.ServiceData.Turnaround, body.ServiceData.ServiceArea, listingId)
+		res := tx.Exec(
+			updateServiceQuery,
+			parsedDate,
+			body.ServiceData.Turnaround,
+			body.ServiceData.ServiceArea,
+			body.ServiceData.Arrangement,
+			listingId,
+		)
 		if res.Error != nil {
 			return fmt.Errorf("Failed to update service details")
 		}
 		if res.RowsAffected == 0 {
 			insertServiceQuery := `
-				INSERT INTO public.listing_service_details (listing_id, turnaround_time, service_area)
-				VALUES ($1,$2,$3)
+				INSERT INTO public.listing_service_details (listing_id, available_from, turnaround_time, service_area, arrangements)
+				VALUES ($1,$2,$3,$4,$5)
 			`
-			if err := tx.Exec(insertServiceQuery, listingId, body.ServiceData.Turnaround, body.ServiceData.ServiceArea).Error; err != nil {
+			if err := tx.Exec(
+				insertServiceQuery,
+				listingId,
+				parsedDate,
+				body.ServiceData.Turnaround,
+				body.ServiceData.ServiceArea,
+				body.ServiceData.Arrangement,
+			).Error; err != nil {
 				return fmt.Errorf("Failed to update service details")
 			}
 		}
@@ -670,10 +710,8 @@ func DeleteListing(userId, listingId string) error {
 		SELECT
 			l.id,
 			LOWER(l.listing_type::text) AS listing_type,
-			COALESCE(lsd.sell_status::text, '') AS sell_status
+			LOWER(COALESCE(l.status::text, '')) AS sell_status
 		FROM public.listings l
-		LEFT JOIN public.listing_sell_details lsd
-			ON lsd.listing_id = l.id
 		WHERE l.id = $1 AND l.user_id = $2
 		LIMIT 1
 	`
@@ -732,11 +770,11 @@ func DeleteListing(userId, listingId string) error {
 	return nil
 }
 
-func MarkListingAsSold(userId, listingId string) error {
+func MarkListingAsSold(userId, listingId string) ([]string, error) {
 	db := middleware.DBConn
 	tx := db.Begin()
 	if tx.Error != nil {
-		return tx.Error
+		return nil, tx.Error
 	}
 
 	defer func() {
@@ -753,10 +791,8 @@ func MarkListingAsSold(userId, listingId string) error {
 		SELECT
 			l.user_id::text AS owner_id,
 			LOWER(l.listing_type::text) AS listing_type,
-			COALESCE(lsd.sell_status, 'AVAILABLE') AS sell_status
+			COALESCE(l.status::text, 'AVAILABLE') AS sell_status
 		FROM public.listings l
-		LEFT JOIN public.listing_sell_details lsd
-			ON lsd.listing_id = l.id
 		WHERE l.id = $1
 		LIMIT 1
 	`
@@ -764,37 +800,97 @@ func MarkListingAsSold(userId, listingId string) error {
 	row := tx.Raw(checkQuery, listingId).Row()
 	if err := row.Scan(&ownerId, &listingType, &sellStatus); err != nil {
 		tx.Rollback()
-		return fmt.Errorf("Listing not found")
+		return nil, fmt.Errorf("Listing not found")
 	}
 
 	if strings.TrimSpace(ownerId) != strings.TrimSpace(userId) {
 		tx.Rollback()
-		return fmt.Errorf("Only the seller can mark this listing as sold")
+		return nil, fmt.Errorf("Only the seller can mark this listing as sold")
 	}
 
 	if listingType != "sell" {
 		tx.Rollback()
-		return fmt.Errorf("Only For Sale listings can be marked as sold")
+		return nil, fmt.Errorf("Only For Sale listings can be marked as sold")
+	}
+
+	var confirmedCount int
+	confirmedQuery := `
+		SELECT COUNT(*)
+		FROM public.listing_transactions
+		WHERE listing_id = $1
+			AND status = 'CONFIRMED'
+	`
+	if err := tx.Raw(confirmedQuery, listingId).Scan(&confirmedCount).Error; err != nil {
+		tx.Rollback()
+		return nil, fmt.Errorf("Failed to verify listing transaction")
+	}
+	if confirmedCount == 0 {
+		tx.Rollback()
+		return nil, fmt.Errorf("A confirmed transaction is required before marking this listing as sold")
 	}
 
 	if strings.EqualFold(strings.TrimSpace(sellStatus), "SOLD") {
 		tx.Rollback()
-		return fmt.Errorf("Listing is already marked as sold")
+		return nil, fmt.Errorf("Listing is already marked as sold")
 	}
 
-	updateSellStatusQuery := `
-		UPDATE public.listing_sell_details
-		SET sell_status = 'SOLD'
-		WHERE listing_id = $1
+	affectedRows := make([]struct {
+		ConversationId string `gorm:"column:conversation_id"`
+		BuyerId        string `gorm:"column:buyer_id"`
+	}, 0)
+	affectedQuery := `
+		SELECT DISTINCT
+			c.id::text AS conversation_id,
+			c.buyer_id::text AS buyer_id
+		FROM public.listing_transactions lt
+		JOIN public.conversations c
+			ON c.listing_id = lt.listing_id
+			AND c.buyer_id = lt.client_id
+		WHERE lt.listing_id = $1
+			AND lt.status = 'CONFIRMED'
 	`
-	result := tx.Exec(updateSellStatusQuery, listingId)
-	if result.Error != nil {
+	if err := tx.Raw(affectedQuery, listingId).Scan(&affectedRows).Error; err != nil {
 		tx.Rollback()
-		return fmt.Errorf("Failed to update sell status")
+		return nil, fmt.Errorf("Failed to resolve confirmed transaction conversation")
 	}
-	if result.RowsAffected == 0 {
+
+	actorFirstName, err := getUserFirstNameTx(tx, userId)
+	if err != nil {
 		tx.Rollback()
-		return fmt.Errorf("Sell details not found")
+		return nil, err
+	}
+
+	actionContent := fmt.Sprintf("__DEAL_ACTION__:%s sold the item", actorFirstName)
+	affectedConversationIds := make([]string, 0, len(affectedRows))
+	for _, row := range affectedRows {
+		conversationId := strings.TrimSpace(row.ConversationId)
+		buyerId := strings.TrimSpace(row.BuyerId)
+		if conversationId == "" || buyerId == "" {
+			continue
+		}
+
+		actionMessage, insertErr := insertConversationMessageTx(tx, conversationId, userId, buyerId, actionContent)
+		if insertErr != nil {
+			tx.Rollback()
+			return nil, insertErr
+		}
+
+		updateConversationQuery := `
+			UPDATE public.conversations
+			SET
+				last_message_id = $2,
+				last_message = $3,
+				last_message_sender_id = $4,
+				last_message_at = $5,
+				updated_at = now()
+			WHERE id = $1
+		`
+		if err := tx.Exec(updateConversationQuery, conversationId, actionMessage.Id, strings.TrimSpace(actionMessage.Content), userId, actionMessage.CreatedAt).Error; err != nil {
+			tx.Rollback()
+			return nil, fmt.Errorf("Failed to update conversation metadata")
+		}
+
+		affectedConversationIds = append(affectedConversationIds, conversationId)
 	}
 
 	updateListingQuery := `
@@ -805,14 +901,27 @@ func MarkListingAsSold(userId, listingId string) error {
 	`
 	if err := tx.Exec(updateListingQuery, listingId).Error; err != nil {
 		tx.Rollback()
-		return fmt.Errorf("Failed to update listing status")
+		return nil, fmt.Errorf("Failed to update listing status")
+	}
+
+	completeTransactionQuery := `
+		UPDATE public.listing_transactions
+		SET
+			status = 'COMPLETED',
+			completed_at = now()
+		WHERE listing_id = $1
+			AND status = 'CONFIRMED'
+	`
+	if err := tx.Exec(completeTransactionQuery, listingId).Error; err != nil {
+		tx.Rollback()
+		return nil, fmt.Errorf("Failed to complete listing transaction")
 	}
 
 	if err := tx.Commit().Error; err != nil {
-		return err
+		return nil, err
 	}
 
-	return nil
+	return affectedConversationIds, nil
 }
 
 func GetListingDetailById(listingId string) (model.ListingDetailFromDb, error) {
@@ -834,21 +943,18 @@ func GetListingDetailById(listingId string) (model.ListingDetailFromDb, error) {
 			l.location_province,
 			l.created_at,
 			l.view_count,
-			CASE
-				WHEN l.listing_type = 'SELL' AND COALESCE(lsd.sell_status, 'AVAILABLE') = 'SOLD'
-					THEN 'sold'
-				ELSE LOWER(l.status::text)
-			END AS status,
-			LOWER(COALESCE(lsd.sell_status::text, '')) AS sell_status,
+			LOWER(l.status::text) AS status,
+			LOWER(COALESCE(l.status::text, '')) AS sell_status,
 			COALESCE(l.highlights, '[]') AS highlights,
 			COALESCE(l.included, '[]') AS included,
 			COALESCE(lsd.condition::text, '') AS condition,
 			COALESCE(lsd.delivery_method::text, lrd.delivery_method::text, '') AS delivery_method,
 			COALESCE(lrd.min_rental_period, 0) AS min_rental_period,
-			lrd.available_from,
+			COALESCE(lrd.available_from, lsrv.available_from) AS available_from,
 			COALESCE(lrd.deposit, '') AS deposit,
 			COALESCE(lsrv.turnaround_time, '') AS turnaround_time,
 			COALESCE(lsrv.service_area, '') AS service_area,
+			COALESCE(lsrv.arrangements, '') AS arrangements,
 			TRIM(BOTH ' ' FROM CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, ''))) AS seller_name,
 			COALESCE(u.profile_image_url, '') AS seller_profile_image_url,
 			COALESCE(rv.avg_rating, 0) AS seller_rating,
@@ -941,7 +1047,7 @@ func GetRelatedListings(listingId, categoryId, listingType, excludeUserId string
 			AND (l.category_id = $2 OR l.listing_type::text = $3)
 			AND NOT (
 				l.listing_type = 'SELL'
-				AND COALESCE(lsd.sell_status, 'AVAILABLE') = 'SOLD'
+				AND l.status = 'SOLD'
 			)
 	`
 
@@ -1025,11 +1131,7 @@ func GetAllListings(excludeUserId string, filter model.ListingsFilter) ([]model.
 			l.price,
 			COALESCE(l.price_unit, '') AS price_unit,
 			LOWER(l.listing_type::text) AS type,
-			CASE
-				WHEN l.listing_type = 'SELL' AND COALESCE(lsd.sell_status, 'AVAILABLE') = 'SOLD'
-					THEN 'sold'
-				ELSE LOWER(l.status::text)
-			END AS status,
+			LOWER(l.status::text) AS status,
 			COALESCE(c.name, 'Others') AS category,
 			COALESCE(lsd.condition::text, '') AS condition,
 			COALESCE(l.location_city, '') AS location_city,
@@ -1058,7 +1160,7 @@ func GetAllListings(excludeUserId string, filter model.ListingsFilter) ([]model.
 		WHERE l.status <> 'HIDDEN'
 			AND NOT (
 				l.listing_type = 'SELL'
-				AND COALESCE(lsd.sell_status, 'AVAILABLE') = 'SOLD'
+				AND l.status = 'SOLD'
 			)
 	`
 
