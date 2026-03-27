@@ -14,6 +14,9 @@ type ConversationFromDb struct {
 	UserAgreed         bool       `gorm:"column:user_agreed"`
 	ScheduleStart      *time.Time `gorm:"column:schedule_start"`
 	ScheduleEnd        *time.Time `gorm:"column:schedule_end"`
+	AvailableFrom      *time.Time `gorm:"column:available_from"`
+	DaysOff            string     `gorm:"column:days_off"`
+	TimeWindows        string     `gorm:"column:time_windows"`
 	ListingPriceUnit   string     `gorm:"column:listing_price_unit"`
 	ListingType        string     `gorm:"column:listing_type"`
 	ListingStatus      string     `gorm:"column:listing_status"`
@@ -61,9 +64,14 @@ type MessageReactionFromDb struct {
 }
 
 type CreateConversationBody struct {
-	ListingId    string `json:"listingId"`
-	OfferPrice   *int   `json:"offerPrice"`
-	OfferMessage string `json:"offerMessage"`
+	ListingId       string `json:"listingId"`
+	OfferPrice      *int   `json:"offerPrice"`
+	OfferMessage    string `json:"offerMessage"`
+	StartDate       string `json:"startDate"`
+	EndDate         string `json:"endDate"`
+	StartTime       string `json:"startTime"`
+	EndTime         string `json:"endTime"`
+	ScheduleMessage string `json:"scheduleMessage"`
 }
 
 type UpdateConversationOfferBody struct {

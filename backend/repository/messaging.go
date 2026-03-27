@@ -36,6 +36,9 @@ func GetConversationsByUser(userId string) ([]model.ConversationFromDb, error) {
 			END AS user_agreed,
 			tx.start_date AS schedule_start,
 			tx.end_date AS schedule_end,
+			COALESCE(lrd.available_from, lsrv.available_from) AS available_from,
+			COALESCE(lrd.days_off, lsrv.days_off, '[]') AS days_off,
+			COALESCE(tw.time_windows, '[]') AS time_windows,
 			COALESCE(l.price_unit, '') AS listing_price_unit,
 			l.listing_type::text AS listing_type,
 			l.status::text AS listing_status,
@@ -54,6 +57,10 @@ func GetConversationsByUser(userId string) ([]model.ConversationFromDb, error) {
 			ON c.id = cm.conversation_id
 		JOIN public.listings l
 			ON l.id = c.listing_id
+		LEFT JOIN public.listing_rent_details lrd
+			ON lrd.listing_id = l.id
+		LEFT JOIN public.listing_service_details lsrv
+			ON lsrv.listing_id = l.id
 		LEFT JOIN LATERAL (
 			SELECT image_url
 			FROM public.listing_images
@@ -61,6 +68,20 @@ func GetConversationsByUser(userId string) ([]model.ConversationFromDb, error) {
 			ORDER BY is_primary DESC, id ASC
 			LIMIT 1
 		) li ON TRUE
+		LEFT JOIN LATERAL (
+			SELECT COALESCE(
+				json_agg(
+					json_build_object(
+						'startTime', TO_CHAR(ltw.start_time, 'HH24:MI:SS'),
+						'endTime', TO_CHAR(ltw.end_time, 'HH24:MI:SS')
+					)
+					ORDER BY ltw.start_time
+				)::text,
+				'[]'
+			) AS time_windows
+			FROM public.listing_time_windows ltw
+			WHERE ltw.listing_id = l.id
+		) tw ON TRUE
 		LEFT JOIN LATERAL (
 			SELECT total_price, start_date, end_date, status, provider_agreed, client_agreed
 			FROM public.listing_transactions lt
@@ -119,6 +140,9 @@ func GetConversationById(userId, conversationId string) (model.ConversationFromD
 			END AS user_agreed,
 			tx.start_date AS schedule_start,
 			tx.end_date AS schedule_end,
+			COALESCE(lrd.available_from, lsrv.available_from) AS available_from,
+			COALESCE(lrd.days_off, lsrv.days_off, '[]') AS days_off,
+			COALESCE(tw.time_windows, '[]') AS time_windows,
 			COALESCE(l.price_unit, '') AS listing_price_unit,
 			l.listing_type::text AS listing_type,
 			l.status::text AS listing_status,
@@ -137,6 +161,10 @@ func GetConversationById(userId, conversationId string) (model.ConversationFromD
 			ON c.id = cm.conversation_id
 		JOIN public.listings l
 			ON l.id = c.listing_id
+		LEFT JOIN public.listing_rent_details lrd
+			ON lrd.listing_id = l.id
+		LEFT JOIN public.listing_service_details lsrv
+			ON lsrv.listing_id = l.id
 		LEFT JOIN LATERAL (
 			SELECT image_url
 			FROM public.listing_images
@@ -144,6 +172,20 @@ func GetConversationById(userId, conversationId string) (model.ConversationFromD
 			ORDER BY is_primary DESC, id ASC
 			LIMIT 1
 		) li ON TRUE
+		LEFT JOIN LATERAL (
+			SELECT COALESCE(
+				json_agg(
+					json_build_object(
+						'startTime', TO_CHAR(ltw.start_time, 'HH24:MI:SS'),
+						'endTime', TO_CHAR(ltw.end_time, 'HH24:MI:SS')
+					)
+					ORDER BY ltw.start_time
+				)::text,
+				'[]'
+			) AS time_windows
+			FROM public.listing_time_windows ltw
+			WHERE ltw.listing_id = l.id
+		) tw ON TRUE
 		LEFT JOIN LATERAL (
 			SELECT total_price, start_date, end_date, status, provider_agreed, client_agreed
 			FROM public.listing_transactions lt
@@ -918,7 +960,17 @@ func DeleteConversationForUser(userId, conversationId string) error {
 	return nil
 }
 
-func GetOrCreateConversationByListing(userId, listingId string, offerPrice int, offerMessage string) (string, error) {
+func GetOrCreateConversationByListing(
+	userId,
+	listingId string,
+	offerPrice int,
+	offerMessage,
+	startDate,
+	endDate,
+	startTime,
+	endTime,
+	scheduleMessage string,
+) (string, error) {
 	db := middleware.DBConn
 	var conversationId string
 
@@ -936,17 +988,19 @@ func GetOrCreateConversationByListing(userId, listingId string, offerPrice int, 
 	var sellerId string
 	var listingType string
 	var listingStatus string
+	var listingPrice int
 	listingQuery := `
 		SELECT
 			user_id::text,
 			LOWER(listing_type::text) AS listing_type,
-			LOWER(COALESCE(status::text, 'available')) AS listing_status
+			LOWER(COALESCE(status::text, 'available')) AS listing_status,
+			COALESCE(price, 0) AS listing_price
 		FROM public.listings
 		WHERE id = $1
 		LIMIT 1
 	`
 	listingResult := tx.Raw(listingQuery, listingId).Row()
-	if err := listingResult.Scan(&sellerId, &listingType, &listingStatus); err != nil {
+	if err := listingResult.Scan(&sellerId, &listingType, &listingStatus, &listingPrice); err != nil {
 		tx.Rollback()
 		return "", fmt.Errorf("Listing not found")
 	}
@@ -1033,15 +1087,15 @@ func GetOrCreateConversationByListing(userId, listingId string, offerPrice int, 
 			FROM public.listing_transactions
 			WHERE listing_id = $1
 				AND client_id = $2
-				AND status <> 'COMPLETED'
+				AND status NOT IN ('COMPLETED', 'CANCELLED')
 		`
-		var nonCompletedCount int
-		if err := tx.Raw(countActiveTransactionsQuery, listingId, userId).Scan(&nonCompletedCount).Error; err != nil {
+		var activeCount int
+		if err := tx.Raw(countActiveTransactionsQuery, listingId, userId).Scan(&activeCount).Error; err != nil {
 			tx.Rollback()
 			return "", fmt.Errorf("Failed to inspect existing transactions")
 		}
 
-		if nonCompletedCount == 0 {
+		if activeCount == 0 {
 			insertTransactionQuery := `
 				INSERT INTO public.listing_transactions (
 					listing_id,
@@ -1082,7 +1136,7 @@ func GetOrCreateConversationByListing(userId, listingId string, offerPrice int, 
 					FROM public.listing_transactions lt
 					WHERE lt.listing_id = $1
 						AND lt.client_id = $3
-						AND lt.status <> 'COMPLETED'
+						AND lt.status NOT IN ('COMPLETED', 'CANCELLED')
 					ORDER BY lt.created_at DESC
 					LIMIT 1
 				)
@@ -1112,6 +1166,151 @@ func GetOrCreateConversationByListing(userId, listingId string, offerPrice int, 
 		trimmedOfferMessage := strings.TrimSpace(offerMessage)
 		if trimmedOfferMessage != "" {
 			noteMessage, err := insertConversationMessageTx(tx, conversationId, userId, sellerId, trimmedOfferMessage)
+			if err != nil {
+				tx.Rollback()
+				return "", err
+			}
+			lastMessageID = noteMessage.Id
+			lastMessageText = strings.TrimSpace(noteMessage.Content)
+			lastMessageAt = noteMessage.CreatedAt
+		}
+
+		updateConversationQuery := `
+			UPDATE public.conversations
+			SET
+				last_message_id = $2,
+				last_message = $3,
+				last_message_sender_id = $4,
+				last_message_at = $5,
+				updated_at = now()
+			WHERE id = $1
+		`
+		if err := tx.Exec(updateConversationQuery, conversationId, lastMessageID, lastMessageText, userId, lastMessageAt).Error; err != nil {
+			tx.Rollback()
+			return "", fmt.Errorf("Failed to update conversation metadata")
+		}
+	}
+
+	trimmedStartDate := strings.TrimSpace(startDate)
+	trimmedEndDate := strings.TrimSpace(endDate)
+	hasScheduleRequest := trimmedStartDate != "" || trimmedEndDate != ""
+	if hasScheduleRequest {
+		if trimmedStartDate == "" || trimmedEndDate == "" {
+			tx.Rollback()
+			return "", fmt.Errorf("Start date and end date are required for schedule request")
+		}
+		if listingType != "rent" && listingType != "service" {
+			tx.Rollback()
+			return "", fmt.Errorf("Schedule requests are only supported for Rent and Service listings")
+		}
+
+		scheduleStartAt, scheduleEndAt, err := parseScheduleRange(trimmedStartDate, trimmedEndDate, startTime, endTime)
+		if err != nil {
+			tx.Rollback()
+			return "", err
+		}
+
+		actorFirstName, err := getUserFirstNameTx(tx, userId)
+		if err != nil {
+			tx.Rollback()
+			return "", err
+		}
+
+		countActiveTransactionsQuery := `
+			SELECT COUNT(*)
+			FROM public.listing_transactions
+			WHERE listing_id = $1
+				AND client_id = $2
+				AND status NOT IN ('COMPLETED', 'CANCELLED')
+		`
+		var activeCount int
+		if err := tx.Raw(countActiveTransactionsQuery, listingId, userId).Scan(&activeCount).Error; err != nil {
+			tx.Rollback()
+			return "", fmt.Errorf("Failed to inspect existing transactions")
+		}
+
+		if activeCount == 0 {
+			insertTransactionQuery := `
+				INSERT INTO public.listing_transactions (
+					listing_id,
+					client_id,
+					start_date,
+					end_date,
+					total_price,
+					provider_agreed,
+					client_agreed,
+					status,
+					created_at
+				) VALUES (
+					$1,
+					$2,
+					$3,
+					$4,
+					$5,
+					FALSE,
+					FALSE,
+					'PENDING',
+					now()
+				)
+			`
+			if err := tx.Exec(insertTransactionQuery, listingId, userId, scheduleStartAt, scheduleEndAt, listingPrice).Error; err != nil {
+				tx.Rollback()
+				return "", fmt.Errorf("Failed to save schedule transaction")
+			}
+		} else {
+			updateExistingTransactionQuery := `
+				UPDATE public.listing_transactions
+				SET
+					start_date = $2,
+					end_date = $3,
+					total_price = $4,
+					provider_agreed = FALSE,
+					client_agreed = FALSE,
+					status = 'PENDING',
+					cancelled_at = NULL,
+					cancelled_by_id = NULL,
+					completed_at = NULL,
+					created_at = now()
+				WHERE id = (
+					SELECT lt.id
+					FROM public.listing_transactions lt
+					WHERE lt.listing_id = $1
+						AND lt.client_id = $5
+						AND lt.status NOT IN ('COMPLETED', 'CANCELLED')
+					ORDER BY lt.created_at DESC
+					LIMIT 1
+				)
+			`
+			updateResult := tx.Exec(updateExistingTransactionQuery, listingId, scheduleStartAt, scheduleEndAt, listingPrice, userId)
+			if updateResult.Error != nil {
+				tx.Rollback()
+				return "", fmt.Errorf("Failed to update schedule transaction")
+			}
+			if updateResult.RowsAffected == 0 {
+				tx.Rollback()
+				return "", fmt.Errorf("No eligible transaction found for schedule update")
+			}
+		}
+
+		scheduleActionContent := fmt.Sprintf(
+			"__SCHEDULE_ACTION__:%s requested schedule on %s - %s",
+			actorFirstName,
+			scheduleStartAt.Format("Jan 02"),
+			scheduleEndAt.Format("Jan 02"),
+		)
+		actionMessage, err := insertConversationMessageTx(tx, conversationId, userId, sellerId, scheduleActionContent)
+		if err != nil {
+			tx.Rollback()
+			return "", err
+		}
+
+		lastMessageID := actionMessage.Id
+		lastMessageText := strings.TrimSpace(actionMessage.Content)
+		lastMessageAt := actionMessage.CreatedAt
+
+		trimmedScheduleMessage := strings.TrimSpace(scheduleMessage)
+		if trimmedScheduleMessage != "" {
+			noteMessage, err := insertConversationMessageTx(tx, conversationId, userId, sellerId, trimmedScheduleMessage)
 			if err != nil {
 				tx.Rollback()
 				return "", err
@@ -1216,7 +1415,7 @@ func UpdateConversationOfferByOwner(userId, conversationId string, offerPrice in
 		FROM public.listing_transactions
 		WHERE listing_id = $1
 			AND client_id = $2
-			AND status <> 'COMPLETED'
+			AND status NOT IN ('COMPLETED', 'CANCELLED')
 	`
 	var nonCompletedCount int
 	if err := tx.Raw(countActiveTransactionsQuery, listingId, buyerId).Scan(&nonCompletedCount).Error; err != nil {
@@ -1265,7 +1464,7 @@ func UpdateConversationOfferByOwner(userId, conversationId string, offerPrice in
 				FROM public.listing_transactions lt
 				WHERE lt.listing_id = $1
 					AND lt.client_id = $3
-					AND lt.status <> 'COMPLETED'
+					AND lt.status NOT IN ('COMPLETED', 'CANCELLED')
 				ORDER BY lt.created_at DESC
 				LIMIT 1
 			)
@@ -1548,6 +1747,66 @@ func insertConversationMessageTx(tx *gorm.DB, conversationId, senderId, receiver
 	}
 
 	return created, nil
+}
+
+func parseScheduleRange(startDate, endDate, startTime, endTime string) (time.Time, time.Time, error) {
+	startDateVal, err := time.Parse("2006-01-02", strings.TrimSpace(startDate))
+	if err != nil {
+		return time.Time{}, time.Time{}, fmt.Errorf("Invalid start date")
+	}
+	endDateVal, err := time.Parse("2006-01-02", strings.TrimSpace(endDate))
+	if err != nil {
+		return time.Time{}, time.Time{}, fmt.Errorf("Invalid end date")
+	}
+
+	if endDateVal.Before(startDateVal) {
+		return time.Time{}, time.Time{}, fmt.Errorf("End date cannot be earlier than start date")
+	}
+
+	startClock := strings.TrimSpace(startTime)
+	if startClock == "" {
+		startClock = "00:00"
+	}
+	endClock := strings.TrimSpace(endTime)
+	if endClock == "" {
+		endClock = "23:59"
+	}
+
+	startClockVal, err := time.Parse("15:04", startClock)
+	if err != nil {
+		return time.Time{}, time.Time{}, fmt.Errorf("Invalid start time")
+	}
+	endClockVal, err := time.Parse("15:04", endClock)
+	if err != nil {
+		return time.Time{}, time.Time{}, fmt.Errorf("Invalid end time")
+	}
+
+	scheduleStart := time.Date(
+		startDateVal.Year(),
+		startDateVal.Month(),
+		startDateVal.Day(),
+		startClockVal.Hour(),
+		startClockVal.Minute(),
+		0,
+		0,
+		time.UTC,
+	)
+	scheduleEnd := time.Date(
+		endDateVal.Year(),
+		endDateVal.Month(),
+		endDateVal.Day(),
+		endClockVal.Hour(),
+		endClockVal.Minute(),
+		0,
+		0,
+		time.UTC,
+	)
+
+	if !scheduleEnd.After(scheduleStart) {
+		return time.Time{}, time.Time{}, fmt.Errorf("End schedule must be later than start schedule")
+	}
+
+	return scheduleStart, scheduleEnd, nil
 }
 
 func NormalizeMessageStatus(status string) string {

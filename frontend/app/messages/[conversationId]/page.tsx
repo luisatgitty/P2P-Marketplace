@@ -46,7 +46,7 @@ function isSameDay(a: string, b: string) {
 
 function getSystemActionLabel(content?: string): string | null {
   const raw = String(content ?? "").trim();
-  const actionPrefixes = ["__OFFER_ACTION__:", "__DEAL_ACTION__:"];
+  const actionPrefixes = ["__OFFER_ACTION__:", "__DEAL_ACTION__:", "__SCHEDULE_ACTION__:", "__SOLD_ACTION__:"];
   const matchedPrefix = actionPrefixes.find((prefix) => raw.startsWith(prefix));
   if (!matchedPrefix) {
     return null;

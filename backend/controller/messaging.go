@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -36,17 +37,17 @@ func formatConversationSchedule(start, end *time.Time) string {
 		return ""
 	}
 	if start != nil && end != nil {
-		return fmt.Sprintf("%s - %s", start.Format("Jan 02, 2006"), end.Format("Jan 02, 2006"))
+		return fmt.Sprintf("%s - %s", start.Format("Jan 02"), end.Format("Jan 02"))
 	}
 	if start != nil {
-		return start.Format("Jan 02, 2006")
+		return start.Format("Jan 02")
 	}
-	return end.Format("Jan 02, 2006")
+	return end.Format("Jan 02")
 }
 
 func toActionPreviewText(content string) string {
 	trimmed := strings.TrimSpace(content)
-	prefixes := []string{"__OFFER_ACTION__:", "__DEAL_ACTION__:"}
+	prefixes := []string{"__OFFER_ACTION__:", "__DEAL_ACTION__:", "__SCHEDULE_ACTION__:", "__SOLD_ACTION__:"}
 	for _, prefix := range prefixes {
 		if strings.HasPrefix(trimmed, prefix) {
 			action := strings.TrimSpace(strings.TrimPrefix(trimmed, prefix))
@@ -60,6 +61,21 @@ func toActionPreviewText(content string) string {
 }
 
 func mapConversationPayload(baseURL string, row model.ConversationFromDb) map[string]any {
+	daysOff := parseCSVOrJSONArray(row.DaysOff)
+	timeWindows := parseTimeWindows(row.TimeWindows)
+	availableFrom := ""
+	if row.AvailableFrom != nil {
+		availableFrom = row.AvailableFrom.Format("2006-01-02")
+	}
+	scheduleStart := ""
+	if row.ScheduleStart != nil {
+		scheduleStart = row.ScheduleStart.UTC().Format(time.RFC3339)
+	}
+	scheduleEnd := ""
+	if row.ScheduleEnd != nil {
+		scheduleEnd = row.ScheduleEnd.UTC().Format(time.RFC3339)
+	}
+
 	lastMessageAt := ""
 	if row.LastMessageAt != nil {
 		lastMessageAt = row.LastMessageAt.UTC().Format(time.RFC3339)
@@ -82,6 +98,11 @@ func mapConversationPayload(baseURL string, row model.ConversationFromDb) map[st
 			"clientAgreed":      row.ClientAgreed,
 			"userAgreed":        row.UserAgreed,
 			"schedule":          formatConversationSchedule(row.ScheduleStart, row.ScheduleEnd),
+			"scheduleStart":     scheduleStart,
+			"scheduleEnd":       scheduleEnd,
+			"availableFrom":     availableFrom,
+			"daysOff":           daysOff,
+			"timeWindows":       timeWindows,
 			"priceUnit":         row.ListingPriceUnit,
 			"listingType":       strings.ToUpper(strings.TrimSpace(row.ListingType)),
 			"imageUrl":          toAbsoluteAssetURL(baseURL, row.ListingImageUrl),
@@ -106,6 +127,67 @@ func mapConversationPayload(baseURL string, row model.ConversationFromDb) map[st
 		"unreadCount":            row.UnreadCount,
 		"isSeller":               row.IsSeller,
 	}
+}
+
+func parseCSVOrJSONArray(raw string) []string {
+	trimmed := strings.TrimSpace(raw)
+	if trimmed == "" {
+		return []string{}
+	}
+
+	var parsed []string
+	if err := json.Unmarshal([]byte(trimmed), &parsed); err == nil {
+		out := make([]string, 0, len(parsed))
+		for _, item := range parsed {
+			value := strings.TrimSpace(item)
+			if value != "" {
+				out = append(out, value)
+			}
+		}
+		return out
+	}
+
+	parts := strings.Split(trimmed, ",")
+	out := make([]string, 0, len(parts))
+	for _, part := range parts {
+		value := strings.TrimSpace(part)
+		if value != "" {
+			out = append(out, value)
+		}
+	}
+	return out
+}
+
+func parseTimeWindows(raw string) []map[string]string {
+	trimmed := strings.TrimSpace(raw)
+	if trimmed == "" {
+		return []map[string]string{}
+	}
+
+	type windowRow struct {
+		StartTime string `json:"startTime"`
+		EndTime   string `json:"endTime"`
+	}
+
+	rows := make([]windowRow, 0)
+	if err := json.Unmarshal([]byte(trimmed), &rows); err != nil {
+		return []map[string]string{}
+	}
+
+	out := make([]map[string]string, 0, len(rows))
+	for _, row := range rows {
+		start := strings.TrimSpace(row.StartTime)
+		end := strings.TrimSpace(row.EndTime)
+		if start == "" || end == "" {
+			continue
+		}
+		out = append(out, map[string]string{
+			"startTime": start,
+			"endTime":   end,
+		})
+	}
+
+	return out
 }
 
 func GetConversations(c *fiber.Ctx) error {
@@ -247,13 +329,32 @@ func CreateConversationFromListing(c *fiber.Ctx) error {
 		offerPrice = *body.OfferPrice
 	}
 	offerMessage := strings.TrimSpace(body.OfferMessage)
+	startDate := strings.TrimSpace(body.StartDate)
+	endDate := strings.TrimSpace(body.EndDate)
+	startTime := strings.TrimSpace(body.StartTime)
+	endTime := strings.TrimSpace(body.EndTime)
+	scheduleMessage := strings.TrimSpace(body.ScheduleMessage)
+	hasScheduleRequest := startDate != "" || endDate != ""
+	if hasScheduleRequest && (startDate == "" || endDate == "") {
+		return SendErrorResponse(c, 400, "Start date and end date are required for schedule request", nil)
+	}
 
-	conversationId, err := repository.GetOrCreateConversationByListing(userId, strings.TrimSpace(body.ListingId), offerPrice, offerMessage)
+	conversationId, err := repository.GetOrCreateConversationByListing(
+		userId,
+		strings.TrimSpace(body.ListingId),
+		offerPrice,
+		offerMessage,
+		startDate,
+		endDate,
+		startTime,
+		endTime,
+		scheduleMessage,
+	)
 	if err != nil {
 		return SendErrorResponse(c, 400, err.Error(), err)
 	}
 
-	if offerPrice > 0 {
+	if offerPrice > 0 || hasScheduleRequest {
 		conversation, convErr := repository.GetConversationById(userId, conversationId)
 		if convErr != nil {
 			return SendErrorResponse(c, 500, convErr.Error(), convErr)

@@ -110,23 +110,37 @@ function CalLegend({ items }: { items: { dot: string; label: string }[] }) {
 export interface ScheduleModalProps {
   open:         boolean;
   onClose:      () => void;
+  onSubmit?:    (payload: {
+    startDate: string;
+    endDate: string;
+    startTime: string;
+    endTime: string;
+    message: string;
+  }) => Promise<void> | void;
   listingTitle: string;
   listingPrice: number;
   priceUnit:    string;
   availableFrom?: string;
   daysOff?: string[] | string;
   timeWindows?: { startTime: string; endTime: string }[];
+  initialStartAt?: string;
+  initialEndAt?: string;
+  submitLabel?: string;
 }
 
 export function ScheduleModal({
   open,
   onClose,
+  onSubmit,
   listingTitle,
   listingPrice,
   priceUnit,
   availableFrom,
   daysOff = [],
   timeWindows = [],
+  initialStartAt,
+  initialEndAt,
+  submitLabel = "Request Schedule",
 }: ScheduleModalProps) {
   const today = useMemo(() => sod(new Date()), []);
   const availableFromDate = useMemo(() => parseDateOnly(availableFrom), [availableFrom]);
@@ -173,6 +187,22 @@ export function ScheduleModal({
 
   const hasPresetTimeWindows = resolvedTimeWindows.length > 0;
 
+  const initialStartDateTime = useMemo(() => {
+    const value = String(initialStartAt ?? "").trim();
+    if (!value) return null;
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return null;
+    return parsed;
+  }, [initialStartAt]);
+
+  const initialEndDateTime = useMemo(() => {
+    const value = String(initialEndAt ?? "").trim();
+    if (!value) return null;
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return null;
+    return parsed;
+  }, [initialEndAt]);
+
   const manualStartMinutes = parseTimeToMinutes(manualStartTime);
   const manualEndMinutes = parseTimeToMinutes(manualEndTime);
   const manualTimeRangeValid =
@@ -183,14 +213,32 @@ export function ScheduleModal({
   useEffect(() => {
     if (!open) return;
 
-    const nextViewDate = getInitialViewDate(today, availableFromDate);
+    const prefStartDate = initialStartDateTime ? sod(initialStartDateTime) : null;
+    const prefEndDate = initialEndDateTime ? sod(initialEndDateTime) : null;
+    const nextViewDate = getInitialViewDate(today, prefStartDate ?? availableFromDate);
     setViewYear(nextViewDate.getFullYear());
     setViewMonth(nextViewDate.getMonth());
-    setStartDate(null);
-    setEndDate(null);
+    setStartDate(prefStartDate);
+    setEndDate(prefEndDate);
     setHoverDate(null);
-    setWindow(null);
-  }, [open, today, availableFromDate]);
+
+    const prefStartTime = initialStartDateTime
+      ? `${String(initialStartDateTime.getHours()).padStart(2, "0")}:${String(initialStartDateTime.getMinutes()).padStart(2, "0")}`
+      : "08:00";
+    const prefEndTime = initialEndDateTime
+      ? `${String(initialEndDateTime.getHours()).padStart(2, "0")}:${String(initialEndDateTime.getMinutes()).padStart(2, "0")}`
+      : "17:00";
+
+    setManualStartTime(prefStartTime);
+    setManualEndTime(prefEndTime);
+
+    const maybeWindowId = `${prefStartTime}-${prefEndTime}`;
+    if (resolvedTimeWindows.some((window) => window.id === maybeWindowId)) {
+      setWindow(maybeWindowId);
+    } else {
+      setWindow(null);
+    }
+  }, [open, today, availableFromDate, initialStartDateTime, initialEndDateTime, resolvedTimeWindows]);
 
   function isDayUnavailable(d: Date): boolean {
     return isDayUnavailableByDaysOff(d, dayOffRules, {
@@ -261,7 +309,29 @@ export function ScheduleModal({
   })();
 
   // ── Send ─────────────────────────────────────────────────────────────────────
-  function handleSend() {
+  function toIsoDateString(date: Date): string {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, "0");
+    const d = String(date.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  }
+
+  function resolveTimeRange(): { startTime: string; endTime: string } | null {
+    if (hasPresetTimeWindows) {
+      if (!selectedWindow) return null;
+      const [start, end] = selectedWindow.split("-");
+      if (!start || !end) return null;
+      return { startTime: start, endTime: end };
+    }
+
+    if (!manualTimeRangeValid) return null;
+    return {
+      startTime: manualStartTime,
+      endTime: manualEndTime,
+    };
+  }
+
+  async function handleSend() {
     if (!startDate || !endDate) {
       toast.error("Please select both a check-in and check-out date.", { position: "top-center" });
       return;
@@ -277,15 +347,32 @@ export function ScheduleModal({
       return;
     }
 
+    const resolvedRange = resolveTimeRange();
+    if (!resolvedRange) {
+      toast.error("Please select a valid schedule time range.", { position: "top-center" });
+      return;
+    }
+
     setSending(true);
-    setTimeout(() => {
-      setSending(false);
+    try {
+      if (onSubmit) {
+        await onSubmit({
+          startDate: toIsoDateString(startDate),
+          endDate: toIsoDateString(endDate),
+          startTime: resolvedRange.startTime,
+          endTime: resolvedRange.endTime,
+          message: message.trim(),
+        });
+      } else {
+        toast.success(
+          `Schedule request sent for ${fmtDateShort(startDate)} - ${fmtDateShort(endDate)}! The seller will respond shortly.`,
+          { position: "top-center", duration: 5000 },
+        );
+      }
       onClose();
-      toast.success(
-        `Schedule request sent for ${fmtDateShort(startDate)} – ${fmtDateShort(endDate)}! The seller will respond shortly.`,
-        { position: "top-center", duration: 5000 },
-      );
-    }, 900);
+    } finally {
+      setSending(false);
+    }
   }
 
   const tealColors: BookingCalendarColors = {
@@ -306,7 +393,7 @@ export function ScheduleModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm"
+      className="fixed inset-0 z-120 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
       <div className="bg-white dark:bg-[#1c1f2e] rounded-t-3xl sm:rounded-2xl w-full sm:max-w-md shadow-2xl flex flex-col max-h-[92vh] sm:max-h-[88vh]">
@@ -559,7 +646,7 @@ export function ScheduleModal({
             disabled={!canSend}
             className="flex-1 py-3 rounded-full bg-teal-700 hover:bg-teal-600 text-white text-sm font-bold transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            {sending ? "Sending…" : "Send Request →"}
+            {sending ? "Sending..." : submitLabel}
           </button>
         </div>
       </div>

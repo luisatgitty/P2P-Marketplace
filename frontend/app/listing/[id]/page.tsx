@@ -445,6 +445,36 @@ export default function ListingDetailPage() {
     }
   }
 
+  async function sendSchedule(payload: {
+    startDate: string;
+    endDate: string;
+    startTime: string;
+    endTime: string;
+    message: string;
+  }) {
+    if (!listing) return;
+    if (!isAuth) {
+      router.push("/login");
+      return;
+    }
+
+    try {
+      const conversationId = await openOrCreateConversationFromListing(listing.id, undefined, undefined, {
+        startDate: payload.startDate,
+        endDate: payload.endDate,
+        startTime: payload.startTime,
+        endTime: payload.endTime,
+        message: payload.message,
+      });
+      setScheduleOpen(false);
+      router.push(`/messages/${conversationId}`);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to request schedule.";
+      toast.error(message, { position: "top-center" });
+      throw err;
+    }
+  }
+
   async function handleRemoveListing() {
     if (!isAuth) {
       router.push("/login");
@@ -865,12 +895,14 @@ export default function ListingDetailPage() {
       <ScheduleModal
         open={scheduleOpen}
         onClose={() => setScheduleOpen(false)}
+        onSubmit={sendSchedule}
         listingTitle={listing.title}
         listingPrice={listing.price}
         priceUnit={listing.priceUnit ?? ""}
         availableFrom={extra.available_from}
         daysOff={extra.daysOff ?? []}
         timeWindows={extra.timeWindows ?? []}
+        submitLabel={isService ? "Request Service Schedule" : "Request Rent Schedule"}
       />
 
       {/* ══ REPORT MODAL ══════════════════════════════════════════════════════ */}
