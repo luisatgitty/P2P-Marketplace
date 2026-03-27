@@ -105,7 +105,7 @@ export function BookingCalendar({
         {DAY_LABELS.map((label) => (
           <div
             key={label}
-            className="pb-1 text-center text-[10px] font-bold text-stone-400 dark:text-stone-600"
+            className="pb-1 text-center text-xs font-bold text-stone-400 dark:text-stone-600"
           >
             {label}
           </div>
@@ -138,7 +138,7 @@ export function BookingCalendar({
           const disabled = unavailable || isPast;
 
           return (
-            <div key={i} className="relative flex h-9 items-center justify-center">
+            <div key={i} className="relative flex h-10 items-center justify-center">
               {(inRange || isRangeStart || isRangeEnd) && (
                 <div
                   className={cn(
@@ -159,7 +159,7 @@ export function BookingCalendar({
                 onMouseLeave={() => onHover(null)}
                 className={cn(
                   "relative z-10 flex h-8 w-8 items-center justify-center rounded-full",
-                  "text-xs font-medium transition-all duration-100",
+                  "text-sm font-medium transition-all duration-100",
                   isPast && "cursor-not-allowed text-stone-300 dark:text-stone-700",
                   unavailable && !isPast && [
                     "cursor-not-allowed text-red-300 dark:text-red-900/60",
