@@ -22,6 +22,11 @@ import {
   type LocationOption,
 } from "@/services/locationService";
 import {
+  DAY_OFF_OPTIONS,
+  isDayUnavailableByDaysOff,
+  toISODate,
+} from "@/utils/scheduleAvailability";
+import {
   BookingCalendar,
   type BookingCalendarColors,
 } from "./ui/booking-calendar";
@@ -209,23 +214,10 @@ const DELIVERY_OPTIONS = [
   { value: "Meet-up or Delivery", desc: "Either option works" },
 ];
 
-const DAYOFF = [
-  "Holiday",
-  "Saturday",
-  "Sunday",
-  "Monday",
-  "Tuesday",
-  "Wednesday",
-  "Thursday",
-  "Friday",
-];
-
 const MAX_HIGHLIGHTS = 10;
 const MAX_INCLUSIONS = 10;
 const MAX_AMENITIES = 10;
 const MAX_IMAGES = 8;
-
-const PH_REGULAR_HOLIDAY_CACHE = new Map<number, Set<string>>();
 
 function sod(d: Date): Date {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate());
@@ -258,68 +250,12 @@ function parseISODate(value: string): Date | null {
   return parsed;
 }
 
-function toISODate(d: Date): string {
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
 function fmtDateShort(d: Date): string {
   return d.toLocaleDateString("en-PH", {
     month: "short",
     day: "numeric",
     year: "numeric",
   });
-}
-
-function getEasterSunday(year: number): Date {
-  const a = year % 19;
-  const b = Math.floor(year / 100);
-  const c = year % 100;
-  const d = Math.floor(b / 4);
-  const e = b % 4;
-  const f = Math.floor((b + 8) / 25);
-  const g = Math.floor((b - f + 1) / 3);
-  const h = (19 * a + b - d - g + 15) % 30;
-  const i = Math.floor(c / 4);
-  const k = c % 4;
-  const l = (32 + 2 * e + 2 * i - h - k) % 7;
-  const m = Math.floor((a + 11 * h + 22 * l) / 451);
-  const month = Math.floor((h + l - 7 * m + 114) / 31);
-  const day = ((h + l - 7 * m + 114) % 31) + 1;
-  return new Date(year, month - 1, day);
-}
-
-function shiftDays(date: Date, days: number): Date {
-  const shifted = new Date(date);
-  shifted.setDate(shifted.getDate() + days);
-  return shifted;
-}
-
-function getLastMondayOfAugust(year: number): Date {
-  const lastDay = new Date(year, 7, 31);
-  const diff = (lastDay.getDay() - 1 + 7) % 7;
-  return new Date(year, 7, 31 - diff);
-}
-
-function getPhilippineRegularHolidaySet(year: number): Set<string> {
-  const cached = PH_REGULAR_HOLIDAY_CACHE.get(year);
-  if (cached) return cached;
-
-  const set = new Set<string>();
-  const fixed = ["01-01", "04-09", "05-01", "06-12", "11-30", "12-25", "12-30"];
-  for (const monthDay of fixed) {
-    set.add(`${year}-${monthDay}`);
-  }
-
-  const easterSunday = getEasterSunday(year);
-  set.add(toISODate(shiftDays(easterSunday, -3))); // Maundy Thursday
-  set.add(toISODate(shiftDays(easterSunday, -2))); // Good Friday
-  set.add(toISODate(getLastMondayOfAugust(year))); // National Heroes Day
-
-  PH_REGULAR_HOLIDAY_CACHE.set(year, set);
-  return set;
 }
 
 function toTwelveHour(time24: string): string {
@@ -334,18 +270,7 @@ function toTwelveHour(time24: string): string {
 }
 
 function isDayUnavailableBySelection(d: Date, dayOff: string[]): boolean {
-  const day = sod(d);
-  if (day.getTime() < sod(new Date()).getTime()) return true;
-
-  const weekday = day.toLocaleDateString("en-US", { weekday: "long" });
-  if (dayOff.includes(weekday)) return true;
-
-  if (dayOff.includes("Holiday")) {
-    const holidaySet = getPhilippineRegularHolidaySet(day.getFullYear());
-    if (holidaySet.has(toISODate(day))) return true;
-  }
-
-  return false;
+  return isDayUnavailableByDaysOff(d, dayOff, { includePast: true });
 }
 
 interface TimeWindowRange {
@@ -1267,12 +1192,14 @@ export default function ListingForm({
         availability: string;
         deposit: string;
         deliveryMethod: string;
+        daysOff: string;
       };
       serviceData?: {
         availability: string;
         turnaround: string;
         serviceArea: string;
         arrangement: string;
+        daysOff: string;
       };
     } = {};
 
@@ -1289,6 +1216,7 @@ export default function ListingForm({
         availability,
         deposit,
         deliveryMethod,
+        daysOff: dayoff.join(","),
       };
     }
 
@@ -1298,8 +1226,14 @@ export default function ListingForm({
         turnaround,
         serviceArea,
         arrangement,
+        daysOff: dayoff.join(","),
       };
     }
+
+    const timeWindowsPayload = timeWindows.map((slot) => ({
+      startTime: slot.start,
+      endTime: slot.end,
+    }));
 
     setSub(true);
     setErrors((prev) => ({ ...prev, submit: "" }));
@@ -1313,7 +1247,11 @@ export default function ListingForm({
         method: isEdit ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ ...commonData, ...typeSpecific }),
+        body: JSON.stringify({
+          ...commonData,
+          timeWindows: timeWindowsPayload,
+          ...typeSpecific,
+        }),
       });
 
       const parsedJson = await response.json();
@@ -1471,7 +1409,7 @@ export default function ListingForm({
               Days Off
             </p>
             <div className="flex flex-wrap gap-2 lg:flex-col">
-              {DAYOFF.map((a) => (
+              {DAY_OFF_OPTIONS.map((a) => (
                 <button
                   key={a}
                   type="button"

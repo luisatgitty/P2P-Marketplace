@@ -187,6 +187,11 @@ func GetListingById(c *fiber.Ctx) error {
 		return SendErrorResponse(c, 500, err.Error(), err)
 	}
 
+	timeWindows, err := repository.GetListingTimeWindows(listingId)
+	if err != nil {
+		return SendErrorResponse(c, 500, err.Error(), err)
+	}
+
 	userId := getOptionalUserIdFromSession(c)
 	related, err := repository.GetRelatedListings(listingId, listing.CategoryID, listing.Type, userId)
 	if err != nil {
@@ -205,6 +210,7 @@ func GetListingById(c *fiber.Ctx) error {
 	baseURL := c.BaseURL()
 	features := parseJSONStringArray(listing.Highlights)
 	included := parseJSONStringArray(listing.Included)
+	daysOff := parseJSONStringArray(listing.DaysOff)
 
 	extra := map[string]any{
 		"description":    listing.Description,
@@ -225,6 +231,7 @@ func GetListingById(c *fiber.Ctx) error {
 		}
 		extra["deposit"] = listing.Deposit
 		extra["amenities"] = included
+		extra["daysOff"] = daysOff
 	case "service":
 		if listing.AvailableFrom != nil {
 			extra["available_from"] = listing.AvailableFrom.Format("2006-01-02")
@@ -234,9 +241,12 @@ func GetListingById(c *fiber.Ctx) error {
 		extra["serviceArea"] = listing.ServiceArea
 		extra["arrangement"] = listing.Arrangement
 		extra["inclusions"] = included
+		extra["daysOff"] = daysOff
 	default:
 		extra["inclusions"] = included
 	}
+
+	extra["timeWindows"] = timeWindows
 
 	listingCard := map[string]any{
 		"id":         listing.Id,
@@ -620,7 +630,18 @@ func parseJSONStringArray(raw string) []string {
 
 	var parsed []string
 	if err := json.Unmarshal([]byte(trimmed), &parsed); err != nil {
-		return []string{trimmed}
+		parts := strings.Split(trimmed, ",")
+		out := make([]string, 0, len(parts))
+		for _, part := range parts {
+			value := strings.TrimSpace(part)
+			if value != "" {
+				out = append(out, value)
+			}
+		}
+		if len(out) == 0 {
+			return []string{trimmed}
+		}
+		return out
 	}
 
 	out := make([]string, 0, len(parsed))

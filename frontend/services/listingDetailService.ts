@@ -13,6 +13,8 @@ export interface ListingExtra {
   availability?: string;
   deposit?: string;
   amenities?: string[];
+  daysOff?: string[];
+  timeWindows?: { startTime: string; endTime: string }[];
   turnaround?: string;
   serviceArea?: string;
   arrangement?: string;

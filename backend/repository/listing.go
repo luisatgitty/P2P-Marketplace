@@ -106,6 +106,11 @@ func CreateListing(userId string, body model.CreateListingBody) (string, error) 
 		return "", err
 	}
 
+	if err := saveListingTimeWindowsTx(tx, listingId, body.TimeWindows); err != nil {
+		tx.Rollback()
+		return "", err
+	}
+
 	if err := saveListingImagesTx(tx, listingId, body.Images); err != nil {
 		tx.Rollback()
 		return "", err
@@ -192,10 +197,10 @@ func insertTypeDetailsTx(tx *gorm.DB, listingId string, body model.CreateListing
 		}
 
 		insertRentQuery := `
-			INSERT INTO public.listing_rent_details (listing_id, min_rental_period, available_from, deposit, delivery_method)
-			VALUES ($1,$2,$3,$4,$5)
+			INSERT INTO public.listing_rent_details (listing_id, min_rental_period, available_from, deposit, delivery_method, days_off)
+			VALUES ($1,$2,$3,$4,$5,$6)
 		`
-		return tx.Exec(insertRentQuery, listingId, minPeriod, availableFrom, body.RentData.Deposit, deliveryMethod).Error
+		return tx.Exec(insertRentQuery, listingId, minPeriod, availableFrom, body.RentData.Deposit, deliveryMethod, strings.TrimSpace(body.RentData.DaysOff)).Error
 	case "service":
 		if body.ServiceData == nil {
 			return fmt.Errorf("Missing service data")
@@ -211,8 +216,8 @@ func insertTypeDetailsTx(tx *gorm.DB, listingId string, body model.CreateListing
 		}
 
 		insertServiceQuery := `
-			INSERT INTO public.listing_service_details (listing_id, available_from, turnaround_time, service_area, arrangements)
-			VALUES ($1,$2,$3,$4,$5)
+			INSERT INTO public.listing_service_details (listing_id, available_from, turnaround_time, service_area, arrangements, days_off)
+			VALUES ($1,$2,$3,$4,$5,$6)
 		`
 		return tx.Exec(
 			insertServiceQuery,
@@ -221,6 +226,7 @@ func insertTypeDetailsTx(tx *gorm.DB, listingId string, body model.CreateListing
 			body.ServiceData.Turnaround,
 			body.ServiceData.ServiceArea,
 			body.ServiceData.Arrangement,
+			strings.TrimSpace(body.ServiceData.DaysOff),
 		).Error
 	default:
 		return fmt.Errorf("Invalid listing type")
@@ -361,6 +367,57 @@ func randomHex(n int) (string, error) {
 	return hex.EncodeToString(b), nil
 }
 
+func normalizeTimeWindow(value string) (string, error) {
+	timeValue := strings.TrimSpace(value)
+	if timeValue == "" {
+		return "", fmt.Errorf("Time window start and end are required")
+	}
+
+	if len(timeValue) == 5 {
+		timeValue += ":00"
+	}
+
+	parsed, err := time.Parse("15:04:05", timeValue)
+	if err != nil {
+		return "", fmt.Errorf("Invalid time window value")
+	}
+
+	return parsed.Format("15:04:05"), nil
+}
+
+func saveListingTimeWindowsTx(tx *gorm.DB, listingId string, windows []model.ListingTimeWindow) error {
+	if len(windows) == 0 {
+		return nil
+	}
+
+	insertWindowQuery := `
+		INSERT INTO public.listing_time_windows (listing_id, start_time, end_time)
+		VALUES ($1, $2, $3)
+	`
+
+	for _, window := range windows {
+		startTime, err := normalizeTimeWindow(window.StartTime)
+		if err != nil {
+			return err
+		}
+
+		endTime, err := normalizeTimeWindow(window.EndTime)
+		if err != nil {
+			return err
+		}
+
+		if startTime >= endTime {
+			return fmt.Errorf("End time must be later than start time")
+		}
+
+		if err := tx.Exec(insertWindowQuery, listingId, startTime, endTime).Error; err != nil {
+			return fmt.Errorf("Failed to save listing time windows")
+		}
+	}
+
+	return nil
+}
+
 func GetListingEditDataById(userId, listingId string) (model.ListingEditFromDb, error) {
 	db := middleware.DBConn
 	var listing model.ListingEditFromDb
@@ -383,6 +440,7 @@ func GetListingEditDataById(userId, listingId string) (model.ListingEditFromDb, 
 			COALESCE(lsd.delivery_method::text, lrd.delivery_method::text, '') AS delivery_method,
 			COALESCE(lrd.min_rental_period, 0) AS min_rental_period,
 			COALESCE(lrd.available_from, lsrv.available_from) AS available_from,
+			COALESCE(lrd.days_off, lsrv.days_off, '[]') AS days_off,
 			COALESCE(lrd.deposit, '') AS deposit,
 			COALESCE(lsrv.turnaround_time, '') AS turnaround_time,
 			COALESCE(lsrv.service_area, '') AS service_area,
@@ -519,6 +577,16 @@ func UpdateListing(userId, listingId string, body model.CreateListingBody) error
 		return err
 	}
 
+	if err := tx.Exec(`DELETE FROM public.listing_time_windows WHERE listing_id = $1`, listingId).Error; err != nil {
+		tx.Rollback()
+		return fmt.Errorf("Failed to remove previous listing time windows")
+	}
+
+	if err := saveListingTimeWindowsTx(tx, listingId, body.TimeWindows); err != nil {
+		tx.Rollback()
+		return err
+	}
+
 	if len(body.Images) > 0 {
 		if err := deleteListingImagesTx(tx, listingId); err != nil {
 			tx.Rollback()
@@ -593,19 +661,19 @@ func updateTypeDetailsTx(tx *gorm.DB, listingId string, body model.CreateListing
 
 		updateRentQuery := `
 			UPDATE public.listing_rent_details
-			SET min_rental_period = $1, available_from = $2, deposit = $3, delivery_method = $4
-			WHERE listing_id = $5
+			SET min_rental_period = $1, available_from = $2, deposit = $3, delivery_method = $4, days_off = $5
+			WHERE listing_id = $6
 		`
-		res := tx.Exec(updateRentQuery, minPeriod, availableFrom, body.RentData.Deposit, deliveryMethod, listingId)
+		res := tx.Exec(updateRentQuery, minPeriod, availableFrom, body.RentData.Deposit, deliveryMethod, strings.TrimSpace(body.RentData.DaysOff), listingId)
 		if res.Error != nil {
 			return fmt.Errorf("Failed to update rent details")
 		}
 		if res.RowsAffected == 0 {
 			insertRentQuery := `
-				INSERT INTO public.listing_rent_details (listing_id, min_rental_period, available_from, deposit, delivery_method)
-				VALUES ($1,$2,$3,$4,$5)
+				INSERT INTO public.listing_rent_details (listing_id, min_rental_period, available_from, deposit, delivery_method, days_off)
+				VALUES ($1,$2,$3,$4,$5,$6)
 			`
-			if err := tx.Exec(insertRentQuery, listingId, minPeriod, availableFrom, body.RentData.Deposit, deliveryMethod).Error; err != nil {
+			if err := tx.Exec(insertRentQuery, listingId, minPeriod, availableFrom, body.RentData.Deposit, deliveryMethod, strings.TrimSpace(body.RentData.DaysOff)).Error; err != nil {
 				return fmt.Errorf("Failed to update rent details")
 			}
 		}
@@ -625,8 +693,8 @@ func updateTypeDetailsTx(tx *gorm.DB, listingId string, body model.CreateListing
 
 		updateServiceQuery := `
 			UPDATE public.listing_service_details
-			SET available_from = $1, turnaround_time = $2, service_area = $3, arrangements = $4
-			WHERE listing_id = $5
+			SET available_from = $1, turnaround_time = $2, service_area = $3, arrangements = $4, days_off = $5
+			WHERE listing_id = $6
 		`
 		res := tx.Exec(
 			updateServiceQuery,
@@ -634,6 +702,7 @@ func updateTypeDetailsTx(tx *gorm.DB, listingId string, body model.CreateListing
 			body.ServiceData.Turnaround,
 			body.ServiceData.ServiceArea,
 			body.ServiceData.Arrangement,
+			strings.TrimSpace(body.ServiceData.DaysOff),
 			listingId,
 		)
 		if res.Error != nil {
@@ -641,8 +710,8 @@ func updateTypeDetailsTx(tx *gorm.DB, listingId string, body model.CreateListing
 		}
 		if res.RowsAffected == 0 {
 			insertServiceQuery := `
-				INSERT INTO public.listing_service_details (listing_id, available_from, turnaround_time, service_area, arrangements)
-				VALUES ($1,$2,$3,$4,$5)
+				INSERT INTO public.listing_service_details (listing_id, available_from, turnaround_time, service_area, arrangements, days_off)
+				VALUES ($1,$2,$3,$4,$5,$6)
 			`
 			if err := tx.Exec(
 				insertServiceQuery,
@@ -651,6 +720,7 @@ func updateTypeDetailsTx(tx *gorm.DB, listingId string, body model.CreateListing
 				body.ServiceData.Turnaround,
 				body.ServiceData.ServiceArea,
 				body.ServiceData.Arrangement,
+				strings.TrimSpace(body.ServiceData.DaysOff),
 			).Error; err != nil {
 				return fmt.Errorf("Failed to update service details")
 			}
@@ -951,6 +1021,7 @@ func GetListingDetailById(listingId string) (model.ListingDetailFromDb, error) {
 			COALESCE(lsd.delivery_method::text, lrd.delivery_method::text, '') AS delivery_method,
 			COALESCE(lrd.min_rental_period, 0) AS min_rental_period,
 			COALESCE(lrd.available_from, lsrv.available_from) AS available_from,
+			COALESCE(lrd.days_off, lsrv.days_off, '[]') AS days_off,
 			COALESCE(lrd.deposit, '') AS deposit,
 			COALESCE(lsrv.turnaround_time, '') AS turnaround_time,
 			COALESCE(lsrv.service_area, '') AS service_area,
@@ -1007,6 +1078,26 @@ func GetListingImages(listingId string) ([]string, error) {
 		images = append(images, row.ImageURL)
 	}
 	return images, nil
+}
+
+func GetListingTimeWindows(listingId string) ([]model.ListingTimeWindow, error) {
+	db := middleware.DBConn
+	rows := make([]model.ListingTimeWindow, 0)
+
+	query := `
+		SELECT
+			TO_CHAR(start_time, 'HH24:MI:SS') AS start_time,
+			TO_CHAR(end_time, 'HH24:MI:SS') AS end_time
+		FROM public.listing_time_windows
+		WHERE listing_id = $1
+		ORDER BY start_time ASC
+	`
+
+	if err := db.Raw(query, listingId).Scan(&rows).Error; err != nil {
+		return nil, fmt.Errorf("Failed to retrieve listing time windows")
+	}
+
+	return rows, nil
 }
 
 func GetRelatedListings(listingId, categoryId, listingType, excludeUserId string) ([]model.ProfileListingFromDb, error) {

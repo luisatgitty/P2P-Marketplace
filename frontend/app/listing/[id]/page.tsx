@@ -40,6 +40,8 @@ interface ExtraDetail {
   availability?:  string;
   deposit?:       string;
   amenities?:     string[];
+  daysOff?:       string[];
+  timeWindows?:   { startTime: string; endTime: string }[];
   // Service-specific
   turnaround?:    string;
   serviceArea?:   string;
@@ -56,6 +58,8 @@ function getDefaultExtra(listing: PostCardProps): ExtraDetail {
     views:          Math.floor(Math.random() * 200) + 20,
     offers:         Math.floor(Math.random() * 10),
     deliveryMethod: listing.type === "service" ? "On-site service" : "Meet-up or Delivery",
+    daysOff:        [],
+    timeWindows:    [],
     arrangement:    "",
   };
 }
@@ -864,6 +868,9 @@ export default function ListingDetailPage() {
         listingTitle={listing.title}
         listingPrice={listing.price}
         priceUnit={listing.priceUnit ?? ""}
+        availableFrom={extra.available_from}
+        daysOff={extra.daysOff ?? []}
+        timeWindows={extra.timeWindows ?? []}
       />
 
       {/* ══ REPORT MODAL ══════════════════════════════════════════════════════ */}

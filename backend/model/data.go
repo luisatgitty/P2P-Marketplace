@@ -105,6 +105,7 @@ type CreateListingBody struct {
 	Highlights   []string            `json:"highlights"`
 	Inclusions   []string            `json:"inclusions"`
 	Amenities    []string            `json:"amenities"`
+	TimeWindows  []ListingTimeWindow `json:"timeWindows"`
 	Images       []ListingImageBody  `json:"images"`
 	LocationCity string              `json:"locationCity"`
 	LocationProv string              `json:"locationProv"`
@@ -124,6 +125,7 @@ type RentListingBody struct {
 	Availability   string `json:"availability"`
 	Deposit        string `json:"deposit"`
 	DeliveryMethod string `json:"deliveryMethod"`
+	DaysOff        string `json:"daysOff"`
 }
 
 type ServiceListingBody struct {
@@ -131,6 +133,12 @@ type ServiceListingBody struct {
 	Turnaround   string `json:"turnaround"`
 	ServiceArea  string `json:"serviceArea"`
 	Arrangement  string `json:"arrangement"`
+	DaysOff      string `json:"daysOff"`
+}
+
+type ListingTimeWindow struct {
+	StartTime string `json:"startTime"`
+	EndTime   string `json:"endTime"`
 }
 
 type ListingImageBody struct {
@@ -408,6 +416,7 @@ type ListingDetailFromDb struct {
 	DeliveryMethod     string     `gorm:"column:delivery_method"`
 	MinRentalPeriod    int        `gorm:"column:min_rental_period"`
 	AvailableFrom      *time.Time `gorm:"column:available_from"`
+	DaysOff            string     `gorm:"column:days_off"`
 	Deposit            string     `gorm:"column:deposit"`
 	Turnaround         string     `gorm:"column:turnaround_time"`
 	ServiceArea        string     `gorm:"column:service_area"`

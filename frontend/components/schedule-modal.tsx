@@ -1,11 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   X, Package, Clock, ClockIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import {
+  isDayUnavailableByDaysOff,
+  normalizeDaysOff,
+  parseDateOnly,
+} from "@/utils/scheduleAvailability";
 import { Label } from "./ui/label";
 import { Input } from "./ui/input";
 import { BookingCalendar, type BookingCalendarColors } from "./ui/booking-calendar";
@@ -14,14 +19,6 @@ import { BookingCalendar, type BookingCalendarColors } from "./ui/booking-calend
 const phpFmt = new Intl.NumberFormat("en-PH", {
   style: "currency", currency: "PHP", minimumFractionDigits: 0,
 });
-
-// ── Constants ──────────────────────────────────────────────────────────────────
-const TIME_WINDOWS = [
-  { id: "08-10", label: "8:00 – 10:00 AM"  },
-  { id: "10-12", label: "10:00 AM – 12 PM" },
-  { id: "13-15", label: "1:00 – 3:00 PM"   },
-  { id: "15-17", label: "3:00 – 5:00 PM"   },
-];
 
 // ── Date helpers ───────────────────────────────────────────────────────────────
 function sod(d: Date): Date {
@@ -40,19 +37,57 @@ function fmtDateShort(d: Date): string {
   return d.toLocaleDateString("en-PH", { month: "short", day: "numeric" });
 }
 
-// ── Placeholder availability (demo data) ──────────────────────────────────────
-// Computed once at module load so the calendar is stable across renders
-const DEMO_TODAY = sod(new Date());
+function parseTimeToMinutes(value: string): number | null {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
 
-// Weekends + 6 specific day-offsets from today are "already booked"
-const BOOKED_OFFSETS = new Set([3, 8, 11, 17, 22, 25]);
+  const parts = trimmed.split(":");
+  if (parts.length < 2) return null;
 
-function isDayUnavailable(d: Date): boolean {
-  const s   = sod(d);
-  if (s < DEMO_TODAY) return true;
-  const dow = s.getDay();
-  if (dow === 0 || dow === 6) return true; // weekends
-  return BOOKED_OFFSETS.has(daysBetween(DEMO_TODAY, s));
+  const hour = Number.parseInt(parts[0], 10);
+  const minute = Number.parseInt(parts[1], 10);
+  if (!Number.isFinite(hour) || !Number.isFinite(minute)) return null;
+  if (hour < 0 || hour > 23 || minute < 0 || minute > 59) return null;
+
+  return hour * 60 + minute;
+}
+
+function normalizeTimeForInput(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+
+  const parts = trimmed.split(":");
+  if (parts.length < 2) return "";
+
+  const hour = Number.parseInt(parts[0], 10);
+  const minute = Number.parseInt(parts[1], 10);
+  if (!Number.isFinite(hour) || !Number.isFinite(minute)) return "";
+  if (hour < 0 || hour > 23 || minute < 0 || minute > 59) return "";
+
+  return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+}
+
+function formatTimeLabel(value: string): string {
+  const time = normalizeTimeForInput(value);
+  if (!time) return value;
+  const [hourRaw, minuteRaw] = time.split(":");
+  const hour = Number.parseInt(hourRaw, 10);
+  const minute = Number.parseInt(minuteRaw, 10);
+  if (!Number.isFinite(hour) || !Number.isFinite(minute)) return value;
+
+  const period = hour >= 12 ? "PM" : "AM";
+  const twelveHour = hour % 12 === 0 ? 12 : hour % 12;
+  return `${twelveHour}:${String(minute).padStart(2, "0")} ${period}`;
+}
+
+function getInitialViewDate(today: Date, availableFromDate: Date | null): Date {
+  if (!availableFromDate) return today;
+  return availableFromDate.getTime() > today.getTime() ? availableFromDate : today;
+}
+
+interface ResolvedTimeWindow {
+  id: string;
+  label: string;
 }
 
 // ── Shared legend ──────────────────────────────────────────────────────────────
@@ -78,20 +113,91 @@ export interface ScheduleModalProps {
   listingTitle: string;
   listingPrice: number;
   priceUnit:    string;
+  availableFrom?: string;
+  daysOff?: string[] | string;
+  timeWindows?: { startTime: string; endTime: string }[];
 }
 
 export function ScheduleModal({
-  open, onClose, listingTitle, listingPrice, priceUnit,
+  open,
+  onClose,
+  listingTitle,
+  listingPrice,
+  priceUnit,
+  availableFrom,
+  daysOff = [],
+  timeWindows = [],
 }: ScheduleModalProps) {
-  const now = new Date();
-  const [viewYear,  setViewYear]  = useState(now.getFullYear());
-  const [viewMonth, setViewMonth] = useState(now.getMonth());
+  const today = useMemo(() => sod(new Date()), []);
+  const availableFromDate = useMemo(() => parseDateOnly(availableFrom), [availableFrom]);
+
+  const dayOffRules = useMemo(() => normalizeDaysOff(daysOff), [daysOff]);
+
+  const resolvedTimeWindows = useMemo<ResolvedTimeWindow[]>(() => {
+    const unique = new Set<string>();
+    const list: ResolvedTimeWindow[] = [];
+
+    for (const window of timeWindows) {
+      const start = normalizeTimeForInput(window.startTime ?? "");
+      const end = normalizeTimeForInput(window.endTime ?? "");
+      if (!start || !end) continue;
+
+      const startMinutes = parseTimeToMinutes(start);
+      const endMinutes = parseTimeToMinutes(end);
+      if (startMinutes === null || endMinutes === null || startMinutes >= endMinutes) continue;
+
+      const id = `${start}-${end}`;
+      if (unique.has(id)) continue;
+      unique.add(id);
+
+      list.push({
+        id,
+        label: `${formatTimeLabel(start)} - ${formatTimeLabel(end)}`,
+      });
+    }
+
+    return list;
+  }, [timeWindows]);
+
+  const initialViewDate = getInitialViewDate(today, availableFromDate);
+  const [viewYear,  setViewYear]  = useState(initialViewDate.getFullYear());
+  const [viewMonth, setViewMonth] = useState(initialViewDate.getMonth());
   const [startDate, setStartDate] = useState<Date | null>(null);
   const [endDate,   setEndDate]   = useState<Date | null>(null);
   const [hoverDate, setHoverDate] = useState<Date | null>(null);
   const [selectedWindow, setWindow] = useState<string | null>(null);
+  const [manualStartTime, setManualStartTime] = useState("08:00");
+  const [manualEndTime, setManualEndTime] = useState("17:00");
   const [message,   setMessage]   = useState("");
   const [sending,   setSending]   = useState(false);
+
+  const hasPresetTimeWindows = resolvedTimeWindows.length > 0;
+
+  const manualStartMinutes = parseTimeToMinutes(manualStartTime);
+  const manualEndMinutes = parseTimeToMinutes(manualEndTime);
+  const manualTimeRangeValid =
+    manualStartMinutes !== null &&
+    manualEndMinutes !== null &&
+    manualStartMinutes < manualEndMinutes;
+
+  useEffect(() => {
+    if (!open) return;
+
+    const nextViewDate = getInitialViewDate(today, availableFromDate);
+    setViewYear(nextViewDate.getFullYear());
+    setViewMonth(nextViewDate.getMonth());
+    setStartDate(null);
+    setEndDate(null);
+    setHoverDate(null);
+    setWindow(null);
+  }, [open, today, availableFromDate]);
+
+  function isDayUnavailable(d: Date): boolean {
+    return isDayUnavailableByDaysOff(d, dayOffRules, {
+      minDate: availableFromDate,
+      includePast: false,
+    });
+  }
 
   if (!open) return null;
 
@@ -160,6 +266,17 @@ export function ScheduleModal({
       toast.error("Please select both a check-in and check-out date.", { position: "top-center" });
       return;
     }
+
+    if (hasPresetTimeWindows) {
+      if (!selectedWindow) {
+        toast.error("Please select one available time window.", { position: "top-center" });
+        return;
+      }
+    } else if (!manualTimeRangeValid) {
+      toast.error("Please enter a valid start and end time.", { position: "top-center" });
+      return;
+    }
+
     setSending(true);
     setTimeout(() => {
       setSending(false);
@@ -178,7 +295,14 @@ export function ScheduleModal({
     hoverBg:   "hover:bg-teal-50 dark:hover:bg-teal-950/30 hover:text-teal-700 dark:hover:text-teal-300",
   };
 
-  const canSend = !!startDate && !!endDate && !sending;
+  const hasTimeSelection = hasPresetTimeWindows ? !!selectedWindow : manualTimeRangeValid;
+  const canSend = !!startDate && !!endDate && hasTimeSelection && !sending;
+
+  const selectedWindowLabel =
+    resolvedTimeWindows.find((window) => window.id === selectedWindow)?.label ?? "";
+
+  const manualTimeLabel =
+    manualTimeRangeValid ? `${formatTimeLabel(manualStartTime)} - ${formatTimeLabel(manualEndTime)}` : "";
 
   return (
     <div
@@ -238,13 +362,13 @@ export function ScheduleModal({
                   hoverDate={hoverDate}
                   onSelect={handleSelectDay}
                   onHover={setHoverDate}
-                  today={DEMO_TODAY}
+                  today={today}
                   colors={tealColors}
                 />
                 <CalLegend items={[
                   { dot: "bg-teal-600",                                    label: "Selected"    },
                   { dot: "bg-teal-200 dark:bg-teal-800",                   label: "Your range"  },
-                  { dot: "bg-red-200 dark:bg-red-900",                     label: "Unavailable" },
+                  { dot: "bg-red-200 dark:bg-red-900",                     label: "Days off"    },
                   { dot: "bg-stone-200 dark:bg-stone-700",                 label: "Past"        },
                 ]} />
               </div>
@@ -259,62 +383,75 @@ export function ScheduleModal({
                 </p>
               </div>
 
-              {/* Manual time inputs */}
-              {/* Hides when there is specific time window provided */}
-              <div className="flex items-center gap-2 mb-3">
-                <Label htmlFor={"start-time"}>
-                  Start time
-                </Label>
-                <div className='relative grow'>
-                  <Input
-                    id={"start-time"}
-                    type='time'
-                    step='1'
-                    defaultValue='08:00:00'
-                    className='peer appearance-none pl-9 [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none'
-                  />
-                  <div className='text-muted-foreground/80 pointer-events-none absolute inset-y-0 left-0 flex items-center justify-center pl-3 peer-disabled:opacity-50'>
-                    <ClockIcon size={16} aria-hidden='true' />
+              {hasPresetTimeWindows ? (
+                <>
+                  <p className="text-xs text-stone-500 dark:text-stone-400 mb-3">
+                    Select from the provider&apos;s available time windows.
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {resolvedTimeWindows.map((tw) => (
+                      <button
+                        key={tw.id}
+                        type="button"
+                        onClick={() => setWindow((prev) => (prev === tw.id ? null : tw.id))}
+                        className={cn(
+                          "px-3 py-3 rounded-xl border text-sm font-semibold text-center transition-all",
+                          selectedWindow === tw.id
+                            ? "bg-violet-700 border-violet-700 text-white shadow-sm"
+                            : "bg-stone-50 dark:bg-[#13151f] border-stone-200 dark:border-[#2a2d3e] text-stone-600 dark:text-stone-300 hover:border-violet-300 dark:hover:border-violet-700 hover:bg-violet-50 dark:hover:bg-violet-950/20 hover:text-violet-700 dark:hover:text-violet-300",
+                        )}
+                      >
+                        {tw.label}
+                      </button>
+                    ))}
                   </div>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 mb-3">
-                <Label htmlFor={"end-time"} className="pr-1">
-                  End time
-                </Label>
-                <div className='relative grow'>
-                  <Input
-                    id={"end-time"}
-                    type='time'
-                    step='1'
-                    defaultValue='17:00:00'
-                    className='peer appearance-none pl-9 [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none'
-                  />
-                  <div className='text-muted-foreground/80 pointer-events-none absolute inset-y-0 left-0 flex items-center justify-center pl-3 peer-disabled:opacity-50'>
-                    <ClockIcon size={16} aria-hidden='true' />
+                </>
+              ) : (
+                <>
+                  <p className="text-xs text-stone-500 dark:text-stone-400 mb-3">
+                    No fixed time windows are set for this listing. Choose your preferred time range.
+                  </p>
+                  <div className="flex items-center gap-2 mb-3">
+                    <Label htmlFor={"start-time"}>
+                      Start time
+                    </Label>
+                    <div className="relative grow">
+                      <Input
+                        id={"start-time"}
+                        type="time"
+                        value={manualStartTime}
+                        onChange={(e) => setManualStartTime(e.target.value)}
+                        className="peer appearance-none pl-9 [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none"
+                      />
+                      <div className="text-muted-foreground/80 pointer-events-none absolute inset-y-0 left-0 flex items-center justify-center pl-3 peer-disabled:opacity-50">
+                        <ClockIcon size={16} aria-hidden="true" />
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
 
-              {/* Display when time slots provided */}
-              <div className="grid grid-cols-2 gap-2">
-                {TIME_WINDOWS.map(tw => (
-                  <button
-                    key={tw.id}
-                    type="button"
-                    onClick={() => setWindow(prev => prev === tw.id ? null : tw.id)}
-                    className={cn(
-                      "px-3 py-3 rounded-xl border text-sm font-semibold text-center transition-all",
-                      selectedWindow === tw.id
-                        ? "bg-violet-700 border-violet-700 text-white shadow-sm"
-                        : "bg-stone-50 dark:bg-[#13151f] border-stone-200 dark:border-[#2a2d3e] text-stone-600 dark:text-stone-300 hover:border-violet-300 dark:hover:border-violet-700 hover:bg-violet-50 dark:hover:bg-violet-950/20 hover:text-violet-700 dark:hover:text-violet-300",
-                    )}
-                  >
-                    {tw.label}
-                  </button>
-                ))}
-              </div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <Label htmlFor={"end-time"} className="pr-1">
+                      End time
+                    </Label>
+                    <div className="relative grow">
+                      <Input
+                        id={"end-time"}
+                        type="time"
+                        value={manualEndTime}
+                        onChange={(e) => setManualEndTime(e.target.value)}
+                        className="peer appearance-none pl-9 [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none"
+                      />
+                      <div className="text-muted-foreground/80 pointer-events-none absolute inset-y-0 left-0 flex items-center justify-center pl-3 peer-disabled:opacity-50">
+                        <ClockIcon size={16} aria-hidden="true" />
+                      </div>
+                    </div>
+                  </div>
+
+                  {!manualTimeRangeValid && (
+                    <p className="text-xs text-red-500 mt-2">End time must be later than start time.</p>
+                  )}
+                </>
+              )}
 
             </div>
 
@@ -375,6 +512,14 @@ export function ScheduleModal({
                       </span>
                     )}
                   </div>
+                  {(selectedWindowLabel || manualTimeLabel) && (
+                    <div className="border-t border-teal-200 dark:border-teal-800 pt-2">
+                      <p className="text-xs text-stone-500 dark:text-stone-400">Preferred time</p>
+                      <p className="text-sm font-semibold text-stone-800 dark:text-stone-100">
+                        {selectedWindowLabel || manualTimeLabel}
+                      </p>
+                    </div>
+                  )}
                 </div>
               )
             )}
