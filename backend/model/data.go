@@ -444,6 +444,7 @@ type ListingEditFromDb struct {
 	DeliveryMethod  string     `gorm:"column:delivery_method"`
 	MinRentalPeriod int        `gorm:"column:min_rental_period"`
 	AvailableFrom   *time.Time `gorm:"column:available_from"`
+	DaysOff         string     `gorm:"column:days_off"`
 	Deposit         string     `gorm:"column:deposit"`
 	Turnaround      string     `gorm:"column:turnaround_time"`
 	ServiceArea     string     `gorm:"column:service_area"`

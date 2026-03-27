@@ -54,6 +54,7 @@ export interface ListingFormData {
   availability: string;
   deposit: string;
   dayoffs: string[];
+  timeWindows: { start: string; end: string }[];
   amenities: string[];
   // Service
   turnaround: string;
@@ -945,7 +946,13 @@ export default function ListingForm({
   const [calendarHoverDate, setCalendarHoverDate] = useState<Date | null>(null);
   const [startTime, setStartTime] = useState("08:00");
   const [endTime, setEndTime] = useState("17:00");
-  const [timeWindows, setTimeWindows] = useState<TimeWindowRange[]>([]);
+  const [timeWindows, setTimeWindows] = useState<TimeWindowRange[]>(
+    (initialData?.timeWindows ?? []).map((slot, idx) => ({
+      id: `${slot.start}-${slot.end}-${idx}`,
+      start: slot.start,
+      end: slot.end,
+    })),
+  );
   const [timeWindowError, setTimeWindowError] = useState("");
   const [amenities, setAmen] = useState<string[]>(initialData?.amenities ?? []);
   // Service

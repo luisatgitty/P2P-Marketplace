@@ -71,8 +71,14 @@ func GetListingEditById(c *fiber.Ctx) error {
 		return SendErrorResponse(c, 404, err.Error(), err)
 	}
 
+	timeWindows, err := repository.GetListingTimeWindows(listingId)
+	if err != nil {
+		return SendErrorResponse(c, 500, err.Error(), err)
+	}
+
 	included := parseJSONStringArray(listing.Included)
 	highlights := parseJSONStringArray(listing.Highlights)
+	daysOff := parseJSONStringArray(listing.DaysOff)
 
 	data := map[string]any{
 		"id":             listing.Id,
@@ -96,6 +102,8 @@ func GetListingEditById(c *fiber.Ctx) error {
 		"arrangement":    listing.Arrangement,
 		"inclusions":     []string{},
 		"amenities":      []string{},
+		"dayoffs":        daysOff,
+		"timeWindows":    timeWindows,
 	}
 
 	if listing.AvailableFrom != nil {
