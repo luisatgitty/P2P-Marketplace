@@ -7,7 +7,7 @@ import Link from "next/link";
 import {
   MapPin, Star, MessageCircle, Bookmark, Share2,
   ChevronLeft, ChevronRight, Flag, Eye, Clock, Package,
-  CheckCircle, Phone, Zap, ArrowLeft, Truck, CalendarDays,
+  CheckCircle, Phone, Zap, ArrowLeft, Truck
 } from "lucide-react";
 import { useUser } from "@/utils/UserContext";
 import { addListingBookmark, getListingDetailById, removeListingBookmark, submitListingReport } from "@/services/listingDetailService";
@@ -17,7 +17,7 @@ import ListingTypeBadge from "@/components/listing-type-badge";
 import ListingConditionBadge from "@/components/listing-condition-badge";
 import VerificationBadge from "@/components/verification-badge";
 import { LoadingPage } from "@/components/loading";
-import { RequestToRentModal, BookServiceModal } from "@/components/request-modals";
+import { ScheduleModal } from "@/components/schedule-modal";
 import { ReportModal } from "@/components/report-modal";
 import OfferModal from "@/components/offer-modal";
 import { openOrCreateConversationFromListing } from "@/services/messagingService";
@@ -217,9 +217,8 @@ export default function ListingDetailPage() {
   const [offerAmount, setOfferAmt]   = useState("");
   const [offerMessage, setOfferMessage] = useState("");
   const [submittingOffer, setSubmittingOffer] = useState(false);
-  const [rentOpen,  setRentOpen]  = useState(false);
-  const [bookOpen,  setBookOpen]  = useState(false);
-          const [reportOpen,  setReportOpen] = useState(false);
+  const [scheduleOpen,  setScheduleOpen]  = useState(false);
+  const [reportOpen,  setReportOpen] = useState(false);
   const [submittingReport, setSubmittingReport] = useState(false);
   const [shownContactNumber, setShownContactNumber] = useState<string | null>(null);
   const [deleting,    setDeleting]   = useState(false);
@@ -410,8 +409,8 @@ export default function ListingDetailPage() {
 
   function handleBuy() {
     if (!isAuth) { router.push("/login"); return; }
-    if (isRent)    { setRentOpen(true);  return; }
-    if (isService) { setBookOpen(true);  return; }
+    if (isRent)    { setScheduleOpen(true);  return; }
+    if (isService) { setScheduleOpen(true);  return; }
     setOfferOpen(true); // sell — unchanged
   }
 
@@ -858,19 +857,10 @@ export default function ListingDetailPage() {
         onClose={() => setOfferOpen(false)}
       />
 
-      {/* ══ REQUEST TO RENT MODAL ══════════════════════════════════════════════ */}
-      <RequestToRentModal
-        open={rentOpen}
-        onClose={() => setRentOpen(false)}
-        listingTitle={listing.title}
-        listingPrice={listing.price}
-        priceUnit={listing.priceUnit ?? ""}
-      />
-
-      {/* ══ BOOK SERVICE MODAL ════════════════════════════════════════════════ */}
-      <BookServiceModal
-        open={bookOpen}
-        onClose={() => setBookOpen(false)}
+      {/* ══ SCHEDULE REQUEST MODAL ══════════════════════════════════════════════ */}
+      <ScheduleModal
+        open={scheduleOpen}
+        onClose={() => setScheduleOpen(false)}
         listingTitle={listing.title}
         listingPrice={listing.price}
         priceUnit={listing.priceUnit ?? ""}
