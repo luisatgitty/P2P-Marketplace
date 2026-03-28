@@ -67,7 +67,7 @@ const TYPE_CONFIG: Record<ListingType, { label: string; cls: string; Icon: React
 const STATUS_CONFIG: Record<TransactionStatus, string> = {
   PENDING: "bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300",
   CONFIRMED: "bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300",
-  COMPLETED: "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300",
+  COMPLETED: "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700",
   CANCELLED: "bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-300",
 };
 
@@ -78,10 +78,10 @@ const phpFmt = new Intl.NumberFormat("en-PH", {
 });
 
 function formatDateRange(start?: string | null, end?: string | null): string {
-  if (!start || !end) return "Not applicable";
+  if (!start || !end) return "N/A";
   const s = new Date(start);
   const e = new Date(end);
-  if (Number.isNaN(s.getTime()) || Number.isNaN(e.getTime())) return "Not applicable";
+  if (Number.isNaN(s.getTime()) || Number.isNaN(e.getTime())) return "N/A";
   return `${s.toLocaleDateString("en-PH", { month: "short", day: "2-digit", year: "numeric" })} - ${e.toLocaleDateString("en-PH", { month: "short", day: "2-digit", year: "numeric" })}`;
 }
 
@@ -95,10 +95,10 @@ function buildScheduleUnitsLabel(tx: AdminTransaction): string {
 
 function Avatar({ src, alt, fallback }: { src?: string; alt: string; fallback: string }) {
   if (src) {
-    return <img src={src} alt={alt} className="w-9 h-9 rounded-full object-cover border border-border" />;
+    return <img src={src} alt={alt} className="w-9 h-9 rounded-full object-cover border border-border shrink-0" />;
   }
   return (
-    <div className="w-9 h-9 rounded-full bg-stone-200 dark:bg-[#2a2d3e] border border-border flex items-center justify-center text-xs font-bold text-stone-600 dark:text-stone-200">
+    <div className="w-9 h-9 rounded-full bg-stone-200 dark:bg-[#2a2d3e] border border-border flex items-center justify-center text-xs font-bold text-stone-600 dark:text-stone-200 shrink-0">
       {fallback}
     </div>
   );
@@ -108,9 +108,9 @@ function DealStateRow({ label, agreed }: { label: string; agreed: boolean }) {
   return (
     <div className="flex items-center gap-1.5">
       {agreed ? (
-        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+        <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
       ) : (
-        <XCircle className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+        <XCircle className="w-4 h-4 text-amber-500 shrink-0" />
       )}
       <span className={cn("text-xs", agreed ? "text-emerald-600 dark:text-emerald-300" : "text-amber-600 dark:text-amber-300")}>
         {label}: {agreed ? "Agreed" : "Pending"}
@@ -335,7 +335,7 @@ export default function TransactionsPage() {
                   </TableHead>
                   <SortableTH label="Total" field="totalPrice" />
                   <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest whitespace-nowrap">
-                    Deal State
+                    Agreement
                   </TableHead>
                   <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest whitespace-nowrap">
                     Status
@@ -369,7 +369,7 @@ export default function TransactionsPage() {
                       >
                         <TableCell className="py-3.5 min-w-55">
                           <div className="flex items-center gap-2.5">
-                            <Link href={`/profile?userId=${transaction.client_user_id}`} target="_blank" rel="noopener noreferrer" title="Open client profile">
+                            <Link href={`/profile?userId=${transaction.client_user_id}`} target="_blank" rel="noopener noreferrer" title="Open client profile" className="shrink-0">
                               <Avatar
                                 src={transaction.client_profile_image_url}
                                 alt={transaction.client_full_name}
@@ -385,7 +385,7 @@ export default function TransactionsPage() {
 
                         <TableCell className="py-3.5 min-w-55">
                           <div className="flex items-center gap-2.5">
-                            <Link href={`/profile?userId=${transaction.owner_user_id}`} target="_blank" rel="noopener noreferrer" title="Open owner profile">
+                            <Link href={`/profile?userId=${transaction.owner_user_id}`} target="_blank" rel="noopener noreferrer" title="Open owner profile" className="shrink-0">
                               <Avatar
                                 src={transaction.owner_profile_image_url}
                                 alt={transaction.owner_full_name}
@@ -401,11 +401,11 @@ export default function TransactionsPage() {
 
                         <TableCell className="py-3.5 min-w-65">
                           <div className="flex items-center gap-2.5">
-                            <Link href={`/listing/${transaction.listing_id}`} target="_blank" rel="noopener noreferrer" title="Open listing">
+                            <Link href={`/listing/${transaction.listing_id}`} target="_blank" rel="noopener noreferrer" title="Open listing" className="shrink-0">
                               {transaction.listing_image_url ? (
-                                <img src={transaction.listing_image_url} alt={transaction.listing_title} className="w-12 h-12 rounded-md object-cover border border-border" />
+                                <img src={transaction.listing_image_url} alt={transaction.listing_title} className="w-10 h-10 rounded-md object-cover border border-border shrink-0" />
                               ) : (
-                                <div className="w-12 h-12 rounded-md bg-stone-200 dark:bg-[#2a2d3e] border border-border flex items-center justify-center">📦</div>
+                                <div className="w-12 h-12 rounded-md bg-stone-200 dark:bg-[#2a2d3e] border border-border flex items-center justify-center shrink-0">📦</div>
                               )}
                             </Link>
                             <div className="min-w-0">
@@ -422,7 +422,7 @@ export default function TransactionsPage() {
 
                         <TableCell className="py-3.5 min-w-57.5 whitespace-nowrap">
                           <p className="text-sm font-semibold text-stone-800 dark:text-stone-100">{formatDateRange(transaction.start_date, transaction.end_date)}</p>
-                          <p className="text-xs text-stone-500 dark:text-stone-400">{transaction.selected_time_window || "Not applicable"}</p>
+                          <p className="text-xs text-stone-500 dark:text-stone-400">{transaction.selected_time_window || "N/A"}</p>
                         </TableCell>
 
                         <TableCell className="py-3.5 min-w-37.5 whitespace-nowrap">
@@ -430,12 +430,8 @@ export default function TransactionsPage() {
                           <p className="text-xs text-stone-500 dark:text-stone-400">{buildScheduleUnitsLabel(transaction)}</p>
                         </TableCell>
 
-                        <TableCell className="py-3.5 min-w-45">
-                          <div className="flex items-center gap-1.5 mb-1">
-                            <Handshake className="w-3.5 h-3.5 text-stone-500 dark:text-stone-300" />
-                            <span className="text-xs font-semibold text-stone-600 dark:text-stone-300">Agreement</span>
-                          </div>
-                          <DealStateRow label="Provider" agreed={Boolean(transaction.provider_agreed)} />
+                        <TableCell className="py-3.5 min-w-45 space-y-1.5">
+                          <DealStateRow label="Owner" agreed={Boolean(transaction.provider_agreed)} />
                           <DealStateRow label="Client" agreed={Boolean(transaction.client_agreed)} />
                         </TableCell>
 
