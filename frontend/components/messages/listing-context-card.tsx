@@ -12,7 +12,7 @@ import {
   createListingReview,
   deleteListingReview,
   getMyListingReview,
-  markListingAsSold,
+  markListingAsComplete,
   updateListingReview,
   type ListingReviewPayload,
 } from "@/services/listingDetailService";
@@ -23,24 +23,26 @@ import {
 } from "@/services/messagingService";
 import { ConfirmActionModal } from "@/components/confirm-action-modal"; 
 import OfferModal from "@/components/offer-modal";
+import { ScheduleModal } from "@/components/schedule-modal";
 import { Separator } from "@/components/ui/separator";
 
 interface ListingContextCardProps {
   conversationId?: string;
   listing: ConversationListing;
   isSeller?: boolean;
-  onMarkedSold?: () => void;
+  onMarkedComplete?: () => void | Promise<void>;
   onOfferUpdated?: () => void | Promise<void>;
 }
 
-export default function ListingContextCard({ conversationId, listing, isSeller = false, onMarkedSold, onOfferUpdated }: ListingContextCardProps) {
+export default function ListingContextCard({ conversationId, listing, isSeller = false, onMarkedComplete, onOfferUpdated }: ListingContextCardProps) {
   const fmt = (n: number) =>
     "₱" + n.toLocaleString("en-PH", { minimumFractionDigits: 0 });
 
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [markingSold, setMarkingSold] = useState(false);
+  const [markingComplete, setMarkingComplete] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(false);
   const [editPriceOpen, setEditPriceOpen] = useState(false);
+  const [editScheduleOpen, setEditScheduleOpen] = useState(false);
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState("");
   const [offerMessage, setOfferMessage] = useState("");
@@ -56,10 +58,10 @@ export default function ListingContextCard({ conversationId, listing, isSeller =
   const isSold = normalizedStatus === "SOLD";
   const hasTransaction = normalizedTransactionStatus !== "";
   const isTransactionConfirmed = normalizedTransactionStatus === "CONFIRMED";
-  const canMarkAsSold = isSeller && listing.listingType === "SELL" && !isSold && isTransactionConfirmed;
-  const canDeal = listing.listingType === "SELL" && !isSold && hasTransaction && (normalizedTransactionStatus === "PENDING" || normalizedTransactionStatus === "CONFIRMED");
+  const canMarkAsComplete = isSeller && isTransactionConfirmed && (listing.listingType !== "SELL" || !isSold);
+  const canDeal = !isSold && hasTransaction && (normalizedTransactionStatus === "PENDING" || normalizedTransactionStatus === "CONFIRMED");
   const hasAgreed = Boolean(listing.userAgreed);
-  const canReviewSoldItem = !isSeller && listing.listingType === "SELL" && isSold;
+  const canReview = !isSeller && Boolean(listing.canReview);
   const offeredPrice = Number(listing.offer ?? 0) > 0 ? Number(listing.offer) : listing.price;
   const scheduleValue = String(listing.schedule ?? "").trim();
   const [ newPrice, setNewPrice ] = useState(offeredPrice);
@@ -69,7 +71,7 @@ export default function ListingContextCard({ conversationId, listing, isSeller =
     let mounted = true;
 
     const loadExistingReview = async () => {
-      if (!canReviewSoldItem) {
+      if (!canReview) {
         if (mounted) setExistingReview(null);
         return;
       }
@@ -93,7 +95,7 @@ export default function ListingContextCard({ conversationId, listing, isSeller =
     return () => {
       mounted = false;
     };
-  }, [canReviewSoldItem, listing.id]);
+  }, [canReview, listing.id]);
 
   const resetReviewForm = () => {
     setRating(0);
@@ -176,20 +178,20 @@ export default function ListingContextCard({ conversationId, listing, isSeller =
     }
   };
 
-  const handleConfirmMarkSold = async () => {
-    if (!canMarkAsSold || markingSold) return;
+  const handleConfirmMarkComplete = async () => {
+    if (!canMarkAsComplete || markingComplete) return;
 
-    setMarkingSold(true);
+    setMarkingComplete(true);
     try {
-      await markListingAsSold(listing.id);
-      toast.success("Listing marked as sold.", { position: "top-center" });
+      await markListingAsComplete(listing.id);
+      toast.success(listing.listingType === "SELL" ? "Listing marked as sold." : "Listing marked as complete.", { position: "top-center" });
       setConfirmOpen(false);
-      onMarkedSold?.();
+      await onMarkedComplete?.();
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err || "Failed to mark listing as sold.");
+      const message = err instanceof Error ? err.message : String(err || "Failed to complete listing transaction.");
       toast.error(message, { position: "top-center" });
     } finally {
-      setMarkingSold(false);
+      setMarkingComplete(false);
     }
   };
 
@@ -247,6 +249,31 @@ export default function ListingContextCard({ conversationId, listing, isSeller =
     }
   }
 
+  const handleEditScheduleAction = async (payload: {
+    startDate: string;
+    endDate: string;
+    startTime: string;
+    endTime: string;
+    message: string;
+  }) => {
+    try {
+      await openOrCreateConversationFromListing(listing.id, undefined, undefined, {
+        startDate: payload.startDate,
+        endDate: payload.endDate,
+        startTime: payload.startTime,
+        endTime: payload.endTime,
+        message: payload.message,
+      });
+      await onOfferUpdated?.();
+      setEditScheduleOpen(false);
+      toast.success("Schedule request sent.", { position: "top-center" });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to request schedule.";
+      toast.error(message, { position: "top-center" });
+      throw err;
+    }
+  };
+
   return (
     <>
       <div
@@ -290,7 +317,7 @@ export default function ListingContextCard({ conversationId, listing, isSeller =
           <p className="text-sm font-semibold text-stone-800 dark:text-stone-100 truncate leading-tight">
             {listing.listingType === "SELL"
               ? "Offered Price"
-              : "Schedule Provided"}
+              : "Provided Schedule"}
           </p>
           <div className="flex items-center gap-1.5 mt-0.5">
             <span className="text-xs font-bold text-amber-700 dark:text-amber-500">
@@ -305,35 +332,8 @@ export default function ListingContextCard({ conversationId, listing, isSeller =
           </div>
         </div>
 
-        {/* View link */}
-        {canMarkAsSold && (
-          <button
-            type="button"
-            onClick={() => setConfirmOpen(true)}
-            className="px-2.5 py-2 rounded-md text-[11px] font-semibold text-white bg-amber-700 hover:bg-amber-600 transition-colors shrink-0"
-            title="Mark listing as sold"
-          >
-            Mark as Sold
-          </button>
-        )}
-
-        {canReviewSoldItem && (
-          <button
-            type="button"
-            onClick={handleOpenReviewModal}
-            disabled={reviewLoading}
-            className="px-2.5 py-2 rounded-md text-[11px] font-semibold text-white bg-blue-700 hover:bg-blue-600 transition-colors shrink-0 disabled:opacity-60 disabled:cursor-not-allowed"
-            title={existingReview ? "Edit your review" : "Review this item"}
-          >
-            {reviewLoading
-              ? "Loading..."
-              : existingReview
-                ? "Edit Review"
-                : "Review"}
-          </button>
-        )}
-
-        {!isSold && (
+        {/* Edit Price Button */}
+        {listing.listingType === "SELL" && !isSold && (
           <button
             type="button"
             onClick={() => setEditPriceOpen(true)}
@@ -347,6 +347,24 @@ export default function ListingContextCard({ conversationId, listing, isSeller =
           </button>
         )}
 
+        {/* Edit Schedule Button */}
+        
+        {(listing.listingType === "RENT" || listing.listingType === "SERVICE") && (
+          <button
+            type="button"
+            onClick={() => setEditScheduleOpen(true)}
+            disabled={reviewLoading}
+            className="px-2.5 py-2 rounded-md text-[11px] font-semibold text-white bg-blue-700 hover:bg-blue-600 transition-colors shrink-0 disabled:opacity-60 disabled:cursor-not-allowed"
+            title="Edit schedule"
+          >
+            {hasTransaction && (normalizedTransactionStatus === "PENDING" || normalizedTransactionStatus === "CONFIRMED")
+              ? "Edit Schedule"
+              : "Provide Schedule"
+            }
+          </button>
+        )}
+
+        {/* Deal Button */}
         {canDeal && (
           <button
             type="button"
@@ -363,6 +381,36 @@ export default function ListingContextCard({ conversationId, listing, isSeller =
           </button>
         )}
 
+        {/* Mark as complete button */}
+        {canMarkAsComplete && (
+          <button
+            type="button"
+            onClick={() => setConfirmOpen(true)}
+            className="px-2.5 py-2 rounded-md text-[11px] font-semibold text-white bg-amber-700 hover:bg-amber-600 transition-colors shrink-0"
+            title={listing.listingType === "SELL" ? "Mark as Sold" : "Mark as Fulfilled"}
+          >
+            {listing.listingType === "SELL" ? "Mark as Sold" : "Mark as Fulfilled"}
+          </button>
+        )}
+
+        {/* Review button */}
+        {canReview && (
+          <button
+            type="button"
+            onClick={handleOpenReviewModal}
+            disabled={reviewLoading}
+            className="px-2.5 py-2 rounded-md text-[11px] font-semibold text-white bg-blue-700 hover:bg-blue-600 transition-colors shrink-0 disabled:opacity-60 disabled:cursor-not-allowed"
+            title={existingReview ? "Edit your review" : "Review this item"}
+          >
+            {reviewLoading
+              ? "Loading..."
+              : existingReview
+                ? "Edit Review"
+                : "Review"}
+          </button>
+        )}
+
+        {/* View link */}
         <Link
           href={`/listing/${listing.id}`}
           className="p-2 rounded-md text-stone-400 dark:text-stone-500 hover:text-amber-600 dark:hover:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors shrink-0"
@@ -373,11 +421,13 @@ export default function ListingContextCard({ conversationId, listing, isSeller =
       </div>
       <ConfirmActionModal
         open={confirmOpen}
-        title="Mark item as sold"
-        message="Please confirm that this For Sale item has already been sold. This action will mark the listing as SOLD."
+        title={listing.listingType === "SELL" ? "Mark item as sold" : "Mark transaction as fulfilled"}
+        message={listing.listingType === "SELL"
+          ? "Please confirm that this For Sale item has already been sold. This action will mark the listing as sold, and buyer will be able to provide review."
+          : "Please confirm that this transaction is fulfilled. This will mark the transaction as completed, and client will be able to provide review."}
         confirmLabel="Confirm"
-        loading={markingSold}
-        onConfirm={handleConfirmMarkSold}
+        loading={markingComplete}
+        onConfirm={handleConfirmMarkComplete}
         onClose={() => setConfirmOpen(false)}
       />
 
@@ -588,6 +638,24 @@ export default function ListingContextCard({ conversationId, listing, isSeller =
         onSubmit={handleEditPriceAction}
         onClose={handleCloseEditPriceModal}
       />
+
+      <ScheduleModal
+        open={editScheduleOpen}
+        onClose={() => setEditScheduleOpen(false)}
+        onSubmit={handleEditScheduleAction}
+        listingTitle={listing.title}
+        listingPrice={listing.price}
+        priceUnit={listing.priceUnit ?? ""}
+        availableFrom={listing.availableFrom}
+        daysOff={listing.daysOff ?? []}
+        timeWindows={listing.timeWindows ?? []}
+        initialStartAt={listing.scheduleStart}
+        initialEndAt={listing.scheduleEnd}
+        submitLabel={hasTransaction && (normalizedTransactionStatus === "PENDING" || normalizedTransactionStatus === "CONFIRMED")
+          ? "Update Schedule"
+          : "Request Schedule"}
+      />
+
     </>
   );
 }

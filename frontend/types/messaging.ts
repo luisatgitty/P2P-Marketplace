@@ -37,10 +37,16 @@ export interface ConversationListing {
   price: number;
   offer?: number;
   transactionStatus?: string;
+  canReview?: boolean;
   providerAgreed?: boolean;
   clientAgreed?: boolean;
   userAgreed?: boolean;
   schedule?: string;
+  scheduleStart?: string;
+  scheduleEnd?: string;
+  availableFrom?: string;
+  daysOff?: string[];
+  timeWindows?: { startTime: string; endTime: string }[];
   priceUnit?: string;
   listingType: ListingType;
   imageUrl?: string | null;

@@ -7,7 +7,7 @@ import Link from "next/link";
 import {
   MapPin, Star, MessageCircle, Bookmark, Share2,
   ChevronLeft, ChevronRight, Flag, Eye, Clock, Package,
-  CheckCircle, Phone, Zap, ArrowLeft, Truck, CalendarDays,
+  CheckCircle, Phone, Zap, ArrowLeft, Truck
 } from "lucide-react";
 import { useUser } from "@/utils/UserContext";
 import { addListingBookmark, getListingDetailById, removeListingBookmark, submitListingReport } from "@/services/listingDetailService";
@@ -17,7 +17,7 @@ import ListingTypeBadge from "@/components/listing-type-badge";
 import ListingConditionBadge from "@/components/listing-condition-badge";
 import VerificationBadge from "@/components/verification-badge";
 import { LoadingPage } from "@/components/loading";
-import { RequestToRentModal, BookServiceModal } from "@/components/request-modals";
+import { ScheduleModal } from "@/components/schedule-modal";
 import { ReportModal } from "@/components/report-modal";
 import OfferModal from "@/components/offer-modal";
 import { openOrCreateConversationFromListing } from "@/services/messagingService";
@@ -40,6 +40,8 @@ interface ExtraDetail {
   availability?:  string;
   deposit?:       string;
   amenities?:     string[];
+  daysOff?:       string[];
+  timeWindows?:   { startTime: string; endTime: string }[];
   // Service-specific
   turnaround?:    string;
   serviceArea?:   string;
@@ -56,6 +58,8 @@ function getDefaultExtra(listing: PostCardProps): ExtraDetail {
     views:          Math.floor(Math.random() * 200) + 20,
     offers:         Math.floor(Math.random() * 10),
     deliveryMethod: listing.type === "service" ? "On-site service" : "Meet-up or Delivery",
+    daysOff:        [],
+    timeWindows:    [],
     arrangement:    "",
   };
 }
@@ -217,9 +221,8 @@ export default function ListingDetailPage() {
   const [offerAmount, setOfferAmt]   = useState("");
   const [offerMessage, setOfferMessage] = useState("");
   const [submittingOffer, setSubmittingOffer] = useState(false);
-  const [rentOpen,  setRentOpen]  = useState(false);
-  const [bookOpen,  setBookOpen]  = useState(false);
-          const [reportOpen,  setReportOpen] = useState(false);
+  const [scheduleOpen,  setScheduleOpen]  = useState(false);
+  const [reportOpen,  setReportOpen] = useState(false);
   const [submittingReport, setSubmittingReport] = useState(false);
   const [shownContactNumber, setShownContactNumber] = useState<string | null>(null);
   const [deleting,    setDeleting]   = useState(false);
@@ -410,8 +413,8 @@ export default function ListingDetailPage() {
 
   function handleBuy() {
     if (!isAuth) { router.push("/login"); return; }
-    if (isRent)    { setRentOpen(true);  return; }
-    if (isService) { setBookOpen(true);  return; }
+    if (isRent)    { setScheduleOpen(true);  return; }
+    if (isService) { setScheduleOpen(true);  return; }
     setOfferOpen(true); // sell — unchanged
   }
 
@@ -439,6 +442,36 @@ export default function ListingDetailPage() {
       toast.error(message, { position: "top-center" });
     } finally {
       setSubmittingOffer(false);
+    }
+  }
+
+  async function sendSchedule(payload: {
+    startDate: string;
+    endDate: string;
+    startTime: string;
+    endTime: string;
+    message: string;
+  }) {
+    if (!listing) return;
+    if (!isAuth) {
+      router.push("/login");
+      return;
+    }
+
+    try {
+      const conversationId = await openOrCreateConversationFromListing(listing.id, undefined, undefined, {
+        startDate: payload.startDate,
+        endDate: payload.endDate,
+        startTime: payload.startTime,
+        endTime: payload.endTime,
+        message: payload.message,
+      });
+      setScheduleOpen(false);
+      router.push(`/messages/${conversationId}`);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to request schedule.";
+      toast.error(message, { position: "top-center" });
+      throw err;
     }
   }
 
@@ -858,22 +891,18 @@ export default function ListingDetailPage() {
         onClose={() => setOfferOpen(false)}
       />
 
-      {/* ══ REQUEST TO RENT MODAL ══════════════════════════════════════════════ */}
-      <RequestToRentModal
-        open={rentOpen}
-        onClose={() => setRentOpen(false)}
+      {/* ══ SCHEDULE REQUEST MODAL ══════════════════════════════════════════════ */}
+      <ScheduleModal
+        open={scheduleOpen}
+        onClose={() => setScheduleOpen(false)}
+        onSubmit={sendSchedule}
         listingTitle={listing.title}
         listingPrice={listing.price}
         priceUnit={listing.priceUnit ?? ""}
-      />
-
-      {/* ══ BOOK SERVICE MODAL ════════════════════════════════════════════════ */}
-      <BookServiceModal
-        open={bookOpen}
-        onClose={() => setBookOpen(false)}
-        listingTitle={listing.title}
-        listingPrice={listing.price}
-        priceUnit={listing.priceUnit ?? ""}
+        availableFrom={extra.available_from}
+        daysOff={extra.daysOff ?? []}
+        timeWindows={extra.timeWindows ?? []}
+        submitLabel={isService ? "Request Service Schedule" : "Request Rent Schedule"}
       />
 
       {/* ══ REPORT MODAL ══════════════════════════════════════════════════════ */}
