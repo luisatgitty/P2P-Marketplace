@@ -20,6 +20,7 @@ type ConversationFromDb struct {
 	ListingPriceUnit   string     `gorm:"column:listing_price_unit"`
 	ListingType        string     `gorm:"column:listing_type"`
 	ListingStatus      string     `gorm:"column:listing_status"`
+	CanReview          bool       `gorm:"column:can_review"`
 	ListingImageUrl    string     `gorm:"column:listing_image_url"`
 	OtherUserId        string     `gorm:"column:other_user_id"`
 	OtherFirstName     string     `gorm:"column:other_first_name"`

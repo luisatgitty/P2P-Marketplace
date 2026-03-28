@@ -930,9 +930,9 @@ func MarkListingAsComplete(userId, listingId string) ([]string, bool, error) {
 	case "sell":
 		actionContent = fmt.Sprintf("__SOLD_ACTION__:%s sold the item", actorFirstName)
 	case "rent":
-		actionContent = fmt.Sprintf("__SOLD_ACTION__:%s completed the rental", actorFirstName)
+		actionContent = fmt.Sprintf("__SOLD_ACTION__:%s fulfilled the rental", actorFirstName)
 	case "service":
-		actionContent = fmt.Sprintf("__SOLD_ACTION__:%s completed the service", actorFirstName)
+		actionContent = fmt.Sprintf("__SOLD_ACTION__:%s fulfilled the service", actorFirstName)
 	}
 	affectedConversationIds := make([]string, 0, len(affectedRows))
 	for _, row := range affectedRows {

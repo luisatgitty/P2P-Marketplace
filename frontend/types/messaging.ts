@@ -37,6 +37,7 @@ export interface ConversationListing {
   price: number;
   offer?: number;
   transactionStatus?: string;
+  canReview?: boolean;
   providerAgreed?: boolean;
   clientAgreed?: boolean;
   userAgreed?: boolean;

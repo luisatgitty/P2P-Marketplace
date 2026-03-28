@@ -61,7 +61,7 @@ export default function ListingContextCard({ conversationId, listing, isSeller =
   const canMarkAsComplete = isSeller && isTransactionConfirmed && (listing.listingType !== "SELL" || !isSold);
   const canDeal = !isSold && hasTransaction && (normalizedTransactionStatus === "PENDING" || normalizedTransactionStatus === "CONFIRMED");
   const hasAgreed = Boolean(listing.userAgreed);
-  const canReviewSoldItem = !isSeller && listing.listingType === "SELL" && isSold;
+  const canReview = !isSeller && Boolean(listing.canReview);
   const offeredPrice = Number(listing.offer ?? 0) > 0 ? Number(listing.offer) : listing.price;
   const scheduleValue = String(listing.schedule ?? "").trim();
   const [ newPrice, setNewPrice ] = useState(offeredPrice);
@@ -71,7 +71,7 @@ export default function ListingContextCard({ conversationId, listing, isSeller =
     let mounted = true;
 
     const loadExistingReview = async () => {
-      if (!canReviewSoldItem) {
+      if (!canReview) {
         if (mounted) setExistingReview(null);
         return;
       }
@@ -95,7 +95,7 @@ export default function ListingContextCard({ conversationId, listing, isSeller =
     return () => {
       mounted = false;
     };
-  }, [canReviewSoldItem, listing.id]);
+  }, [canReview, listing.id]);
 
   const resetReviewForm = () => {
     setRating(0);
@@ -394,7 +394,7 @@ export default function ListingContextCard({ conversationId, listing, isSeller =
         )}
 
         {/* Review button */}
-        {canReviewSoldItem && (
+        {canReview && (
           <button
             type="button"
             onClick={handleOpenReviewModal}

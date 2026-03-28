@@ -42,6 +42,16 @@ func GetConversationsByUser(userId string) ([]model.ConversationFromDb, error) {
 			COALESCE(l.price_unit, '') AS listing_price_unit,
 			l.listing_type::text AS listing_type,
 			l.status::text AS listing_status,
+			CASE
+				WHEN c.seller_id = $1::uuid THEN FALSE
+				ELSE EXISTS(
+					SELECT 1
+					FROM public.listing_transactions lt_review
+					WHERE lt_review.listing_id = c.listing_id
+						AND lt_review.client_id = $1::uuid
+						AND lt_review.status = 'COMPLETED'
+				)
+			END AS can_review,
 			COALESCE(li.image_url, '') AS listing_image_url,
 			u.id AS other_user_id,
 			u.first_name AS other_first_name,
@@ -146,6 +156,16 @@ func GetConversationById(userId, conversationId string) (model.ConversationFromD
 			COALESCE(l.price_unit, '') AS listing_price_unit,
 			l.listing_type::text AS listing_type,
 			l.status::text AS listing_status,
+			CASE
+				WHEN c.seller_id = $1::uuid THEN FALSE
+				ELSE EXISTS(
+					SELECT 1
+					FROM public.listing_transactions lt_review
+					WHERE lt_review.listing_id = c.listing_id
+						AND lt_review.client_id = $1::uuid
+						AND lt_review.status = 'COMPLETED'
+				)
+			END AS can_review,
 			COALESCE(li.image_url, '') AS listing_image_url,
 			u.id AS other_user_id,
 			u.first_name AS other_first_name,

@@ -97,6 +97,7 @@ func mapConversationPayload(baseURL string, row model.ConversationFromDb) map[st
 			"providerAgreed":    row.ProviderAgreed,
 			"clientAgreed":      row.ClientAgreed,
 			"userAgreed":        row.UserAgreed,
+			"canReview":         row.CanReview,
 			"schedule":          formatConversationSchedule(row.ScheduleStart, row.ScheduleEnd),
 			"scheduleStart":     scheduleStart,
 			"scheduleEnd":       scheduleEnd,
