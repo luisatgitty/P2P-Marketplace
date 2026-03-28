@@ -340,6 +340,33 @@ type AdminListingListItemFromDb struct {
 	Created  time.Time `gorm:"column:created" json:"created"`
 }
 
+type AdminTransactionListItemFromDb struct {
+	Id                    string     `gorm:"column:id" json:"id"`
+	ListingId             string     `gorm:"column:listing_id" json:"listing_id"`
+	ListingType           string     `gorm:"column:listing_type" json:"listing_type"`
+	ListingTitle          string     `gorm:"column:listing_title" json:"listing_title"`
+	ListingPriceUnit      string     `gorm:"column:listing_price_unit" json:"listing_price_unit"`
+	ListingImageURL       string     `gorm:"column:listing_image_url" json:"listing_image_url"`
+	ClientUserId          string     `gorm:"column:client_user_id" json:"client_user_id"`
+	ClientFullName        string     `gorm:"column:client_full_name" json:"client_full_name"`
+	ClientLocation        string     `gorm:"column:client_location" json:"client_location"`
+	ClientProfileImageURL string     `gorm:"column:client_profile_image_url" json:"client_profile_image_url"`
+	OwnerUserId           string     `gorm:"column:owner_user_id" json:"owner_user_id"`
+	OwnerFullName         string     `gorm:"column:owner_full_name" json:"owner_full_name"`
+	OwnerLocation         string     `gorm:"column:owner_location" json:"owner_location"`
+	OwnerProfileImageURL  string     `gorm:"column:owner_profile_image_url" json:"owner_profile_image_url"`
+	StartDate             *time.Time `gorm:"column:start_date" json:"start_date"`
+	EndDate               *time.Time `gorm:"column:end_date" json:"end_date"`
+	SelectedTimeWindow    string     `gorm:"column:selected_time_window" json:"selected_time_window"`
+	TotalPrice            int        `gorm:"column:total_price" json:"total_price"`
+	ScheduleUnits         int        `gorm:"column:schedule_units" json:"schedule_units"`
+	ProviderAgreed        bool       `gorm:"column:provider_agreed" json:"provider_agreed"`
+	ClientAgreed          bool       `gorm:"column:client_agreed" json:"client_agreed"`
+	Status                string     `gorm:"column:status" json:"status"`
+	CompletedAt           *time.Time `gorm:"column:completed_at" json:"completed_at"`
+	CreatedAt             time.Time  `gorm:"column:created_at" json:"created_at"`
+}
+
 type AdminReportListItemFromDb struct {
 	Id             string     `gorm:"column:id" json:"id"`
 	ReporterId     string     `gorm:"column:reporter_id" json:"reporter_id"`

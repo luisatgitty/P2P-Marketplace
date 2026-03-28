@@ -11,6 +11,7 @@ import {
   LayoutDashboard,
   Users,
   Package,
+  Handshake,
   Flag,
   ShieldCheck,
   Settings,
@@ -44,6 +45,7 @@ const NAV: NavItem[] = [
   { href: "/admin/dashboard", label: "Dashboard", Icon: LayoutDashboard },
   { href: "/admin/users", label: "Users", Icon: Users },
   { href: "/admin/listings", label: "Listings", Icon: Package },
+  { href: "/admin/transactions", label: "Transactions", Icon: Handshake },
   { href: "/admin/reports", label: "Reports", Icon: Flag },
   { href: "/admin/verifications", label: "Verifications", Icon: ShieldCheck },
 ];
