@@ -16,7 +16,7 @@ function ConversationShell({ children }: { children: React.ReactNode }) {
   const {
     conversation,
     onDelete,
-    onMarkedSold,
+    onMarkedComplete,
     onOfferUpdated,
     onSend,
     inputDisabled,
@@ -28,14 +28,14 @@ function ConversationShell({ children }: { children: React.ReactNode }) {
     <div className="flex flex-col h-full overflow-hidden bg-white dark:bg-[#0f1117]">
       {conversation ? (
         <>
-          <ChatHeader conversation={conversation} onDelete={onDelete} onMarkedSold={onMarkedSold} />
+          <ChatHeader conversation={conversation} onDelete={onDelete} onMarkedComplete={onMarkedComplete} />
           <div className="relative flex-1 overflow-hidden">
             <div className="absolute top-2 left-0 right-0 z-20 px-4 pointer-events-auto">
               <ListingContextCard
                 conversationId={conversation.id}
                 listing={conversation.listing}
                 isSeller={conversation.isSeller}
-                onMarkedSold={onMarkedSold}
+                onMarkedComplete={onMarkedComplete}
                 onOfferUpdated={onOfferUpdated}
               />
             </div>

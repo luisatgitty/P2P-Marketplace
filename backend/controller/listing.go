@@ -325,7 +325,7 @@ func RemoveListingBookmark(c *fiber.Ctx) error {
 	})
 }
 
-func MarkListingAsSold(c *fiber.Ctx) error {
+func MarkListingAsComplete(c *fiber.Ctx) error {
 	listingId := strings.TrimSpace(c.Params("id"))
 	if listingId == "" {
 		return SendErrorResponse(c, 400, "Listing ID is required", nil)
@@ -336,23 +336,25 @@ func MarkListingAsSold(c *fiber.Ctx) error {
 		return SendErrorResponse(c, 401, "User is not authenticated", nil)
 	}
 
-	affectedConversationIds, err := repository.MarkListingAsSold(userId, listingId)
+	affectedConversationIds, listingMarkedSold, err := repository.MarkListingAsComplete(userId, listingId)
 	if err != nil {
 		return SendErrorResponse(c, 400, err.Error(), err)
 	}
 
-	participantIds, participantErr := repository.GetParticipantUserIdsByListing(listingId)
-	if participantErr == nil {
-		for _, targetUserId := range participantIds {
-			middleware.RealtimeHub.SendToUser(targetUserId, map[string]any{
-				"type": "listing:status",
-				"data": map[string]any{
-					"listingId":   listingId,
-					"status":      "SOLD",
-					"sellStatus":  "SOLD",
-					"updatedById": userId,
-				},
-			})
+	if listingMarkedSold {
+		participantIds, participantErr := repository.GetParticipantUserIdsByListing(listingId)
+		if participantErr == nil {
+			for _, targetUserId := range participantIds {
+				middleware.RealtimeHub.SendToUser(targetUserId, map[string]any{
+					"type": "listing:status",
+					"data": map[string]any{
+						"listingId":   listingId,
+						"status":      "SOLD",
+						"sellStatus":  "SOLD",
+						"updatedById": userId,
+					},
+				})
+			}
 		}
 	}
 
@@ -376,10 +378,15 @@ func MarkListingAsSold(c *fiber.Ctx) error {
 		middleware.RealtimeHub.SendToUser(userId, realtimeMessagePayload)
 	}
 
-	return SendSuccessResponse(c, 200, "Listing marked as sold successfully", map[string]any{
+	response := map[string]any{
 		"listingId": listingId,
-		"status":    "SOLD",
-	})
+		"completed": true,
+	}
+	if listingMarkedSold {
+		response["status"] = "SOLD"
+	}
+
+	return SendSuccessResponse(c, 200, "Listing transaction completed successfully", response)
 }
 
 func ReportListing(c *fiber.Ctx) error {

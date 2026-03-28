@@ -840,11 +840,11 @@ func DeleteListing(userId, listingId string) error {
 	return nil
 }
 
-func MarkListingAsSold(userId, listingId string) ([]string, error) {
+func MarkListingAsComplete(userId, listingId string) ([]string, bool, error) {
 	db := middleware.DBConn
 	tx := db.Begin()
 	if tx.Error != nil {
-		return nil, tx.Error
+		return nil, false, tx.Error
 	}
 
 	defer func() {
@@ -870,17 +870,12 @@ func MarkListingAsSold(userId, listingId string) ([]string, error) {
 	row := tx.Raw(checkQuery, listingId).Row()
 	if err := row.Scan(&ownerId, &listingType, &sellStatus); err != nil {
 		tx.Rollback()
-		return nil, fmt.Errorf("Listing not found")
+		return nil, false, fmt.Errorf("Listing not found")
 	}
 
 	if strings.TrimSpace(ownerId) != strings.TrimSpace(userId) {
 		tx.Rollback()
-		return nil, fmt.Errorf("Only the seller can mark this listing as sold")
-	}
-
-	if listingType != "sell" {
-		tx.Rollback()
-		return nil, fmt.Errorf("Only For Sale listings can be marked as sold")
+		return nil, false, fmt.Errorf("Only the seller can complete this listing transaction")
 	}
 
 	var confirmedCount int
@@ -892,16 +887,16 @@ func MarkListingAsSold(userId, listingId string) ([]string, error) {
 	`
 	if err := tx.Raw(confirmedQuery, listingId).Scan(&confirmedCount).Error; err != nil {
 		tx.Rollback()
-		return nil, fmt.Errorf("Failed to verify listing transaction")
+		return nil, false, fmt.Errorf("Failed to verify listing transaction")
 	}
 	if confirmedCount == 0 {
 		tx.Rollback()
-		return nil, fmt.Errorf("A confirmed transaction is required before marking this listing as sold")
+		return nil, false, fmt.Errorf("A confirmed transaction is required before completing this listing transaction")
 	}
 
-	if strings.EqualFold(strings.TrimSpace(sellStatus), "SOLD") {
+	if listingType == "sell" && strings.EqualFold(strings.TrimSpace(sellStatus), "SOLD") {
 		tx.Rollback()
-		return nil, fmt.Errorf("Listing is already marked as sold")
+		return nil, false, fmt.Errorf("Listing is already marked as sold")
 	}
 
 	affectedRows := make([]struct {
@@ -921,16 +916,24 @@ func MarkListingAsSold(userId, listingId string) ([]string, error) {
 	`
 	if err := tx.Raw(affectedQuery, listingId).Scan(&affectedRows).Error; err != nil {
 		tx.Rollback()
-		return nil, fmt.Errorf("Failed to resolve confirmed transaction conversation")
+		return nil, false, fmt.Errorf("Failed to resolve confirmed transaction conversation")
 	}
 
 	actorFirstName, err := getUserFirstNameTx(tx, userId)
 	if err != nil {
 		tx.Rollback()
-		return nil, err
+		return nil, false, err
 	}
 
-	actionContent := fmt.Sprintf("__DEAL_ACTION__:%s sold the item", actorFirstName)
+	actionContent := fmt.Sprintf("__SOLD_ACTION__:%s completed the transaction", actorFirstName)
+	switch listingType {
+	case "sell":
+		actionContent = fmt.Sprintf("__SOLD_ACTION__:%s sold the item", actorFirstName)
+	case "rent":
+		actionContent = fmt.Sprintf("__SOLD_ACTION__:%s completed the rental", actorFirstName)
+	case "service":
+		actionContent = fmt.Sprintf("__SOLD_ACTION__:%s completed the service", actorFirstName)
+	}
 	affectedConversationIds := make([]string, 0, len(affectedRows))
 	for _, row := range affectedRows {
 		conversationId := strings.TrimSpace(row.ConversationId)
@@ -942,7 +945,7 @@ func MarkListingAsSold(userId, listingId string) ([]string, error) {
 		actionMessage, insertErr := insertConversationMessageTx(tx, conversationId, userId, buyerId, actionContent)
 		if insertErr != nil {
 			tx.Rollback()
-			return nil, insertErr
+			return nil, false, insertErr
 		}
 
 		updateConversationQuery := `
@@ -957,21 +960,25 @@ func MarkListingAsSold(userId, listingId string) ([]string, error) {
 		`
 		if err := tx.Exec(updateConversationQuery, conversationId, actionMessage.Id, strings.TrimSpace(actionMessage.Content), userId, actionMessage.CreatedAt).Error; err != nil {
 			tx.Rollback()
-			return nil, fmt.Errorf("Failed to update conversation metadata")
+			return nil, false, fmt.Errorf("Failed to update conversation metadata")
 		}
 
 		affectedConversationIds = append(affectedConversationIds, conversationId)
 	}
 
-	updateListingQuery := `
-		UPDATE public.listings
-		SET status = 'SOLD',
-			updated_at = now()
-		WHERE id = $1
-	`
-	if err := tx.Exec(updateListingQuery, listingId).Error; err != nil {
-		tx.Rollback()
-		return nil, fmt.Errorf("Failed to update listing status")
+	listingMarkedSold := false
+	if listingType == "sell" {
+		updateListingQuery := `
+			UPDATE public.listings
+			SET status = 'SOLD',
+				updated_at = now()
+			WHERE id = $1
+		`
+		if err := tx.Exec(updateListingQuery, listingId).Error; err != nil {
+			tx.Rollback()
+			return nil, false, fmt.Errorf("Failed to update listing status")
+		}
+		listingMarkedSold = true
 	}
 
 	completeTransactionQuery := `
@@ -984,14 +991,14 @@ func MarkListingAsSold(userId, listingId string) ([]string, error) {
 	`
 	if err := tx.Exec(completeTransactionQuery, listingId).Error; err != nil {
 		tx.Rollback()
-		return nil, fmt.Errorf("Failed to complete listing transaction")
+		return nil, false, fmt.Errorf("Failed to complete listing transaction")
 	}
 
 	if err := tx.Commit().Error; err != nil {
-		return nil, err
+		return nil, false, err
 	}
 
-	return affectedConversationIds, nil
+	return affectedConversationIds, listingMarkedSold, nil
 }
 
 func GetListingDetailById(listingId string) (model.ListingDetailFromDb, error) {

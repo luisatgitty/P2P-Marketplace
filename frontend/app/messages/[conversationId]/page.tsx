@@ -649,19 +649,6 @@ export default function ConversationPage() {
     }
   };
 
-  const handleMarkedSold = useCallback(() => {
-    setConversation((prev) => {
-      if (!prev) return prev;
-      return {
-        ...prev,
-        listing: {
-          ...prev.listing,
-          status: "SOLD",
-        },
-      };
-    });
-  }, []);
-
   const handleOfferUpdated = useCallback(async () => {
     if (isDraftConversation || !conversationId) return;
 
@@ -676,6 +663,10 @@ export default function ConversationPage() {
     setMessages(freshMessages);
     await markConversationRead(conversationId);
   }, [conversationId, isDraftConversation]);
+
+  const handleMarkedComplete = useCallback(async () => {
+    await handleOfferUpdated();
+  }, [handleOfferUpdated]);
 
   const handleCancelReply = useCallback(() => {
     setReplyTo(null);
@@ -702,21 +693,21 @@ export default function ConversationPage() {
     setShellState((prev) => ({
       ...prev,
       onDelete: handleDeleteConversation,
-      onMarkedSold: handleMarkedSold,
+      onMarkedComplete: handleMarkedComplete,
       onOfferUpdated: handleOfferUpdated,
       onSend: handleSend,
       inputDisabled: loading || sending || !conversation,
       replyTo,
       onCancelReply: handleCancelReply,
     }));
-  }, [conversation, handleCancelReply, handleDeleteConversation, handleMarkedSold, handleOfferUpdated, handleSend, loading, replyTo, sending, setShellState]);
+  }, [conversation, handleCancelReply, handleDeleteConversation, handleMarkedComplete, handleOfferUpdated, handleSend, loading, replyTo, sending, setShellState]);
 
   useEffect(() => {
     return () => {
       setShellState((prev) => ({
         ...prev,
         onDelete: undefined,
-        onMarkedSold: undefined,
+        onMarkedComplete: undefined,
         onOfferUpdated: undefined,
         inputDisabled: true,
         replyTo: null,

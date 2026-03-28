@@ -1550,9 +1550,16 @@ func ToggleConversationTransactionAgreement(userId, conversationId string) (mode
 	var listingId string
 	var buyerId string
 	var sellerId string
+	var listingType string
 	memberQuery := `
-		SELECT c.listing_id::text, c.buyer_id::text, c.seller_id::text
+		SELECT
+			c.listing_id::text,
+			c.buyer_id::text,
+			c.seller_id::text,
+			LOWER(l.listing_type::text) AS listing_type
 		FROM public.conversations c
+		JOIN public.listings l
+			ON l.id = c.listing_id
 		JOIN public.conversation_members cm
 			ON cm.conversation_id = c.id
 			AND cm.user_id = $2
@@ -1560,7 +1567,7 @@ func ToggleConversationTransactionAgreement(userId, conversationId string) (mode
 		WHERE c.id = $1
 		LIMIT 1
 	`
-	if err := tx.Raw(memberQuery, conversationId, userId).Row().Scan(&listingId, &buyerId, &sellerId); err != nil {
+	if err := tx.Raw(memberQuery, conversationId, userId).Row().Scan(&listingId, &buyerId, &sellerId, &listingType); err != nil {
 		tx.Rollback()
 		return state, fmt.Errorf("Conversation not found")
 	}
@@ -1634,6 +1641,9 @@ func ToggleConversationTransactionAgreement(userId, conversationId string) (mode
 	}
 
 	actionSuffix := fmt.Sprintf("%s agreed to the offer", actorFirstName)
+	if listingType != "sell" {
+		actionSuffix = fmt.Sprintf("%s agreed to schedule", actorFirstName)
+	}
 	if !userAgreedNow {
 		actionSuffix = fmt.Sprintf("%s withdrew agreement", actorFirstName)
 	}

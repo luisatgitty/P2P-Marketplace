@@ -12,7 +12,7 @@ import {
   createListingReview,
   deleteListingReview,
   getMyListingReview,
-  markListingAsSold,
+  markListingAsComplete,
   updateListingReview,
   type ListingReviewPayload,
 } from "@/services/listingDetailService";
@@ -30,16 +30,16 @@ interface ListingContextCardProps {
   conversationId?: string;
   listing: ConversationListing;
   isSeller?: boolean;
-  onMarkedSold?: () => void;
+  onMarkedComplete?: () => void | Promise<void>;
   onOfferUpdated?: () => void | Promise<void>;
 }
 
-export default function ListingContextCard({ conversationId, listing, isSeller = false, onMarkedSold, onOfferUpdated }: ListingContextCardProps) {
+export default function ListingContextCard({ conversationId, listing, isSeller = false, onMarkedComplete, onOfferUpdated }: ListingContextCardProps) {
   const fmt = (n: number) =>
     "₱" + n.toLocaleString("en-PH", { minimumFractionDigits: 0 });
 
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [markingSold, setMarkingSold] = useState(false);
+  const [markingComplete, setMarkingComplete] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(false);
   const [editPriceOpen, setEditPriceOpen] = useState(false);
   const [editScheduleOpen, setEditScheduleOpen] = useState(false);
@@ -58,8 +58,8 @@ export default function ListingContextCard({ conversationId, listing, isSeller =
   const isSold = normalizedStatus === "SOLD";
   const hasTransaction = normalizedTransactionStatus !== "";
   const isTransactionConfirmed = normalizedTransactionStatus === "CONFIRMED";
-  const canMarkAsSold = isSeller && listing.listingType === "SELL" && !isSold && isTransactionConfirmed;
-  const canDeal = listing.listingType === "SELL" && !isSold && hasTransaction && (normalizedTransactionStatus === "PENDING" || normalizedTransactionStatus === "CONFIRMED");
+  const canMarkAsComplete = isSeller && isTransactionConfirmed && (listing.listingType !== "SELL" || !isSold);
+  const canDeal = !isSold && hasTransaction && (normalizedTransactionStatus === "PENDING" || normalizedTransactionStatus === "CONFIRMED");
   const hasAgreed = Boolean(listing.userAgreed);
   const canReviewSoldItem = !isSeller && listing.listingType === "SELL" && isSold;
   const offeredPrice = Number(listing.offer ?? 0) > 0 ? Number(listing.offer) : listing.price;
@@ -178,20 +178,20 @@ export default function ListingContextCard({ conversationId, listing, isSeller =
     }
   };
 
-  const handleConfirmMarkSold = async () => {
-    if (!canMarkAsSold || markingSold) return;
+  const handleConfirmMarkComplete = async () => {
+    if (!canMarkAsComplete || markingComplete) return;
 
-    setMarkingSold(true);
+    setMarkingComplete(true);
     try {
-      await markListingAsSold(listing.id);
-      toast.success("Listing marked as sold.", { position: "top-center" });
+      await markListingAsComplete(listing.id);
+      toast.success(listing.listingType === "SELL" ? "Listing marked as sold." : "Listing marked as complete.", { position: "top-center" });
       setConfirmOpen(false);
-      onMarkedSold?.();
+      await onMarkedComplete?.();
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err || "Failed to mark listing as sold.");
+      const message = err instanceof Error ? err.message : String(err || "Failed to complete listing transaction.");
       toast.error(message, { position: "top-center" });
     } finally {
-      setMarkingSold(false);
+      setMarkingComplete(false);
     }
   };
 
@@ -365,7 +365,7 @@ export default function ListingContextCard({ conversationId, listing, isSeller =
         )}
 
         {/* Deal Button */}
-        {listing.listingType === "SELL" && canDeal && (
+        {canDeal && (
           <button
             type="button"
             onClick={handleDealAction}
@@ -381,15 +381,15 @@ export default function ListingContextCard({ conversationId, listing, isSeller =
           </button>
         )}
 
-        {/* Mark as Sold Button */}
-        {listing.listingType === "SELL" && canMarkAsSold && (
+        {/* Mark as complete button */}
+        {canMarkAsComplete && (
           <button
             type="button"
             onClick={() => setConfirmOpen(true)}
             className="px-2.5 py-2 rounded-md text-[11px] font-semibold text-white bg-amber-700 hover:bg-amber-600 transition-colors shrink-0"
-            title="Mark listing as sold"
+            title={listing.listingType === "SELL" ? "Mark as Sold" : "Mark as Fulfilled"}
           >
-            Mark as Sold
+            {listing.listingType === "SELL" ? "Mark as Sold" : "Mark as Fulfilled"}
           </button>
         )}
 
@@ -421,11 +421,13 @@ export default function ListingContextCard({ conversationId, listing, isSeller =
       </div>
       <ConfirmActionModal
         open={confirmOpen}
-        title="Mark item as sold"
-        message="Please confirm that this For Sale item has already been sold. This action will mark the listing as SOLD."
+        title={listing.listingType === "SELL" ? "Mark item as sold" : "Mark transaction as fulfilled"}
+        message={listing.listingType === "SELL"
+          ? "Please confirm that this For Sale item has already been sold. This action will mark the listing as sold, and buyer will be able to provide review."
+          : "Please confirm that this transaction is fulfilled. This will mark the transaction as completed, and client will be able to provide review."}
         confirmLabel="Confirm"
-        loading={markingSold}
-        onConfirm={handleConfirmMarkSold}
+        loading={markingComplete}
+        onConfirm={handleConfirmMarkComplete}
         onClose={() => setConfirmOpen(false)}
       />
 

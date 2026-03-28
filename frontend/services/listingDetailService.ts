@@ -144,16 +144,16 @@ export async function submitUserListingReport(
   }
 }
 
-export async function markListingAsSold(id: string): Promise<void> {
+export async function markListingAsComplete(id: string): Promise<void> {
   try {
-    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/listing/${id}/mark-sold`, {
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/listing/${id}/mark-complete`, {
       method: "PATCH",
       credentials: "include",
     });
 
     if (!res.ok) {
       const parsedJson = await res.json();
-      throw parsedJson?.data?.message || "Failed to mark listing as sold.";
+      throw parsedJson?.data?.message || "Failed to complete listing transaction.";
     }
   } catch (err) {
     if (typeof err === "string") throw err;
