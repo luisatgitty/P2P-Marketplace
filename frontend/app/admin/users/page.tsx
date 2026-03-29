@@ -342,6 +342,9 @@ export default function UsersPage() {
                 <TableRow className="border-stone-200 dark:border-[#2a2d3e] bg-stone-50 dark:bg-[#13151f] hover:bg-stone-50 dark:hover:bg-[#13151f]">
                   <SortableTH label="Name"         field="name"         />
                   <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest whitespace-nowrap">
+                    Contact Info
+                  </TableHead>
+                  <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest whitespace-nowrap">
                     Location
                   </TableHead>
                   <SortableTH label="Verification" field="verification" />
@@ -376,7 +379,7 @@ export default function UsersPage() {
                       key={user.id}
                       className="border-stone-100 dark:border-[#2a2d3e] hover:bg-stone-50 dark:hover:bg-[#252837] transition-colors"
                     >
-                      {/* Name + email + phone */}
+                      {/* Name */}
                       <TableCell className="py-2">
                         <div className="flex items-center gap-3 min-w-0">
                           <Link
@@ -397,13 +400,24 @@ export default function UsersPage() {
                           </Link>
                           <div className="min-w-0">
                             <p className="text-sm font-bold text-stone-800 dark:text-stone-100 truncate max-w-40">
-                              {user.first_name} {user.last_name}
+                              {user.first_name}
                             </p>
-                            <p className="text-xs text-stone-400 dark:text-stone-500 truncate max-w-40">
+                            <p className="text-sm font-bold text-stone-800 dark:text-stone-100 truncate max-w-40">
+                              {user.last_name}
+                            </p>
+                          </div>
+                        </div>
+                      </TableCell>
+
+                      {/* Email + Phone Number */}
+                      <TableCell className="py-2">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="min-w-0">
+                            <p className="text-sm truncate max-w-40">
                               {user.email}
                             </p>
                             {user.phone && (
-                              <p className="text-xs text-stone-400 dark:text-stone-500">
+                              <p className="text-sm text-stone-400 dark:text-stone-500">
                                 {user.phone}
                               </p>
                             )}

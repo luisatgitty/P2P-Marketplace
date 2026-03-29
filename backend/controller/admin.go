@@ -10,6 +10,17 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
+func adminToAbsoluteAssetURL(baseURL, raw string) string {
+	trimmed := strings.TrimSpace(raw)
+	if trimmed == "" {
+		return ""
+	}
+	if strings.HasPrefix(trimmed, "http://") || strings.HasPrefix(trimmed, "https://") {
+		return trimmed
+	}
+	return strings.TrimRight(baseURL, "/") + "/" + strings.TrimLeft(trimmed, "/")
+}
+
 func requireAdmin(c *fiber.Ctx) (string, error) {
 	userId := fmt.Sprintf("%v", c.Locals("userId"))
 	if strings.TrimSpace(userId) == "" || userId == "%!v(<nil>)" {
@@ -171,8 +182,37 @@ func GetAdminListings(c *fiber.Ctx) error {
 		return SendErrorResponse(c, 500, err.Error(), err)
 	}
 
+	baseURL := c.BaseURL()
+	for i := range listings {
+		listings[i].ListingImageURL = adminToAbsoluteAssetURL(baseURL, listings[i].ListingImageURL)
+		listings[i].SellerProfileURL = adminToAbsoluteAssetURL(baseURL, listings[i].SellerProfileURL)
+	}
+
 	return SendSuccessResponse(c, 200, "Listings fetched successfully", map[string]any{
 		"listings": listings,
+	})
+}
+
+func GetAdminTransactions(c *fiber.Ctx) error {
+	_, authErr := requireAdmin(c)
+	if authErr != nil {
+		return authErr
+	}
+
+	transactions, err := repository.GetAdminTransactions()
+	if err != nil {
+		return SendErrorResponse(c, 500, err.Error(), err)
+	}
+
+	baseURL := c.BaseURL()
+	for i := range transactions {
+		transactions[i].ListingImageURL = adminToAbsoluteAssetURL(baseURL, transactions[i].ListingImageURL)
+		transactions[i].ClientProfileImageURL = adminToAbsoluteAssetURL(baseURL, transactions[i].ClientProfileImageURL)
+		transactions[i].OwnerProfileImageURL = adminToAbsoluteAssetURL(baseURL, transactions[i].OwnerProfileImageURL)
+	}
+
+	return SendSuccessResponse(c, 200, "Transactions fetched successfully", map[string]any{
+		"transactions": transactions,
 	})
 }
 
@@ -196,6 +236,31 @@ func DeleteAdminListing(c *fiber.Ctx) error {
 
 	return SendSuccessResponse(c, 200, "Listing removed successfully", map[string]any{
 		"listingId": targetListingId,
+	})
+}
+
+func ToggleAdminListingVisibility(c *fiber.Ctx) error {
+	_, authErr := requireAdmin(c)
+	if authErr != nil {
+		return authErr
+	}
+
+	targetListingId := strings.TrimSpace(c.Params("id"))
+	if targetListingId == "" {
+		return SendErrorResponse(c, 400, "Listing ID is required", nil)
+	}
+
+	nextStatus, err := repository.ToggleAdminListingVisibility(targetListingId)
+	if err != nil {
+		if strings.EqualFold(err.Error(), "Listing not found") {
+			return SendErrorResponse(c, 404, err.Error(), err)
+		}
+		return SendErrorResponse(c, 500, err.Error(), err)
+	}
+
+	return SendSuccessResponse(c, 200, "Listing visibility updated successfully", map[string]any{
+		"listingId": targetListingId,
+		"status":    nextStatus,
 	})
 }
 

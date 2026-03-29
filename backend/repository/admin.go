@@ -507,12 +507,23 @@ func GetAdminListings() ([]model.AdminListingListItemFromDb, error) {
 			l.price_unit AS unit,
 			TRIM(BOTH ', ' FROM CONCAT_WS(', ', NULLIF(TRIM(l.location_city), ''), NULLIF(TRIM(l.location_province), ''))) AS location,
 			l.status::text AS status,
+			COALESCE(li.image_url, '') AS listing_image_url,
+			COALESCE(u.id::text, '') AS seller_id,
 			TRIM(BOTH ' ' FROM CONCAT_WS(' ', NULLIF(TRIM(u.first_name), ''), NULLIF(TRIM(u.last_name), ''))) AS seller,
+			TRIM(BOTH ', ' FROM CONCAT_WS(', ', NULLIF(TRIM(u.location_city), ''), NULLIF(TRIM(u.location_province), ''))) AS seller_location,
+			COALESCE(u.profile_image_url, '') AS seller_profile_image_url,
 			COALESCE(l.view_count, 0)::int AS views,
 			l.created_at AS created
 		FROM public.listings l
 		LEFT JOIN public.categories c ON c.id = l.category_id
 		LEFT JOIN public.users u ON u.id = l.user_id
+		LEFT JOIN LATERAL (
+			SELECT image_url
+			FROM public.listing_images
+			WHERE listing_id = l.id
+			ORDER BY is_primary DESC, id ASC
+			LIMIT 1
+		) li ON TRUE
 		ORDER BY l.created_at DESC
 	`
 
@@ -526,9 +537,123 @@ func GetAdminListings() ([]model.AdminListingListItemFromDb, error) {
 		if strings.TrimSpace(listings[i].Seller) == "" {
 			listings[i].Seller = "Unknown Seller"
 		}
+		if strings.TrimSpace(listings[i].SellerLocation) == "" {
+			listings[i].SellerLocation = "-"
+		}
 	}
 
 	return listings, nil
+}
+
+func ToggleAdminListingVisibility(listingId string) (string, error) {
+	db := middleware.DBConn
+
+	var currentStatus string
+	result := db.Raw(`
+		SELECT status::text AS status
+		FROM public.listings
+		WHERE id = $1
+		LIMIT 1
+	`, listingId).Scan(&currentStatus)
+	if result.Error != nil {
+		return "", fmt.Errorf("Failed to validate listing")
+	}
+	if result.RowsAffected == 0 {
+		return "", fmt.Errorf("Listing not found")
+	}
+
+	normalized := strings.ToUpper(strings.TrimSpace(currentStatus))
+	nextStatus := "HIDDEN"
+	if normalized == "HIDDEN" {
+		nextStatus = "UNAVAILABLE"
+	}
+
+	updateResult := db.Exec(`
+		UPDATE public.listings
+		SET
+			status = $1::listing_status,
+			updated_at = now()
+		WHERE id = $2
+	`, nextStatus, listingId)
+	if updateResult.Error != nil {
+		return "", fmt.Errorf("Failed to update listing visibility")
+	}
+	if updateResult.RowsAffected == 0 {
+		return "", fmt.Errorf("Listing not found")
+	}
+
+	return nextStatus, nil
+}
+
+func GetAdminTransactions() ([]model.AdminTransactionListItemFromDb, error) {
+	db := middleware.DBConn
+	transactions := make([]model.AdminTransactionListItemFromDb, 0)
+
+	query := `
+		SELECT
+			lt.id::text AS id,
+			l.id::text AS listing_id,
+			l.listing_type::text AS listing_type,
+			COALESCE(l.title, 'Untitled Listing') AS listing_title,
+			COALESCE(l.price_unit, '') AS listing_price_unit,
+			COALESCE(li.image_url, '') AS listing_image_url,
+			buyer.id::text AS client_user_id,
+			COALESCE(NULLIF(TRIM(CONCAT_WS(' ', NULLIF(TRIM(buyer.first_name), ''), NULLIF(TRIM(buyer.last_name), ''))), ''), buyer.email, 'Unknown User') AS client_full_name,
+			TRIM(BOTH ', ' FROM CONCAT_WS(', ', NULLIF(TRIM(buyer.location_city), ''), NULLIF(TRIM(buyer.location_province), ''))) AS client_location,
+			COALESCE(buyer.profile_image_url, '') AS client_profile_image_url,
+			owner.id::text AS owner_user_id,
+			COALESCE(NULLIF(TRIM(CONCAT_WS(' ', NULLIF(TRIM(owner.first_name), ''), NULLIF(TRIM(owner.last_name), ''))), ''), owner.email, 'Unknown User') AS owner_full_name,
+			TRIM(BOTH ', ' FROM CONCAT_WS(', ', NULLIF(TRIM(owner.location_city), ''), NULLIF(TRIM(owner.location_province), ''))) AS owner_location,
+			COALESCE(owner.profile_image_url, '') AS owner_profile_image_url,
+			lt.start_date,
+			lt.end_date,
+			CASE
+				WHEN lt.start_date IS NULL OR lt.end_date IS NULL THEN ''
+				ELSE TO_CHAR(lt.start_date, 'HH24:MI') || ' - ' || TO_CHAR(lt.end_date, 'HH24:MI')
+			END AS selected_time_window,
+			COALESCE(lt.total_price, 0)::int AS total_price,
+			CASE
+				WHEN lt.start_date IS NULL OR lt.end_date IS NULL THEN 1
+				ELSE GREATEST(1, (DATE(lt.end_date) - DATE(lt.start_date) + 1))::int
+			END AS schedule_units,
+			COALESCE(lt.provider_agreed, FALSE) AS provider_agreed,
+			COALESCE(lt.client_agreed, FALSE) AS client_agreed,
+			lt.status::text AS status,
+			lt.completed_at,
+			lt.created_at
+		FROM public.listing_transactions lt
+		JOIN public.listings l
+			ON l.id = lt.listing_id
+		JOIN public.users buyer
+			ON buyer.id = lt.client_id
+		JOIN public.users owner
+			ON owner.id = l.user_id
+		LEFT JOIN LATERAL (
+			SELECT image_url
+			FROM public.listing_images
+			WHERE listing_id = l.id
+			ORDER BY is_primary DESC, id ASC
+			LIMIT 1
+		) li ON TRUE
+		ORDER BY lt.created_at DESC
+	`
+
+	if err := db.Raw(query).Scan(&transactions).Error; err != nil {
+		return nil, fmt.Errorf("Failed to fetch transactions")
+	}
+
+	for i := range transactions {
+		transactions[i].ListingType = strings.ToUpper(strings.TrimSpace(transactions[i].ListingType))
+		transactions[i].Status = strings.ToUpper(strings.TrimSpace(transactions[i].Status))
+		if strings.TrimSpace(transactions[i].ClientLocation) == "" {
+			transactions[i].ClientLocation = "-"
+		}
+		if strings.TrimSpace(transactions[i].OwnerLocation) == "" {
+			transactions[i].OwnerLocation = "-"
+		}
+	}
+
+	return transactions, nil
 }
 
 func DeleteAdminListing(listingId string) error {

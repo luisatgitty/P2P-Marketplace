@@ -330,6 +330,7 @@ export default function ReportsPage() {
                                   rel="noopener noreferrer"
                                   title="Open reporter profile"
                                   aria-label="Open reporter profile"
+                                  className="shrink-0"
                                 >
                                   <Image
                                     src={validateImageURL(report.reporter_profile_image_url) || "/profile-icon.png"}
@@ -376,6 +377,7 @@ export default function ReportsPage() {
                                     rel="noopener noreferrer"
                                     title="Open listing owner profile"
                                     aria-label="Open listing owner profile"
+                                    className="shrink-0"
                                   >
                                     <Image
                                       src={validateImageURL(report.listing_owner_profile_image_url) || "/profile-icon.png"}
