@@ -25,12 +25,13 @@ import {
   Moon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getAdminReports } from "@/services/adminReportsService";
+import { getAdminVerifications } from "@/services/adminVerificationsService";
 
-// ── Badge counts — wire to real API later ──────────────────────────────────────
-const BADGES: Record<string, number> = {
-  "/admin/reports": 23,
-  "/admin/verifications": 12,
-};
+const BADGE_KEYS = {
+  reports: "/admin/reports",
+  verifications: "/admin/verifications",
+} as const;
 
 interface NavItem {
   href: string;
@@ -81,6 +82,10 @@ function SidebarContent({
   const { theme, resolvedTheme, setTheme } = useTheme();
   const { user } = useUser();
   const [dropdownOpen, setDropdown] = useState(false);
+  const [badges, setBadges] = useState<Record<string, number>>({
+    [BADGE_KEYS.reports]: 0,
+    [BADGE_KEYS.verifications]: 0,
+  });
   const effectiveTheme = resolvedTheme ?? theme;
   const isDarkMode = effectiveTheme === "dark";
   const roleFromUser = String(user?.role ?? "").toUpperCase();
@@ -95,6 +100,38 @@ function SidebarContent({
   const filteredUserMenu = USER_MENU.filter(
     (item) => !item.roles || (currentAdminRole !== null && item.roles.includes(currentAdminRole)),
   );
+
+  useEffect(() => {
+    let active = true;
+
+    const loadPendingCounts = async () => {
+      try {
+        const [reports, verifications] = await Promise.all([
+          getAdminReports(),
+          getAdminVerifications(),
+        ]);
+
+        if (!active) return;
+
+        const pendingReports = reports.filter((item) => item.status === "PENDING").length;
+        const pendingVerifications = verifications.filter((item) => item.status === "PENDING").length;
+
+        setBadges({
+          [BADGE_KEYS.reports]: pendingReports,
+          [BADGE_KEYS.verifications]: pendingVerifications,
+        });
+      } catch {
+        if (!active) return;
+        setBadges((prev) => prev);
+      }
+    };
+
+    void loadPendingCounts();
+
+    return () => {
+      active = false;
+    };
+  }, [pathname]);
 
   return (
     // overflow-visible so the user dropdown can render above the bottom section
@@ -155,7 +192,7 @@ function SidebarContent({
       >
         {filteredNav.map(({ href, label, Icon }) => {
           const active = pathname === href || pathname.startsWith(href + "/");
-          const badge = BADGES[href];
+          const badge = badges[href];
 
           return (
             <Link
