@@ -10,7 +10,6 @@ import {
   XCircle,
   Eye,
   EyeOff,
-  ExternalLink,
   Flag,
   AlertTriangle,
   ChevronLeft,
@@ -48,12 +47,17 @@ interface AdminReport {
   reporter_id:   string;
   reporter:      string;
   reporter_profile_image_url: string;
+  reporter_location: string;
   target_type:   ReportTarget;
   target_name:   string;
   target_id:     string;
+  listing_image_url: string;
+  listing_price: number;
+  listing_price_unit: string;
   listing_owner_id: string;
   listing_owner: string;
   listing_owner_profile_image_url: string;
+  listing_owner_location: string;
   reason:        string;
   description:   string | null;
   status:        ReportStatus;
@@ -69,6 +73,12 @@ const STATUS_CONFIG: Record<ReportStatus, { cls: string; label: string }> = {
   RESOLVED:  { cls: "bg-teal-100 dark:bg-teal-900/40 text-teal-700 dark:text-teal-300",      label: "Resolved"  },
   DISMISSED: { cls: "bg-stone-100 dark:bg-stone-800 text-stone-500 dark:text-stone-400",     label: "Dismissed" },
 };
+
+const phpFmt = new Intl.NumberFormat("en-PH", {
+  style: "currency",
+  currency: "PHP",
+  minimumFractionDigits: 0,
+});
 
 // ── Shared filter select ───────────────────────────────────────────────────────
 function FilterSelect({
@@ -284,7 +294,7 @@ export default function ReportsPage() {
                       Reported Listing
                     </TableHead>
                     <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest">
-                      Listing Owner
+                      Reported User
                     </TableHead>
                     <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest">
                       Reason
@@ -323,44 +333,62 @@ export default function ReportsPage() {
                           {/* Reporter */}
                           <TableCell className="py-3.5">
                             <div className="flex items-center gap-2.5">
-                              {report.reporter_id ? (
-                                <Link
-                                  href={`/profile?userId=${report.reporter_id}`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  title="Open reporter profile"
-                                  aria-label="Open reporter profile"
-                                  className="shrink-0"
-                                >
-                                  <Image
-                                    src={validateImageURL(report.reporter_profile_image_url) || "/profile-icon.png"}
-                                    alt="Profile"
-                                    width={32}
-                                    height={32}
-                                    className="w-8 h-8 rounded-full object-cover border border-stone-200 dark:border-[#2a2d3e] shrink-0"
-                                  />
-                                </Link>
-                              ) : (
+                              <Link
+                                href={`/profile?userId=${report.reporter_id}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                title="Open reporter profile"
+                                aria-label="Open reporter profile"
+                                className="shrink-0"
+                              >
                                 <Image
                                   src={validateImageURL(report.reporter_profile_image_url) || "/profile-icon.png"}
                                   alt="Profile"
                                   width={32}
                                   height={32}
-                                  className="w-8 h-8 rounded-full object-cover border border-stone-200 dark:border-[#2a2d3e] shrink-0"
+                                  className="w-9 h-9 rounded-full object-cover border border-stone-200 dark:border-[#2a2d3e] shrink-0"
                                 />
-                              )}
-                              <span className="text-sm font-semibold text-stone-800 dark:text-stone-100 whitespace-nowrap">
-                                {report.reporter}
-                              </span>
+                              </Link>
+                              <div className="min-w-0">
+                                <p className="text-sm font-semibold text-stone-800 dark:text-stone-100 whitespace-nowrap truncate">
+                                  {report.reporter}
+                                </p>
+                                <p className="text-xs text-stone-500 dark:text-stone-400 whitespace-nowrap truncate">
+                                  {report.reporter_location || "-"}
+                                </p>
+                              </div>
                             </div>
                           </TableCell>
 
                           {/* Reported listing */}
                           <TableCell className="py-3.5 max-w-65">
                             {report.target_type === "LISTING" ? (
-                              <p className="text-xs text-stone-600 dark:text-stone-300 line-clamp-2">
-                                {report.target_name}
-                              </p>
+                              <div className="flex items-center gap-2.5 min-w-0">
+                                <Link
+                                  href={`/listing/${report.target_id}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  title="Open listing"
+                                  aria-label="Open listing"
+                                  className="shrink-0"
+                                >
+                                  <Image
+                                    src={validateImageURL(report.listing_image_url) || "/logo.png"}
+                                    alt={report.target_name}
+                                    width={40}
+                                    height={40}
+                                    className="w-10 h-10 rounded-md object-cover border border-stone-200 dark:border-[#2a2d3e] shrink-0"
+                                  />
+                                </Link>
+                                <div className="min-w-0">
+                                  <p className="text-sm font-semibold text-stone-700 dark:text-stone-200 truncate">
+                                    {report.target_name}
+                                  </p>
+                                  <p className="text-xs text-stone-500 dark:text-stone-400 truncate">
+                                    {phpFmt.format(report.listing_price)} / {report.listing_price_unit || "unit"}
+                                  </p>
+                                </div>
+                              </div>
                             ) : (
                               <span className="text-xs text-stone-400">—</span>
                             )}
@@ -370,35 +398,30 @@ export default function ReportsPage() {
                           <TableCell className="py-3.5 text-sm text-stone-600 dark:text-stone-300 whitespace-nowrap">
                             {report.target_type === "LISTING" ? (
                               <div className="flex items-center gap-2.5">
-                                {report.listing_owner_id ? (
-                                  <Link
-                                    href={`/profile?userId=${report.listing_owner_id}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    title="Open listing owner profile"
-                                    aria-label="Open listing owner profile"
-                                    className="shrink-0"
-                                  >
-                                    <Image
-                                      src={validateImageURL(report.listing_owner_profile_image_url) || "/profile-icon.png"}
-                                      alt="Profile"
-                                      width={32}
-                                      height={32}
-                                      className="w-8 h-8 rounded-full object-cover border border-stone-200 dark:border-[#2a2d3e] shrink-0"
-                                    />
-                                  </Link>
-                                ) : (
+                                <Link
+                                  href={`/profile?userId=${report.listing_owner_id}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  title="Open listing owner profile"
+                                  aria-label="Open listing owner profile"
+                                  className="shrink-0"
+                                >
                                   <Image
                                     src={validateImageURL(report.listing_owner_profile_image_url) || "/profile-icon.png"}
                                     alt="Profile"
                                     width={32}
                                     height={32}
-                                    className="w-8 h-8 rounded-full object-cover border border-stone-200 dark:border-[#2a2d3e] shrink-0"
+                                    className="w-9 h-9 rounded-full object-cover border border-stone-200 dark:border-[#2a2d3e] shrink-0"
                                   />
-                                )}
-                                <span className="text-sm font-semibold text-stone-800 dark:text-stone-100 whitespace-nowrap">
-                                  {report.listing_owner}
-                                </span>
+                                </Link>
+                                <div className="min-w-0">
+                                  <p className="text-sm font-semibold text-stone-800 dark:text-stone-100 whitespace-nowrap truncate">
+                                    {report.listing_owner}
+                                  </p>
+                                  <p className="text-xs text-stone-500 dark:text-stone-400 whitespace-nowrap truncate">
+                                    {report.listing_owner_location || "-"}
+                                  </p>
+                                </div>
                               </div>
                             ) : "—"}
                           </TableCell>
@@ -429,26 +452,6 @@ export default function ReportsPage() {
                           {/* Actions */}
                           <TableCell className="py-3.5">
                             <div className="flex items-center justify-end gap-1">
-
-                              {/* Open listing (only for listing reports) */}
-                              {report.target_type === "LISTING" && (
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  asChild
-                                  className="w-7 h-7 text-teal-600 dark:text-teal-400 hover:bg-teal-50 dark:hover:bg-teal-950/30 hover:text-teal-700"
-                                >
-                                  <Link
-                                    href={`/listing/${report.target_id}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    title="Open listing"
-                                    aria-label="Open listing"
-                                  >
-                                    <ExternalLink className="w-4 h-4" />
-                                  </Link>
-                                </Button>
-                              )}
 
                               {/* Toggle description row */}
                               <Button

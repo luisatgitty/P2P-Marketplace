@@ -3,12 +3,17 @@ export type AdminReportRecord = {
   reporter_id: string;
   reporter: string;
   reporter_profile_image_url: string;
+  reporter_location: string;
   target_type: "LISTING" | "USER";
   target_name: string;
   target_id: string;
+  listing_image_url: string;
+  listing_price: number;
+  listing_price_unit: string;
   listing_owner_id: string;
   listing_owner: string;
   listing_owner_profile_image_url: string;
+  listing_owner_location: string;
   reason: string;
   description: string | null;
   status: "PENDING" | "RESOLVED" | "DISMISSED";

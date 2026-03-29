@@ -729,15 +729,20 @@ func GetAdminReports() ([]model.AdminReportListItemFromDb, error) {
 			COALESCE(r.reporter_id::text, '') AS reporter_id,
 			TRIM(BOTH ' ' FROM CONCAT_WS(' ', NULLIF(TRIM(rep.first_name), ''), NULLIF(TRIM(rep.last_name), ''))) AS reporter,
 			COALESCE(rep.profile_image_url, '') AS reporter_profile_image_url,
+			TRIM(BOTH ', ' FROM CONCAT_WS(', ', NULLIF(TRIM(rep.location_city), ''), NULLIF(TRIM(rep.location_province), ''))) AS reporter_location,
 			CASE WHEN r.reported_listing_id IS NOT NULL THEN 'LISTING' ELSE 'USER' END AS target_type,
 			CASE
 				WHEN r.reported_listing_id IS NOT NULL THEN COALESCE(l.title, 'Unknown Listing')
 				ELSE COALESCE(NULLIF(TRIM(CONCAT_WS(' ', NULLIF(TRIM(ru.first_name), ''), NULLIF(TRIM(ru.last_name), ''))), ''), ru.email, 'Unknown User')
 			END AS target_name,
 			COALESCE(r.reported_listing_id::text, r.reported_user_id::text, '') AS target_id,
+			COALESCE(li.image_url, '') AS listing_image_url,
+			COALESCE(l.price, 0)::int AS listing_price,
+			COALESCE(l.price_unit, '') AS listing_price_unit,
 			COALESCE(owner.id::text, '') AS listing_owner_id,
 			COALESCE(NULLIF(TRIM(CONCAT_WS(' ', NULLIF(TRIM(owner.first_name), ''), NULLIF(TRIM(owner.last_name), ''))), ''), owner.email, '—') AS listing_owner,
 			COALESCE(owner.profile_image_url, '') AS listing_owner_profile_image_url,
+			TRIM(BOTH ', ' FROM CONCAT_WS(', ', NULLIF(TRIM(owner.location_city), ''), NULLIF(TRIM(owner.location_province), ''))) AS listing_owner_location,
 			r.reason,
 			r.description,
 			r.status::text AS status,
@@ -748,6 +753,13 @@ func GetAdminReports() ([]model.AdminReportListItemFromDb, error) {
 		FROM public.reports r
 		LEFT JOIN public.users rep ON rep.id = r.reporter_id
 		LEFT JOIN public.listings l ON l.id = r.reported_listing_id
+		LEFT JOIN LATERAL (
+			SELECT image_url
+			FROM public.listing_images
+			WHERE listing_id = l.id
+			ORDER BY is_primary DESC, id ASC
+			LIMIT 1
+		) li ON TRUE
 		LEFT JOIN public.users owner ON owner.id = l.user_id
 		LEFT JOIN public.users ru ON ru.id = r.reported_user_id
 		LEFT JOIN public.users rev ON rev.id = r.reviewed_by_id
@@ -763,6 +775,12 @@ func GetAdminReports() ([]model.AdminReportListItemFromDb, error) {
 		reports[i].Status = strings.ToUpper(strings.TrimSpace(reports[i].Status))
 		if strings.TrimSpace(reports[i].Reporter) == "" {
 			reports[i].Reporter = "Unknown Reporter"
+		}
+		if strings.TrimSpace(reports[i].ReporterLocation) == "" {
+			reports[i].ReporterLocation = "-"
+		}
+		if strings.TrimSpace(reports[i].ListingOwnerLocation) == "" {
+			reports[i].ListingOwnerLocation = "-"
 		}
 	}
 

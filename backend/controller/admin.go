@@ -275,6 +275,13 @@ func GetAdminReports(c *fiber.Ctx) error {
 		return SendErrorResponse(c, 500, err.Error(), err)
 	}
 
+	baseURL := c.BaseURL()
+	for i := range reports {
+		reports[i].ReporterImage = adminToAbsoluteAssetURL(baseURL, reports[i].ReporterImage)
+		reports[i].OwnerImage = adminToAbsoluteAssetURL(baseURL, reports[i].OwnerImage)
+		reports[i].ListingImageURL = adminToAbsoluteAssetURL(baseURL, reports[i].ListingImageURL)
+	}
+
 	return SendSuccessResponse(c, 200, "Reports fetched successfully", map[string]any{
 		"reports": reports,
 	})

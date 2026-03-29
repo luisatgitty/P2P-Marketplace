@@ -372,23 +372,28 @@ type AdminTransactionListItemFromDb struct {
 }
 
 type AdminReportListItemFromDb struct {
-	Id             string     `gorm:"column:id" json:"id"`
-	ReporterId     string     `gorm:"column:reporter_id" json:"reporter_id"`
-	Reporter       string     `gorm:"column:reporter" json:"reporter"`
-	ReporterImage  string     `gorm:"column:reporter_profile_image_url" json:"reporter_profile_image_url"`
-	TargetType     string     `gorm:"column:target_type" json:"target_type"`
-	TargetName     string     `gorm:"column:target_name" json:"target_name"`
-	TargetId       string     `gorm:"column:target_id" json:"target_id"`
-	ListingOwnerId string     `gorm:"column:listing_owner_id" json:"listing_owner_id"`
-	ListingOwner   string     `gorm:"column:listing_owner" json:"listing_owner"`
-	OwnerImage     string     `gorm:"column:listing_owner_profile_image_url" json:"listing_owner_profile_image_url"`
-	Reason         string     `gorm:"column:reason" json:"reason"`
-	Description    *string    `gorm:"column:description" json:"description"`
-	Status         string     `gorm:"column:status" json:"status"`
-	ReviewedBy     *string    `gorm:"column:reviewed_by" json:"reviewed_by"`
-	ReviewedAt     *time.Time `gorm:"column:reviewed_at" json:"reviewed_at"`
-	CreatedAt      time.Time  `gorm:"column:created_at" json:"created_at"`
-	ReportedUserId *string    `gorm:"column:reported_user_id" json:"reported_user_id"`
+	Id                   string     `gorm:"column:id" json:"id"`
+	ReporterId           string     `gorm:"column:reporter_id" json:"reporter_id"`
+	Reporter             string     `gorm:"column:reporter" json:"reporter"`
+	ReporterImage        string     `gorm:"column:reporter_profile_image_url" json:"reporter_profile_image_url"`
+	ReporterLocation     string     `gorm:"column:reporter_location" json:"reporter_location"`
+	TargetType           string     `gorm:"column:target_type" json:"target_type"`
+	TargetName           string     `gorm:"column:target_name" json:"target_name"`
+	TargetId             string     `gorm:"column:target_id" json:"target_id"`
+	ListingImageURL      string     `gorm:"column:listing_image_url" json:"listing_image_url"`
+	ListingPrice         int        `gorm:"column:listing_price" json:"listing_price"`
+	ListingPriceUnit     string     `gorm:"column:listing_price_unit" json:"listing_price_unit"`
+	ListingOwnerId       string     `gorm:"column:listing_owner_id" json:"listing_owner_id"`
+	ListingOwner         string     `gorm:"column:listing_owner" json:"listing_owner"`
+	OwnerImage           string     `gorm:"column:listing_owner_profile_image_url" json:"listing_owner_profile_image_url"`
+	ListingOwnerLocation string     `gorm:"column:listing_owner_location" json:"listing_owner_location"`
+	Reason               string     `gorm:"column:reason" json:"reason"`
+	Description          *string    `gorm:"column:description" json:"description"`
+	Status               string     `gorm:"column:status" json:"status"`
+	ReviewedBy           *string    `gorm:"column:reviewed_by" json:"reviewed_by"`
+	ReviewedAt           *time.Time `gorm:"column:reviewed_at" json:"reviewed_at"`
+	CreatedAt            time.Time  `gorm:"column:created_at" json:"created_at"`
+	ReportedUserId       *string    `gorm:"column:reported_user_id" json:"reported_user_id"`
 }
 
 type AdminSetReportStatusBody struct {
