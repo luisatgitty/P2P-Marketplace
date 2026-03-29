@@ -239,6 +239,31 @@ func DeleteAdminListing(c *fiber.Ctx) error {
 	})
 }
 
+func ToggleAdminListingVisibility(c *fiber.Ctx) error {
+	_, authErr := requireAdmin(c)
+	if authErr != nil {
+		return authErr
+	}
+
+	targetListingId := strings.TrimSpace(c.Params("id"))
+	if targetListingId == "" {
+		return SendErrorResponse(c, 400, "Listing ID is required", nil)
+	}
+
+	nextStatus, err := repository.ToggleAdminListingVisibility(targetListingId)
+	if err != nil {
+		if strings.EqualFold(err.Error(), "Listing not found") {
+			return SendErrorResponse(c, 404, err.Error(), err)
+		}
+		return SendErrorResponse(c, 500, err.Error(), err)
+	}
+
+	return SendSuccessResponse(c, 200, "Listing visibility updated successfully", map[string]any{
+		"listingId": targetListingId,
+		"status":    nextStatus,
+	})
+}
+
 func GetAdminReports(c *fiber.Ctx) error {
 	_, authErr := requireAdmin(c)
 	if authErr != nil {

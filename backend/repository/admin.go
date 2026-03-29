@@ -510,6 +510,7 @@ func GetAdminListings() ([]model.AdminListingListItemFromDb, error) {
 			COALESCE(li.image_url, '') AS listing_image_url,
 			COALESCE(u.id::text, '') AS seller_id,
 			TRIM(BOTH ' ' FROM CONCAT_WS(' ', NULLIF(TRIM(u.first_name), ''), NULLIF(TRIM(u.last_name), ''))) AS seller,
+			TRIM(BOTH ', ' FROM CONCAT_WS(', ', NULLIF(TRIM(u.location_city), ''), NULLIF(TRIM(u.location_province), ''))) AS seller_location,
 			COALESCE(u.profile_image_url, '') AS seller_profile_image_url,
 			COALESCE(l.view_count, 0)::int AS views,
 			l.created_at AS created
@@ -536,9 +537,52 @@ func GetAdminListings() ([]model.AdminListingListItemFromDb, error) {
 		if strings.TrimSpace(listings[i].Seller) == "" {
 			listings[i].Seller = "Unknown Seller"
 		}
+		if strings.TrimSpace(listings[i].SellerLocation) == "" {
+			listings[i].SellerLocation = "-"
+		}
 	}
 
 	return listings, nil
+}
+
+func ToggleAdminListingVisibility(listingId string) (string, error) {
+	db := middleware.DBConn
+
+	var currentStatus string
+	result := db.Raw(`
+		SELECT status::text AS status
+		FROM public.listings
+		WHERE id = $1
+		LIMIT 1
+	`, listingId).Scan(&currentStatus)
+	if result.Error != nil {
+		return "", fmt.Errorf("Failed to validate listing")
+	}
+	if result.RowsAffected == 0 {
+		return "", fmt.Errorf("Listing not found")
+	}
+
+	normalized := strings.ToUpper(strings.TrimSpace(currentStatus))
+	nextStatus := "HIDDEN"
+	if normalized == "HIDDEN" {
+		nextStatus = "UNAVAILABLE"
+	}
+
+	updateResult := db.Exec(`
+		UPDATE public.listings
+		SET
+			status = $1::listing_status,
+			updated_at = now()
+		WHERE id = $2
+	`, nextStatus, listingId)
+	if updateResult.Error != nil {
+		return "", fmt.Errorf("Failed to update listing visibility")
+	}
+	if updateResult.RowsAffected == 0 {
+		return "", fmt.Errorf("Listing not found")
+	}
+
+	return nextStatus, nil
 }
 
 func GetAdminTransactions() ([]model.AdminTransactionListItemFromDb, error) {
