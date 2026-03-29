@@ -67,7 +67,7 @@ const TYPE_CONFIG: Record<ListingType, { label: string; cls: string; Icon: React
 const STATUS_CONFIG: Record<TransactionStatus, string> = {
   PENDING: "bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300",
   CONFIRMED: "bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300",
-  COMPLETED: "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700",
+  COMPLETED: "bg-teal-100 dark:bg-teal-900/40 text-teal-700 dark:text-teal-300",
   CANCELLED: "bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-300",
 };
 
@@ -93,25 +93,21 @@ function buildScheduleUnitsLabel(tx: AdminTransaction): string {
   return `${units} ${units === 1 ? "day" : "days"}`;
 }
 
-function Avatar({ src, alt, fallback }: { src?: string; alt: string; fallback: string }) {
-  if (src) {
-    return <img src={src} alt={alt} className="w-9 h-9 rounded-full object-cover border border-border shrink-0" />;
-  }
-  return (
-    <div className="w-9 h-9 rounded-full bg-stone-200 dark:bg-[#2a2d3e] border border-border flex items-center justify-center text-xs font-bold text-stone-600 dark:text-stone-200 shrink-0">
-      {fallback}
-    </div>
-  );
+function Avatar({ src, alt }: { src?: string; alt: string }) {
+  return <img
+    src={src || "/profile-icon.png"}
+    alt={alt}
+    className="w-9 h-9 rounded-full object-cover border border-border shrink-0"
+  />;
 }
 
 function DealStateRow({ label, agreed }: { label: string; agreed: boolean }) {
   return (
     <div className="flex items-center gap-1.5">
-      {agreed ? (
-        <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
-      ) : (
-        <XCircle className="w-4 h-4 text-amber-500 shrink-0" />
-      )}
+      {agreed 
+        ? <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+        : <XCircle className="w-4 h-4 text-amber-500 shrink-0" />
+      }
       <span className={cn("text-xs", agreed ? "text-emerald-600 dark:text-emerald-300" : "text-amber-600 dark:text-amber-300")}>
         {label}: {agreed ? "Agreed" : "Pending"}
       </span>
@@ -373,7 +369,6 @@ export default function TransactionsPage() {
                               <Avatar
                                 src={transaction.client_profile_image_url}
                                 alt={transaction.client_full_name}
-                                fallback={transaction.client_full_name.charAt(0).toUpperCase()}
                               />
                             </Link>
                             <div className="min-w-0">
@@ -389,7 +384,6 @@ export default function TransactionsPage() {
                               <Avatar
                                 src={transaction.owner_profile_image_url}
                                 alt={transaction.owner_full_name}
-                                fallback={transaction.owner_full_name.charAt(0).toUpperCase()}
                               />
                             </Link>
                             <div className="min-w-0">
@@ -411,10 +405,10 @@ export default function TransactionsPage() {
                             <div className="min-w-0">
                               <p className="text-sm font-bold text-stone-800 dark:text-stone-100 truncate">{transaction.listing_title}</p>
                               <div className="flex items-center gap-2 mt-0.5">
-                                <p className="text-xs text-stone-500 dark:text-stone-400 truncate">{phpFmt.format(transaction.total_price)} / {transaction.listing_price_unit || "unit"}</p>
-                                <span className={cn("inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full", typeConfig.cls)}>
+                                <span className={cn("inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full", typeConfig.cls)}>
                                   <TypeIcon className="w-2.5 h-2.5" /> {typeConfig.label}
                                 </span>
+                                <p className="text-xs text-stone-500 dark:text-stone-400 truncate">{phpFmt.format(transaction.total_price)} / {transaction.listing_price_unit || "unit"}</p>
                               </div>
                             </div>
                           </div>

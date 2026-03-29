@@ -240,17 +240,11 @@ function DetailModal({ verif, onClose, onApprove, onReject, actionLoading = fals
                         Profile
                       </p>
                       <div className="flex items-center gap-2.5">
-                        {verif.profile_image_url ? (
-                          <img
-                            src={validateImageURL(verif.profile_image_url)}
-                            alt={verif.user_name}
-                            className="w-10 h-10 rounded-full object-cover border border-stone-200 dark:border-[#2a2d3e] shrink-0"
-                          />
-                        ) : (
-                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#3a4a6a] to-[#1e2a40] flex items-center justify-center text-white text-sm font-bold shrink-0">
-                            {verif.user_name.charAt(0)}
-                          </div>
-                        )}
+                        <img
+                          src={validateImageURL(verif.profile_image_url) || "/profile-icon.png"}
+                          alt={verif.user_name}
+                          className="w-10 h-10 rounded-full object-cover border border-stone-200 dark:border-[#2a2d3e] shrink-0"
+                        />
                         <div className="min-w-0">
                           <p className="text-sm font-bold text-stone-800 dark:text-stone-100 truncate">
                             {verif.user_name}
@@ -674,29 +668,22 @@ export default function VerificationsPage() {
                       <TableRow key={verif.id} className="border-stone-100 dark:border-[#2a2d3e] hover:bg-stone-50 dark:hover:bg-[#252837] transition-colors">
                         <TableCell className="py-2">
                           <div className="flex items-center gap-3">
-                            {verif.profile_image_url ? (
-                                <Link
-                                  href={`/profile?userId=${verif.user_id}`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  title="Open reporter profile"
-                                  aria-label="Open reporter profile"
-                                  className="shrink-0"
-                                >
-                                  <Image
-                                    src={validateImageURL(verif.profile_image_url) || "/profile-icon.png"}
-                                    alt={verif.user_name}
-                                    width={32}
-                                    height={32}
-                                    className="w-8 h-8 rounded-full object-cover border border-stone-200 dark:border-[#2a2d3e] shrink-0"
-                                  />
-                                </Link>
-                              
-                            ) : (
-                              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#3a4a6a] to-[#1e2a40] flex items-center justify-center text-white text-[10px] font-bold shrink-0">
-                                {verif.user_name.charAt(0)}
-                              </div>
-                            )}
+                            <Link
+                              href={`/profile?userId=${verif.user_id}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              title="View reporter profile"
+                              aria-label="View reporter profile"
+                              className="shrink-0"
+                            >
+                              <Image
+                                src={validateImageURL(verif.profile_image_url) || "/profile-icon.png"}
+                                alt={verif.user_name}
+                                width={32}
+                                height={32}
+                                className="w-8 h-8 rounded-full object-cover border border-stone-200 dark:border-[#2a2d3e] shrink-0"
+                              />
+                            </Link>
                             <div>
                               <p className="text-sm font-bold text-stone-800 dark:text-stone-100">{verif.user_name}</p>
                               <p className="text-xs text-stone-400 dark:text-stone-500">{verif.user_email}</p>

@@ -7,7 +7,10 @@ export type AdminListingRecord = {
   unit: string;
   location: string;
   status: "AVAILABLE" | "SOLD" | "RENTED" | "COMPLETED" | "HIDDEN";
+  listing_image_url: string;
+  seller_id: string;
   seller: string;
+  seller_profile_image_url: string;
   views: number;
   created: string;
 };

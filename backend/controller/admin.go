@@ -182,6 +182,12 @@ func GetAdminListings(c *fiber.Ctx) error {
 		return SendErrorResponse(c, 500, err.Error(), err)
 	}
 
+	baseURL := c.BaseURL()
+	for i := range listings {
+		listings[i].ListingImageURL = adminToAbsoluteAssetURL(baseURL, listings[i].ListingImageURL)
+		listings[i].SellerProfileURL = adminToAbsoluteAssetURL(baseURL, listings[i].SellerProfileURL)
+	}
+
 	return SendSuccessResponse(c, 200, "Listings fetched successfully", map[string]any{
 		"listings": listings,
 	})

@@ -53,7 +53,10 @@ interface AdminListing {
   unit:     string;
   location: string;
   status:   ListingStatus;
+  listing_image_url: string;
+  seller_id: string;
   seller:   string;
+  seller_profile_image_url: string;
   views:    number;
   created:  string;
 }
@@ -97,6 +100,17 @@ function SortIcon({ field, sort }: { field: SortField; sort: { field: SortField;
   return sort.dir === "asc"
     ? <ChevronUp   className="w-3 h-3 ml-1" />
     : <ChevronDown className="w-3 h-3 ml-1" />;
+}
+
+function Avatar({ src, alt, fallback }: { src?: string; alt: string; fallback: string }) {
+  if (src) {
+    return <img src={src} alt={alt} className="w-8 h-8 rounded-full object-cover border border-stone-200 dark:border-[#2a2d3e] shrink-0" />;
+  }
+  return (
+    <div className="w-8 h-8 rounded-full bg-stone-200 dark:bg-[#2a2d3e] border border-stone-200 dark:border-[#2a2d3e] flex items-center justify-center text-[10px] font-bold text-stone-700 dark:text-stone-200 shrink-0">
+      {fallback}
+    </div>
+  );
 }
 
 // ── Shared select ──────────────────────────────────────────────────────────────
@@ -362,14 +376,38 @@ export default function ListingsPage() {
                         key={listing.id}
                         className="border-stone-100 dark:border-[#2a2d3e] hover:bg-stone-50 dark:hover:bg-[#252837] transition-colors"
                       >
-                        {/* Title + location */}
-                        <TableCell className="py-3.5 max-w-[200px]">
-                          <p className="text-sm font-bold text-stone-800 dark:text-stone-100 truncate">
-                            {listing.title}
-                          </p>
-                          <p className="text-xs text-stone-400 dark:text-stone-500 truncate">
-                            {listing.location}
-                          </p>
+                        {/* Listing */}
+                        <TableCell className="py-3.5 max-w-50">
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <Link
+                              href={`/listing/${listing.id}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              title="View listing"
+                              aria-label="View listing"
+                              className="shrink-0"
+                            >
+                              {listing.listing_image_url ? (
+                                <img
+                                  src={listing.listing_image_url}
+                                  alt={listing.title}
+                                  className="w-11 h-11 rounded-md object-cover border border-stone-200 dark:border-[#2a2d3e] shrink-0"
+                                />
+                              ) : (
+                                <div className="w-11 h-11 rounded-md bg-stone-100 dark:bg-[#13151f] border border-stone-200 dark:border-[#2a2d3e] flex items-center justify-center shrink-0">
+                                  📦
+                                </div>
+                              )}
+                            </Link>
+                            <div className="min-w-0">
+                              <p className="text-sm font-bold text-stone-800 dark:text-stone-100 truncate">
+                                {listing.title}
+                              </p>
+                              <p className="text-xs text-stone-400 dark:text-stone-500 truncate">
+                                {listing.location}
+                              </p>
+                            </div>
+                          </div>
                         </TableCell>
 
                         {/* Type badge */}
@@ -414,7 +452,23 @@ export default function ListingsPage() {
 
                         {/* Seller */}
                         <TableCell className="py-3.5 text-sm text-stone-600 dark:text-stone-300 whitespace-nowrap">
-                          {listing.seller}
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <Link
+                              href={`/profile?userId=${listing.seller_id}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              title="View seller profile"
+                              aria-label="View seller profile"
+                              className="shrink-0"
+                            >
+                              <Avatar
+                                src={listing.seller_profile_image_url}
+                                alt={listing.seller}
+                                fallback={listing.seller?.charAt(0)?.toUpperCase() || "U"}
+                              />
+                            </Link>
+                            <span className="truncate">{listing.seller}</span>
+                          </div>
                         </TableCell>
 
                         {/* Created */}
@@ -425,22 +479,6 @@ export default function ListingsPage() {
                         {/* Actions */}
                         <TableCell className="py-3.5">
                           <div className="flex items-center justify-end gap-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              asChild
-                              className="w-7 h-7 text-stone-500 dark:text-stone-300 hover:text-stone-700 dark:hover:text-stone-100 hover:bg-stone-100 dark:hover:bg-[#252837]"
-                            >
-                              <Link
-                                href={`/listing/${listing.id}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                title="View listing"
-                                aria-label="View listing"
-                              >
-                                <ExternalLink className="w-4 h-4" />
-                              </Link>
-                            </Button>
                             <Button
                               variant="ghost"
                               size="icon"
