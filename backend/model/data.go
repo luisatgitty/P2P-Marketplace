@@ -375,11 +375,17 @@ type AdminReportListItemFromDb struct {
 	Id                   string     `gorm:"column:id" json:"id"`
 	ReporterId           string     `gorm:"column:reporter_id" json:"reporter_id"`
 	Reporter             string     `gorm:"column:reporter" json:"reporter"`
+	ReporterEmail        string     `gorm:"column:reporter_email" json:"reporter_email"`
 	ReporterImage        string     `gorm:"column:reporter_profile_image_url" json:"reporter_profile_image_url"`
 	ReporterLocation     string     `gorm:"column:reporter_location" json:"reporter_location"`
+	ReportedUserId       string     `gorm:"column:reported_user_id" json:"reported_user_id"`
+	ReportedName         string     `gorm:"column:reported_name" json:"reported_name"`
+	ReportedEmail        string     `gorm:"column:reported_email" json:"reported_email"`
+	ReportedLocation     string     `gorm:"column:reported_location" json:"reported_location"`
 	TargetType           string     `gorm:"column:target_type" json:"target_type"`
 	TargetName           string     `gorm:"column:target_name" json:"target_name"`
 	TargetId             string     `gorm:"column:target_id" json:"target_id"`
+	ListingTitle         string     `gorm:"column:listing_title" json:"listing_title"`
 	ListingImageURL      string     `gorm:"column:listing_image_url" json:"listing_image_url"`
 	ListingPrice         int        `gorm:"column:listing_price" json:"listing_price"`
 	ListingPriceUnit     string     `gorm:"column:listing_price_unit" json:"listing_price_unit"`
@@ -393,11 +399,17 @@ type AdminReportListItemFromDb struct {
 	ReviewedBy           *string    `gorm:"column:reviewed_by" json:"reviewed_by"`
 	ReviewedAt           *time.Time `gorm:"column:reviewed_at" json:"reviewed_at"`
 	CreatedAt            time.Time  `gorm:"column:created_at" json:"created_at"`
-	ReportedUserId       *string    `gorm:"column:reported_user_id" json:"reported_user_id"`
+	SubmittedAt          time.Time  `gorm:"column:submitted_at" json:"submitted_at"`
+	ResolvedBy           *string    `gorm:"column:resolved_by" json:"resolved_by"`
+	ResolvedAt           *time.Time `gorm:"column:resolved_at" json:"resolved_at"`
+	ActionTaken          *string    `gorm:"column:action_taken" json:"action_taken"`
+	ActionReason         *string    `gorm:"column:action_reason" json:"action_reason"`
 }
 
 type AdminSetReportStatusBody struct {
 	Status string `json:"status"`
+	Action string `json:"action"`
+	Reason string `json:"reason"`
 }
 
 type AdminVerificationListItemFromDb struct {

@@ -8,8 +8,6 @@ import {
   X,
   CheckCircle2,
   XCircle,
-  Eye,
-  EyeOff,
   Flag,
   AlertTriangle,
   ChevronLeft,
@@ -20,8 +18,7 @@ import { toast } from "sonner";
 import { validateImageURL } from "@/utils/validation";
 import {
   getAdminReports,
-  setAdminReportStatus,
-  type AdminReportRecord,
+  setAdminReportAction,
 } from "@/services/adminReportsService";
 
 // ── shadcn components ──────────────────────────────────────────────────────────
@@ -37,34 +34,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-
-// ── Types ──────────────────────────────────────────────────────────────────────
-type ReportStatus = "PENDING" | "RESOLVED" | "DISMISSED";
-type ReportTarget = "LISTING" | "USER";
-
-interface AdminReport {
-  id:            string;
-  reporter_id:   string;
-  reporter:      string;
-  reporter_profile_image_url: string;
-  reporter_location: string;
-  target_type:   ReportTarget;
-  target_name:   string;
-  target_id:     string;
-  listing_image_url: string;
-  listing_price: number;
-  listing_price_unit: string;
-  listing_owner_id: string;
-  listing_owner: string;
-  listing_owner_profile_image_url: string;
-  listing_owner_location: string;
-  reason:        string;
-  description:   string | null;
-  status:        ReportStatus;
-  reviewed_by:   string | null;
-  reviewed_at:   string | null;
-  created_at:    string;
-}
+import { AdminReport, ReportStatus } from "@/types/admin";
+import ReportActionsModal from "@/components/admin/report-actions-modal";
 
 const REPORTS: AdminReport[] = [];
 
@@ -116,9 +87,9 @@ export default function ReportsPage() {
   const [statusFilter,   setStatusFilter]   = useState("ALL");
   const [page,           setPage]           = useState(1);
   const [reports,        setReports]        = useState<AdminReport[]>(REPORTS);
-  const [expandedRow,    setExpandedRow]    = useState<string | null>(null);
   const [loadingReports, setLoadingReports] = useState(true);
   const [actionLoadingId,setActionLoadingId]= useState<string | null>(null);
+  const [resolving,      setResolving]      = useState<AdminReport | null>(null);
   const PER_PAGE = 8;
 
   // ── Load ──────────────────────────────────────────────────────────────────────
@@ -129,7 +100,7 @@ export default function ReportsPage() {
       try {
         const data = await getAdminReports();
         if (!mounted) return;
-        setReports((data ?? []) as AdminReportRecord[]);
+        setReports((data ?? []) as AdminReport[]);
       } catch (err) {
         if (!mounted) return;
         const message = typeof err === "string" ? err : "Failed to load reports";
@@ -171,23 +142,35 @@ export default function ReportsPage() {
   }
 
   // ── Actions ───────────────────────────────────────────────────────────────────
-  async function handleAction(id: string, action: "RESOLVED" | "DISMISSED") {
+  async function handleModalSubmit(id: string, action: "DISMISS" | "WARN_USER" | "HIDE_LISTING" | "DELETE_LISTING" | "LOCK_3" | "LOCK_7" | "LOCK_30" | "PERMANENT_BAN", reason: string) {
     setActionLoadingId(id);
     try {
-      await setAdminReportStatus(id, action);
+      await setAdminReportAction(id, { action, reason });
+      const nowIso = new Date().toISOString();
+      const nextStatus = action === "DISMISS" ? "DISMISSED" : "RESOLVED";
       setReports(rs =>
         rs.map(r =>
           r.id === id
-            ? { ...r, status: action, reviewed_at: new Date().toISOString(), reviewed_by: r.reviewed_by ?? "Admin" }
+            ? {
+                ...r,
+                status: nextStatus,
+                action_taken: action,
+                action_reason: reason,
+                resolved_at: nowIso,
+                reviewed_at: nowIso,
+                resolved_by: r.resolved_by ?? "Admin",
+                reviewed_by: r.reviewed_by ?? "Admin",
+              }
             : r,
         ),
       );
       toast.success(
-        `Report ${action === "RESOLVED" ? "resolved" : "dismissed"} successfully`,
+        "Report action submitted successfully",
         { position: "top-center" },
       );
+      setResolving(null);
     } catch (err) {
-      const message = typeof err === "string" ? err : "Failed to update report status";
+      const message = typeof err === "string" ? err : "Failed to submit report action";
       toast.error(message, { position: "top-center" });
     } finally {
       setActionLoadingId(null);
@@ -290,9 +273,7 @@ export default function ReportsPage() {
                     <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest">
                       Reporter
                     </TableHead>
-                    <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest">
-                      Reported User
-                    </TableHead>
+                    <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest">Listing Owner</TableHead>
                     <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest">
                       Reported Listing
                     </TableHead>
@@ -417,7 +398,7 @@ export default function ReportsPage() {
                                     {report.target_name}
                                   </p>
                                   <p className="text-xs text-stone-500 dark:text-stone-400 truncate">
-                                    {phpFmt.format(report.listing_price)} / {report.listing_price_unit || "unit"}
+                                    {phpFmt.format(report.listing_price ?? 0)} / {report.listing_price_unit || "unit"}
                                   </p>
                                 </div>
                               </div>
@@ -452,74 +433,24 @@ export default function ReportsPage() {
                           {/* Actions */}
                           <TableCell className="py-3.5">
                             <div className="flex items-center justify-end gap-1">
-
-                              {/* Toggle description row */}
                               <Button
-                                variant="ghost"
-                                size="icon"
                                 type="button"
-                                title={expandedRow === report.id ? "Hide Details" : "View Details"}
-                                aria-label={expandedRow === report.id ? "Hide Details" : "View Details"}
-                                onClick={() => setExpandedRow(prev => prev === report.id ? null : report.id)}
+                                size="sm"
+                                variant={report.status === "PENDING" ? "default" : "outline"}
+                                onClick={() => setResolving(report)}
                                 disabled={actionLoadingId === report.id}
-                                className="w-7 h-7 text-stone-500 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-[#252837]"
+                                className={cn(
+                                  "h-8 rounded-lg",
+                                  report.status === "PENDING"
+                                    ? "bg-[#1e2433] text-white hover:bg-[#2a3650]"
+                                    : "dark:border-[#2a2d3e] dark:text-stone-300 dark:hover:bg-[#252837]"
+                                )}
                               >
-                                {expandedRow === report.id
-                                  ? <EyeOff className="w-4 h-4" />
-                                  : <Eye    className="w-4 h-4" />
-                                }
+                                {report.status === "PENDING" ? "Take Action" : "View Resolution"}
                               </Button>
-
-                              {/* Resolve + dismiss (pending only) */}
-                              {report.status === "PENDING" && (
-                                <>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    type="button"
-                                    title="Take Action"
-                                    aria-label="Take Action"
-                                    onClick={() => void handleAction(report.id, "RESOLVED")}
-                                    disabled={actionLoadingId === report.id}
-                                    className="w-7 h-7 text-teal-600 dark:text-teal-400 hover:bg-teal-50 dark:hover:bg-teal-950/30 hover:text-teal-700 disabled:opacity-50"
-                                  >
-                                    <CheckCircle2 className="w-4 h-4" />
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    type="button"
-                                    title="Dismiss"
-                                    aria-label="Dismiss"
-                                    onClick={() => void handleAction(report.id, "DISMISSED")}
-                                    disabled={actionLoadingId === report.id}
-                                    className="w-7 h-7 text-stone-500 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-[#252837] disabled:opacity-50"
-                                  >
-                                    <XCircle className="w-4 h-4" />
-                                  </Button>
-                                </>
-                              )}
                             </div>
                           </TableCell>
                         </TableRow>
-
-                        {/* ── Expanded description row ── */}
-                        {expandedRow === report.id && (
-                          <TableRow className="bg-stone-50 dark:bg-[#13151f] border-stone-100 dark:border-[#2a2d3e]">
-                            <TableCell colSpan={7} className="px-4 py-4">
-                              <p className="text-xs font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest mb-1">
-                                Report Description
-                              </p>
-                              <p className="text-sm text-stone-600 dark:text-stone-300 leading-relaxed">
-                                {report.description ?? (
-                                  <span className="italic text-stone-400">
-                                    No additional description provided.
-                                  </span>
-                                )}
-                              </p>
-                            </TableCell>
-                          </TableRow>
-                        )}
                       </Fragment>
                     ))
                   )}
@@ -575,6 +506,14 @@ export default function ReportsPage() {
           </CardContent>
         </Card>
       </div>
+
+      {resolving && (
+        <ReportActionsModal
+          report={resolving}
+          onClose={() => setResolving(null)}
+          onSubmit={handleModalSubmit}
+        />
+      )}
     </div>
   );
 }

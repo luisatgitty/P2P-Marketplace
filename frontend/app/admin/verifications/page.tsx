@@ -707,7 +707,6 @@ export default function VerificationsPage() {
                           <span className="inline-flex items-center gap-1.5 text-xs font-bold text-stone-600 dark:text-stone-300 bg-stone-100 dark:bg-[#13151f] px-2 py-1 rounded-lg">
                             <IdCard className="w-3 h-3 text-stone-400" /> {verif.id_type.toUpperCase()}
                           </span>
-                          <p className="text-xs text-stone-400 dark:text-stone-500">{verif.id_number}</p>
                         </TableCell>
 
                         {/* Status */}
