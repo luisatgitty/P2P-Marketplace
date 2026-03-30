@@ -455,10 +455,12 @@ export default function UsersPage() {
                         {user.last_login
                           ? (
                             <div className="leading-tight">
-                              <p className="text-sm font-semibold">
+                              <p className="text-sm font-medium">
+                                {formatDateTime(user.last_login)}
+                              </p>
+                              <p className="text-xs">
                                 {formatTime12h(user.last_login)}
                               </p>
-                              <p>{formatDateTime(user.last_login)}</p>
                             </div>
                           )
                           : <span className="text-stone-300 dark:text-stone-600">Never</span>

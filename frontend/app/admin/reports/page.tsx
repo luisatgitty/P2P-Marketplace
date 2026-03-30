@@ -291,10 +291,10 @@ export default function ReportsPage() {
                       Reporter
                     </TableHead>
                     <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest">
-                      Reported Listing
+                      Reported User
                     </TableHead>
                     <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest">
-                      Reported User
+                      Reported Listing
                     </TableHead>
                     <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest">
                       Reason
@@ -360,6 +360,38 @@ export default function ReportsPage() {
                             </div>
                           </TableCell>
 
+                          {/* Listing owner */}
+                          <TableCell className="py-3.5 text-sm text-stone-600 dark:text-stone-300 whitespace-nowrap">
+                            {report.target_type === "LISTING" ? (
+                              <div className="flex items-center gap-2.5">
+                                <Link
+                                  href={`/profile?userId=${report.listing_owner_id}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  title="Open listing owner profile"
+                                  aria-label="Open listing owner profile"
+                                  className="shrink-0"
+                                >
+                                  <Image
+                                    src={validateImageURL(report.listing_owner_profile_image_url) || "/profile-icon.png"}
+                                    alt="Profile"
+                                    width={32}
+                                    height={32}
+                                    className="w-9 h-9 rounded-full object-cover border border-stone-200 dark:border-[#2a2d3e] shrink-0"
+                                  />
+                                </Link>
+                                <div className="min-w-0">
+                                  <p className="text-sm font-semibold text-stone-800 dark:text-stone-100 whitespace-nowrap truncate">
+                                    {report.listing_owner}
+                                  </p>
+                                  <p className="text-xs text-stone-500 dark:text-stone-400 whitespace-nowrap truncate">
+                                    {report.listing_owner_location || "-"}
+                                  </p>
+                                </div>
+                              </div>
+                            ) : "—"}
+                          </TableCell>
+
                           {/* Reported listing */}
                           <TableCell className="py-3.5 max-w-65">
                             {report.target_type === "LISTING" ? (
@@ -392,38 +424,6 @@ export default function ReportsPage() {
                             ) : (
                               <span className="text-xs text-stone-400">—</span>
                             )}
-                          </TableCell>
-
-                          {/* Listing owner */}
-                          <TableCell className="py-3.5 text-sm text-stone-600 dark:text-stone-300 whitespace-nowrap">
-                            {report.target_type === "LISTING" ? (
-                              <div className="flex items-center gap-2.5">
-                                <Link
-                                  href={`/profile?userId=${report.listing_owner_id}`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  title="Open listing owner profile"
-                                  aria-label="Open listing owner profile"
-                                  className="shrink-0"
-                                >
-                                  <Image
-                                    src={validateImageURL(report.listing_owner_profile_image_url) || "/profile-icon.png"}
-                                    alt="Profile"
-                                    width={32}
-                                    height={32}
-                                    className="w-9 h-9 rounded-full object-cover border border-stone-200 dark:border-[#2a2d3e] shrink-0"
-                                  />
-                                </Link>
-                                <div className="min-w-0">
-                                  <p className="text-sm font-semibold text-stone-800 dark:text-stone-100 whitespace-nowrap truncate">
-                                    {report.listing_owner}
-                                  </p>
-                                  <p className="text-xs text-stone-500 dark:text-stone-400 whitespace-nowrap truncate">
-                                    {report.listing_owner_location || "-"}
-                                  </p>
-                                </div>
-                              </div>
-                            ) : "—"}
                           </TableCell>
 
                           {/* Reason */}
