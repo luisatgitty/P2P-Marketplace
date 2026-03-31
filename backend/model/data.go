@@ -341,6 +341,7 @@ type AdminListingListItemFromDb struct {
 	SellerLocation   string    `gorm:"column:seller_location" json:"seller_location"`
 	SellerProfileURL string    `gorm:"column:seller_profile_image_url" json:"seller_profile_image_url"`
 	Views            int       `gorm:"column:views" json:"views"`
+	TransactionCount int       `gorm:"column:transaction_count" json:"transaction_count"`
 	Created          time.Time `gorm:"column:created" json:"created"`
 }
 

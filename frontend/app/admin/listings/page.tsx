@@ -44,7 +44,7 @@ import { validateImageURL } from "@/utils/validation";
 // ── Types ──────────────────────────────────────────────────────────────────────
 type ListingType   = "SELL" | "RENT" | "SERVICE";
 type ListingStatus = "AVAILABLE" | "UNAVAILABLE" | "SOLD" | "HIDDEN";
-type SortField     = "title" | "type" | "price" | "views" | "created" | "owner" | "status";
+type SortField     = "title" | "type" | "price" | "views" | "transactions" | "created" | "owner" | "status";
 type SortDir       = "asc" | "desc";
 
 interface AdminListing {
@@ -62,6 +62,7 @@ interface AdminListing {
   seller_location: string;
   seller_profile_image_url: string;
   views:    number;
+  transaction_count: number;
   created:  string;
 }
 
@@ -198,6 +199,7 @@ export default function ListingsPage() {
       if      (sort.field === "title")  { va = a.title;  vb = b.title;  }
       else if (sort.field === "price")  { va = a.price;  vb = b.price;  }
       else if (sort.field === "views")  { va = a.views;  vb = b.views;  }
+      else if (sort.field === "transactions") { va = a.transaction_count; vb = b.transaction_count; }
       else if (sort.field === "owner") { va = a.seller; vb = b.seller; }
       else if (sort.field === "type")   { va = a.type;   vb = b.type;   }
       else if (sort.field === "status") { va = a.status; vb = b.status; }
@@ -375,6 +377,7 @@ export default function ListingsPage() {
                     Status
                   </TableHead>
                   <SortableTH label="Views"   field="views"   />
+                  <SortableTH label="Transactions" field="transactions" />
                   <SortableTH label="Created" field="created" />
                   <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest text-right">
                     Actions
@@ -385,13 +388,13 @@ export default function ListingsPage() {
               <TableBody>
                 {loadingListings ? (
                   <TableRow>
-                    <TableCell colSpan={9} className="py-16 text-center text-sm text-stone-400 dark:text-stone-500">
+                    <TableCell colSpan={10} className="py-16 text-center text-sm text-stone-400 dark:text-stone-500">
                       Loading listings…
                     </TableCell>
                   </TableRow>
                 ) : paged.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={9} className="py-16 text-center text-sm text-stone-400 dark:text-stone-500">
+                    <TableCell colSpan={10} className="py-16 text-center text-sm text-stone-400 dark:text-stone-500">
                       No listings match the current filters.
                     </TableCell>
                   </TableRow>
@@ -506,6 +509,11 @@ export default function ListingsPage() {
                         {/* Views */}
                         <TableCell className="py-3.5 text-sm font-semibold text-stone-600 dark:text-stone-300 text-center">
                           {listing.views.toLocaleString()}
+                        </TableCell>
+
+                        {/* Transactions */}
+                        <TableCell className="py-3.5 text-sm font-semibold text-stone-600 dark:text-stone-300 text-center">
+                          {listing.transaction_count.toLocaleString()}
                         </TableCell>
 
                         {/* Created */}

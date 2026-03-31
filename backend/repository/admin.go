@@ -513,10 +513,18 @@ func GetAdminListings() ([]model.AdminListingListItemFromDb, error) {
 			TRIM(BOTH ', ' FROM CONCAT_WS(', ', NULLIF(TRIM(u.location_city), ''), NULLIF(TRIM(u.location_province), ''))) AS seller_location,
 			COALESCE(u.profile_image_url, '') AS seller_profile_image_url,
 			COALESCE(l.view_count, 0)::int AS views,
+			COALESCE(tx.transaction_count, 0)::int AS transaction_count,
 			l.created_at AS created
 		FROM public.listings l
 		LEFT JOIN public.categories c ON c.id = l.category_id
 		LEFT JOIN public.users u ON u.id = l.user_id
+		LEFT JOIN (
+			SELECT
+				listing_id,
+				COUNT(*)::int AS transaction_count
+			FROM public.listing_transactions
+			GROUP BY listing_id
+		) tx ON tx.listing_id = l.id
 		LEFT JOIN LATERAL (
 			SELECT image_url
 			FROM public.listing_images
