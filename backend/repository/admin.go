@@ -185,6 +185,8 @@ func GetAdminUsers() ([]model.AdminUserListItemFromDb, error) {
 			u.is_email_verified,
 			u.failed_login_attempts AS failed_login,
 			COALESCE(lc.listings, 0)::int AS listings,
+			COALESCE(ct.client_transactions, 0)::int AS client_transactions,
+			COALESCE(ot.owner_transactions, 0)::int AS owner_transactions,
 			u.last_login_at AS last_login,
 			u.created_at AS joined,
 			TRIM(BOTH ', ' FROM CONCAT_WS(', ', NULLIF(TRIM(u.location_barangay), ''), NULLIF(TRIM(u.location_city), ''), NULLIF(TRIM(u.location_province), ''))) AS location
@@ -194,6 +196,17 @@ func GetAdminUsers() ([]model.AdminUserListItemFromDb, error) {
 			FROM public.listings
 			GROUP BY user_id
 		) lc ON lc.user_id = u.id
+		LEFT JOIN (
+			SELECT client_id, COUNT(*)::int AS client_transactions
+			FROM public.listing_transactions
+			GROUP BY client_id
+		) ct ON ct.client_id = u.id
+		LEFT JOIN (
+			SELECT l.user_id AS owner_id, COUNT(*)::int AS owner_transactions
+			FROM public.listing_transactions lt
+			INNER JOIN public.listings l ON l.id = lt.listing_id
+			GROUP BY l.user_id
+		) ot ON ot.owner_id = u.id
 		WHERE u.deleted_at IS NULL
 			AND u.role = 'USER'
 		ORDER BY u.created_at DESC

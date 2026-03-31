@@ -59,6 +59,8 @@ interface AdminUser {
   is_email_verified: boolean;
   failed_login:      number;
   listings:          number;
+  client_transactions:number;
+  owner_transactions: number;
   last_login:        string | null;
   joined:            string;
   location:          string;
@@ -352,6 +354,9 @@ export default function UsersPage() {
                     Status
                   </TableHead>
                   <SortableTH label="Listings"     field="listings"     />
+                  <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest whitespace-nowrap">
+                    Transactions
+                  </TableHead>
                   <SortableTH label="Joined"       field="joined"       />
                   <SortableTH label="Last Login"   field="last_login"   />
                   <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest text-right">
@@ -363,13 +368,13 @@ export default function UsersPage() {
               <TableBody>
                 {loadingUsers ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="py-16 text-center text-sm text-stone-400 dark:text-stone-500">
+                    <TableCell colSpan={10} className="py-16 text-center text-sm text-stone-400 dark:text-stone-500">
                       Loading users…
                     </TableCell>
                   </TableRow>
                 ) : paged.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="py-16 text-center text-sm text-stone-400 dark:text-stone-500">
+                    <TableCell colSpan={10} className="py-16 text-center text-sm text-stone-400 dark:text-stone-500">
                       No users match the current filters.
                     </TableCell>
                   </TableRow>
@@ -443,6 +448,18 @@ export default function UsersPage() {
                       {/* Listings count */}
                       <TableCell className="py-3.5 text-sm font-semibold text-stone-600 dark:text-stone-300 text-center">
                         {user.listings}
+                      </TableCell>
+
+                      {/* Transactions */}
+                      <TableCell className="py-3.5 whitespace-nowrap">
+                        <div className="text-sm">
+                          <p className="text-stone-700 dark:text-stone-200 font-semibold">
+                            Client: {user.client_transactions.toLocaleString()}
+                          </p>
+                          <p className="text-stone-500 dark:text-stone-400">
+                            Owner: {user.owner_transactions.toLocaleString()}
+                          </p>
+                        </div>
                       </TableCell>
 
                       {/* Joined */}
