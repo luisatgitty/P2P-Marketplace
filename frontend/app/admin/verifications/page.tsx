@@ -117,17 +117,17 @@ function IdImageCard({ label, imageUrl }: { label: string; imageUrl?: string | n
         <button
           type="button"
           onClick={() => window.open(resolvedUrl, "_blank", "noopener,noreferrer")}
-          className="aspect-[4/3] w-full rounded-xl overflow-hidden border border-stone-200 dark:border-[#2a2d3e] bg-stone-100 dark:bg-[#13151f] hover:opacity-95 transition-opacity"
+          className="w-full rounded-xl overflow-hidden border border-stone-200 dark:border-[#2a2d3e] bg-stone-100 dark:bg-[#13151f] hover:opacity-95 transition-opacity"
           title="View full image"
         >
           <img
             src={resolvedUrl}
             alt={label}
-            className="w-full h-full object-cover"
+            className="w-full h-auto object-contain max-h-[70vh]"
           />
         </button>
       ) : (
-        <div className="aspect-[4/3] rounded-xl bg-stone-100 dark:bg-[#13151f] border-2 border-dashed border-stone-200 dark:border-[#2a2d3e] flex flex-col items-center justify-center gap-2">
+        <div className="aspect-4/3 rounded-xl bg-stone-100 dark:bg-[#13151f] border-2 border-dashed border-stone-200 dark:border-[#2a2d3e] flex flex-col items-center justify-center gap-2">
           <IdCard className="w-9 h-9 text-stone-300 dark:text-stone-600" />
           <span className="text-xs font-medium text-stone-400 dark:text-stone-500">No image</span>
         </div>
