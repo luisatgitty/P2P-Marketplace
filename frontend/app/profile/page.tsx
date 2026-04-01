@@ -5,13 +5,15 @@ import Link from "next/link";
 import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import {
-  MapPin, Mail, Calendar, Eye, EyeOff, MessageCircle,
-  Edit2, Plus, ShieldCheck, Package, Bookmark,
+  MapPin, Mail, Calendar, Eye, EyeOff, Star,
+  Edit2, Plus, Package, Bookmark,
   Camera, Trash2, AlertTriangle,
 } from "lucide-react";
 import { useUser } from "@/utils/UserContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import ListingTypeBadge from "@/components/listing-type-badge";
+import VerificationBadge from "@/components/verification-badge";
 import { toast } from "sonner";
 import {
   deactivateProfile,
@@ -21,6 +23,7 @@ import {
   updateProfileImages,
   updateProfileData,
   type ProfileListingItem,
+  type ProfileReviewItem,
 } from "@/services/profileService";
 import {
   getBarangaysByCity,
@@ -33,7 +36,8 @@ import { cn } from "@/lib/utils";
 // ─── Types ────────────────────────────────────────────────────────────────────
 type VerificationState = "unverified" | "pending" | "verified" | "rejected";
 type ListingTab = "all" | "active" | "sold" | "booked";
-type ProfileTab = "listings" | "bookmarks";
+type ProfileTab = "listings" | "bookmarks" | "reviews";
+type ReviewTab = "received" | "personal";
 
 const SOLD_STATUSES = new Set(["sold", "rented", "completed"]);
 const BOOKED_STATUSES = new Set(["hidden"]);
@@ -78,59 +82,86 @@ function resolveVerificationState(status: string): VerificationState {
   return "unverified";
 }
 
-function VerificationBadge({ state }: { state: VerificationState }) {
-  if (state === "verified") return (
-    <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700">
-      <ShieldCheck className="w-3 h-3" /> Verified
-    </span>
-  );
-  return (
-    <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-800">
-      <ShieldCheck className="w-3 h-3" /> Unverified
-    </span>
-  );
+function formatMemberSince(createdAt?: string): string {
+  if (!createdAt) return "Member since —";
+
+  const date = new Date(createdAt);
+  if (Number.isNaN(date.getTime())) return "Member since —";
+
+  return `Member since ${date.toLocaleDateString("en-PH", {
+    month: "short",
+    year: "numeric",
+  })}`;
+}
+
+function formatLastActive(lastLoginAt?: string): string {
+  if (!lastLoginAt) return "Last active —";
+
+  const date = new Date(lastLoginAt);
+  if (Number.isNaN(date.getTime())) return "Last active —";
+
+  const diffMs = Math.max(0, Date.now() - date.getTime());
+  const minute = 60 * 1000;
+  const hour = 60 * minute;
+  const day = 24 * hour;
+
+  if (diffMs < minute) return "Last active just now";
+  if (diffMs < hour) {
+    const minutes = Math.floor(diffMs / minute);
+    return `Last active ${minutes} minute${minutes === 1 ? "" : "s"} ago`;
+  }
+  if (diffMs < day) {
+    const hours = Math.floor(diffMs / hour);
+    return `Last active ${hours} hour${hours === 1 ? "" : "s"} ago`;
+  }
+  if (diffMs < 7 * day) {
+    const days = Math.floor(diffMs / day);
+    return `Last active ${days} day${days === 1 ? "" : "s"} ago`;
+  }
+
+  return `Last active ${date.toLocaleDateString("en-PH", {
+    month: "short",
+    day: "2-digit",
+    year: "numeric",
+  })}`;
+}
+
+function formatOverallRating(rating?: number, reviewCount?: number): string {
+  const count = reviewCount ?? 0;
+  if (count <= 0) return "No ratings yet";
+
+  const safeRating = Number.isFinite(rating) ? Number(rating) : 0;
+  return `${safeRating.toFixed(1)} (${count})`;
 }
 
 // ─── Profile listing card ─────────────────────────────────────────────────────
 function ProfileListingCard({ listing, showMeta = false, tab }: { listing: ProfileListingItem; showMeta?: boolean; tab?: ListingTab }) {
-  const badgeClass = { sell: "bg-stone-800 text-stone-100", rent: "bg-teal-700 text-white", service: "bg-violet-700 text-white" }[listing.type];
-  const badgeLabel = { sell: "For Sale", rent: "For Rent", service: "Service" }[listing.type];
-  const statusColor: Record<ListingTab, string> = { all: "text-stone-500", active: "text-teal-600", sold: "text-red-500", booked: "text-stone-400" };
-  const statusLabel: Record<ListingTab, string> = { all: "All", active: "Active", sold: "Sold", booked: "Booked" };
-  const normalizedStatus = (listing.status ?? "").toLowerCase();
-  const statusByListing = SOLD_STATUSES.has(normalizedStatus)
-    ? { label: "Sold", color: statusColor.sold }
-    : BOOKED_STATUSES.has(normalizedStatus)
-      ? { label: "Booked", color: statusColor.booked }
-      : { label: "Active", color: statusColor.active };
-  const statusMeta = tab === "all"
-    ? statusByListing
-    : tab
-      ? { label: statusLabel[tab], color: statusColor[tab] }
-      : null;
   const fmt = new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP", minimumFractionDigits: 0 });
   return (
     <Link href={`/listing/${listing.id}`} className="block group">
       <div className="bg-white dark:bg-[#1c1f2e] rounded-2xl overflow-hidden border border-stone-200 dark:border-[#2a2d3e] hover:-translate-y-1 hover:shadow-md transition-all duration-200">
         <div className="relative aspect-4/3 bg-stone-100 dark:bg-[#13151f] overflow-hidden">
           <img src={listing.imageUrl} alt={listing.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-          <span className={cn("absolute top-2 left-2 text-[10px] font-semibold px-2 py-0.5 rounded-full", badgeClass)}>{badgeLabel}</span>
-          {showMeta && statusMeta && (
-            <span className={cn("absolute top-2 right-2 text-[10px] font-semibold bg-white/90 dark:bg-black/70 px-2 py-0.5 rounded-full", statusMeta.color)}>
-              ● {statusMeta.label}
-            </span>
-          )}
+          <div className="absolute top-2 left-2">
+            <ListingTypeBadge
+              type={listing.type}
+              status={listing.status}
+              sellStatus={listing.sellStatus}
+              variant="solid"
+              className="text-[10px] font-semibold px-2 rounded-full"
+              soldClassName="text-[10px] font-semibold px-2 rounded-full"
+            />
+          </div>
         </div>
         <div className="p-3">
-          <p className="text-stone-800 dark:text-stone-100 font-semibold text-sm leading-tight truncate">{listing.title}</p>
+          <p className="text-stone-800 dark:text-stone-100 font-semibold text-sm leading-tight line-clamp-2">{listing.title}</p>
           <div className="flex items-baseline gap-1 mt-0.5">
-            <p className="text-stone-800 dark:text-stone-100 font-bold text-[15px]">{fmt.format(listing.price)}</p>
+            <p className="text-stone-800 dark:text-stone-100 font-bold text-sm">{fmt.format(listing.price)}</p>
             {listing.priceUnit && <span className="text-xs text-stone-400 dark:text-stone-500">{listing.priceUnit}</span>}
           </div>
           {showMeta ? (
             <div className="flex items-center gap-3 mt-2 text-[11px] text-stone-400 dark:text-stone-500">
               <span className="flex items-center gap-1"><Eye className="w-3 h-3" /> 142 views</span>
-              <span className="flex items-center gap-1"><MessageCircle className="w-3 h-3" /> 3 inquiries</span>
             </div>
           ) : (
             <div className="flex items-center justify-between mt-1.5">
@@ -162,8 +193,85 @@ function AddListingCard() {
   );
 }
 
+function ProfileReviewCard({ review }: { review: ProfileReviewItem }) {
+  const fmt = new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP", minimumFractionDigits: 0 });
+  const reviewerName = (review.reviewer.name ?? "").trim() || "Anonymous Reviewer";
+  const initials = reviewerName
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((chunk) => chunk[0]?.toUpperCase() ?? "")
+    .join("") || "?";
+
+  return (
+    <div className="bg-white dark:bg-[#1c1f2e] rounded-2xl border border-stone-200 dark:border-[#2a2d3e] shadow-sm p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          {review.reviewer.profileImageUrl ? (
+            <img
+              src={review.reviewer.profileImageUrl}
+              alt={reviewerName}
+              className="w-10 h-10 rounded-full object-cover border border-stone-200 dark:border-[#2a2d3e] shrink-0"
+            />
+          ) : (
+            <div className="w-10 h-10 rounded-full bg-stone-200 dark:bg-stone-700 text-stone-700 dark:text-stone-100 font-bold text-xs flex items-center justify-center shrink-0">
+              {initials}
+            </div>
+          )}
+          <div className="min-w-0">
+            <p className="text-sm font-bold text-stone-900 dark:text-stone-100 truncate">{reviewerName}</p>
+            <p className="text-[11px] text-stone-400 dark:text-stone-500">{review.reviewDate}</p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-1 shrink-0">
+          {[1, 2, 3, 4, 5].map((value) => (
+            <Star
+              key={value}
+              className={cn(
+                "w-3.5 h-3.5",
+                value <= review.rating
+                  ? "fill-amber-400 text-amber-400"
+                  : "text-stone-300 dark:text-stone-600"
+              )}
+            />
+          ))}
+        </div>
+      </div>
+
+      {review.comment && review.comment.trim() !== "" && (
+        <p className="mt-3 text-sm leading-relaxed text-stone-700 dark:text-stone-200">{review.comment}</p>
+      )}
+
+      <Link
+        href={`/listing/${review.listing.id}`}
+        className="mt-3 flex items-center gap-3 rounded-xl border border-stone-200 dark:border-[#2a2d3e] bg-stone-50 dark:bg-[#13151f] p-2.5 hover:border-stone-300 dark:hover:border-[#3a3e52] transition-colors"
+      >
+        <img
+          src={review.listing.imageUrl}
+          alt={review.listing.title}
+          className="w-14 h-14 rounded-lg object-cover border border-stone-200 dark:border-[#2a2d3e] shrink-0"
+        />
+        <div className="min-w-0 flex-1">
+          <p className="text-xs font-semibold text-stone-800 dark:text-stone-100 line-clamp-2">{review.listing.title}</p>
+          <p className="text-sm font-bold text-amber-700 dark:text-amber-500 mt-0.5">
+            {fmt.format(review.listing.price)}
+            {review.listing.priceUnit && (
+              <span className="text-[11px] font-normal text-stone-400 dark:text-stone-500 ml-1">{review.listing.priceUnit}</span>
+            )}
+          </p>
+        </div>
+      </Link>
+    </div>
+  );
+}
+
 // ─── Image upload hook with remove support ────────────────────────────────────
-function useImageUpload(initialSrc?: string | null, onUploaded?: (file: File) => Promise<void>) {
+function useImageUpload(
+  initialSrc?: string | null,
+  onUploaded?: (file: File) => Promise<void>,
+  onRemoved?: () => Promise<void>,
+) {
   const [src, setSrc] = useState<string | null>(initialSrc ?? null);
   const [file, setFile] = useState<File | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -175,7 +283,13 @@ function useImageUpload(initialSrc?: string | null, onUploaded?: (file: File) =>
 
   function trigger() { inputRef.current?.click(); }
 
-  function remove() {
+  async function remove() {
+    if (onRemoved) {
+      await onRemoved();
+      setFile(null);
+      return;
+    }
+
     setSrc(null);
     setFile(null);
   }
@@ -184,22 +298,17 @@ function useImageUpload(initialSrc?: string | null, onUploaded?: (file: File) =>
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const previous = src;
     setFile(file);
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result as string;
-      setSrc(result);
-    };
-    reader.readAsDataURL(file);
-
     if (onUploaded) {
-      try {
-        await onUploaded(file);
-      } catch {
-        setSrc(previous ?? null);
-      }
+      await onUploaded(file);
+    } else {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = reader.result as string;
+        setSrc(result);
+      };
+      reader.readAsDataURL(file);
     }
 
     e.target.value = "";
@@ -276,7 +385,7 @@ async function encodeFileToPayload(file: File): Promise<EncodedImagePayload> {
 // ─── MAIN PAGE ────────────────────────────────────────────────────────────────
 export default function ProfilePage() {
   const searchParams = useSearchParams();
-  const { user, saveUserData, clearUserData } = useUser();
+  const { user, isUserOnline, saveUserData, clearUserData } = useUser();
   const externalUserId = (searchParams.get("userId") ?? "").trim();
   const isViewingExternalProfile = externalUserId !== "";
   const [profileUser, setProfileUser] = useState<ProfilePayload["user"] | null>(null);
@@ -303,8 +412,11 @@ export default function ProfilePage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [userListings, setUserListings] = useState<ProfileListingItem[]>([]);
   const [bookmarkListings, setBookmarkListings] = useState<ProfileListingItem[]>([]);
+  const [receivedReviews, setReceivedReviews] = useState<ProfileReviewItem[]>([]);
+  const [personalReviews, setPersonalReviews] = useState<ProfileReviewItem[]>([]);
   const [listingTab, setListingTab] = useState<ListingTab>("active");
   const [profileTab, setProfileTab] = useState<ProfileTab>("listings");
+  const [reviewTab, setReviewTab] = useState<ReviewTab>("received");
   const [showAvatarMenu, setShowAvatarMenu] = useState(false);
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [provinces, setProvinces] = useState<LocationOption[]>([]);
@@ -330,6 +442,7 @@ export default function ProfilePage() {
       const profileImage = await encodeFileToPayload(file);
       const updatedUser = await updateProfileImages({ profileImage });
       if (user) saveUserData({ ...user, ...updatedUser });
+      setProfileUser((prev) => ({ ...(prev ?? updatedUser), ...updatedUser }));
       showSuccessToast("Profile photo updated");
     } catch (err) {
       const message = typeof err === "string" ? err : (err instanceof Error ? err.message : "Failed to update profile photo");
@@ -346,6 +459,7 @@ export default function ProfilePage() {
       const coverImage = await encodeFileToPayload(file);
       const updatedUser = await updateProfileImages({ coverImage });
       if (user) saveUserData({ ...user, ...updatedUser });
+      setProfileUser((prev) => ({ ...(prev ?? updatedUser), ...updatedUser }));
       showSuccessToast("Cover photo updated");
     } catch (err) {
       const message = typeof err === "string" ? err : (err instanceof Error ? err.message : "Failed to update cover photo");
@@ -356,8 +470,44 @@ export default function ProfilePage() {
     }
   };
 
-  const avatar = useImageUpload(profileUser?.profileImageUrl ?? null, handleAvatarUpload);
-  const cover  = useImageUpload(profileUser?.coverImageUrl ?? null, handleCoverUpload);
+  const handleAvatarRemove = async () => {
+    if (uploadingAvatar) return;
+
+    setUploadingAvatar(true);
+    try {
+      const updatedUser = await updateProfileImages({ removeProfileImage: true });
+      if (user) saveUserData({ ...user, ...updatedUser });
+      setProfileUser((prev) => ({ ...(prev ?? updatedUser), ...updatedUser }));
+      showSuccessToast("Profile photo removed");
+    } catch (err) {
+      const message = typeof err === "string" ? err : (err instanceof Error ? err.message : "Failed to remove profile photo");
+      showErrorToast(message);
+      throw err;
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
+
+  const handleCoverRemove = async () => {
+    if (uploadingCover) return;
+
+    setUploadingCover(true);
+    try {
+      const updatedUser = await updateProfileImages({ removeCoverImage: true });
+      if (user) saveUserData({ ...user, ...updatedUser });
+      setProfileUser((prev) => ({ ...(prev ?? updatedUser), ...updatedUser }));
+      showSuccessToast("Cover photo removed");
+    } catch (err) {
+      const message = typeof err === "string" ? err : (err instanceof Error ? err.message : "Failed to remove cover photo");
+      showErrorToast(message);
+      throw err;
+    } finally {
+      setUploadingCover(false);
+    }
+  };
+
+  const avatar = useImageUpload(profileUser?.profileImageUrl ?? null, handleAvatarUpload, handleAvatarRemove);
+  const cover  = useImageUpload(profileUser?.coverImageUrl ?? null, handleCoverUpload, handleCoverRemove);
 
   useEffect(() => {
     if (!isViewingExternalProfile && user) {
@@ -372,6 +522,8 @@ export default function ProfilePage() {
   }, [isViewingExternalProfile]);
 
   useEffect(() => {
+    if (!editOpen || isViewingExternalProfile) return;
+
     const loadProvinces = async () => {
       try {
         const data = await getProvinces();
@@ -382,9 +534,11 @@ export default function ProfilePage() {
     };
 
     loadProvinces();
-  }, []);
+  }, [editOpen, isViewingExternalProfile]);
 
   useEffect(() => {
+    if (!editOpen || isViewingExternalProfile) return;
+
     if (!selectedProvCode) {
       setCities([]);
       setSelectedCityCode("");
@@ -404,9 +558,11 @@ export default function ProfilePage() {
     };
 
     loadCities();
-  }, [selectedProvCode]);
+  }, [editOpen, isViewingExternalProfile, selectedProvCode, form.locationCity]);
 
   useEffect(() => {
+    if (!editOpen || isViewingExternalProfile) return;
+
     if (!selectedCityCode) {
       setBarangays([]);
       return;
@@ -422,7 +578,7 @@ export default function ProfilePage() {
     };
 
     loadBarangays();
-  }, [selectedCityCode]);
+  }, [editOpen, isViewingExternalProfile, selectedCityCode]);
 
   useEffect(() => {
     const loadProfile = async () => {
@@ -435,6 +591,8 @@ export default function ProfilePage() {
         setProfileUser(payload.user);
         setUserListings(payload.listings);
         setBookmarkListings(isViewingExternalProfile ? [] : payload.bookmarks);
+        setReceivedReviews(payload.receivedReviews ?? payload.reviews ?? []);
+        setPersonalReviews(payload.personalReviews ?? []);
         if (!isViewingExternalProfile) {
           saveUserData(payload.user);
         }
@@ -480,6 +638,9 @@ export default function ProfilePage() {
       : listingTab === "sold"
         ? soldListings
         : bookedListings;
+  const profileTabs: ProfileTab[] = isViewingExternalProfile
+    ? ["listings", "reviews"]
+    : ["listings", "bookmarks", "reviews"];
 
   async function handleSave() {
     if (form.newPassword && form.newPassword !== form.confirmPassword) {
@@ -574,7 +735,13 @@ export default function ProfilePage() {
   const initials = `${profileUser?.firstName?.[0] ?? ""}${profileUser?.lastName?.[0] ?? ""}`.toUpperCase() || "?";
   const fullName = profileUser ? `${profileUser.firstName} ${profileUser.lastName}` : "—";
   const locationText = [profileUser?.locationCity, profileUser?.locationProv].filter(Boolean).join(", ") || "Location not set";
+  const memberSinceText = formatMemberSince(profileUser?.createdAt);
+  const lastActiveText = formatLastActive(profileUser?.lastLoginAt);
+  const overallRatingText = formatOverallRating(profileUser?.overallRating, profileUser?.reviewCount);
+  const hasOverallRating = (profileUser?.reviewCount ?? 0) > 0;
   const isVerifiedSeller = !isViewingExternalProfile && (profileUser?.status ?? "").toLowerCase() === "verified";
+  const profileTargetUserId = isViewingExternalProfile ? externalUserId : (user?.userId ?? "");
+  const isProfileOnline = profileTargetUserId ? isUserOnline(profileTargetUserId) : false;
 
   // Shared label style
   const lbl = "text-xs font-medium text-stone-600 dark:text-stone-400 mb-1.5 block";
@@ -593,6 +760,8 @@ export default function ProfilePage() {
       setProfileUser(payload.user);
       setUserListings(payload.listings);
       setBookmarkListings(payload.bookmarks);
+      setReceivedReviews(payload.receivedReviews ?? payload.reviews ?? []);
+      setPersonalReviews(payload.personalReviews ?? []);
       saveUserData(payload.user);
 
       const nextSnapshot: EditableProfileSnapshot = {
@@ -625,11 +794,11 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-stone-100 dark:bg-[#0f1117]">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 pb-20">
+    <div className="min-h-fit bg-stone-100 dark:bg-[#0f1117]">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
 
         {/* ── Profile header card ── */}
-        <div className="bg-white dark:bg-[#1c1f2e] rounded-2xl border border-stone-200 dark:border-[#2a2d3e] shadow-sm overflow-hidden mb-5">
+        <div className="bg-white dark:bg-[#1c1f2e] rounded-2xl border border-stone-200 dark:border-[#2a2d3e] shadow-sm overflow-hidden mb-4">
 
           {/* Cover photo */}
           <div className={cn("relative h-32 bg-linear-to-r from-[#1e2433] via-[#2a3650] to-[#1a2a3a] overflow-hidden group", !isViewingExternalProfile && "cursor-pointer")} onClick={() => !isViewingExternalProfile && cover.trigger()}>
@@ -646,7 +815,14 @@ export default function ProfilePage() {
             {/* Remove cover button */}
             {!isViewingExternalProfile && cover.src && (
               <button
-                onClick={(e) => { e.stopPropagation(); cover.remove(); showSuccessToast("Cover photo removed"); }}
+                onClick={async (e) => {
+                  e.stopPropagation();
+                  try {
+                    await cover.remove();
+                  } catch {
+                    // toast already handled in remove flow
+                  }
+                }}
                 className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/50 hover:bg-black/70 flex items-center justify-center text-white transition-colors opacity-0 group-hover:opacity-100"
                 title="Remove cover photo"
               >
@@ -670,6 +846,9 @@ export default function ProfilePage() {
                       ? <Image src={avatar.src} alt="Avatar" width={80} height={80} className="object-cover w-full h-full" />
                       : <span className="text-2xl font-bold text-slate-200">{initials}</span>}
                   </div>
+                  {isProfileOnline && (
+                    <span className="absolute bottom-1.5 right-1.5 w-4 h-4 rounded-full bg-emerald-500 border-3 border-white dark:border-[#1c1f2e]" />
+                  )}
                   {!isViewingExternalProfile && (
                     <>
                       <div className="absolute inset-0 rounded-full bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
@@ -697,7 +876,15 @@ export default function ProfilePage() {
                       {avatar.src && (
                         <button
                           className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors border-t border-stone-100 dark:border-[#2a2d3e]"
-                          onClick={() => { avatar.remove(); setShowAvatarMenu(false); showSuccessToast("Profile photo removed"); }}
+                          onClick={async () => {
+                            try {
+                              await avatar.remove();
+                            } catch {
+                              // toast already handled in remove flow
+                            } finally {
+                              setShowAvatarMenu(false);
+                            }
+                          }}
                         >
                           <Trash2 className="w-4 h-4" />
                           Remove Photo
@@ -726,13 +913,14 @@ export default function ProfilePage() {
               <h1 className="text-xl font-bold text-stone-900 dark:text-stone-100">{fullName}</h1>
               <VerificationBadge state={verificationState} />
             </div>
-            <p className="text-xs text-stone-400 dark:text-stone-500 mb-3">Member since Jan 2024</p>
+            <p className="text-xs text-stone-400 dark:text-stone-500 mb-3">{memberSinceText}</p>
 
             {/* Meta row */}
             <div className="flex flex-wrap gap-x-5 gap-y-1.5">
               <span className="flex items-center gap-1.5 text-xs text-stone-500 dark:text-stone-400"><MapPin className="w-3.5 h-3.5 text-stone-400 dark:text-stone-500" /> {locationText}</span>
               {!isViewingExternalProfile && <span className="flex items-center gap-1.5 text-xs text-stone-500 dark:text-stone-400"><Mail className="w-3.5 h-3.5 text-stone-400 dark:text-stone-500" /> {profileUser?.email}</span>}
-              <span className="flex items-center gap-1.5 text-xs text-stone-500 dark:text-stone-400"><Calendar className="w-3.5 h-3.5 text-stone-400 dark:text-stone-500" /> Last active today</span>
+              <span className="flex items-center gap-1.5 text-xs text-stone-500 dark:text-stone-400"><Calendar className="w-3.5 h-3.5 text-stone-400 dark:text-stone-500" /> {lastActiveText}</span>
+              <span className="flex items-center gap-1.5 text-xs text-stone-500 dark:text-stone-400"><Star className={cn("w-3.5 h-3.5", hasOverallRating ? "fill-amber-400 text-amber-400" : "text-stone-400 dark:text-stone-500")} /> {overallRatingText}</span>
             </div>
           </div>
         </div>
@@ -854,21 +1042,12 @@ export default function ProfilePage() {
                     </div>
                     <div>
                       <label className={lbl}>Confirm New Password</label>
-                      <div className="relative">
-                        <Input
-                          type={showConfirmPassword ? "text" : "password"}
-                          value={form.confirmPassword}
-                          onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })}
-                          placeholder="Repeat new password"
-                        />
-                        <button
-                          type="button"
-                          className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm leading-5"
-                          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                        >
-                          {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                        </button>
-                      </div>
+                      <Input
+                        type={showConfirmPassword ? "text" : "password"}
+                        value={form.confirmPassword}
+                        onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })}
+                        placeholder="Repeat new password"
+                      />
                     </div>
                   </div>
                 </div>
@@ -902,35 +1081,39 @@ export default function ProfilePage() {
 
         <div className="bg-white dark:bg-[#1c1f2e] rounded-2xl border border-stone-200 dark:border-[#2a2d3e] shadow-sm overflow-hidden">
           {/* Tab bar */}
-          {!isViewingExternalProfile && <div className="flex border-b border-stone-200 dark:border-[#2a2d3e]">
-            {(["listings", "bookmarks"] as const).map((t) => (
+          <div className="flex border-b border-stone-200 dark:border-[#2a2d3e]">
+            {profileTabs.map((t) => (
               <button key={t} onClick={() => setProfileTab(t)}
                 className={cn("flex-1 py-3.5 text-sm font-medium transition-colors",
                   profileTab === t
                     ? "text-stone-900 dark:text-stone-100 border-b-2 border-stone-900 dark:border-stone-300"
                     : "text-stone-400 dark:text-stone-500 hover:text-stone-600 dark:hover:text-stone-300")}>
-                {t === "listings" ? "📦 My Listings" : "🔖 Bookmarked Items"}
+                {t === "listings"
+                  ? "📦 Listing"
+                  : t === "bookmarks"
+                    ? "🔖 Bookmark"
+                    : "⭐ Review"}
               </button>
             ))}
-          </div>}
+          </div>
 
           {/* My Listings */}
           {profileTab === "listings" && (<>
             <div className="flex items-center justify-between px-4 pt-3 pb-2">
               <div className="flex gap-1">
-                {(["all", "active", "sold", "booked"] as const).map((t) => (
-                  <button key={t} onClick={() => setListingTab(t)}
-                    className={cn("text-xs font-medium px-3 py-1.5 rounded-full transition-colors capitalize",
-                      listingTab === t
-                        ? "bg-stone-900 dark:bg-stone-200 text-white dark:text-stone-900"
-                        : "text-stone-400 dark:text-stone-500 hover:text-stone-600 dark:hover:text-stone-300 hover:bg-stone-100 dark:hover:bg-[#252837]")}>
-                    {t === "all"
-                      ? `📋 All (${userListings.length})`
-                      : t === "active"
-                      ? `🟢 Active (${activeListings.length})`
-                      : t === "sold"
-                        ? `✅ Sold (${soldListings.length})`
-                        : `📝 Booked (${bookedListings.length})`}
+                {(["all", "active", "sold", "booked"] as const).map((tab) => (
+                  <button key={tab} onClick={() => setListingTab(tab)}
+                    className={cn("tab-page-base",
+                      listingTab === tab
+                        ? "tab-active"
+                        : "tab-inactive")}>
+                    {tab === "all"
+                      ? `All (${userListings.length})`
+                      : tab === "active"
+                      ? `Active (${activeListings.length})`
+                      : tab === "sold"
+                        ? `Sold (${soldListings.length})`
+                        : `Booked (${bookedListings.length})`}
                   </button>
                 ))}
               </div>
@@ -940,9 +1123,23 @@ export default function ProfilePage() {
               <div className="text-center py-14 px-6">
                 <p className="font-semibold text-stone-400 text-sm">Loading listings...</p>
               </div>
-            ) : allListings.length > 0
-              ? <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 p-4">{allListings.map((l) => <ProfileListingCard key={l.id} listing={l} showMeta tab={listingTab} />)}{isVerifiedSeller && <AddListingCard />}</div>
-              : <div className="text-center py-14 px-6"><Package className="w-10 h-10 text-stone-200 dark:text-stone-700 mx-auto mb-3" /><p className="font-semibold text-stone-400 text-sm">No listings yet</p>{isVerifiedSeller && <Link href="/create"><Button size="sm" className="mt-4 rounded-full bg-stone-900 hover:bg-stone-800 text-white text-xs"><Plus className="w-3 h-3" /> Add Listing</Button></Link>}</div>}
+            ) : (allListings.length > 0) ? (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 p-4">
+                {allListings.map((l) => <ProfileListingCard key={l.id} listing={l} showMeta tab={listingTab} />)}{isVerifiedSeller && <AddListingCard />}
+              </div>
+            ) : (
+              <div className="text-center py-14 px-6">
+                <Package className="w-10 h-10 text-stone-200 dark:text-stone-700 mx-auto mb-3" />
+                <p className="font-semibold text-stone-400 text-sm">No listings yet</p>
+                {isVerifiedSeller && (
+                  <Link href="/create">
+                    <Button size="sm" className="mt-4 rounded-full bg-stone-900 hover:bg-stone-800 text-white text-xs">
+                      <Plus className="w-3 h-3" /> Add Listing
+                    </Button>
+                  </Link>
+                )}
+              </div>
+            )}
           </>)}
 
           {/* Bookmarked Items */}
@@ -952,6 +1149,50 @@ export default function ProfilePage() {
               : bookmarkListings.length > 0
               ? <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 p-4">{bookmarkListings.map((l) => <ProfileListingCard key={l.id} listing={l} />)}</div>
               : <div className="text-center py-14"><Bookmark className="w-10 h-10 text-stone-200 dark:text-stone-700 mx-auto mb-3" /><p className="font-semibold text-stone-400 text-sm">No bookmarked items yet</p></div>
+          )}
+
+          {/* Reviews */}
+          {profileTab === "reviews" && (
+            <>
+              <div className="flex items-center justify-between px-4 pt-3 pb-2">
+                <div className="flex gap-1">
+                  {([
+                    { key: "received", label: `Reviews by Others (${receivedReviews.length})` },
+                    { key: "personal", label: `Personal Reviews (${personalReviews.length})` },
+                  ] as const).map((tabItem) => (
+                    <button
+                      key={tabItem.key}
+                      onClick={() => setReviewTab(tabItem.key)}
+                      className={cn(
+                        "tab-page-base",
+                        reviewTab === tabItem.key
+                          ? "tab-active"
+                          : "tab-inactive"
+                      )}
+                    >
+                      {tabItem.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {loadingProfile ? (
+                <div className="text-center py-14"><p className="font-semibold text-stone-400 text-sm">Loading reviews...</p></div>
+              ) : (reviewTab === "received" ? receivedReviews : personalReviews).length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-4">
+                  {(reviewTab === "received" ? receivedReviews : personalReviews).map((review) => (
+                    <ProfileReviewCard key={`${reviewTab}-${review.id}`} review={review} />
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-14 px-6">
+                  <Star className="w-10 h-10 text-stone-200 dark:text-stone-700 mx-auto mb-3" />
+                  <p className="font-semibold text-stone-400 text-sm">
+                    {reviewTab === "received" ? "No reviews by others yet" : "No personal reviews yet"}
+                  </p>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>

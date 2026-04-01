@@ -13,6 +13,20 @@ type ApiSuccess<T> = {
   data: T;
 };
 
+export type OutgoingMessageAttachment = {
+  name: string;
+  mimeType: string;
+  data: string;
+};
+
+export type ScheduleRequestPayload = {
+  startDate: string;
+  endDate: string;
+  startTime: string;
+  endTime: string;
+  message?: string;
+};
+
 function emitMessagesUpdate() {
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("messages:updated"));
@@ -70,13 +84,14 @@ export async function getMessages(conversationId: string): Promise<Message[]> {
 export async function sendMessage(
   conversationId: string,
   content: string,
-  _currentUserId: string,
+  attachments: OutgoingMessageAttachment[],
   replyTo?: ReplyPreview | null,
 ): Promise<Message> {
   const data = await apiFetch<{ message: Message }>(`/messages/conversations/${conversationId}/messages`, {
     method: "POST",
     body: JSON.stringify({
       content,
+      attachments,
       replyTo: replyTo?.messageId ? { messageId: replyTo.messageId } : null,
     }),
   });
@@ -136,11 +151,43 @@ export async function deleteConversation(conversationId: string): Promise<void> 
   emitMessagesUpdate();
 }
 
-export async function openOrCreateConversationFromListing(listingId: string): Promise<string> {
+export async function openOrCreateConversationFromListing(
+  listingId: string,
+  offerPrice?: number,
+  offerMessage?: string,
+  schedule?: ScheduleRequestPayload,
+): Promise<string> {
   const data = await apiFetch<{ conversationId: string }>("/messages/conversations/from-listing", {
     method: "POST",
-    body: JSON.stringify({ listingId }),
+    body: JSON.stringify({
+      listingId,
+      offerPrice: Number.isFinite(offerPrice) && (offerPrice ?? 0) > 0 ? Math.trunc(offerPrice as number) : undefined,
+      offerMessage: (offerMessage ?? "").trim() || undefined,
+      startDate: schedule?.startDate,
+      endDate: schedule?.endDate,
+      startTime: schedule?.startTime,
+      endTime: schedule?.endTime,
+      scheduleMessage: (schedule?.message ?? "").trim() || undefined,
+    }),
   });
   emitMessagesUpdate();
   return data.conversationId;
+}
+
+export async function updateConversationOfferAsOwner(conversationId: string, offerPrice?: number, offerMessage?: string): Promise<void> {
+  await apiFetch<{}>(`/messages/conversations/${conversationId}/offer`, {
+    method: "PATCH",
+    body: JSON.stringify({
+      offerPrice: Number.isFinite(offerPrice) && (offerPrice ?? 0) > 0 ? Math.trunc(offerPrice as number) : undefined,
+      offerMessage: (offerMessage ?? "").trim() || undefined,
+    }),
+  });
+  emitMessagesUpdate();
+}
+
+export async function toggleConversationDealAgreement(conversationId: string): Promise<void> {
+  await apiFetch<{}>(`/messages/conversations/${conversationId}/deal`, {
+    method: "PATCH",
+  });
+  emitMessagesUpdate();
 }

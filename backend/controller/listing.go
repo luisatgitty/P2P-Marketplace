@@ -3,6 +3,7 @@ package controller
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -70,8 +71,14 @@ func GetListingEditById(c *fiber.Ctx) error {
 		return SendErrorResponse(c, 404, err.Error(), err)
 	}
 
+	timeWindows, err := repository.GetListingTimeWindows(listingId)
+	if err != nil {
+		return SendErrorResponse(c, 500, err.Error(), err)
+	}
+
 	included := parseJSONStringArray(listing.Included)
 	highlights := parseJSONStringArray(listing.Highlights)
+	daysOff := parseJSONStringArray(listing.DaysOff)
 
 	data := map[string]any{
 		"id":             listing.Id,
@@ -92,8 +99,11 @@ func GetListingEditById(c *fiber.Ctx) error {
 		"deposit":        listing.Deposit,
 		"turnaround":     listing.Turnaround,
 		"serviceArea":    listing.ServiceArea,
+		"arrangement":    listing.Arrangement,
 		"inclusions":     []string{},
 		"amenities":      []string{},
+		"dayoffs":        daysOff,
+		"timeWindows":    timeWindows,
 	}
 
 	if listing.AvailableFrom != nil {
@@ -185,6 +195,11 @@ func GetListingById(c *fiber.Ctx) error {
 		return SendErrorResponse(c, 500, err.Error(), err)
 	}
 
+	timeWindows, err := repository.GetListingTimeWindows(listingId)
+	if err != nil {
+		return SendErrorResponse(c, 500, err.Error(), err)
+	}
+
 	userId := getOptionalUserIdFromSession(c)
 	related, err := repository.GetRelatedListings(listingId, listing.CategoryID, listing.Type, userId)
 	if err != nil {
@@ -203,6 +218,7 @@ func GetListingById(c *fiber.Ctx) error {
 	baseURL := c.BaseURL()
 	features := parseJSONStringArray(listing.Highlights)
 	included := parseJSONStringArray(listing.Included)
+	daysOff := parseJSONStringArray(listing.DaysOff)
 
 	extra := map[string]any{
 		"description":    listing.Description,
@@ -218,33 +234,46 @@ func GetListingById(c *fiber.Ctx) error {
 	case "rent":
 		extra["minPeriod"] = formatMinPeriod(listing.MinRentalPeriod)
 		if listing.AvailableFrom != nil {
+			extra["available_from"] = listing.AvailableFrom.Format("2006-01-02")
 			extra["availability"] = listing.AvailableFrom.Format("Jan 02, 2006")
 		}
 		extra["deposit"] = listing.Deposit
 		extra["amenities"] = included
+		extra["daysOff"] = daysOff
 	case "service":
+		if listing.AvailableFrom != nil {
+			extra["available_from"] = listing.AvailableFrom.Format("2006-01-02")
+			extra["availability"] = listing.AvailableFrom.Format("Jan 02, 2006")
+		}
 		extra["turnaround"] = listing.Turnaround
 		extra["serviceArea"] = listing.ServiceArea
+		extra["arrangement"] = listing.Arrangement
 		extra["inclusions"] = included
+		extra["daysOff"] = daysOff
 	default:
 		extra["inclusions"] = included
 	}
 
+	extra["timeWindows"] = timeWindows
+
 	listingCard := map[string]any{
-		"id":        listing.Id,
-		"title":     listing.Title,
-		"price":     listing.Price,
-		"priceUnit": listing.PriceUnit,
-		"type":      listing.Type,
-		"category":  listing.Category,
-		"location":  strings.TrimSpace(fmt.Sprintf("%s, %s", listing.LocationCity, listing.LocationProv)),
-		"postedAt":  timeAgo(listing.CreatedAt),
-		"imageUrl":  mapPrimaryImage(baseURL, images),
+		"id":         listing.Id,
+		"title":      listing.Title,
+		"price":      listing.Price,
+		"priceUnit":  listing.PriceUnit,
+		"type":       listing.Type,
+		"status":     strings.ToLower(strings.TrimSpace(listing.Status)),
+		"sellStatus": strings.ToLower(strings.TrimSpace(listing.SellStatus)),
+		"category":   listing.Category,
+		"location":   strings.TrimSpace(fmt.Sprintf("%s, %s", listing.LocationCity, listing.LocationProv)),
+		"postedAt":   timeAgo(listing.CreatedAt),
+		"imageUrl":   mapPrimaryImage(baseURL, images),
 		"seller": map[string]any{
-			"id":     listing.SellerId,
-			"name":   listing.SellerName,
-			"rating": listing.SellerRating,
-			"isPro":  listing.SellerVerified,
+			"id":              listing.SellerId,
+			"name":            listing.SellerName,
+			"profileImageUrl": mapPrimaryImage(baseURL, []string{listing.SellerProfileImage}),
+			"rating":          listing.SellerRating,
+			"isPro":           listing.SellerVerified,
 		},
 	}
 
@@ -296,9 +325,265 @@ func RemoveListingBookmark(c *fiber.Ctx) error {
 	})
 }
 
+func MarkListingAsComplete(c *fiber.Ctx) error {
+	listingId := strings.TrimSpace(c.Params("id"))
+	if listingId == "" {
+		return SendErrorResponse(c, 400, "Listing ID is required", nil)
+	}
+
+	userId := fmt.Sprintf("%v", c.Locals("userId"))
+	if strings.TrimSpace(userId) == "" || userId == "%!v(<nil>)" {
+		return SendErrorResponse(c, 401, "User is not authenticated", nil)
+	}
+
+	affectedConversationIds, listingMarkedSold, err := repository.MarkListingAsComplete(userId, listingId)
+	if err != nil {
+		return SendErrorResponse(c, 400, err.Error(), err)
+	}
+
+	if listingMarkedSold {
+		participantIds, participantErr := repository.GetParticipantUserIdsByListing(listingId)
+		if participantErr == nil {
+			for _, targetUserId := range participantIds {
+				middleware.RealtimeHub.SendToUser(targetUserId, map[string]any{
+					"type": "listing:status",
+					"data": map[string]any{
+						"listingId":   listingId,
+						"status":      "SOLD",
+						"sellStatus":  "SOLD",
+						"updatedById": userId,
+					},
+				})
+			}
+		}
+	}
+
+	for _, conversationId := range affectedConversationIds {
+		trimmedConversationId := strings.TrimSpace(conversationId)
+		if trimmedConversationId == "" {
+			continue
+		}
+
+		realtimeMessagePayload := map[string]any{
+			"type": "message:new",
+			"data": map[string]any{
+				"conversationId": trimmedConversationId,
+			},
+		}
+
+		peerUserId, peerErr := repository.GetConversationPeerUserId(userId, trimmedConversationId)
+		if peerErr == nil && strings.TrimSpace(peerUserId) != "" {
+			middleware.RealtimeHub.SendToUser(peerUserId, realtimeMessagePayload)
+		}
+		middleware.RealtimeHub.SendToUser(userId, realtimeMessagePayload)
+	}
+
+	response := map[string]any{
+		"listingId": listingId,
+		"completed": true,
+	}
+	if listingMarkedSold {
+		response["status"] = "SOLD"
+	}
+
+	return SendSuccessResponse(c, 200, "Listing transaction completed successfully", response)
+}
+
+func ReportListing(c *fiber.Ctx) error {
+	listingId := strings.TrimSpace(c.Params("id"))
+	if listingId == "" {
+		return SendErrorResponse(c, 400, "Listing ID is required", nil)
+	}
+
+	userId := fmt.Sprintf("%v", c.Locals("userId"))
+	if strings.TrimSpace(userId) == "" || userId == "%!v(<nil>)" {
+		return SendErrorResponse(c, 401, "User is not authenticated", nil)
+	}
+
+	var body model.ReportListingBody
+	if err := c.BodyParser(&body); err != nil {
+		return SendErrorResponse(c, 400, "Invalid request body. Please contact support.", err)
+	}
+
+	if strings.TrimSpace(body.Reason) == "" {
+		return SendErrorResponse(c, 400, "Report reason is required", nil)
+	}
+
+	descriptionWords := strings.Fields(strings.TrimSpace(body.Description))
+	if len(descriptionWords) > 80 {
+		return SendErrorResponse(c, 400, "Report details must be at most 80 words", nil)
+	}
+
+	reportId, err := repository.CreateListingReport(userId, listingId, body.ReportedUserId, body.Reason, body.Description)
+	if err != nil {
+		return SendErrorResponse(c, 400, err.Error(), err)
+	}
+
+	return SendSuccessResponse(c, 201, "Report submitted successfully", map[string]any{
+		"reportId": reportId,
+	})
+}
+
+func GetMyListingReview(c *fiber.Ctx) error {
+	listingId := strings.TrimSpace(c.Params("id"))
+	if listingId == "" {
+		return SendErrorResponse(c, 400, "Listing ID is required", nil)
+	}
+
+	userId := fmt.Sprintf("%v", c.Locals("userId"))
+	if strings.TrimSpace(userId) == "" || userId == "%!v(<nil>)" {
+		return SendErrorResponse(c, 401, "User is not authenticated", nil)
+	}
+
+	review, err := repository.GetMyListingReview(userId, listingId)
+	if err != nil {
+		if strings.EqualFold(strings.TrimSpace(err.Error()), "Review not found") {
+			return SendErrorResponse(c, 404, err.Error(), err)
+		}
+		return SendErrorResponse(c, 400, err.Error(), err)
+	}
+
+	return SendSuccessResponse(c, 200, "Review fetched successfully", map[string]any{
+		"id":      review.Id,
+		"rating":  review.Rating,
+		"comment": strings.TrimSpace(review.Comment),
+	})
+}
+
+func CreateListingReview(c *fiber.Ctx) error {
+	listingId := strings.TrimSpace(c.Params("id"))
+	if listingId == "" {
+		return SendErrorResponse(c, 400, "Listing ID is required", nil)
+	}
+
+	userId := fmt.Sprintf("%v", c.Locals("userId"))
+	if strings.TrimSpace(userId) == "" || userId == "%!v(<nil>)" {
+		return SendErrorResponse(c, 401, "User is not authenticated", nil)
+	}
+
+	var body model.ReviewListingBody
+	if err := c.BodyParser(&body); err != nil {
+		return SendErrorResponse(c, 400, "Invalid request body. Please contact support.", err)
+	}
+
+	if body.Rating < 1 || body.Rating > 5 {
+		return SendErrorResponse(c, 400, "Rating must be between 1 and 5", nil)
+	}
+
+	review, err := repository.CreateListingReview(userId, listingId, body.Rating, body.Comment)
+	if err != nil {
+		return SendErrorResponse(c, 400, err.Error(), err)
+	}
+
+	return SendSuccessResponse(c, 201, "Review submitted successfully", map[string]any{
+		"id":      review.Id,
+		"rating":  review.Rating,
+		"comment": strings.TrimSpace(review.Comment),
+	})
+}
+
+func UpdateListingReview(c *fiber.Ctx) error {
+	listingId := strings.TrimSpace(c.Params("id"))
+	if listingId == "" {
+		return SendErrorResponse(c, 400, "Listing ID is required", nil)
+	}
+
+	userId := fmt.Sprintf("%v", c.Locals("userId"))
+	if strings.TrimSpace(userId) == "" || userId == "%!v(<nil>)" {
+		return SendErrorResponse(c, 401, "User is not authenticated", nil)
+	}
+
+	var body model.ReviewListingBody
+	if err := c.BodyParser(&body); err != nil {
+		return SendErrorResponse(c, 400, "Invalid request body. Please contact support.", err)
+	}
+
+	if body.Rating < 1 || body.Rating > 5 {
+		return SendErrorResponse(c, 400, "Rating must be between 1 and 5", nil)
+	}
+
+	review, err := repository.UpdateListingReview(userId, listingId, body.Rating, body.Comment)
+	if err != nil {
+		return SendErrorResponse(c, 400, err.Error(), err)
+	}
+
+	return SendSuccessResponse(c, 200, "Review updated successfully", map[string]any{
+		"id":      review.Id,
+		"rating":  review.Rating,
+		"comment": strings.TrimSpace(review.Comment),
+	})
+}
+
+func DeleteListingReview(c *fiber.Ctx) error {
+	listingId := strings.TrimSpace(c.Params("id"))
+	if listingId == "" {
+		return SendErrorResponse(c, 400, "Listing ID is required", nil)
+	}
+
+	userId := fmt.Sprintf("%v", c.Locals("userId"))
+	if strings.TrimSpace(userId) == "" || userId == "%!v(<nil>)" {
+		return SendErrorResponse(c, 401, "User is not authenticated", nil)
+	}
+
+	if err := repository.DeleteListingReview(userId, listingId); err != nil {
+		return SendErrorResponse(c, 400, err.Error(), err)
+	}
+
+	return SendSuccessResponse(c, 200, "Review deleted successfully", map[string]any{
+		"listingId": listingId,
+	})
+}
+
 func GetListings(c *fiber.Ctx) error {
 	userId := getOptionalUserIdFromSession(c)
-	listings, err := repository.GetAllListings(userId)
+
+	parseOptionalInt := func(raw string) (*int, error) {
+		trimmed := strings.TrimSpace(raw)
+		if trimmed == "" {
+			return nil, nil
+		}
+
+		parsed, err := strconv.Atoi(trimmed)
+		if err != nil {
+			return nil, err
+		}
+
+		return &parsed, nil
+	}
+
+	priceMin, err := parseOptionalInt(c.Query("priceMin"))
+	if err != nil {
+		return SendErrorResponse(c, 400, "priceMin must be a valid number", err)
+	}
+
+	priceMax, err := parseOptionalInt(c.Query("priceMax"))
+	if err != nil {
+		return SendErrorResponse(c, 400, "priceMax must be a valid number", err)
+	}
+
+	if priceMin != nil && *priceMin < 0 {
+		return SendErrorResponse(c, 400, "priceMin cannot be negative", nil)
+	}
+	if priceMax != nil && *priceMax < 0 {
+		return SendErrorResponse(c, 400, "priceMax cannot be negative", nil)
+	}
+	if priceMin != nil && priceMax != nil && *priceMin > *priceMax {
+		return SendErrorResponse(c, 400, "priceMin cannot be greater than priceMax", nil)
+	}
+
+	filters := model.ListingsFilter{
+		Type:      strings.TrimSpace(c.Query("type")),
+		Keyword:   strings.TrimSpace(c.Query("keyword")),
+		Category:  strings.TrimSpace(c.Query("category")),
+		Condition: strings.TrimSpace(c.Query("condition")),
+		Province:  strings.TrimSpace(c.Query("province")),
+		City:      strings.TrimSpace(c.Query("city")),
+		PriceMin:  priceMin,
+		PriceMax:  priceMax,
+		Sort:      strings.TrimSpace(c.Query("sort")),
+	}
+
+	listings, err := repository.GetAllListings(userId, filters)
 	if err != nil {
 		return SendErrorResponse(c, 500, err.Error(), err)
 	}
@@ -313,6 +598,7 @@ func GetListings(c *fiber.Ctx) error {
 			"price":     l.Price,
 			"priceUnit": l.PriceUnit,
 			"type":      strings.ToLower(strings.TrimSpace(l.Type)),
+			"status":    strings.ToLower(strings.TrimSpace(l.Status)),
 			"category":  l.Category,
 			"condition": mapConditionDisplay(l.Condition),
 			"location":  location,
@@ -359,7 +645,18 @@ func parseJSONStringArray(raw string) []string {
 
 	var parsed []string
 	if err := json.Unmarshal([]byte(trimmed), &parsed); err != nil {
-		return []string{trimmed}
+		parts := strings.Split(trimmed, ",")
+		out := make([]string, 0, len(parts))
+		for _, part := range parts {
+			value := strings.TrimSpace(part)
+			if value != "" {
+				out = append(out, value)
+			}
+		}
+		if len(out) == 0 {
+			return []string{trimmed}
+		}
+		return out
 	}
 
 	out := make([]string, 0, len(parsed))
@@ -452,6 +749,7 @@ func mapRelatedListings(baseURL string, listings []model.ProfileListingFromDb) [
 			"price":     l.Price,
 			"priceUnit": l.PriceUnit,
 			"type":      l.Type,
+			"status":    strings.ToLower(strings.TrimSpace(l.Status)),
 			"category":  l.Category,
 			"location":  l.Location,
 			"postedAt":  l.PostedAt,

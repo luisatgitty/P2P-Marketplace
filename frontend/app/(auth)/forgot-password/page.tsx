@@ -22,8 +22,13 @@ export default function ForgotPasswordPage() {
     try {
       await sendPostRequest("/auth/forgot-password", { email });
       setSubmitted(true);
+
     } catch (error: any) {
-      toast.error(error || "Failed to send reset link. Please contact support.", { position: "top-center" });
+      if (error === "Failed to fetch") {
+        error = "Failed to send reset link. Please contact support.";
+      }
+      toast.error(error, { position: "top-center" });
+      
     } finally {
       setIsLoading(false);
     }

@@ -61,6 +61,12 @@ func RealtimeSocket(c *websocket.Conn) {
 		"type": "presence:connected",
 		"data": map[string]any{"userId": userId},
 	})
+	_ = conn.WriteJSON(map[string]any{
+		"type": "presence:snapshot",
+		"data": map[string]any{
+			"onlineUserIds": middleware.RealtimeHub.OnlineUserIDs(),
+		},
+	})
 
 	for {
 		var payload map[string]any

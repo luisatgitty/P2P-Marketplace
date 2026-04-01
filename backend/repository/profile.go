@@ -31,8 +31,19 @@ func GetProfileUserById(userId string) (model.ProfileUserFromDb, error) {
 			profile_image_url,
 			cover_image_url,
 			role,
-			verification_status
+			verification_status,
+			created_at,
+			last_login_at,
+			COALESCE(rv.avg_rating, 0) AS overall_rating,
+			COALESCE(rv.review_count, 0) AS review_count
 		FROM public.users
+		LEFT JOIN LATERAL (
+			SELECT
+				AVG(r.rating)::float AS avg_rating,
+				COUNT(*)::int AS review_count
+			FROM public.reviews r
+			WHERE r.reviewed_user_id = users.id
+		) rv ON TRUE
 		WHERE id=$1
 	`
 
@@ -131,6 +142,88 @@ func GetUserBookmarks(userId string) ([]model.ProfileListingFromDb, error) {
 		return nil, fmt.Errorf("Failed to retrieve bookmarks")
 	}
 	return bookmarks, nil
+}
+
+func GetUserReceivedReviews(userId string) ([]model.ProfileReviewFromDb, error) {
+	db := middleware.DBConn
+	reviews := make([]model.ProfileReviewFromDb, 0)
+
+	selectQuery := `
+		SELECT
+			r.id,
+			r.reviewer_id::text AS reviewer_id,
+			TRIM(BOTH ' ' FROM CONCAT(COALESCE(ru.first_name, ''), ' ', COALESCE(ru.last_name, ''))) AS reviewer_name,
+			COALESCE(ru.profile_image_url, '') AS reviewer_image_url,
+			r.rating,
+			COALESCE(r.comment, '') AS comment,
+			TO_CHAR(r.created_at, 'Mon DD, YYYY') AS review_date,
+			l.id::text AS listing_id,
+			COALESCE(l.title, '') AS listing_title,
+			COALESCE(l.price, 0) AS listing_price,
+			COALESCE(l.price_unit, '') AS listing_price_unit,
+			COALESCE(li.image_url, '') AS listing_image_url
+		FROM public.reviews r
+		INNER JOIN public.users ru
+			ON ru.id = r.reviewer_id
+		INNER JOIN public.listings l
+			ON l.id = r.listing_id
+		LEFT JOIN LATERAL (
+			SELECT image_url
+			FROM public.listing_images
+			WHERE listing_id = l.id
+			ORDER BY is_primary DESC, id ASC
+			LIMIT 1
+		) li ON TRUE
+		WHERE r.reviewed_user_id = $1
+		ORDER BY r.created_at DESC
+	`
+
+	if err := db.Raw(selectQuery, userId).Scan(&reviews).Error; err != nil {
+		return nil, fmt.Errorf("Failed to retrieve reviews")
+	}
+
+	return reviews, nil
+}
+
+func GetUserPersonalReviews(userId string) ([]model.ProfileReviewFromDb, error) {
+	db := middleware.DBConn
+	reviews := make([]model.ProfileReviewFromDb, 0)
+
+	selectQuery := `
+		SELECT
+			r.id,
+			r.reviewer_id::text AS reviewer_id,
+			TRIM(BOTH ' ' FROM CONCAT(COALESCE(ru.first_name, ''), ' ', COALESCE(ru.last_name, ''))) AS reviewer_name,
+			COALESCE(ru.profile_image_url, '') AS reviewer_image_url,
+			r.rating,
+			COALESCE(r.comment, '') AS comment,
+			TO_CHAR(r.created_at, 'Mon DD, YYYY') AS review_date,
+			l.id::text AS listing_id,
+			COALESCE(l.title, '') AS listing_title,
+			COALESCE(l.price, 0) AS listing_price,
+			COALESCE(l.price_unit, '') AS listing_price_unit,
+			COALESCE(li.image_url, '') AS listing_image_url
+		FROM public.reviews r
+		INNER JOIN public.users ru
+			ON ru.id = r.reviewer_id
+		INNER JOIN public.listings l
+			ON l.id = r.listing_id
+		LEFT JOIN LATERAL (
+			SELECT image_url
+			FROM public.listing_images
+			WHERE listing_id = l.id
+			ORDER BY is_primary DESC, id ASC
+			LIMIT 1
+		) li ON TRUE
+		WHERE r.reviewer_id = $1
+		ORDER BY r.created_at DESC
+	`
+
+	if err := db.Raw(selectQuery, userId).Scan(&reviews).Error; err != nil {
+		return nil, fmt.Errorf("Failed to retrieve personal reviews")
+	}
+
+	return reviews, nil
 }
 
 func UpdateProfile(userId string, body model.UpdateProfileBody) error {
@@ -232,9 +325,23 @@ func UpdateProfileImages(userId string, body model.UpdateProfileImagesBody) erro
 		}
 	}()
 
-	if body.ProfileImage == nil && body.CoverImage == nil {
+	if body.ProfileImage == nil && body.CoverImage == nil && !body.RemoveProfileImage && !body.RemoveCoverImage {
 		tx.Rollback()
 		return fmt.Errorf("No image provided")
+	}
+
+	if body.RemoveProfileImage {
+		if err := clearUserImageTx(tx, userId, "profile_image_url"); err != nil {
+			tx.Rollback()
+			return err
+		}
+	}
+
+	if body.RemoveCoverImage {
+		if err := clearUserImageTx(tx, userId, "cover_image_url"); err != nil {
+			tx.Rollback()
+			return err
+		}
 	}
 
 	if err := upsertUserImageTx(tx, userId, body.ProfileImage, "profile_image_url", "profiles"); err != nil {
@@ -249,6 +356,29 @@ func UpdateProfileImages(userId string, body model.UpdateProfileImagesBody) erro
 
 	if err := tx.Commit().Error; err != nil {
 		return err
+	}
+
+	return nil
+}
+
+func clearUserImageTx(tx *gorm.DB, userId, columnName string) error {
+	if columnName != "profile_image_url" && columnName != "cover_image_url" {
+		return fmt.Errorf("Invalid image column")
+	}
+
+	uploadRoot := getUploadRootDir()
+
+	var previousURL sql.NullString
+	selectQuery := fmt.Sprintf("SELECT %s FROM public.users WHERE id = $1", columnName)
+	if err := tx.Raw(selectQuery, userId).Scan(&previousURL).Error; err != nil {
+		return fmt.Errorf("Failed to retrieve previous user image")
+	}
+
+	removeLocalUpload(uploadRoot, previousURL.String)
+
+	updateQuery := fmt.Sprintf("UPDATE public.users SET %s = NULL, updated_at = $1 WHERE id = $2", columnName)
+	if err := tx.Exec(updateQuery, time.Now(), userId).Error; err != nil {
+		return fmt.Errorf("Failed to clear user image reference")
 	}
 
 	return nil
@@ -369,4 +499,140 @@ func DeactivateAccount(userId string) error {
 	}
 
 	return nil
+}
+
+func SubmitUserVerification(userId string, body model.SubmitVerificationBody) error {
+	db := middleware.DBConn
+	tx := db.Begin()
+	if tx.Error != nil {
+		return tx.Error
+	}
+
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	birthdate, err := time.Parse("2006-01-02", strings.TrimSpace(body.IdBirthdate))
+	if err != nil {
+		tx.Rollback()
+		return fmt.Errorf("Invalid birthdate format")
+	}
+
+	frontURL, err := saveVerificationImageTx(tx, userId, body.IdImageFront, "id-front")
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	backURL, err := saveVerificationImageTx(tx, userId, body.IdImageBack, "id-back")
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	selfieURL, err := saveVerificationImageTx(tx, userId, body.SelfieImage, "selfie")
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	insertQuery := `
+		INSERT INTO public.user_verifications (
+			user_id,
+			id_type,
+			id_number,
+			id_first_name,
+			id_last_name,
+			id_birthdate,
+			mobile_number,
+			id_image_front_url,
+			id_image_back_url,
+			selfie_url,
+			user_agent,
+			ip_address,
+			hardware_info,
+			verification_status,
+			submitted_at
+		)
+		VALUES (
+			$1, $2, $3, $4, $5, $6, $7,
+			$8, $9, $10,
+			$11, $12, $13,
+			'PENDING', now()
+		)
+	`
+
+	if err := tx.Exec(
+		insertQuery,
+		userId,
+		strings.TrimSpace(body.IdType),
+		strings.TrimSpace(body.IdNumber),
+		strings.TrimSpace(body.IdFirstName),
+		strings.TrimSpace(body.IdLastName),
+		birthdate,
+		body.MobileNumber,
+		frontURL,
+		backURL,
+		selfieURL,
+		strings.TrimSpace(body.UserAgent),
+		strings.TrimSpace(body.IpAddress),
+		strings.TrimSpace(body.HardwareInfo),
+	).Error; err != nil {
+		tx.Rollback()
+		return fmt.Errorf("Failed to save verification submission")
+	}
+
+	if err := tx.Exec(`
+		UPDATE public.users
+		SET
+			verification_status = 'PENDING',
+			updated_at = now()
+		WHERE id = $1
+	`, userId).Error; err != nil {
+		tx.Rollback()
+		return fmt.Errorf("Failed to update user verification status")
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func saveVerificationImageTx(tx *gorm.DB, userId string, image *model.ListingImageBody, kind string) (string, error) {
+	if image == nil || strings.TrimSpace(image.Data) == "" {
+		return "", fmt.Errorf("Missing verification image")
+	}
+
+	uploadRoot := getUploadRootDir()
+	baseDir := filepath.Join(uploadRoot, "verifications", userId, kind)
+	if err := os.MkdirAll(baseDir, 0755); err != nil {
+		return "", fmt.Errorf("Failed to create verification upload directory")
+	}
+
+	decoded, err := base64.StdEncoding.DecodeString(strings.TrimSpace(image.Data))
+	if err != nil {
+		return "", fmt.Errorf("Failed to decode verification image payload")
+	}
+
+	ext, err := extFromMime(image.MimeType)
+	if err != nil {
+		return "", err
+	}
+
+	randPart, err := randomHex(10)
+	if err != nil {
+		return "", fmt.Errorf("Failed to generate verification image filename")
+	}
+
+	fileName := fmt.Sprintf("%d_%s%s", time.Now().UnixNano(), randPart, ext)
+	filePath := filepath.Join(baseDir, fileName)
+	if err := os.WriteFile(filePath, decoded, 0644); err != nil {
+		return "", fmt.Errorf("Failed to save verification image file")
+	}
+
+	return fmt.Sprintf("/uploads/verifications/%s/%s/%s", userId, kind, fileName), nil
 }

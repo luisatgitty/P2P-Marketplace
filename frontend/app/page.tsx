@@ -4,18 +4,18 @@ import { Suspense, useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import PostCard from "@/components/post-card";
 import { getHomeListings, type HomeListing } from "@/services/listingFeedService";
+import { getProvinces, getCitiesByProvince, type LocationOption } from "@/services/locationService";
 import { useUser } from "@/utils/UserContext";
 import { Search, SlidersHorizontal, X, ChevronLeft, ChevronRight, PackageSearch } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 type ListingWithMeta = HomeListing;
 
 // ─── Constants ─────────────────────────────────────────────────────────────────
 const CATEGORIES = ["All Categories", "Electronics", "Clothing", "Vehicles", "Home & Living", "Real Estate", "Sports & Outdoors", "Health & Wellness", "IT & Digital", "Education", "Food & Events", "Creative", "Hobbies", "Events", "Others"];
-const CONDITIONS = ["Any Condition", "New", "Like New", "Lightly Used", "Well Used", "Heavily Used"];
-const LOCATIONS  = ["Any Location", "Metro Manila", "Makati City", "Quezon City", "Taguig", "Pasig City", "Laguna", "Cavite", "Batangas", "Cebu City", "Davao City"];
 
 const SORT_OPTIONS = [
   { value: "recommended", label: "Recommended" },
@@ -29,17 +29,18 @@ const ITEMS_PER_PAGE = 25;
 
 // ─── Select styled helper ───────────────────────────────────────────────────────
 function FilterSelect({
-  value, onChange, children, className,
+  value, onChange, children, className, ...props
 }: {
   value: string;
   onChange: (v: string) => void;
   children: React.ReactNode;
   className?: string;
-}) {
+} & Omit<React.SelectHTMLAttributes<HTMLSelectElement>, "value" | "onChange" | "children" | "className">) {
   return (
     <select
       value={value}
       onChange={(e) => onChange(e.target.value)}
+      {...props}
       className={cn(
         "w-full rounded-lg border border-stone-200 dark:border-white/10 bg-white dark:bg-[#1e2a3a] text-stone-700 dark:text-stone-300 text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500 transition-colors appearance-none",
         className
@@ -67,46 +68,32 @@ function getPageNumbers(current: number, total: number): (number | "...")[] {
 function HomePageInner() {
   const searchParams = useSearchParams();
   const router       = useRouter();
-  const { user, isAuth: isValidated } = useUser();
+  const { user, isAuth } = useUser();
   const typeFromUrl  = (searchParams.get("type") || "all") as string;
 
   const [allListings, setAllListings] = useState<ListingWithMeta[]>([]);
   const [loadingListings, setLoadingListings] = useState(true);
 
-  useEffect(() => {
-    let mounted = true;
-
-    async function loadListings() {
-      setLoadingListings(true);
-      try {
-        const data = await getHomeListings();
-        if (!mounted) return;
-        setAllListings(data);
-      } catch {
-        if (!mounted) return;
-        setAllListings([]);
-      } finally {
-        if (mounted) setLoadingListings(false);
-      }
-    }
-
-    loadListings();
-    return () => {
-      mounted = false;
-    };
-  }, []);
-
   // ── Filter state (staging = what's in the form, applied = what's actually active)
   const [keyword,  setKeyword]  = useState("");
   const [category, setCategory] = useState("All Categories");
   const [condition, setCond]    = useState("Any Condition");
-  const [location, setLocation] = useState("Any Location");
+  const [provinceCode, setProvinceCode] = useState("");
+  const [cityCode, setCityCode] = useState("");
+  const [provinceName, setProvinceName] = useState("Province");
+  const [cityName, setCityName] = useState("City/Municipality");
   const [priceMin, setPriceMin] = useState("");
   const [priceMax, setPriceMax] = useState("");
+  const [provinceOptions, setProvinceOptions] = useState<LocationOption[]>([]);
+  const [cityOptions, setCityOptions] = useState<LocationOption[]>([]);
+  const [loadingProvinces, setLoadingProvinces] = useState(false);
+  const [loadingCities, setLoadingCities] = useState(false);
+  const [hasFetchedProvinces, setHasFetchedProvinces] = useState(false);
+  const [fetchedCitiesProvinceCode, setFetchedCitiesProvinceCode] = useState("");
 
   const [applied, setApplied] = useState({
     keyword: "", category: "All Categories", condition: "Any Condition",
-    location: "Any Location", priceMin: "", priceMax: "",
+    province: "Province", city: "City/Municipality", priceMin: "", priceMax: "",
   });
 
   const [sort,        setSort]    = useState("recommended");
@@ -115,48 +102,107 @@ function HomePageInner() {
   // Reset page when type tab changes from URL
   useEffect(() => { setPage(1); }, [typeFromUrl]);
 
-  // ── Filter + sort ──────────────────────────────────────────────────────────
-  const filtered = allListings.filter((item) => {
-    if (typeFromUrl !== "all" && item.type !== typeFromUrl) return false;
-    if (applied.keyword  && !item.title.toLowerCase().includes(applied.keyword.toLowerCase())) return false;
-    if (applied.category !== "All Categories" && item.category !== applied.category) return false;
-    if (applied.condition !== "Any Condition" && item.condition !== applied.condition) return false;
-    if (applied.location !== "Any Location" && !item.location.toLowerCase().includes(applied.location.toLowerCase())) return false;
-    if (applied.priceMin !== "" && item.price < Number(applied.priceMin)) return false;
-    if (applied.priceMax !== "" && item.price > Number(applied.priceMax)) return false;
-    return true;
-  });
+  const totalPages = Math.max(1, Math.ceil(allListings.length / ITEMS_PER_PAGE));
+  const paginated  = allListings.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
-  const sorted = [...filtered].sort((a, b) => {
-    if (sort === "latest")    return b.createdAt - a.createdAt;
-    if (sort === "cheapest")  return a.price - b.price;
-    if (sort === "expensive") return b.price - a.price;
-    if (sort === "top-rated") return b.seller.rating - a.seller.rating;
-    return 0;
-  });
+  useEffect(() => {
+    let mounted = true;
 
-  const totalPages = Math.max(1, Math.ceil(sorted.length / ITEMS_PER_PAGE));
-  const paginated  = sorted.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+    const loadListings = async () => {
+      setLoadingListings(true);
+      try {
+        const data = await getHomeListings({
+          type: typeFromUrl,
+          keyword: applied.keyword,
+          category: applied.category,
+          condition: applied.condition,
+          province: applied.province,
+          city: applied.city,
+          priceMin: applied.priceMin,
+          priceMax: applied.priceMax,
+          sort,
+        });
+
+        if (!mounted) return;
+        setAllListings(data);
+      } catch {
+        if (!mounted) return;
+        setAllListings([]);
+      } finally {
+        if (mounted) setLoadingListings(false);
+      }
+    };
+
+    loadListings();
+    return () => {
+      mounted = false;
+    };
+  }, [applied, sort, typeFromUrl]);
 
   // ── Actions ────────────────────────────────────────────────────────────────
   const handleSearch = () => {
-    setApplied({ keyword, category, condition, location, priceMin, priceMax });
+    setApplied({ keyword, category, condition, province: provinceName, city: cityName, priceMin, priceMax });
     setPage(1);
   };
 
   const handleClear = () => {
     setKeyword(""); setCategory("All Categories"); setCond("Any Condition");
-    setLocation("Any Location"); setPriceMin(""); setPriceMax("");
-    setApplied({ keyword: "", category: "All Categories", condition: "Any Condition", location: "Any Location", priceMin: "", priceMax: "" });
+    setProvinceCode(""); setCityCode("");
+    setProvinceName("Province"); setCityName("City/Municipality");
+    setCityOptions([]); setFetchedCitiesProvinceCode("");
+    setPriceMin(""); setPriceMax("");
+    setApplied({ keyword: "", category: "All Categories", condition: "Any Condition", province: "Province", city: "City/Municipality", priceMin: "", priceMax: "" });
     setPage(1);
   };
 
+  const loadProvincesOnDemand = async () => {
+    if (hasFetchedProvinces || loadingProvinces) return;
+
+    setLoadingProvinces(true);
+    try {
+      const data = await getProvinces();
+      setProvinceOptions(data);
+      setHasFetchedProvinces(true);
+    } catch (err) {
+      const message = typeof err === "string" ? err : "Failed to load provinces";
+      toast.error(message, { position: "top-center" });
+    } finally {
+      setLoadingProvinces(false);
+    }
+  };
+
+  const loadCitiesOnDemand = async (targetProvinceCode?: string) => {
+    const effectiveProvinceCode = targetProvinceCode ?? provinceCode;
+    if (!effectiveProvinceCode || loadingCities) return;
+    if (fetchedCitiesProvinceCode === effectiveProvinceCode) return;
+
+    setLoadingCities(true);
+    try {
+      const data = await getCitiesByProvince(effectiveProvinceCode);
+      setCityOptions(data);
+      setFetchedCitiesProvinceCode(effectiveProvinceCode);
+    } catch (err) {
+      const message = typeof err === "string" ? err : "Failed to load cities/municipalities";
+      toast.error(message, { position: "top-center" });
+    } finally {
+      setLoadingCities(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!provinceCode) return;
+    if (fetchedCitiesProvinceCode === provinceCode) return;
+    if (loadingCities) return;
+
+    void loadCitiesOnDemand(provinceCode);
+  }, [provinceCode, fetchedCitiesProvinceCode, loadingCities]);
+
   const hasActiveFilters = Object.values(applied).some(
-    (v, i) => v !== ["", "All Categories", "Any Condition", "Any Location", "", ""][i]
+    (v, i) => v !== ["", "All Categories", "Any Condition", "Province", "City/Municipality", "", ""][i]
   );
 
   const handlePostForFree = () => {
-    if (!isValidated) {
+    if (!isAuth) {
       router.push("/login");
       return;
     }
@@ -179,7 +225,7 @@ function HomePageInner() {
           style={{ backgroundImage: "radial-gradient(circle at 20% 50%, #b45309 0%, transparent 50%), radial-gradient(circle at 80% 20%, #1e40af 0%, transparent 40%)" }}
         />
         <div className="relative max-w-7xl mx-auto px-4 sm:px-7 py-8 sm:py-10">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-8">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-8">
 
             {/* Left: Headline */}
             <div className="max-w-xl animate-fade-in-up">
@@ -194,12 +240,22 @@ function HomePageInner() {
                 <a href="#listings" className="bg-amber-700 hover:bg-amber-600 text-white text-sm font-semibold px-5 py-2.5 rounded-full transition-colors">
                   Browse Listings
                 </a>
-                <button
-                  onClick={handlePostForFree}
-                  className="border border-stone-600 text-stone-300 hover:bg-amber-400 hover:border-amber-400 hover:text-white text-sm font-medium px-5 py-2.5 rounded-full transition-colors"
-                >
-                  Post for Free
-                </button>
+                {user?.status === "VERIFIED" ? (
+                  <button
+                    onClick={handlePostForFree}
+                    className="border border-stone-600 text-stone-300 hover:bg-amber-400 hover:border-amber-400 hover:text-white text-sm font-medium px-5 py-2.5 rounded-full transition-colors"
+                  >
+                    Post for Free
+                  </button>
+                ) : (
+                  <button
+                    onClick={handlePostForFree}
+                    className="border border-stone-600 text-stone-300 hover:bg-amber-400 hover:border-amber-400 hover:text-white text-sm font-medium px-5 py-2.5 rounded-full transition-colors"
+                  >
+                    Become a Seller
+                  </button>
+                )}
+                
               </div>
             </div>
 
@@ -260,17 +316,64 @@ function HomePageInner() {
               </div>
             </div>
 
-            {/* Condition */}
+            {/* Province */}
             <div className="relative min-w-32.5 flex-1">
-              <FilterSelect value={condition} onChange={setCond}>
-                {CONDITIONS.map((c) => <option key={c}>{c}</option>)}
+              <FilterSelect
+                value={provinceCode}
+                onChange={(code) => {
+                  const selected = provinceOptions.find((p) => p.code === code);
+                  setProvinceCode(code);
+                  setProvinceName(selected?.name ?? "Province");
+                  setCityCode("");
+                  setCityName("City/Municipality");
+                  setCityOptions([]);
+                  setFetchedCitiesProvinceCode("");
+                }}
+                disabled={loadingProvinces}
+                onMouseDown={(e) => {
+                  if (!hasFetchedProvinces) {
+                    e.preventDefault();
+                    void loadProvincesOnDemand();
+                  }
+                }}
+                className={cn(loadingProvinces && "cursor-wait")}
+              >
+                <option value="">{loadingProvinces ? "Loading provinces..." : "Province"}</option>
+                {provinceOptions.map((item) => <option key={item.code} value={item.code}>{item.name}</option>)}
               </FilterSelect>
             </div>
 
-            {/* Location */}
+            {/* City/Municipality */}
             <div className="relative min-w-32.5 flex-1">
-              <FilterSelect value={location} onChange={setLocation}>
-                {LOCATIONS.map((l) => <option key={l}>{l}</option>)}
+              <FilterSelect
+                value={cityCode}
+                onChange={(code) => {
+                  const selected = cityOptions.find((c) => c.code === code);
+                  setCityCode(code);
+                  setCityName(selected?.name ?? "City/Municipality");
+                }}
+                disabled={!provinceCode || loadingCities}
+                onMouseDown={(e) => {
+                  if (!provinceCode) {
+                    e.preventDefault();
+                    return;
+                  }
+
+                  if (fetchedCitiesProvinceCode !== provinceCode) {
+                    e.preventDefault();
+                    void loadCitiesOnDemand();
+                  }
+                }}
+                className={cn((!provinceCode || loadingCities) && "cursor-wait")}
+              >
+                <option value="">
+                  {!provinceCode
+                    ? "Select province first"
+                    : loadingCities
+                      ? "Loading cities/municipalities..."
+                      : "City/Municipality"}
+                </option>
+                {cityOptions.map((item) => <option key={item.code} value={item.code}>{item.name}</option>)}
               </FilterSelect>
             </div>
 
@@ -310,7 +413,7 @@ function HomePageInner() {
       {/* ──────────────────────── SORT BAR ──────────────────────────────────── */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-stone-200 dark:border-white/10">
         <p className="text-sm text-stone-500 dark:text-stone-400 shrink-0">
-          <span className="font-semibold text-stone-700 dark:text-stone-200">{sorted.length}</span> listing{sorted.length !== 1 && "s"} found
+          <span className="font-semibold text-stone-700 dark:text-stone-200">{allListings.length}</span> listing{allListings.length !== 1 && "s"} found
         </p>
         <div className="flex items-center gap-1 flex-wrap">
           <span className="text-sm text-stone-400 mr-2 hidden sm:inline">Sort:</span>
@@ -319,10 +422,10 @@ function HomePageInner() {
               key={opt.value}
               onClick={() => { setSort(opt.value); setPage(1); }}
               className={cn(
-                "text-sm font-medium px-3 py-1.5 rounded-md transition-all",
+                "tab-page-base",
                 sort === opt.value
-                  ? "bg-[#1a2235] dark:bg-amber-700 text-white"
-                  : "text-stone-500 dark:text-stone-400 hover:bg-stone-200 dark:hover:bg-white/10 hover:text-stone-700 dark:hover:text-white"
+                  ? "tab-active"
+                  : "tab-inactive"
               )}
             >
               {opt.label}
@@ -338,7 +441,7 @@ function HomePageInner() {
             <div className="w-8 h-8 border-4 border-amber-700 border-t-transparent rounded-full animate-spin" />
           </div>
         ) : paginated.length > 0 ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4">
             {paginated.map((listing) => (
               <PostCard key={listing.id} {...listing} />
             ))}
@@ -403,9 +506,9 @@ function HomePageInner() {
         )}
 
         {/* Items count text */}
-        {sorted.length > 0 && (
+        {allListings.length > 0 && (
           <p className="text-center text-sm text-stone-400 dark:text-stone-600 mt-3">
-            Showing {Math.min((currentPage - 1) * ITEMS_PER_PAGE + 1, sorted.length)}–{Math.min(currentPage * ITEMS_PER_PAGE, sorted.length)} of {sorted.length} listings
+            Showing {Math.min((currentPage - 1) * ITEMS_PER_PAGE + 1, allListings.length)}–{Math.min(currentPage * ITEMS_PER_PAGE, allListings.length)} of {allListings.length} listings
           </p>
         )}
       </main>

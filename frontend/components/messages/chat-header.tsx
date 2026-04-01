@@ -2,22 +2,35 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Phone, MoreVertical, User, ExternalLink, Flag, Trash2 } from "lucide-react";
+import { ArrowLeft, MoreVertical, User, ExternalLink, Flag, Trash2, CheckCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 import type { Conversation } from "@/types/messaging";
-import ListingTypeBadge from "./listing-type-badge";
+import { useUser } from "@/utils/UserContext";
+import { markListingAsComplete, submitUserListingReport } from "@/services/listingDetailService";
+import { ReportModal } from "@/components/report-modal";
+import { ConfirmActionModal } from "@/components/confirm-action-modal";
+import ListingTypeBadge from "@/components/listing-type-badge";
 
 interface ChatHeaderProps {
   conversation: Conversation;
   onDelete?: () => void;
+  onMarkedComplete?: () => void | Promise<void>;
 }
 
-export default function ChatHeader({ conversation, onDelete }: ChatHeaderProps) {
+export default function ChatHeader({ conversation, onDelete, onMarkedComplete }: ChatHeaderProps) {
   const router = useRouter();
+  const { isAuth } = useUser();
   const { otherParticipant, listing } = conversation;
   const [menuOpen, setMenuOpen] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
+  const [markCompleteOpen, setMarkCompleteOpen] = useState(false);
+  const [submittingReport, setSubmittingReport] = useState(false);
+  const [markingComplete, setMarkingComplete] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const profileHref = otherParticipant.id ? `/profile?userId=${otherParticipant.id}` : "/profile";
+  const isTransactionConfirmed = String(listing.transactionStatus ?? "").trim().toUpperCase() === "CONFIRMED";
+  const canMarkAsComplete = conversation.isSeller && isTransactionConfirmed && (listing.listingType !== "SELL" || listing.status !== "SOLD");
 
   // Close menu on outside click
   useEffect(() => {
@@ -32,15 +45,55 @@ export default function ChatHeader({ conversation, onDelete }: ChatHeaderProps) 
 
   const initials = `${otherParticipant.firstName[0]}${otherParticipant.lastName[0]}`.toUpperCase();
 
+  const handleSubmitReport = async (payload: { reason: string; description: string }) => {
+    if (!isAuth) {
+      router.push("/login");
+      return;
+    }
+
+    if (submittingReport) return;
+
+    setSubmittingReport(true);
+    try {
+      await submitUserListingReport(listing.id, otherParticipant.id, payload.reason, payload.description);
+      toast.success("Report submitted. Thank you for helping keep the community safe.", { position: "top-center" });
+      setReportOpen(false);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err || "Failed to submit report.");
+      toast.error(message, { position: "top-center" });
+    } finally {
+      setSubmittingReport(false);
+    }
+  };
+
   const menuItems = [
     { icon: User,         label: "View Profile",   action: () => { router.push(profileHref); setMenuOpen(false); } },
     { icon: ExternalLink, label: "View Listing",   action: () => { router.push(`/listing/${listing.id}`); setMenuOpen(false); } },
-    { icon: Flag,         label: "Report User",    action: () => { setMenuOpen(false); }, danger: false },
+    ...(canMarkAsComplete ? [{ icon: CheckCircle, label: listing.listingType === "SELL" ? "Mark as Sold" : "Mark as Complete", action: () => { setMenuOpen(false); setMarkCompleteOpen(true); }, danger: false }] : []),
+    { icon: Flag,         label: "Report User",    action: () => { setMenuOpen(false); setReportOpen(true); }, danger: false },
     { icon: Trash2,       label: "Delete Chat",    action: () => { onDelete?.(); setMenuOpen(false); }, danger: true },
   ];
 
+  const handleConfirmMarkComplete = async () => {
+    if (!canMarkAsComplete || markingComplete) return;
+
+    setMarkingComplete(true);
+    try {
+      await markListingAsComplete(listing.id);
+      toast.success(listing.listingType === "SELL" ? "Listing marked as sold." : "Listing marked as complete.", { position: "top-center" });
+      setMarkCompleteOpen(false);
+      await onMarkedComplete?.();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err || "Failed to complete listing transaction.");
+      toast.error(message, { position: "top-center" });
+    } finally {
+      setMarkingComplete(false);
+    }
+  };
+
   return (
-    <header className="flex items-center gap-3 px-4 py-3 border-b border-border bg-white dark:bg-[#1c1f2e] shrink-0">
+    <>
+    <header className="flex items-center gap-3 px-4 pt-4 pb-2 border-b border-border bg-white dark:bg-[#1c1f2e] shrink-0">
 
       {/* Back button (mobile only) */}
       <button
@@ -70,16 +123,12 @@ export default function ChatHeader({ conversation, onDelete }: ChatHeaderProps) 
       </button>
 
       {/* Info */}
-      <button
-        onClick={() => router.push(profileHref)}
-        className="flex-1 min-w-0 text-left"
-        aria-label="Open participant profile"
-      >
+      <div className="flex-1 min-w-0 text-left">
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-sm font-bold text-stone-900 dark:text-stone-50 truncate">
             {otherParticipant.firstName} {otherParticipant.lastName}
           </span>
-          <ListingTypeBadge type={listing.listingType} />
+          <ListingTypeBadge type={listing.listingType} status={listing.status} />
         </div>
         <p className={cn(
           "text-[11px] font-medium",
@@ -87,7 +136,7 @@ export default function ChatHeader({ conversation, onDelete }: ChatHeaderProps) 
         )}>
           {otherParticipant.isOnline ? "Online" : "Offline"}
         </p>
-      </button>
+      </div>
 
       {/* More menu */}
       <div className="flex items-center gap-0.5 shrink-0">
@@ -122,5 +171,25 @@ export default function ChatHeader({ conversation, onDelete }: ChatHeaderProps) 
         </div>
       </div>
     </header>
+    <ReportModal
+      open={reportOpen}
+      title="Report User"
+      subtitle="Why are you reporting this user?"
+      submitting={submittingReport}
+      onClose={() => setReportOpen(false)}
+      onSubmit={handleSubmitReport}
+    />
+    <ConfirmActionModal
+      open={markCompleteOpen}
+      title={listing.listingType === "SELL" ? "Mark item as sold" : "Mark transaction as complete"}
+      message={listing.listingType === "SELL"
+        ? "Please confirm that this For Sale item has already been sold. This action will mark the listing as SOLD."
+        : "Please confirm that this transaction is complete. This will mark the confirmed transaction as COMPLETED."}
+      confirmLabel="Confirm"
+      loading={markingComplete}
+      onConfirm={handleConfirmMarkComplete}
+      onClose={() => setMarkCompleteOpen(false)}
+    />
+    </>
   );
 }

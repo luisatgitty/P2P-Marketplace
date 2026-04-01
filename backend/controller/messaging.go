@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -31,22 +32,82 @@ func toAbsoluteAssetURL(baseURL, raw string) string {
 	return strings.TrimRight(baseURL, "/") + "/" + strings.TrimLeft(trimmed, "/")
 }
 
+func formatConversationSchedule(start, end *time.Time) string {
+	if start == nil && end == nil {
+		return ""
+	}
+	if start != nil && end != nil {
+		return fmt.Sprintf("%s - %s", start.Format("Jan 02"), end.Format("Jan 02"))
+	}
+	if start != nil {
+		return start.Format("Jan 02")
+	}
+	return end.Format("Jan 02")
+}
+
+func toActionPreviewText(content string) string {
+	trimmed := strings.TrimSpace(content)
+	prefixes := []string{"__OFFER_ACTION__:", "__DEAL_ACTION__:", "__SCHEDULE_ACTION__:", "__SOLD_ACTION__:"}
+	for _, prefix := range prefixes {
+		if strings.HasPrefix(trimmed, prefix) {
+			action := strings.TrimSpace(strings.TrimPrefix(trimmed, prefix))
+			if action == "" {
+				return ""
+			}
+			return action
+		}
+	}
+	return ""
+}
+
 func mapConversationPayload(baseURL string, row model.ConversationFromDb) map[string]any {
+	daysOff := parseCSVOrJSONArray(row.DaysOff)
+	timeWindows := parseTimeWindows(row.TimeWindows)
+	availableFrom := ""
+	if row.AvailableFrom != nil {
+		availableFrom = row.AvailableFrom.Format("2006-01-02")
+	}
+	scheduleStart := ""
+	if row.ScheduleStart != nil {
+		scheduleStart = row.ScheduleStart.UTC().Format(time.RFC3339)
+	}
+	scheduleEnd := ""
+	if row.ScheduleEnd != nil {
+		scheduleEnd = row.ScheduleEnd.UTC().Format(time.RFC3339)
+	}
+
 	lastMessageAt := ""
 	if row.LastMessageAt != nil {
 		lastMessageAt = row.LastMessageAt.UTC().Format(time.RFC3339)
 	}
 
+	offerPrice := row.OfferPrice
+	if offerPrice <= 0 {
+		offerPrice = row.ListingPrice
+	}
+
 	return map[string]any{
 		"id": row.Id,
 		"listing": map[string]any{
-			"id":          row.ListingId,
-			"title":       row.ListingTitle,
-			"price":       row.ListingPrice,
-			"priceUnit":   row.ListingPriceUnit,
-			"listingType": strings.ToUpper(strings.TrimSpace(row.ListingType)),
-			"imageUrl":    toAbsoluteAssetURL(baseURL, row.ListingImageUrl),
-			"status":      strings.ToUpper(strings.TrimSpace(row.ListingStatus)),
+			"id":                row.ListingId,
+			"title":             row.ListingTitle,
+			"price":             row.ListingPrice,
+			"offer":             offerPrice,
+			"transactionStatus": strings.ToUpper(strings.TrimSpace(row.TransactionStatus)),
+			"providerAgreed":    row.ProviderAgreed,
+			"clientAgreed":      row.ClientAgreed,
+			"userAgreed":        row.UserAgreed,
+			"canReview":         row.CanReview,
+			"schedule":          formatConversationSchedule(row.ScheduleStart, row.ScheduleEnd),
+			"scheduleStart":     scheduleStart,
+			"scheduleEnd":       scheduleEnd,
+			"availableFrom":     availableFrom,
+			"daysOff":           daysOff,
+			"timeWindows":       timeWindows,
+			"priceUnit":         row.ListingPriceUnit,
+			"listingType":       strings.ToUpper(strings.TrimSpace(row.ListingType)),
+			"imageUrl":          toAbsoluteAssetURL(baseURL, row.ListingImageUrl),
+			"status":            strings.ToUpper(strings.TrimSpace(row.ListingStatus)),
 		},
 		"otherParticipant": map[string]any{
 			"id":              row.OtherUserId,
@@ -55,12 +116,79 @@ func mapConversationPayload(baseURL string, row model.ConversationFromDb) map[st
 			"profileImageUrl": toAbsoluteAssetURL(baseURL, row.OtherProfileImgUrl),
 			"isOnline":        middleware.RealtimeHub.IsOnline(row.OtherUserId),
 		},
-		"lastMessage":            strings.TrimSpace(row.LastMessage),
+		"lastMessage": func() string {
+			actionText := toActionPreviewText(row.LastMessage)
+			if actionText != "" {
+				return actionText
+			}
+			return strings.TrimSpace(row.LastMessage)
+		}(),
 		"lastMessageAt":          lastMessageAt,
 		"otherLastReadMessageId": strings.TrimSpace(row.OtherLastReadMsgId),
 		"unreadCount":            row.UnreadCount,
 		"isSeller":               row.IsSeller,
 	}
+}
+
+func parseCSVOrJSONArray(raw string) []string {
+	trimmed := strings.TrimSpace(raw)
+	if trimmed == "" {
+		return []string{}
+	}
+
+	var parsed []string
+	if err := json.Unmarshal([]byte(trimmed), &parsed); err == nil {
+		out := make([]string, 0, len(parsed))
+		for _, item := range parsed {
+			value := strings.TrimSpace(item)
+			if value != "" {
+				out = append(out, value)
+			}
+		}
+		return out
+	}
+
+	parts := strings.Split(trimmed, ",")
+	out := make([]string, 0, len(parts))
+	for _, part := range parts {
+		value := strings.TrimSpace(part)
+		if value != "" {
+			out = append(out, value)
+		}
+	}
+	return out
+}
+
+func parseTimeWindows(raw string) []map[string]string {
+	trimmed := strings.TrimSpace(raw)
+	if trimmed == "" {
+		return []map[string]string{}
+	}
+
+	type windowRow struct {
+		StartTime string `json:"startTime"`
+		EndTime   string `json:"endTime"`
+	}
+
+	rows := make([]windowRow, 0)
+	if err := json.Unmarshal([]byte(trimmed), &rows); err != nil {
+		return []map[string]string{}
+	}
+
+	out := make([]map[string]string, 0, len(rows))
+	for _, row := range rows {
+		start := strings.TrimSpace(row.StartTime)
+		end := strings.TrimSpace(row.EndTime)
+		if start == "" || end == "" {
+			continue
+		}
+		out = append(out, map[string]string{
+			"startTime": start,
+			"endTime":   end,
+		})
+	}
+
+	return out
 }
 
 func GetConversations(c *fiber.Ctx) error {
@@ -197,12 +325,132 @@ func CreateConversationFromListing(c *fiber.Ctx) error {
 		return SendErrorResponse(c, 401, err.Error(), nil)
 	}
 
-	conversationId, err := repository.GetOrCreateConversationByListing(userId, strings.TrimSpace(body.ListingId))
+	offerPrice := 0
+	if body.OfferPrice != nil {
+		offerPrice = *body.OfferPrice
+	}
+	offerMessage := strings.TrimSpace(body.OfferMessage)
+	startDate := strings.TrimSpace(body.StartDate)
+	endDate := strings.TrimSpace(body.EndDate)
+	startTime := strings.TrimSpace(body.StartTime)
+	endTime := strings.TrimSpace(body.EndTime)
+	scheduleMessage := strings.TrimSpace(body.ScheduleMessage)
+	hasScheduleRequest := startDate != "" || endDate != ""
+	if hasScheduleRequest && (startDate == "" || endDate == "") {
+		return SendErrorResponse(c, 400, "Start date and end date are required for schedule request", nil)
+	}
+
+	conversationId, err := repository.GetOrCreateConversationByListing(
+		userId,
+		strings.TrimSpace(body.ListingId),
+		offerPrice,
+		offerMessage,
+		startDate,
+		endDate,
+		startTime,
+		endTime,
+		scheduleMessage,
+	)
 	if err != nil {
 		return SendErrorResponse(c, 400, err.Error(), err)
 	}
 
+	if offerPrice > 0 || hasScheduleRequest {
+		conversation, convErr := repository.GetConversationById(userId, conversationId)
+		if convErr != nil {
+			return SendErrorResponse(c, 500, convErr.Error(), convErr)
+		}
+
+		realtimePayload := map[string]any{
+			"type": "message:new",
+			"data": map[string]any{
+				"conversationId": conversationId,
+			},
+		}
+
+		realtimeDealPayload := map[string]any{
+			"type": "conversation:deal-updated",
+			"data": map[string]any{
+				"conversationId":    conversationId,
+				"listingId":         conversation.ListingId,
+				"transactionStatus": strings.ToUpper(strings.TrimSpace(conversation.TransactionStatus)),
+				"providerAgreed":    conversation.ProviderAgreed,
+				"clientAgreed":      conversation.ClientAgreed,
+				"userAgreed":        conversation.UserAgreed,
+			},
+		}
+
+		peerUserId, peerErr := repository.GetConversationPeerUserId(userId, conversationId)
+		if peerErr == nil && strings.TrimSpace(peerUserId) != "" {
+			middleware.RealtimeHub.SendToUser(peerUserId, realtimePayload)
+			middleware.RealtimeHub.SendToUser(peerUserId, realtimeDealPayload)
+		}
+		middleware.RealtimeHub.SendToUser(userId, realtimePayload)
+		middleware.RealtimeHub.SendToUser(userId, realtimeDealPayload)
+	}
+
 	return SendSuccessResponse(c, 200, "Conversation is ready", map[string]any{"conversationId": conversationId})
+}
+
+func UpdateConversationOfferByOwner(c *fiber.Ctx) error {
+	conversationId := strings.TrimSpace(c.Params("id"))
+	if conversationId == "" {
+		return SendErrorResponse(c, 400, "Conversation ID is required", nil)
+	}
+
+	var body model.UpdateConversationOfferBody
+	if err := c.BodyParser(&body); err != nil {
+		return SendErrorResponse(c, 400, "Invalid request body. Please contact support.", err)
+	}
+
+	offerPrice := 0
+	if body.OfferPrice != nil {
+		offerPrice = *body.OfferPrice
+	}
+	if offerPrice <= 0 {
+		return SendErrorResponse(c, 400, "Offer price must be greater than 0", nil)
+	}
+
+	userId, err := getAuthenticatedUserId(c)
+	if err != nil {
+		return SendErrorResponse(c, 401, err.Error(), nil)
+	}
+
+	state, err := repository.UpdateConversationOfferByOwner(userId, conversationId, offerPrice, strings.TrimSpace(body.OfferMessage))
+	if err != nil {
+		return SendErrorResponse(c, 400, err.Error(), err)
+	}
+
+	realtimePayload := map[string]any{
+		"type": "message:new",
+		"data": map[string]any{
+			"conversationId": state.ConversationId,
+		},
+	}
+
+	realtimeDealPayload := map[string]any{
+		"type": "conversation:deal-updated",
+		"data": map[string]any{
+			"conversationId":    state.ConversationId,
+			"listingId":         state.ListingId,
+			"transactionStatus": strings.ToUpper(strings.TrimSpace(state.TransactionStatus)),
+			"providerAgreed":    state.ProviderAgreed,
+			"clientAgreed":      state.ClientAgreed,
+			"userAgreed":        state.UserAgreed,
+		},
+	}
+
+	peerUserId, peerErr := repository.GetConversationPeerUserId(userId, conversationId)
+	if peerErr == nil && strings.TrimSpace(peerUserId) != "" {
+		middleware.RealtimeHub.SendToUser(peerUserId, realtimePayload)
+		middleware.RealtimeHub.SendToUser(peerUserId, realtimeDealPayload)
+	}
+	middleware.RealtimeHub.SendToUser(userId, realtimePayload)
+	middleware.RealtimeHub.SendToUser(userId, realtimeDealPayload)
+
+	return SendSuccessResponse(c, 200, "Offer updated successfully", map[string]any{
+		"conversationId": state.ConversationId,
+	})
 }
 
 func SendMessage(c *fiber.Ctx) error {
@@ -215,7 +463,7 @@ func SendMessage(c *fiber.Ctx) error {
 	if err := c.BodyParser(&body); err != nil {
 		return SendErrorResponse(c, 400, "Invalid request body. Please contact support.", err)
 	}
-	if strings.TrimSpace(body.Content) == "" {
+	if strings.TrimSpace(body.Content) == "" && len(body.Attachments) == 0 {
 		return SendErrorResponse(c, 400, "Message content is required", nil)
 	}
 
@@ -229,9 +477,27 @@ func SendMessage(c *fiber.Ctx) error {
 		replyToMessageId = strings.TrimSpace(body.ReplyTo.MessageId)
 	}
 
-	msg, err := repository.CreateMessage(userId, conversationId, body.Content, replyToMessageId)
+	msg, err := repository.CreateMessage(userId, conversationId, body.Content, replyToMessageId, body.Attachments)
 	if err != nil {
 		return SendErrorResponse(c, 400, err.Error(), err)
+	}
+
+	attachments := make([]map[string]any, 0)
+	if len(body.Attachments) > 0 {
+		attRows, attErr := repository.GetMessageAttachmentsByMessageId(msg.Id)
+		if attErr != nil {
+			return SendErrorResponse(c, 500, attErr.Error(), attErr)
+		}
+
+		for _, att := range attRows {
+			attachments = append(attachments, map[string]any{
+				"id":       att.Id,
+				"fileUrl":  toAbsoluteAssetURL(c.BaseURL(), att.FileUrl),
+				"fileType": strings.ToUpper(strings.TrimSpace(att.FileType)),
+				"fileName": att.FileName,
+				"fileSize": att.FileSize,
+			})
+		}
 	}
 
 	payload := map[string]any{
@@ -244,6 +510,9 @@ func SendMessage(c *fiber.Ctx) error {
 		"isEdited":       msg.IsEdited,
 		"isUnsent":       msg.IsUnsent,
 		"createdAt":      msg.CreatedAt.UTC().Format(time.RFC3339),
+	}
+	if len(attachments) > 0 {
+		payload["attachments"] = attachments
 	}
 	if strings.TrimSpace(replyToMessageId) != "" {
 		payload["replyTo"] = map[string]any{
@@ -458,4 +727,55 @@ func DeleteConversation(c *fiber.Ctx) error {
 	}
 
 	return SendSuccessResponse(c, 200, "Conversation deleted successfully", nil)
+}
+
+func ToggleConversationDealAgreement(c *fiber.Ctx) error {
+	conversationId := strings.TrimSpace(c.Params("id"))
+	if conversationId == "" {
+		return SendErrorResponse(c, 400, "Conversation ID is required", nil)
+	}
+
+	userId, err := getAuthenticatedUserId(c)
+	if err != nil {
+		return SendErrorResponse(c, 401, err.Error(), nil)
+	}
+
+	state, err := repository.ToggleConversationTransactionAgreement(userId, conversationId)
+	if err != nil {
+		return SendErrorResponse(c, 400, err.Error(), err)
+	}
+
+	realtimeMessagePayload := map[string]any{
+		"type": "message:new",
+		"data": map[string]any{
+			"conversationId": state.ConversationId,
+		},
+	}
+
+	peerUserId, peerErr := repository.GetConversationPeerUserId(userId, conversationId)
+	if peerErr == nil && strings.TrimSpace(peerUserId) != "" {
+		payload := map[string]any{
+			"type": "conversation:deal-updated",
+			"data": map[string]any{
+				"conversationId":    state.ConversationId,
+				"listingId":         state.ListingId,
+				"transactionStatus": strings.ToUpper(strings.TrimSpace(state.TransactionStatus)),
+				"providerAgreed":    state.ProviderAgreed,
+				"clientAgreed":      state.ClientAgreed,
+				"userAgreed":        state.UserAgreed,
+			},
+		}
+
+		middleware.RealtimeHub.SendToUser(peerUserId, payload)
+		middleware.RealtimeHub.SendToUser(userId, payload)
+		middleware.RealtimeHub.SendToUser(peerUserId, realtimeMessagePayload)
+	}
+	middleware.RealtimeHub.SendToUser(userId, realtimeMessagePayload)
+
+	return SendSuccessResponse(c, 200, "Transaction agreement updated", map[string]any{
+		"transactionStatus": strings.ToUpper(strings.TrimSpace(state.TransactionStatus)),
+		"providerAgreed":    state.ProviderAgreed,
+		"clientAgreed":      state.ClientAgreed,
+		"userAgreed":        state.UserAgreed,
+	})
 }

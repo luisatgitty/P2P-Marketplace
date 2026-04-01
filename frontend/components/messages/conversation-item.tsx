@@ -56,18 +56,18 @@ function relativeTime(iso?: string): string {
 interface ConversationItemProps {
   conversation: Conversation;
   isActive: boolean;
-  /** Show the listing-type badge (used when "All" tab is active) */
-  showTypeBadge: boolean;
 }
 
 export default function ConversationItem({
   conversation,
   isActive,
-  showTypeBadge,
 }: ConversationItemProps) {
   const { id, otherParticipant, listing, lastMessage, lastMessageAt, unreadCount } = conversation;
   const hasUnread = unreadCount > 0;
   const fmt = (n: number) => "₱" + n.toLocaleString("en-PH", { minimumFractionDigits: 0 });
+  const displayPrice = listing.listingType === "SELL" && Number(listing.offer ?? 0) > 0
+    ? Number(listing.offer)
+    : listing.price;
 
   return (
     <Link
@@ -110,7 +110,7 @@ export default function ConversationItem({
             {listing.title}
             {" · "}
             <span className="text-amber-600 dark:text-amber-500 font-semibold">
-              {fmt(listing.price)} {listing.priceUnit ?? ""}
+              {fmt(displayPrice)} {listing.priceUnit ?? ""}
             </span>
           </span>
         </div>

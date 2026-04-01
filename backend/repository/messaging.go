@@ -1,12 +1,19 @@
 package repository
 
 import (
+	"crypto/rand"
+	"encoding/base64"
+	"encoding/hex"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
 	"p2p_marketplace/backend/middleware"
 	"p2p_marketplace/backend/model"
+
+	"gorm.io/gorm"
 )
 
 func GetConversationsByUser(userId string) ([]model.ConversationFromDb, error) {
@@ -19,9 +26,32 @@ func GetConversationsByUser(userId string) ([]model.ConversationFromDb, error) {
 			l.id AS listing_id,
 			l.title AS listing_title,
 			l.price AS listing_price,
+			COALESCE(tx.total_price, 0) AS offer_price,
+			COALESCE(tx.status::text, '') AS transaction_status,
+			COALESCE(tx.provider_agreed, FALSE) AS provider_agreed,
+			COALESCE(tx.client_agreed, FALSE) AS client_agreed,
+			CASE
+				WHEN c.seller_id = $1 THEN COALESCE(tx.provider_agreed, FALSE)
+				ELSE COALESCE(tx.client_agreed, FALSE)
+			END AS user_agreed,
+			tx.start_date AS schedule_start,
+			tx.end_date AS schedule_end,
+			COALESCE(lrd.available_from, lsrv.available_from) AS available_from,
+			COALESCE(lrd.days_off, lsrv.days_off, '[]') AS days_off,
+			COALESCE(tw.time_windows, '[]') AS time_windows,
 			COALESCE(l.price_unit, '') AS listing_price_unit,
 			l.listing_type::text AS listing_type,
 			l.status::text AS listing_status,
+			CASE
+				WHEN c.seller_id = $1::uuid THEN FALSE
+				ELSE EXISTS(
+					SELECT 1
+					FROM public.listing_transactions lt_review
+					WHERE lt_review.listing_id = c.listing_id
+						AND lt_review.client_id = $1::uuid
+						AND lt_review.status = 'COMPLETED'
+				)
+			END AS can_review,
 			COALESCE(li.image_url, '') AS listing_image_url,
 			u.id AS other_user_id,
 			u.first_name AS other_first_name,
@@ -37,6 +67,10 @@ func GetConversationsByUser(userId string) ([]model.ConversationFromDb, error) {
 			ON c.id = cm.conversation_id
 		JOIN public.listings l
 			ON l.id = c.listing_id
+		LEFT JOIN public.listing_rent_details lrd
+			ON lrd.listing_id = l.id
+		LEFT JOIN public.listing_service_details lsrv
+			ON lsrv.listing_id = l.id
 		LEFT JOIN LATERAL (
 			SELECT image_url
 			FROM public.listing_images
@@ -44,6 +78,28 @@ func GetConversationsByUser(userId string) ([]model.ConversationFromDb, error) {
 			ORDER BY is_primary DESC, id ASC
 			LIMIT 1
 		) li ON TRUE
+		LEFT JOIN LATERAL (
+			SELECT COALESCE(
+				json_agg(
+					json_build_object(
+						'startTime', TO_CHAR(ltw.start_time, 'HH24:MI:SS'),
+						'endTime', TO_CHAR(ltw.end_time, 'HH24:MI:SS')
+					)
+					ORDER BY ltw.start_time
+				)::text,
+				'[]'
+			) AS time_windows
+			FROM public.listing_time_windows ltw
+			WHERE ltw.listing_id = l.id
+		) tw ON TRUE
+		LEFT JOIN LATERAL (
+			SELECT total_price, start_date, end_date, status, provider_agreed, client_agreed
+			FROM public.listing_transactions lt
+			WHERE lt.listing_id = c.listing_id
+				AND lt.client_id = c.buyer_id
+			ORDER BY lt.created_at DESC
+			LIMIT 1
+		) tx ON TRUE
 		JOIN public.users u
 			ON u.id = CASE WHEN c.buyer_id = $1 THEN c.seller_id ELSE c.buyer_id END
 		LEFT JOIN public.conversation_members other_cm
@@ -84,9 +140,32 @@ func GetConversationById(userId, conversationId string) (model.ConversationFromD
 			l.id AS listing_id,
 			l.title AS listing_title,
 			l.price AS listing_price,
+			COALESCE(tx.total_price, 0) AS offer_price,
+			COALESCE(tx.status::text, '') AS transaction_status,
+			COALESCE(tx.provider_agreed, FALSE) AS provider_agreed,
+			COALESCE(tx.client_agreed, FALSE) AS client_agreed,
+			CASE
+				WHEN c.seller_id = $1 THEN COALESCE(tx.provider_agreed, FALSE)
+				ELSE COALESCE(tx.client_agreed, FALSE)
+			END AS user_agreed,
+			tx.start_date AS schedule_start,
+			tx.end_date AS schedule_end,
+			COALESCE(lrd.available_from, lsrv.available_from) AS available_from,
+			COALESCE(lrd.days_off, lsrv.days_off, '[]') AS days_off,
+			COALESCE(tw.time_windows, '[]') AS time_windows,
 			COALESCE(l.price_unit, '') AS listing_price_unit,
 			l.listing_type::text AS listing_type,
 			l.status::text AS listing_status,
+			CASE
+				WHEN c.seller_id = $1::uuid THEN FALSE
+				ELSE EXISTS(
+					SELECT 1
+					FROM public.listing_transactions lt_review
+					WHERE lt_review.listing_id = c.listing_id
+						AND lt_review.client_id = $1::uuid
+						AND lt_review.status = 'COMPLETED'
+				)
+			END AS can_review,
 			COALESCE(li.image_url, '') AS listing_image_url,
 			u.id AS other_user_id,
 			u.first_name AS other_first_name,
@@ -102,6 +181,10 @@ func GetConversationById(userId, conversationId string) (model.ConversationFromD
 			ON c.id = cm.conversation_id
 		JOIN public.listings l
 			ON l.id = c.listing_id
+		LEFT JOIN public.listing_rent_details lrd
+			ON lrd.listing_id = l.id
+		LEFT JOIN public.listing_service_details lsrv
+			ON lsrv.listing_id = l.id
 		LEFT JOIN LATERAL (
 			SELECT image_url
 			FROM public.listing_images
@@ -109,6 +192,28 @@ func GetConversationById(userId, conversationId string) (model.ConversationFromD
 			ORDER BY is_primary DESC, id ASC
 			LIMIT 1
 		) li ON TRUE
+		LEFT JOIN LATERAL (
+			SELECT COALESCE(
+				json_agg(
+					json_build_object(
+						'startTime', TO_CHAR(ltw.start_time, 'HH24:MI:SS'),
+						'endTime', TO_CHAR(ltw.end_time, 'HH24:MI:SS')
+					)
+					ORDER BY ltw.start_time
+				)::text,
+				'[]'
+			) AS time_windows
+			FROM public.listing_time_windows ltw
+			WHERE ltw.listing_id = l.id
+		) tw ON TRUE
+		LEFT JOIN LATERAL (
+			SELECT total_price, start_date, end_date, status, provider_agreed, client_agreed
+			FROM public.listing_transactions lt
+			WHERE lt.listing_id = c.listing_id
+				AND lt.client_id = c.buyer_id
+			ORDER BY lt.created_at DESC
+			LIMIT 1
+		) tx ON TRUE
 		JOIN public.users u
 			ON u.id = CASE WHEN c.buyer_id = $1 THEN c.seller_id ELSE c.buyer_id END
 		LEFT JOIN public.conversation_members other_cm
@@ -361,12 +466,51 @@ func GetConversationPeerUserId(userId, conversationId string) (string, error) {
 	return strings.TrimSpace(peerId), nil
 }
 
-func CreateMessage(userId, conversationId, content, replyToMessageId string) (model.MessageFromDb, error) {
+func GetParticipantUserIdsByListing(listingId string) ([]string, error) {
+	db := middleware.DBConn
+	rows := make([]struct {
+		BuyerId  string `gorm:"column:buyer_id"`
+		SellerId string `gorm:"column:seller_id"`
+	}, 0)
+
+	query := `
+		SELECT
+			buyer_id::text AS buyer_id,
+			seller_id::text AS seller_id
+		FROM public.conversations
+		WHERE listing_id = $1
+	`
+
+	if err := db.Raw(query, listingId).Scan(&rows).Error; err != nil {
+		return nil, fmt.Errorf("Failed to retrieve conversation participants")
+	}
+
+	unique := make(map[string]struct{})
+	for _, row := range rows {
+		buyerId := strings.TrimSpace(row.BuyerId)
+		sellerId := strings.TrimSpace(row.SellerId)
+		if buyerId != "" {
+			unique[buyerId] = struct{}{}
+		}
+		if sellerId != "" {
+			unique[sellerId] = struct{}{}
+		}
+	}
+
+	ids := make([]string, 0, len(unique))
+	for userId := range unique {
+		ids = append(ids, userId)
+	}
+
+	return ids, nil
+}
+
+func CreateMessage(userId, conversationId, content, replyToMessageId string, attachments []model.MessageAttachmentBody) (model.MessageFromDb, error) {
 	db := middleware.DBConn
 	var created model.MessageFromDb
 
 	trimmed := strings.TrimSpace(content)
-	if trimmed == "" {
+	if trimmed == "" && len(attachments) == 0 {
 		return created, fmt.Errorf("Message content is required")
 	}
 
@@ -431,6 +575,43 @@ func CreateMessage(userId, conversationId, content, replyToMessageId string) (mo
 		return created, fmt.Errorf("Failed to send message")
 	}
 
+	if len(attachments) > 0 {
+		if err := saveMessageAttachmentsTx(tx, created.Id, attachments); err != nil {
+			tx.Rollback()
+			return created, err
+		}
+	}
+
+	lastMessageText := trimmed
+	if lastMessageText == "" && len(attachments) > 0 {
+		imagesCount := 0
+		videosCount := 0
+		for _, att := range attachments {
+			kind := strings.ToUpper(strings.TrimSpace(messageAttachmentKind(att.MimeType)))
+			if kind == "VIDEO" {
+				videosCount++
+			} else {
+				imagesCount++
+			}
+		}
+		parts := make([]string, 0, 2)
+		if imagesCount > 0 {
+			if imagesCount == 1 {
+				parts = append(parts, "📷 Photo")
+			} else {
+				parts = append(parts, fmt.Sprintf("📷 %d photos", imagesCount))
+			}
+		}
+		if videosCount > 0 {
+			if videosCount == 1 {
+				parts = append(parts, "🎥 Video")
+			} else {
+				parts = append(parts, fmt.Sprintf("🎥 %d videos", videosCount))
+			}
+		}
+		lastMessageText = strings.Join(parts, ", ")
+	}
+
 	updateConversationQuery := `
 		UPDATE public.conversations
 		SET
@@ -441,7 +622,7 @@ func CreateMessage(userId, conversationId, content, replyToMessageId string) (mo
 			updated_at = now()
 		WHERE id = $1
 	`
-	if err := tx.Exec(updateConversationQuery, conversationId, created.Id, trimmed, userId, created.CreatedAt).Error; err != nil {
+	if err := tx.Exec(updateConversationQuery, conversationId, created.Id, lastMessageText, userId, created.CreatedAt).Error; err != nil {
 		tx.Rollback()
 		return created, fmt.Errorf("Failed to update conversation metadata")
 	}
@@ -462,6 +643,119 @@ func CreateMessage(userId, conversationId, content, replyToMessageId string) (mo
 	}
 
 	return created, nil
+}
+
+func GetMessageAttachmentsByMessageId(messageId string) ([]model.MessageAttachmentFromDb, error) {
+	db := middleware.DBConn
+	rows := make([]model.MessageAttachmentFromDb, 0)
+
+	query := `
+		SELECT id, message_id, file_url, file_type::text AS file_type, file_name, file_size
+		FROM public.message_attachments
+		WHERE message_id = $1
+		ORDER BY sort_order ASC, created_at ASC
+	`
+
+	if err := db.Raw(query, messageId).Scan(&rows).Error; err != nil {
+		return nil, fmt.Errorf("Failed to load message attachments")
+	}
+
+	return rows, nil
+}
+
+func saveMessageAttachmentsTx(tx *gorm.DB, messageId string, attachments []model.MessageAttachmentBody) error {
+	baseDir := filepath.Join("uploads", "messages")
+	if err := os.MkdirAll(baseDir, 0755); err != nil {
+		return fmt.Errorf("Failed to create attachment upload directory")
+	}
+
+	insertAttachmentQuery := `
+		INSERT INTO public.message_attachments (message_id, file_url, file_type, file_name, file_size, sort_order)
+		VALUES ($1, $2, $3::attachment_type, $4, $5, $6)
+	`
+
+	for i, item := range attachments {
+		encodedData := strings.TrimSpace(item.Data)
+		if encodedData == "" {
+			return fmt.Errorf("Attachment payload is empty")
+		}
+
+		ext, err := extFromAttachmentMime(item.MimeType)
+		if err != nil {
+			return err
+		}
+
+		decoded, err := base64.StdEncoding.DecodeString(encodedData)
+		if err != nil {
+			return fmt.Errorf("Failed to decode attachment payload")
+		}
+
+		randomName, err := randomHexForMessageAttachment(10)
+		if err != nil {
+			return fmt.Errorf("Failed to generate attachment filename")
+		}
+
+		fileName := strings.TrimSpace(item.Name)
+		if fileName == "" {
+			fileName = fmt.Sprintf("attachment-%d%s", i+1, ext)
+		}
+
+		storedFileName := fmt.Sprintf("%d_%s%s", time.Now().UnixNano(), randomName, ext)
+		filePath := filepath.Join(baseDir, storedFileName)
+		if err := os.WriteFile(filePath, decoded, 0644); err != nil {
+			return fmt.Errorf("Failed to save attachment file")
+		}
+
+		fileURL := fmt.Sprintf("/uploads/messages/%s", storedFileName)
+		fileType := messageAttachmentKind(item.MimeType)
+		if fileType == "" {
+			return fmt.Errorf("Unsupported attachment type")
+		}
+
+		if err := tx.Exec(insertAttachmentQuery, messageId, fileURL, fileType, fileName, len(decoded), i).Error; err != nil {
+			return fmt.Errorf("Failed to save attachment metadata")
+		}
+	}
+
+	return nil
+}
+
+func extFromAttachmentMime(mimeType string) (string, error) {
+	switch strings.ToLower(strings.TrimSpace(mimeType)) {
+	case "image/jpeg", "image/jpg":
+		return ".jpg", nil
+	case "image/png":
+		return ".png", nil
+	case "image/webp":
+		return ".webp", nil
+	case "video/mp4":
+		return ".mp4", nil
+	case "video/webm":
+		return ".webm", nil
+	case "video/quicktime":
+		return ".mov", nil
+	default:
+		return "", fmt.Errorf("Unsupported attachment type")
+	}
+}
+
+func messageAttachmentKind(mimeType string) string {
+	trimmed := strings.ToLower(strings.TrimSpace(mimeType))
+	if strings.HasPrefix(trimmed, "image/") {
+		return "IMAGE"
+	}
+	if strings.HasPrefix(trimmed, "video/") {
+		return "VIDEO"
+	}
+	return ""
+}
+
+func randomHexForMessageAttachment(n int) (string, error) {
+	b := make([]byte, n)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(b), nil
 }
 
 func UpsertMessageReaction(userId, conversationId, messageId string, reaction *string) error {
@@ -686,7 +980,17 @@ func DeleteConversationForUser(userId, conversationId string) error {
 	return nil
 }
 
-func GetOrCreateConversationByListing(userId, listingId string) (string, error) {
+func GetOrCreateConversationByListing(
+	userId,
+	listingId string,
+	offerPrice int,
+	offerMessage,
+	startDate,
+	endDate,
+	startTime,
+	endTime,
+	scheduleMessage string,
+) (string, error) {
 	db := middleware.DBConn
 	var conversationId string
 
@@ -702,24 +1006,35 @@ func GetOrCreateConversationByListing(userId, listingId string) (string, error) 
 	}()
 
 	var sellerId string
+	var listingType string
+	var listingStatus string
+	var listingPrice int
 	listingQuery := `
-		SELECT user_id::text
+		SELECT
+			user_id::text,
+			LOWER(listing_type::text) AS listing_type,
+			LOWER(COALESCE(status::text, 'available')) AS listing_status,
+			COALESCE(price, 0) AS listing_price
 		FROM public.listings
 		WHERE id = $1
 		LIMIT 1
 	`
-	listingResult := tx.Raw(listingQuery, listingId).Scan(&sellerId)
-	if listingResult.Error != nil {
+	listingResult := tx.Raw(listingQuery, listingId).Row()
+	if err := listingResult.Scan(&sellerId, &listingType, &listingStatus, &listingPrice); err != nil {
 		tx.Rollback()
-		return "", fmt.Errorf("Failed to validate listing")
+		return "", fmt.Errorf("Listing not found")
 	}
-	if listingResult.RowsAffected == 0 || strings.TrimSpace(sellerId) == "" {
+	if strings.TrimSpace(sellerId) == "" {
 		tx.Rollback()
 		return "", fmt.Errorf("Listing not found")
 	}
 	if sellerId == userId {
 		tx.Rollback()
 		return "", fmt.Errorf("You cannot message your own listing")
+	}
+	if listingType == "sell" && listingStatus == "sold" {
+		tx.Rollback()
+		return "", fmt.Errorf("This listing is already sold")
 	}
 
 	findQuery := `
@@ -775,11 +1090,753 @@ func GetOrCreateConversationByListing(userId, listingId string) (string, error) 
 		}
 	}
 
+	if offerPrice > 0 {
+		if listingType != "sell" {
+			tx.Rollback()
+			return "", fmt.Errorf("Offers are only supported for For Sale listings")
+		}
+
+		actorFirstName, err := getUserFirstNameTx(tx, userId)
+		if err != nil {
+			tx.Rollback()
+			return "", err
+		}
+
+		countActiveTransactionsQuery := `
+			SELECT COUNT(*)
+			FROM public.listing_transactions
+			WHERE listing_id = $1
+				AND client_id = $2
+				AND status NOT IN ('COMPLETED', 'CANCELLED')
+		`
+		var activeCount int
+		if err := tx.Raw(countActiveTransactionsQuery, listingId, userId).Scan(&activeCount).Error; err != nil {
+			tx.Rollback()
+			return "", fmt.Errorf("Failed to inspect existing transactions")
+		}
+
+		if activeCount == 0 {
+			insertTransactionQuery := `
+				INSERT INTO public.listing_transactions (
+					listing_id,
+					client_id,
+					total_price,
+					provider_agreed,
+					client_agreed,
+					status,
+					created_at
+				) VALUES (
+					$1,
+					$2,
+					$3,
+					FALSE,
+					FALSE,
+					'PENDING',
+					now()
+				)
+			`
+			if err := tx.Exec(insertTransactionQuery, listingId, userId, offerPrice).Error; err != nil {
+				tx.Rollback()
+				return "", fmt.Errorf("Failed to save offer transaction")
+			}
+		} else {
+			updateExistingTransactionQuery := `
+				UPDATE public.listing_transactions
+				SET
+					total_price = $2,
+					provider_agreed = FALSE,
+					client_agreed = FALSE,
+					status = 'PENDING',
+					cancelled_at = NULL,
+					cancelled_by_id = NULL,
+					completed_at = NULL,
+					created_at = now()
+				WHERE id = (
+					SELECT lt.id
+					FROM public.listing_transactions lt
+					WHERE lt.listing_id = $1
+						AND lt.client_id = $3
+						AND lt.status NOT IN ('COMPLETED', 'CANCELLED')
+					ORDER BY lt.created_at DESC
+					LIMIT 1
+				)
+			`
+			updateResult := tx.Exec(updateExistingTransactionQuery, listingId, offerPrice, userId)
+			if updateResult.Error != nil {
+				tx.Rollback()
+				return "", fmt.Errorf("Failed to update offer transaction")
+			}
+			if updateResult.RowsAffected == 0 {
+				tx.Rollback()
+				return "", fmt.Errorf("No eligible transaction found for update")
+			}
+		}
+
+		offerActionContent := fmt.Sprintf("__OFFER_ACTION__:%s offered ₱%s", actorFirstName, formatAmountWithCommas(offerPrice))
+		actionMessage, err := insertConversationMessageTx(tx, conversationId, userId, sellerId, offerActionContent)
+		if err != nil {
+			tx.Rollback()
+			return "", err
+		}
+
+		lastMessageID := actionMessage.Id
+		lastMessageText := strings.TrimSpace(actionMessage.Content)
+		lastMessageAt := actionMessage.CreatedAt
+
+		trimmedOfferMessage := strings.TrimSpace(offerMessage)
+		if trimmedOfferMessage != "" {
+			noteMessage, err := insertConversationMessageTx(tx, conversationId, userId, sellerId, trimmedOfferMessage)
+			if err != nil {
+				tx.Rollback()
+				return "", err
+			}
+			lastMessageID = noteMessage.Id
+			lastMessageText = strings.TrimSpace(noteMessage.Content)
+			lastMessageAt = noteMessage.CreatedAt
+		}
+
+		updateConversationQuery := `
+			UPDATE public.conversations
+			SET
+				last_message_id = $2,
+				last_message = $3,
+				last_message_sender_id = $4,
+				last_message_at = $5,
+				updated_at = now()
+			WHERE id = $1
+		`
+		if err := tx.Exec(updateConversationQuery, conversationId, lastMessageID, lastMessageText, userId, lastMessageAt).Error; err != nil {
+			tx.Rollback()
+			return "", fmt.Errorf("Failed to update conversation metadata")
+		}
+	}
+
+	trimmedStartDate := strings.TrimSpace(startDate)
+	trimmedEndDate := strings.TrimSpace(endDate)
+	hasScheduleRequest := trimmedStartDate != "" || trimmedEndDate != ""
+	if hasScheduleRequest {
+		if trimmedStartDate == "" || trimmedEndDate == "" {
+			tx.Rollback()
+			return "", fmt.Errorf("Start date and end date are required for schedule request")
+		}
+		if listingType != "rent" && listingType != "service" {
+			tx.Rollback()
+			return "", fmt.Errorf("Schedule requests are only supported for Rent and Service listings")
+		}
+
+		scheduleStartAt, scheduleEndAt, err := parseScheduleRange(trimmedStartDate, trimmedEndDate, startTime, endTime)
+		if err != nil {
+			tx.Rollback()
+			return "", err
+		}
+
+		actorFirstName, err := getUserFirstNameTx(tx, userId)
+		if err != nil {
+			tx.Rollback()
+			return "", err
+		}
+
+		countActiveTransactionsQuery := `
+			SELECT COUNT(*)
+			FROM public.listing_transactions
+			WHERE listing_id = $1
+				AND client_id = $2
+				AND status NOT IN ('COMPLETED', 'CANCELLED')
+		`
+		var activeCount int
+		if err := tx.Raw(countActiveTransactionsQuery, listingId, userId).Scan(&activeCount).Error; err != nil {
+			tx.Rollback()
+			return "", fmt.Errorf("Failed to inspect existing transactions")
+		}
+
+		if activeCount == 0 {
+			insertTransactionQuery := `
+				INSERT INTO public.listing_transactions (
+					listing_id,
+					client_id,
+					start_date,
+					end_date,
+					total_price,
+					provider_agreed,
+					client_agreed,
+					status,
+					created_at
+				) VALUES (
+					$1,
+					$2,
+					$3,
+					$4,
+					$5,
+					FALSE,
+					FALSE,
+					'PENDING',
+					now()
+				)
+			`
+			if err := tx.Exec(insertTransactionQuery, listingId, userId, scheduleStartAt, scheduleEndAt, listingPrice).Error; err != nil {
+				tx.Rollback()
+				return "", fmt.Errorf("Failed to save schedule transaction")
+			}
+		} else {
+			updateExistingTransactionQuery := `
+				UPDATE public.listing_transactions
+				SET
+					start_date = $2,
+					end_date = $3,
+					total_price = $4,
+					provider_agreed = FALSE,
+					client_agreed = FALSE,
+					status = 'PENDING',
+					cancelled_at = NULL,
+					cancelled_by_id = NULL,
+					completed_at = NULL,
+					created_at = now()
+				WHERE id = (
+					SELECT lt.id
+					FROM public.listing_transactions lt
+					WHERE lt.listing_id = $1
+						AND lt.client_id = $5
+						AND lt.status NOT IN ('COMPLETED', 'CANCELLED')
+					ORDER BY lt.created_at DESC
+					LIMIT 1
+				)
+			`
+			updateResult := tx.Exec(updateExistingTransactionQuery, listingId, scheduleStartAt, scheduleEndAt, listingPrice, userId)
+			if updateResult.Error != nil {
+				tx.Rollback()
+				return "", fmt.Errorf("Failed to update schedule transaction")
+			}
+			if updateResult.RowsAffected == 0 {
+				tx.Rollback()
+				return "", fmt.Errorf("No eligible transaction found for schedule update")
+			}
+		}
+
+		scheduleActionContent := fmt.Sprintf(
+			"__SCHEDULE_ACTION__:%s requested schedule on %s - %s",
+			actorFirstName,
+			scheduleStartAt.Format("Jan 02"),
+			scheduleEndAt.Format("Jan 02"),
+		)
+		actionMessage, err := insertConversationMessageTx(tx, conversationId, userId, sellerId, scheduleActionContent)
+		if err != nil {
+			tx.Rollback()
+			return "", err
+		}
+
+		lastMessageID := actionMessage.Id
+		lastMessageText := strings.TrimSpace(actionMessage.Content)
+		lastMessageAt := actionMessage.CreatedAt
+
+		trimmedScheduleMessage := strings.TrimSpace(scheduleMessage)
+		if trimmedScheduleMessage != "" {
+			noteMessage, err := insertConversationMessageTx(tx, conversationId, userId, sellerId, trimmedScheduleMessage)
+			if err != nil {
+				tx.Rollback()
+				return "", err
+			}
+			lastMessageID = noteMessage.Id
+			lastMessageText = strings.TrimSpace(noteMessage.Content)
+			lastMessageAt = noteMessage.CreatedAt
+		}
+
+		updateConversationQuery := `
+			UPDATE public.conversations
+			SET
+				last_message_id = $2,
+				last_message = $3,
+				last_message_sender_id = $4,
+				last_message_at = $5,
+				updated_at = now()
+			WHERE id = $1
+		`
+		if err := tx.Exec(updateConversationQuery, conversationId, lastMessageID, lastMessageText, userId, lastMessageAt).Error; err != nil {
+			tx.Rollback()
+			return "", fmt.Errorf("Failed to update conversation metadata")
+		}
+	}
+
 	if err := tx.Commit().Error; err != nil {
 		return "", fmt.Errorf("Failed to finalize conversation")
 	}
 
 	return conversationId, nil
+}
+
+func UpdateConversationOfferByOwner(userId, conversationId string, offerPrice int, offerMessage string) (model.TransactionAgreementState, error) {
+	db := middleware.DBConn
+	state := model.TransactionAgreementState{}
+
+	if offerPrice <= 0 {
+		return state, fmt.Errorf("Offer price must be greater than 0")
+	}
+
+	tx := db.Begin()
+	if tx.Error != nil {
+		return state, fmt.Errorf("Failed to start DB transaction")
+	}
+
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	var listingId string
+	var buyerId string
+	var sellerId string
+	var listingType string
+	var listingStatus string
+	conversationQuery := `
+		SELECT
+			c.listing_id::text,
+			c.buyer_id::text,
+			c.seller_id::text,
+			LOWER(l.listing_type::text) AS listing_type,
+			LOWER(COALESCE(l.status::text, 'available')) AS listing_status
+		FROM public.conversations c
+		JOIN public.listings l
+			ON l.id = c.listing_id
+		JOIN public.conversation_members cm
+			ON cm.conversation_id = c.id
+			AND cm.user_id = $2
+			AND cm.deleted_at IS NULL
+		WHERE c.id = $1
+		LIMIT 1
+	`
+	if err := tx.Raw(conversationQuery, conversationId, userId).Row().Scan(&listingId, &buyerId, &sellerId, &listingType, &listingStatus); err != nil {
+		tx.Rollback()
+		return state, fmt.Errorf("Conversation not found")
+	}
+
+	if strings.TrimSpace(userId) != strings.TrimSpace(sellerId) {
+		tx.Rollback()
+		return state, fmt.Errorf("Only the listing owner can update this offer")
+	}
+
+	if listingType != "sell" {
+		tx.Rollback()
+		return state, fmt.Errorf("Offers are only supported for For Sale listings")
+	}
+
+	if listingStatus == "sold" {
+		tx.Rollback()
+		return state, fmt.Errorf("This listing is already sold")
+	}
+
+	actorFirstName, err := getUserFirstNameTx(tx, userId)
+	if err != nil {
+		tx.Rollback()
+		return state, err
+	}
+
+	countActiveTransactionsQuery := `
+		SELECT COUNT(*)
+		FROM public.listing_transactions
+		WHERE listing_id = $1
+			AND client_id = $2
+			AND status NOT IN ('COMPLETED', 'CANCELLED')
+	`
+	var nonCompletedCount int
+	if err := tx.Raw(countActiveTransactionsQuery, listingId, buyerId).Scan(&nonCompletedCount).Error; err != nil {
+		tx.Rollback()
+		return state, fmt.Errorf("Failed to inspect existing transactions")
+	}
+
+	if nonCompletedCount == 0 {
+		insertTransactionQuery := `
+			INSERT INTO public.listing_transactions (
+				listing_id,
+				client_id,
+				total_price,
+				provider_agreed,
+				client_agreed,
+				status,
+				created_at
+			) VALUES (
+				$1,
+				$2,
+				$3,
+				FALSE,
+				FALSE,
+				'PENDING',
+				now()
+			)
+		`
+		if err := tx.Exec(insertTransactionQuery, listingId, buyerId, offerPrice).Error; err != nil {
+			tx.Rollback()
+			return state, fmt.Errorf("Failed to save offer transaction")
+		}
+	} else {
+		updateExistingTransactionQuery := `
+			UPDATE public.listing_transactions
+			SET
+				total_price = $2,
+				provider_agreed = FALSE,
+				client_agreed = FALSE,
+				status = 'PENDING',
+				cancelled_at = NULL,
+				cancelled_by_id = NULL,
+				completed_at = NULL,
+				created_at = now()
+			WHERE id = (
+				SELECT lt.id
+				FROM public.listing_transactions lt
+				WHERE lt.listing_id = $1
+					AND lt.client_id = $3
+					AND lt.status NOT IN ('COMPLETED', 'CANCELLED')
+				ORDER BY lt.created_at DESC
+				LIMIT 1
+			)
+		`
+		updateResult := tx.Exec(updateExistingTransactionQuery, listingId, offerPrice, buyerId)
+		if updateResult.Error != nil {
+			tx.Rollback()
+			return state, fmt.Errorf("Failed to update offer transaction")
+		}
+		if updateResult.RowsAffected == 0 {
+			tx.Rollback()
+			return state, fmt.Errorf("No eligible transaction found for update")
+		}
+	}
+
+	offerActionContent := fmt.Sprintf("__OFFER_ACTION__:%s offered ₱%s", actorFirstName, formatAmountWithCommas(offerPrice))
+	actionMessage, err := insertConversationMessageTx(tx, conversationId, userId, buyerId, offerActionContent)
+	if err != nil {
+		tx.Rollback()
+		return state, err
+	}
+
+	lastMessageID := actionMessage.Id
+	lastMessageText := strings.TrimSpace(actionMessage.Content)
+	lastMessageAt := actionMessage.CreatedAt
+
+	trimmedOfferMessage := strings.TrimSpace(offerMessage)
+	if trimmedOfferMessage != "" {
+		noteMessage, err := insertConversationMessageTx(tx, conversationId, userId, buyerId, trimmedOfferMessage)
+		if err != nil {
+			tx.Rollback()
+			return state, err
+		}
+		lastMessageID = noteMessage.Id
+		lastMessageText = strings.TrimSpace(noteMessage.Content)
+		lastMessageAt = noteMessage.CreatedAt
+	}
+
+	updateConversationQuery := `
+		UPDATE public.conversations
+		SET
+			last_message_id = $2,
+			last_message = $3,
+			last_message_sender_id = $4,
+			last_message_at = $5,
+			updated_at = now()
+		WHERE id = $1
+	`
+	if err := tx.Exec(updateConversationQuery, conversationId, lastMessageID, lastMessageText, userId, lastMessageAt).Error; err != nil {
+		tx.Rollback()
+		return state, fmt.Errorf("Failed to update conversation metadata")
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		return state, fmt.Errorf("Failed to finalize offer update")
+	}
+
+	state.ConversationId = strings.TrimSpace(conversationId)
+	state.ListingId = strings.TrimSpace(listingId)
+	state.TransactionStatus = "PENDING"
+	state.ProviderAgreed = false
+	state.ClientAgreed = false
+	state.UserAgreed = false
+
+	return state, nil
+}
+
+func ToggleConversationTransactionAgreement(userId, conversationId string) (model.TransactionAgreementState, error) {
+	db := middleware.DBConn
+	state := model.TransactionAgreementState{}
+
+	tx := db.Begin()
+	if tx.Error != nil {
+		return state, fmt.Errorf("Failed to start DB transaction")
+	}
+
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	var listingId string
+	var buyerId string
+	var sellerId string
+	var listingType string
+	memberQuery := `
+		SELECT
+			c.listing_id::text,
+			c.buyer_id::text,
+			c.seller_id::text,
+			LOWER(l.listing_type::text) AS listing_type
+		FROM public.conversations c
+		JOIN public.listings l
+			ON l.id = c.listing_id
+		JOIN public.conversation_members cm
+			ON cm.conversation_id = c.id
+			AND cm.user_id = $2
+			AND cm.deleted_at IS NULL
+		WHERE c.id = $1
+		LIMIT 1
+	`
+	if err := tx.Raw(memberQuery, conversationId, userId).Row().Scan(&listingId, &buyerId, &sellerId, &listingType); err != nil {
+		tx.Rollback()
+		return state, fmt.Errorf("Conversation not found")
+	}
+
+	if strings.TrimSpace(userId) != strings.TrimSpace(buyerId) && strings.TrimSpace(userId) != strings.TrimSpace(sellerId) {
+		tx.Rollback()
+		return state, fmt.Errorf("You are not part of this transaction")
+	}
+
+	actorFirstName, err := getUserFirstNameTx(tx, userId)
+	if err != nil {
+		tx.Rollback()
+		return state, err
+	}
+
+	var txId string
+	var currentStatus string
+	var providerAgreed bool
+	var clientAgreed bool
+	latestTxQuery := `
+		SELECT id::text, COALESCE(status::text, 'PENDING') AS status, provider_agreed, client_agreed
+		FROM public.listing_transactions
+		WHERE listing_id = $1
+			AND client_id = $2
+		ORDER BY created_at DESC
+		LIMIT 1
+	`
+	if err := tx.Raw(latestTxQuery, listingId, buyerId).Row().Scan(&txId, &currentStatus, &providerAgreed, &clientAgreed); err != nil {
+		tx.Rollback()
+		return state, fmt.Errorf("No listing transaction found for this conversation")
+	}
+
+	normalizedStatus := strings.ToUpper(strings.TrimSpace(currentStatus))
+	if normalizedStatus == "CANCELLED" || normalizedStatus == "COMPLETED" {
+		tx.Rollback()
+		return state, fmt.Errorf("This transaction can no longer be updated")
+	}
+
+	if strings.TrimSpace(userId) == strings.TrimSpace(sellerId) {
+		providerAgreed = !providerAgreed
+	} else {
+		clientAgreed = !clientAgreed
+	}
+
+	nextStatus := "PENDING"
+	if providerAgreed && clientAgreed {
+		nextStatus = "CONFIRMED"
+	}
+
+	updateQuery := `
+		UPDATE public.listing_transactions
+		SET
+			provider_agreed = $2,
+			client_agreed = $3,
+			status = $4::transaction_status
+		WHERE id = $1
+	`
+	if err := tx.Exec(updateQuery, txId, providerAgreed, clientAgreed, nextStatus).Error; err != nil {
+		tx.Rollback()
+		return state, fmt.Errorf("Failed to update transaction agreement")
+	}
+
+	receiverId := buyerId
+	userAgreedNow := false
+	if strings.TrimSpace(userId) == strings.TrimSpace(sellerId) {
+		receiverId = buyerId
+		userAgreedNow = providerAgreed
+	} else {
+		receiverId = sellerId
+		userAgreedNow = clientAgreed
+	}
+
+	actionSuffix := fmt.Sprintf("%s agreed to the offer", actorFirstName)
+	if listingType != "sell" {
+		actionSuffix = fmt.Sprintf("%s agreed to schedule", actorFirstName)
+	}
+	if !userAgreedNow {
+		actionSuffix = fmt.Sprintf("%s withdrew agreement", actorFirstName)
+	}
+
+	actionMessage, err := insertConversationMessageTx(tx, conversationId, userId, receiverId, "__DEAL_ACTION__:"+actionSuffix)
+	if err != nil {
+		tx.Rollback()
+		return state, err
+	}
+
+	updateConversationQuery := `
+		UPDATE public.conversations
+		SET
+			last_message_id = $2,
+			last_message = $3,
+			last_message_sender_id = $4,
+			last_message_at = $5,
+			updated_at = now()
+		WHERE id = $1
+	`
+	if err := tx.Exec(updateConversationQuery, conversationId, actionMessage.Id, strings.TrimSpace(actionMessage.Content), userId, actionMessage.CreatedAt).Error; err != nil {
+		tx.Rollback()
+		return state, fmt.Errorf("Failed to update conversation metadata")
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		return state, fmt.Errorf("Failed to finalize transaction agreement")
+	}
+
+	state.ConversationId = strings.TrimSpace(conversationId)
+	state.ListingId = strings.TrimSpace(listingId)
+	state.TransactionStatus = nextStatus
+	state.ProviderAgreed = providerAgreed
+	state.ClientAgreed = clientAgreed
+	state.UserAgreed = userAgreedNow
+
+	return state, nil
+}
+
+func getUserFirstNameTx(tx *gorm.DB, userId string) (string, error) {
+	var firstName string
+	query := `
+		SELECT COALESCE(NULLIF(TRIM(first_name), ''), 'User')
+		FROM public.users
+		WHERE id = $1
+		LIMIT 1
+	`
+	result := tx.Raw(query, userId).Scan(&firstName)
+	if result.Error != nil {
+		return "", fmt.Errorf("Failed to load user details")
+	}
+	if result.RowsAffected == 0 {
+		return "", fmt.Errorf("User not found")
+	}
+	return strings.TrimSpace(firstName), nil
+}
+
+func formatAmountWithCommas(amount int) string {
+	negative := amount < 0
+	if negative {
+		amount = -amount
+	}
+
+	num := fmt.Sprintf("%d", amount)
+	if len(num) <= 3 {
+		if negative {
+			return "-" + num
+		}
+		return num
+	}
+
+	parts := make([]string, 0)
+	for len(num) > 3 {
+		parts = append([]string{num[len(num)-3:]}, parts...)
+		num = num[:len(num)-3]
+	}
+	parts = append([]string{num}, parts...)
+	out := strings.Join(parts, ",")
+	if negative {
+		return "-" + out
+	}
+	return out
+}
+
+func insertConversationMessageTx(tx *gorm.DB, conversationId, senderId, receiverId, content string) (model.MessageFromDb, error) {
+	var created model.MessageFromDb
+
+	insertQuery := `
+		INSERT INTO public.messages (
+			conversation_id,
+			sender_id,
+			receiver_id,
+			content,
+			status,
+			created_at,
+			updated_at
+		) VALUES (
+			$1,
+			$2,
+			$3,
+			$4,
+			'SENT',
+			now(),
+			now()
+		)
+		RETURNING id, conversation_id, sender_id, receiver_id, COALESCE(content, '') AS content, status::text AS status, is_edited, is_unsent, created_at
+	`
+
+	if err := tx.Raw(insertQuery, conversationId, senderId, receiverId, strings.TrimSpace(content)).Scan(&created).Error; err != nil {
+		return created, fmt.Errorf("Failed to send offer message")
+	}
+
+	return created, nil
+}
+
+func parseScheduleRange(startDate, endDate, startTime, endTime string) (time.Time, time.Time, error) {
+	startDateVal, err := time.Parse("2006-01-02", strings.TrimSpace(startDate))
+	if err != nil {
+		return time.Time{}, time.Time{}, fmt.Errorf("Invalid start date")
+	}
+	endDateVal, err := time.Parse("2006-01-02", strings.TrimSpace(endDate))
+	if err != nil {
+		return time.Time{}, time.Time{}, fmt.Errorf("Invalid end date")
+	}
+
+	if endDateVal.Before(startDateVal) {
+		return time.Time{}, time.Time{}, fmt.Errorf("End date cannot be earlier than start date")
+	}
+
+	startClock := strings.TrimSpace(startTime)
+	if startClock == "" {
+		startClock = "00:00"
+	}
+	endClock := strings.TrimSpace(endTime)
+	if endClock == "" {
+		endClock = "23:59"
+	}
+
+	startClockVal, err := time.Parse("15:04", startClock)
+	if err != nil {
+		return time.Time{}, time.Time{}, fmt.Errorf("Invalid start time")
+	}
+	endClockVal, err := time.Parse("15:04", endClock)
+	if err != nil {
+		return time.Time{}, time.Time{}, fmt.Errorf("Invalid end time")
+	}
+
+	scheduleStart := time.Date(
+		startDateVal.Year(),
+		startDateVal.Month(),
+		startDateVal.Day(),
+		startClockVal.Hour(),
+		startClockVal.Minute(),
+		0,
+		0,
+		time.UTC,
+	)
+	scheduleEnd := time.Date(
+		endDateVal.Year(),
+		endDateVal.Month(),
+		endDateVal.Day(),
+		endClockVal.Hour(),
+		endClockVal.Minute(),
+		0,
+		0,
+		time.UTC,
+	)
+
+	if !scheduleEnd.After(scheduleStart) {
+		return time.Time{}, time.Time{}, fmt.Errorf("End schedule must be later than start schedule")
+	}
+
+	return scheduleStart, scheduleEnd, nil
 }
 
 func NormalizeMessageStatus(status string) string {

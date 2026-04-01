@@ -33,12 +33,25 @@ func MeProfile(c *fiber.Ctx) error {
 		return SendErrorResponse(c, 500, err.Error(), err)
 	}
 
+	receivedReviews, err := repository.GetUserReceivedReviews(userId)
+	if err != nil {
+		return SendErrorResponse(c, 500, err.Error(), err)
+	}
+
+	personalReviews, err := repository.GetUserPersonalReviews(userId)
+	if err != nil {
+		return SendErrorResponse(c, 500, err.Error(), err)
+	}
+
 	apiURL := c.BaseURL()
 
 	return SendSuccessResponse(c, 200, "Profile fetched successfully", map[string]any{
-		"user":      mapProfileUser(user, apiURL),
-		"listings":  mapProfileListings(listings, apiURL),
-		"bookmarks": mapProfileListings(bookmarks, apiURL),
+		"user":            mapProfileUser(user, apiURL),
+		"listings":        mapProfileListings(listings, apiURL),
+		"bookmarks":       mapProfileListings(bookmarks, apiURL),
+		"reviews":         mapProfileReviews(receivedReviews, apiURL),
+		"receivedReviews": mapProfileReviews(receivedReviews, apiURL),
+		"personalReviews": mapProfileReviews(personalReviews, apiURL),
 	})
 }
 
@@ -58,12 +71,25 @@ func ProfileById(c *fiber.Ctx) error {
 		return SendErrorResponse(c, 500, err.Error(), err)
 	}
 
+	receivedReviews, err := repository.GetUserReceivedReviews(profileUserId)
+	if err != nil {
+		return SendErrorResponse(c, 500, err.Error(), err)
+	}
+
+	personalReviews, err := repository.GetUserPersonalReviews(profileUserId)
+	if err != nil {
+		return SendErrorResponse(c, 500, err.Error(), err)
+	}
+
 	apiURL := c.BaseURL()
 
 	return SendSuccessResponse(c, 200, "Profile fetched successfully", map[string]any{
-		"user":      mapProfileUser(user, apiURL),
-		"listings":  mapProfileListings(listings, apiURL),
-		"bookmarks": []map[string]any{},
+		"user":            mapProfileUser(user, apiURL),
+		"listings":        mapProfileListings(listings, apiURL),
+		"bookmarks":       []map[string]any{},
+		"reviews":         mapProfileReviews(receivedReviews, apiURL),
+		"receivedReviews": mapProfileReviews(receivedReviews, apiURL),
+		"personalReviews": mapProfileReviews(personalReviews, apiURL),
 	})
 }
 
@@ -94,8 +120,8 @@ func UpdateMeProfile(c *fiber.Ctx) error {
 	if len(body.LastName) < config.NameMinLength || len(body.LastName) > config.NameMaxLength {
 		return SendErrorResponse(c, 400, fmt.Sprintf("Last name must be between %d and %d characters", config.NameMinLength, config.NameMaxLength), nil)
 	}
-	if body.LocationProv == "" || body.LocationCity == "" {
-		return SendErrorResponse(c, 400, "Province and city/municipality are required", nil)
+	if (body.LocationProv == "" && body.LocationCity != "") || (body.LocationProv != "" && body.LocationCity == "") {
+		return SendErrorResponse(c, 400, "Province and city/municipality must both be provided", nil)
 	}
 	if len(body.Bio) > 200 {
 		return SendErrorResponse(c, 400, "Bio must not exceed 200 characters", nil)
@@ -135,7 +161,7 @@ func UpdateMeProfileImages(c *fiber.Ctx) error {
 		return SendErrorResponse(c, 400, "Invalid request body. Please contact support.", err)
 	}
 
-	if body.ProfileImage == nil && body.CoverImage == nil {
+	if body.ProfileImage == nil && body.CoverImage == nil && !body.RemoveProfileImage && !body.RemoveCoverImage {
 		return SendErrorResponse(c, 400, "At least one image is required", nil)
 	}
 
@@ -150,6 +176,60 @@ func UpdateMeProfileImages(c *fiber.Ctx) error {
 
 	return SendSuccessResponse(c, 200, "Profile images updated successfully", map[string]any{
 		"user": mapProfileUser(updatedUser, c.BaseURL()),
+	})
+}
+
+func SubmitMeVerification(c *fiber.Ctx) error {
+	userId := fmt.Sprintf("%v", c.Locals("userId"))
+	if strings.TrimSpace(userId) == "" || userId == "%!v(<nil>)" {
+		return SendErrorResponse(c, 401, "User is not authenticated", nil)
+	}
+
+	var body model.SubmitVerificationBody
+	if err := c.BodyParser(&body); err != nil {
+		return SendErrorResponse(c, 400, "Invalid request body", err)
+	}
+
+	body.IdType = strings.TrimSpace(body.IdType)
+	body.IdNumber = strings.TrimSpace(body.IdNumber)
+	body.IdFirstName = strings.TrimSpace(body.IdFirstName)
+	body.IdLastName = strings.TrimSpace(body.IdLastName)
+	body.IdBirthdate = strings.TrimSpace(body.IdBirthdate)
+	body.UserAgent = strings.TrimSpace(body.UserAgent)
+	body.IpAddress = strings.TrimSpace(body.IpAddress)
+	body.HardwareInfo = strings.TrimSpace(body.HardwareInfo)
+
+	if body.IdType == "" {
+		return SendErrorResponse(c, 400, "ID type is required", nil)
+	}
+	if body.IdNumber == "" {
+		return SendErrorResponse(c, 400, "ID number is required", nil)
+	}
+	if body.IdFirstName == "" || body.IdLastName == "" {
+		return SendErrorResponse(c, 400, "ID first and last name are required", nil)
+	}
+	if body.IdBirthdate == "" {
+		return SendErrorResponse(c, 400, "ID birthdate is required", nil)
+	}
+	if body.MobileNumber == "" {
+		return SendErrorResponse(c, 400, "Mobile number is required", nil)
+	}
+	if body.IdImageFront == nil || strings.TrimSpace(body.IdImageFront.Data) == "" {
+		return SendErrorResponse(c, 400, "ID front image is required", nil)
+	}
+	if body.IdImageBack == nil || strings.TrimSpace(body.IdImageBack.Data) == "" {
+		return SendErrorResponse(c, 400, "ID back image is required", nil)
+	}
+	if body.SelfieImage == nil || strings.TrimSpace(body.SelfieImage.Data) == "" {
+		return SendErrorResponse(c, 400, "Selfie image is required", nil)
+	}
+
+	if err := repository.SubmitUserVerification(userId, body); err != nil {
+		return SendErrorResponse(c, 500, err.Error(), err)
+	}
+
+	return SendSuccessResponse(c, 201, "Verification submitted successfully", map[string]any{
+		"status": "PENDING",
 	})
 }
 
@@ -169,6 +249,11 @@ func DeactivateMeProfile(c *fiber.Ctx) error {
 }
 
 func mapProfileUser(user model.ProfileUserFromDb, apiURL string) map[string]any {
+	lastLoginAt := ""
+	if user.LastLoginAt != nil {
+		lastLoginAt = user.LastLoginAt.UTC().Format("2006-01-02T15:04:05Z")
+	}
+
 	return map[string]any{
 		"firstName":       user.FirstName,
 		"lastName":        user.LastName,
@@ -182,6 +267,10 @@ func mapProfileUser(user model.ProfileUserFromDb, apiURL string) map[string]any 
 		"coverImageUrl":   resolveAssetURL(apiURL, user.CoverImage),
 		"role":            user.Role,
 		"status":          user.Status,
+		"createdAt":       user.CreatedAt.UTC().Format("2006-01-02T15:04:05Z"),
+		"lastLoginAt":     lastLoginAt,
+		"overallRating":   user.OverallRating,
+		"reviewCount":     user.ReviewCount,
 	}
 }
 
@@ -202,6 +291,31 @@ func mapProfileListings(listings []model.ProfileListingFromDb, apiURL string) []
 			"seller": map[string]any{
 				"name":   listing.SellerName,
 				"rating": listing.SellerRating,
+			},
+		})
+	}
+	return mapped
+}
+
+func mapProfileReviews(reviews []model.ProfileReviewFromDb, apiURL string) []map[string]any {
+	mapped := make([]map[string]any, 0, len(reviews))
+	for _, review := range reviews {
+		mapped = append(mapped, map[string]any{
+			"id":         review.Id,
+			"rating":     review.Rating,
+			"comment":    strings.TrimSpace(review.Comment),
+			"reviewDate": review.ReviewDate,
+			"reviewer": map[string]any{
+				"id":              review.ReviewerId,
+				"name":            review.ReviewerName,
+				"profileImageUrl": resolveAssetURL(apiURL, review.ReviewerImageUrl),
+			},
+			"listing": map[string]any{
+				"id":        review.ListingId,
+				"title":     review.ListingTitle,
+				"price":     review.ListingPrice,
+				"priceUnit": review.ListingPriceUnit,
+				"imageUrl":  resolveAssetURL(apiURL, review.ListingImageUrl),
 			},
 		})
 	}

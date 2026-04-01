@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"sort"
 	"strings"
 	"time"
 
@@ -83,6 +84,15 @@ func fetchPSGCList(endpoint string) ([]model.LocationOption, error) {
 		}
 		items = append(items, model.LocationOption{Code: code, Name: name})
 	}
+
+	sort.Slice(items, func(i, j int) bool {
+		left := strings.ToLower(strings.TrimSpace(items[i].Name))
+		right := strings.ToLower(strings.TrimSpace(items[j].Name))
+		if left == right {
+			return items[i].Code < items[j].Code
+		}
+		return left < right
+	})
 
 	return items, nil
 }
