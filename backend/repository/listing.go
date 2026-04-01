@@ -1143,10 +1143,9 @@ func GetRelatedListings(listingId, categoryId, listingType, excludeUserId string
 		) rv ON TRUE
 		WHERE l.id <> $1
 			AND (l.category_id = $2 OR l.listing_type::text = $3)
-			AND NOT (
-				l.listing_type = 'SELL'
-				AND l.status = 'SOLD'
-			)
+			AND l.status = 'AVAILABLE'
+			AND u.is_active = TRUE
+			AND (u.account_locked_until IS NULL OR u.account_locked_until <= now())
 	`
 
 	query := baseQuery
@@ -1257,6 +1256,8 @@ func GetAllListings(excludeUserId string, filter model.ListingsFilter) ([]model.
 		) rv ON TRUE
 		WHERE l.status <> 'HIDDEN'
 			AND l.status NOT IN ('UNAVAILABLE', 'SOLD', 'BANNED', 'DELETED')
+			AND u.is_active = TRUE
+			AND (u.account_locked_until IS NULL OR u.account_locked_until <= now())
 	`
 
 	query := baseQuery
