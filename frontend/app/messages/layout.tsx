@@ -23,6 +23,7 @@ function ConversationShell({ children }: { children: React.ReactNode }) {
     replyTo,
     onCancelReply,
   } = shellState;
+  const canShowInput = Boolean(conversation && conversation.canSendMessage !== false);
 
   return (
     <div className="flex flex-col h-full overflow-hidden bg-white dark:bg-[#0f1117]">
@@ -41,13 +42,15 @@ function ConversationShell({ children }: { children: React.ReactNode }) {
             </div>
             {children}
           </div>
-          <MessageInput
-            onSend={onSend}
-            disabled={inputDisabled}
-            replyTo={replyTo}
-            onCancelReply={onCancelReply}
-            autoFocusKey={conversation.id}
-          />
+          {canShowInput && (
+            <MessageInput
+              onSend={onSend}
+              disabled={inputDisabled}
+              replyTo={replyTo}
+              onCancelReply={onCancelReply}
+              autoFocusKey={conversation.id}
+            />
+          )}
           <div className="h-14 md:h-0 shrink-0" />
         </>
       ) : (

@@ -287,8 +287,9 @@ export default function ListingDetailPage() {
   const isUnavailableState = listingStatus === "unavailable";
   const isBannedState = listingStatus === "banned";
   const isDeletedState = listingStatus === "deleted";
+  const isSellerInactiveState = listing.seller.isActive === false;
   const ownerUnavailableState = isUnavailableState || isDeletedState;
-  const visitorUnavailableState = isUnavailableState || isBannedState || isDeletedState;
+  const visitorUnavailableState = isUnavailableState || isBannedState || isDeletedState || isSellerInactiveState;
   const isSold = isSell && (listingStatus === "sold" || listingSellStatus === "sold");
   const images       = extra.images.filter(Boolean);
   const sellerRating = Number.isFinite(listing.seller.rating) ? Number(listing.seller.rating) : 0;

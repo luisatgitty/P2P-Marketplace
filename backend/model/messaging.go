@@ -26,6 +26,10 @@ type ConversationFromDb struct {
 	OtherFirstName     string     `gorm:"column:other_first_name"`
 	OtherLastName      string     `gorm:"column:other_last_name"`
 	OtherProfileImgUrl string     `gorm:"column:other_profile_image_url"`
+	OtherIsActive      bool       `gorm:"column:other_is_active"`
+	OtherLockedUntil   *time.Time `gorm:"column:other_account_locked_until"`
+	SelfIsActive       bool       `gorm:"column:self_is_active"`
+	SelfLockedUntil    *time.Time `gorm:"column:self_account_locked_until"`
 	LastMessage        string     `gorm:"column:last_message"`
 	LastMessageAt      *time.Time `gorm:"column:last_message_at"`
 	OtherLastReadMsgId string     `gorm:"column:other_last_read_message_id"`

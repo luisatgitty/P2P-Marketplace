@@ -274,6 +274,7 @@ func GetListingById(c *fiber.Ctx) error {
 			"profileImageUrl": mapPrimaryImage(baseURL, []string{listing.SellerProfileImage}),
 			"rating":          listing.SellerRating,
 			"isPro":           listing.SellerVerified,
+			"isActive":        listing.SellerIsActive,
 		},
 	}
 

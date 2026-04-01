@@ -1009,6 +1009,7 @@ func GetListingDetailById(listingId string) (model.ListingDetailFromDb, error) {
 		SELECT
 			l.id,
 			l.user_id AS seller_id,
+			u.is_active AS seller_is_active,
 			l.title,
 			l.price,
 			l.price_unit,
