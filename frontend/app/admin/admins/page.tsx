@@ -5,7 +5,7 @@ import Image from "next/image";
 import {
   Search, Plus, Trash2, Eye, EyeOff, X, UserCog,
   Shield, ShieldCheck, CheckCircle2, AlertTriangle,
-  ChevronLeft, ChevronRight,
+  ChevronLeft, ChevronRight, UserX, UserCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -14,6 +14,7 @@ import {
   createAdminAccount,
   deleteAdminAccount,
   getAdminAccounts,
+  setAdminAccountActive,
   type AdminAccountRecord,
 } from "@/services/adminAdminsService";
 
@@ -40,6 +41,7 @@ interface AdminAccount {
   name:       string;
   profile_image_url: string;
   email:      string;
+  phone:      string;
   role:       AdminRole;
   is_active:  boolean;
   created_at: string;
@@ -53,13 +55,14 @@ const PER_PAGE = 8;
 // ── Add Admin Modal ────────────────────────────────────────────────────────────
 interface AddModalProps {
   onClose: () => void;
-  onAdd:   (admin: { firstName: string; lastName: string; email: string; role: AdminRole; password: string }) => Promise<void>;
+  onAdd:   (admin: { firstName: string; lastName: string; email: string; phone?: string; role: AdminRole; password: string }) => Promise<void>;
 }
 
 function AddAdminModal({ onClose, onAdd }: AddModalProps) {
   const [firstName, setFirstName] = useState("");
   const [lastName,  setLastName]  = useState("");
   const [email,     setEmail]     = useState("");
+  const [phone,     setPhone]     = useState("");
   const [role,      setRole]      = useState<AdminRole>("ADMIN");
   const [password,  setPassword]  = useState("");
   const [confirm,   setConfirm]   = useState("");
@@ -78,7 +81,14 @@ function AddAdminModal({ onClose, onAdd }: AddModalProps) {
     if (password !== confirm) { setError("Passwords do not match."); return; }
     setSaving(true);
     try {
-      await onAdd({ firstName: firstName.trim(), lastName: lastName.trim(), email: email.trim(), role, password });
+      await onAdd({
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        email: email.trim(),
+        phone: phone.trim() || undefined,
+        role,
+        password,
+      });
     } finally {
       setSaving(false);
     }
@@ -111,7 +121,7 @@ function AddAdminModal({ onClose, onAdd }: AddModalProps) {
         {/* Body */}
         <div className="flex-1 overflow-y-auto p-6 space-y-4">
 
-          {/* Name row */}
+          {/* Name */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest">
@@ -153,6 +163,22 @@ function AddAdminModal({ onClose, onAdd }: AddModalProps) {
               placeholder="Enter email address"
               name="email"
               autoComplete="email"
+              className="dark:bg-[#13151f] dark:border-[#2a2d3e]"
+            />
+          </div>
+
+          {/* Contact Number */}
+          <div className="space-y-1.5">
+            <Label className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest">
+              Contact Number (optional)
+            </Label>
+            <Input
+              type="tel"
+              value={phone}
+              onChange={e => setPhone(e.target.value)}
+              placeholder="Enter contact number"
+              name="phone"
+              autoComplete="tel"
               className="dark:bg-[#13151f] dark:border-[#2a2d3e]"
             />
           </div>
@@ -281,6 +307,7 @@ export default function AdminsPage() {
   const [addSuccess,   setAddSuccess]   = useState<string | null>(null);
   const [loadingAdmins,setLoadingAdmins]= useState(true);
   const [removingId,   setRemovingId]   = useState<string | null>(null);
+  const [actionLoadingUserId, setActionLoadingUserId] = useState<string | null>(null);
   const [page,         setPage]         = useState(1);
 
   // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -297,6 +324,7 @@ export default function AdminsPage() {
       name:       `${record.first_name} ${record.last_name}`.trim(),
       profile_image_url: record.profile_image_url,
       email:      record.email,
+      phone:      record.phone,
       role:       record.role,
       is_active:  record.is_active,
       created_at: formatDate(record.created_at),
@@ -345,11 +373,11 @@ export default function AdminsPage() {
   useMemo(() => { setPage(1); }, [search, roleFilter]);
 
   // ── Actions ───────────────────────────────────────────────────────────────────
-  async function handleAdd({ firstName, lastName, email, role, password }: {
-    firstName: string; lastName: string; email: string; role: AdminRole; password: string;
+  async function handleAdd({ firstName, lastName, email, phone, role, password }: {
+    firstName: string; lastName: string; email: string; phone?: string; role: AdminRole; password: string;
   }) {
     try {
-      const created  = await createAdminAccount({ firstName, lastName, email, role, password });
+      const created  = await createAdminAccount({ firstName, lastName, email, phone, role, password });
       const newAdmin = mapAdminRecord(created);
       setAdmins(as => [newAdmin, ...as]);
       setShowAdd(false);
@@ -375,6 +403,26 @@ export default function AdminsPage() {
       toast.error(message, { position: "top-center" });
     } finally {
       setRemovingId(null);
+    }
+  }
+
+  async function handleToggleActive(id: string) {
+    const target = admins.find((admin) => admin.id === id);
+    if (!target || target.role === "SUPER_ADMIN") return;
+
+    const nextActive = !target.is_active;
+    setActionLoadingUserId(id);
+    try {
+      await setAdminAccountActive(id, nextActive);
+      setAdmins((as) => as.map((admin) => (
+        admin.id === id ? { ...admin, is_active: nextActive } : admin
+      )));
+      toast.success(`Admin account ${nextActive ? "activated" : "deactivated"} successfully`, { position: "top-center" });
+    } catch (err) {
+      const message = typeof err === "string" ? err : "Failed to update admin account status";
+      toast.error(message, { position: "top-center" });
+    } finally {
+      setActionLoadingUserId(null);
     }
   }
 
@@ -481,6 +529,9 @@ export default function AdminsPage() {
                     Role
                   </TableHead>
                   <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest whitespace-nowrap">
+                    Status
+                  </TableHead>
+                  <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest whitespace-nowrap">
                     Created
                   </TableHead>
                   <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest whitespace-nowrap">
@@ -496,7 +547,7 @@ export default function AdminsPage() {
                 {loadingAdmins ? (
                   <TableRow>
                     <TableCell
-                      colSpan={5}
+                      colSpan={6}
                       className="py-16 text-center text-sm text-stone-400 dark:text-stone-500"
                     >
                       Loading admin accounts…
@@ -505,7 +556,7 @@ export default function AdminsPage() {
                 ) : paged.length === 0 ? (
                   <TableRow>
                     <TableCell
-                      colSpan={5}
+                      colSpan={6}
                       className="py-16 text-center text-sm text-stone-400 dark:text-stone-500"
                     >
                       No admin accounts found.
@@ -517,7 +568,7 @@ export default function AdminsPage() {
                       key={admin.id}
                       className="border-stone-100 dark:border-[#2a2d3e] hover:bg-stone-50 dark:hover:bg-[#252837] transition-colors"
                     >
-                      {/* Name + email */}
+                      {/* Name + email + number */}
                       <TableCell className="py-2">
                         <div className="flex items-center gap-3">
                           <Image
@@ -525,7 +576,7 @@ export default function AdminsPage() {
                             alt="Profile"
                             width={32}
                             height={32}
-                            className="w-8 h-8 rounded-full object-cover border border-stone-200 dark:border-[#2a2d3e] shrink-0"
+                            className="w-10 h-10 rounded-full object-cover border border-stone-200 dark:border-[#2a2d3e] shrink-0"
                           />
                           <div className="min-w-0">
                             <p className="text-sm font-bold text-stone-800 dark:text-stone-100 truncate">
@@ -534,6 +585,11 @@ export default function AdminsPage() {
                             <p className="text-xs text-stone-400 dark:text-stone-500 truncate">
                               {admin.email}
                             </p>
+                            {admin.phone && (
+                              <p className="text-xs text-stone-400 dark:text-stone-500">
+                                {admin.phone}
+                              </p>
+                            )}
                           </div>
                         </div>
                       </TableCell>
@@ -551,6 +607,18 @@ export default function AdminsPage() {
                             : <ShieldCheck className="w-2.5 h-2.5" />
                           }
                           {admin.role === "SUPER_ADMIN" ? "Super Admin" : "Admin"}
+                        </span>
+                      </TableCell>
+
+                      {/* Active status */}
+                      <TableCell className="py-3.5 whitespace-nowrap">
+                        <span className={cn(
+                          "inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full",
+                          admin.is_active
+                            ? "bg-teal-100 dark:bg-teal-900/40 text-teal-700 dark:text-teal-300"
+                            : "bg-stone-200 dark:bg-stone-700 text-stone-700 dark:text-stone-300",
+                        )}>
+                          {admin.is_active ? "Active" : "Inactive"}
                         </span>
                       </TableCell>
 
@@ -573,18 +641,36 @@ export default function AdminsPage() {
                             Protected
                           </span>
                         ) : (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            title={removingId === admin.id ? "Removing…" : "Remove admin"}
-                            aria-label={removingId === admin.id ? "Removing…" : "Remove admin"}
-                            onClick={() => void handleDelete(admin.id, admin.name)}
-                            disabled={removingId === admin.id}
-                            className="w-7 h-7 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 hover:text-red-600 disabled:opacity-50"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
+                          <div className="inline-flex items-center gap-1">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              title={admin.is_active ? "Deactivate" : "Activate"}
+                              aria-label={admin.is_active ? "Deactivate" : "Activate"}
+                              onClick={() => void handleToggleActive(admin.id)}
+                              disabled={actionLoadingUserId === admin.id || removingId === admin.id}
+                              className="w-7 h-7 hover:bg-stone-100 dark:hover:bg-[#252837] disabled:opacity-50"
+                            >
+                              {admin.is_active
+                                ? <UserX className="w-4 h-4 text-amber-500 hover:text-amber-800" />
+                                : <UserCheck className="w-4 h-4 text-teal-500 hover:text-teal-800" />
+                              }
+                            </Button>
+
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              title={removingId === admin.id ? "Removing..." : "Remove admin"}
+                              aria-label={removingId === admin.id ? "Removing..." : "Remove admin"}
+                              onClick={() => void handleDelete(admin.id, admin.name)}
+                              disabled={removingId === admin.id || actionLoadingUserId === admin.id}
+                              className="w-7 h-7 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 hover:text-red-600 disabled:opacity-50"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
                         )}
                       </TableCell>
                     </TableRow>

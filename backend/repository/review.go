@@ -10,8 +10,6 @@ import (
 
 type reviewContext struct {
 	ListingOwnerId string
-	ListingType    string
-	ListingStatus  string
 }
 
 func getReviewContext(listingId string) (reviewContext, error) {
@@ -20,15 +18,8 @@ func getReviewContext(listingId string) (reviewContext, error) {
 
 	query := `
 		SELECT
-			l.user_id::text AS listing_owner_id,
-			LOWER(l.listing_type::text) AS listing_type,
-			CASE
-				WHEN l.listing_type = 'SELL' THEN LOWER(COALESCE(lsd.sell_status::text, 'available'))
-				ELSE LOWER(l.status::text)
-			END AS listing_status
+			l.user_id::text AS listing_owner_id
 		FROM public.listings l
-		LEFT JOIN public.listing_sell_details lsd
-			ON lsd.listing_id = l.id
 		WHERE l.id = $1
 		LIMIT 1
 	`
@@ -64,31 +55,23 @@ func validateBuyerCanReview(reviewerId, listingId string) (string, error) {
 		return "", fmt.Errorf("You cannot review your own listing")
 	}
 
-	if strings.TrimSpace(ctx.ListingType) != "sell" {
-		return "", fmt.Errorf("Only sold For Sale listings can be reviewed")
-	}
-
-	if strings.TrimSpace(ctx.ListingStatus) != "sold" {
-		return "", fmt.Errorf("You can only review items marked as sold")
-	}
-
 	db := middleware.DBConn
-	var hasConversation bool
-	conversationQuery := `
+	var hasCompletedTransaction bool
+	completedTransactionQuery := `
 		SELECT EXISTS(
 			SELECT 1
-			FROM public.conversations c
-			WHERE c.listing_id = $1
-				AND c.buyer_id = $2
-				AND c.seller_id = $3
+			FROM public.listing_transactions lt
+			WHERE lt.listing_id = $1
+				AND lt.client_id = $2
+				AND lt.status = 'COMPLETED'
 		)
 	`
 
-	if err := db.Raw(conversationQuery, listingId, reviewerId, ctx.ListingOwnerId).Scan(&hasConversation).Error; err != nil {
+	if err := db.Raw(completedTransactionQuery, listingId, reviewerId).Scan(&hasCompletedTransaction).Error; err != nil {
 		return "", fmt.Errorf("Failed to validate review permission")
 	}
-	if !hasConversation {
-		return "", fmt.Errorf("Only the buyer from this transaction can review this item")
+	if !hasCompletedTransaction {
+		return "", fmt.Errorf("Only users with a completed transaction on this listing can review")
 	}
 
 	return strings.TrimSpace(ctx.ListingOwnerId), nil

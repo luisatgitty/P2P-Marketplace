@@ -7,9 +7,20 @@ type ConversationFromDb struct {
 	ListingId          string     `gorm:"column:listing_id"`
 	ListingTitle       string     `gorm:"column:listing_title"`
 	ListingPrice       int        `gorm:"column:listing_price"`
+	OfferPrice         int        `gorm:"column:offer_price"`
+	TransactionStatus  string     `gorm:"column:transaction_status"`
+	ProviderAgreed     bool       `gorm:"column:provider_agreed"`
+	ClientAgreed       bool       `gorm:"column:client_agreed"`
+	UserAgreed         bool       `gorm:"column:user_agreed"`
+	ScheduleStart      *time.Time `gorm:"column:schedule_start"`
+	ScheduleEnd        *time.Time `gorm:"column:schedule_end"`
+	AvailableFrom      *time.Time `gorm:"column:available_from"`
+	DaysOff            string     `gorm:"column:days_off"`
+	TimeWindows        string     `gorm:"column:time_windows"`
 	ListingPriceUnit   string     `gorm:"column:listing_price_unit"`
 	ListingType        string     `gorm:"column:listing_type"`
 	ListingStatus      string     `gorm:"column:listing_status"`
+	CanReview          bool       `gorm:"column:can_review"`
 	ListingImageUrl    string     `gorm:"column:listing_image_url"`
 	OtherUserId        string     `gorm:"column:other_user_id"`
 	OtherFirstName     string     `gorm:"column:other_first_name"`
@@ -54,7 +65,19 @@ type MessageReactionFromDb struct {
 }
 
 type CreateConversationBody struct {
-	ListingId string `json:"listingId"`
+	ListingId       string `json:"listingId"`
+	OfferPrice      *int   `json:"offerPrice"`
+	OfferMessage    string `json:"offerMessage"`
+	StartDate       string `json:"startDate"`
+	EndDate         string `json:"endDate"`
+	StartTime       string `json:"startTime"`
+	EndTime         string `json:"endTime"`
+	ScheduleMessage string `json:"scheduleMessage"`
+}
+
+type UpdateConversationOfferBody struct {
+	OfferPrice   *int   `json:"offerPrice"`
+	OfferMessage string `json:"offerMessage"`
 }
 
 type SendMessageBody struct {
@@ -77,4 +100,13 @@ type EditMessageBody struct {
 
 type ReactMessageBody struct {
 	Reaction *string `json:"reaction"`
+}
+
+type TransactionAgreementState struct {
+	ConversationId    string `gorm:"column:conversation_id"`
+	ListingId         string `gorm:"column:listing_id"`
+	TransactionStatus string `gorm:"column:transaction_status"`
+	ProviderAgreed    bool   `gorm:"column:provider_agreed"`
+	ClientAgreed      bool   `gorm:"column:client_agreed"`
+	UserAgreed        bool   `gorm:"column:user_agreed"`
 }

@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import {
   Search,
   ChevronUp,
@@ -10,7 +11,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Trash2,
-  ExternalLink,
+  EyeOff,
   X,
   ShoppingBag,
   Home,
@@ -21,6 +22,7 @@ import { toast } from "sonner";
 import {
   getAdminListings,
   deleteAdminListing,
+  toggleAdminListingVisibility,
   type AdminListingRecord,
 } from "@/services/adminListingsService";
 
@@ -37,11 +39,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { validateImageURL } from "@/utils/validation";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 type ListingType   = "SELL" | "RENT" | "SERVICE";
-type ListingStatus = "AVAILABLE" | "SOLD" | "RENTED" | "COMPLETED" | "HIDDEN";
-type SortField     = "title" | "type" | "price" | "views" | "created" | "seller" | "status";
+type ListingStatus = "AVAILABLE" | "UNAVAILABLE" | "SOLD" | "HIDDEN";
+type SortField     = "title" | "type" | "price" | "views" | "transactions" | "created" | "owner" | "status";
 type SortDir       = "asc" | "desc";
 
 interface AdminListing {
@@ -53,8 +56,13 @@ interface AdminListing {
   unit:     string;
   location: string;
   status:   ListingStatus;
+  listing_image_url: string;
+  seller_id: string;
   seller:   string;
+  seller_location: string;
+  seller_profile_image_url: string;
   views:    number;
+  transaction_count: number;
   created:  string;
 }
 
@@ -78,9 +86,8 @@ const TYPE_CONFIG: Record<ListingType, { label: string; cls: string; Icon: React
 
 const STATUS_CONFIG: Record<ListingStatus, string> = {
   AVAILABLE: "bg-teal-100 dark:bg-teal-900/40 text-teal-700 dark:text-teal-300",
+  UNAVAILABLE: "bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300",
   SOLD:      "bg-stone-100 dark:bg-stone-800 text-stone-500 dark:text-stone-400",
-  RENTED:    "bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400",
-  COMPLETED: "bg-stone-100 dark:bg-stone-800 text-stone-500 dark:text-stone-400",
   HIDDEN:    "bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400",
 };
 
@@ -192,7 +199,8 @@ export default function ListingsPage() {
       if      (sort.field === "title")  { va = a.title;  vb = b.title;  }
       else if (sort.field === "price")  { va = a.price;  vb = b.price;  }
       else if (sort.field === "views")  { va = a.views;  vb = b.views;  }
-      else if (sort.field === "seller") { va = a.seller; vb = b.seller; }
+      else if (sort.field === "transactions") { va = a.transaction_count; vb = b.transaction_count; }
+      else if (sort.field === "owner") { va = a.seller; vb = b.seller; }
       else if (sort.field === "type")   { va = a.type;   vb = b.type;   }
       else if (sort.field === "status") { va = a.status; vb = b.status; }
       else { va = new Date(a.created).getTime(); vb = new Date(b.created).getTime(); }
@@ -214,6 +222,42 @@ export default function ListingsPage() {
       toast.success("Listing removed successfully", { position: "top-center" });
     } catch (err) {
       const message = typeof err === "string" ? err : "Failed to remove listing";
+      toast.error(message, { position: "top-center" });
+    } finally {
+      setActionLoadingListingId(null);
+    }
+  }
+
+  async function handleToggleVisibility(id: string, currentStatus: ListingStatus) {
+    const shouldUnhide = currentStatus === "HIDDEN";
+    const confirmed = window.confirm(
+      shouldUnhide
+        ? "Set this listing to UNAVAILABLE?"
+        : "Set this listing to HIDDEN?"
+    );
+    if (!confirmed) return;
+
+    setActionLoadingListingId(id);
+    try {
+      const updated = await toggleAdminListingVisibility(id);
+      setListings((prev) =>
+        prev.map((listing) =>
+          listing.id === id
+            ? {
+                ...listing,
+                status: updated.status as ListingStatus,
+              }
+            : listing
+        )
+      );
+      toast.success(
+        updated.status === "HIDDEN"
+          ? "Listing is now hidden."
+          : "Listing is now unavailable.",
+        { position: "top-center" }
+      );
+    } catch (err) {
+      const message = typeof err === "string" ? err : "Failed to update listing visibility";
       toast.error(message, { position: "top-center" });
     } finally {
       setActionLoadingListingId(null);
@@ -281,8 +325,8 @@ export default function ListingsPage() {
             options={[
               ["ALL",       "All Status" ],
               ["AVAILABLE", "Available"  ],
+              ["UNAVAILABLE", "Unavailable"],
               ["SOLD",      "Sold"       ],
-              ["RENTED",    "Rented"     ],
               ["HIDDEN",    "Hidden"     ],
             ]}
           />
@@ -321,6 +365,7 @@ export default function ListingsPage() {
               <TableHeader>
                 <TableRow className="border-stone-200 dark:border-[#2a2d3e] bg-stone-50 dark:bg-[#13151f] hover:bg-stone-50 dark:hover:bg-[#13151f]">
                   <SortableTH label="Title"   field="title"   />
+                  <SortableTH label="Owner"  field="owner"  />
                   <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest whitespace-nowrap">
                     Type
                   </TableHead>
@@ -332,7 +377,7 @@ export default function ListingsPage() {
                     Status
                   </TableHead>
                   <SortableTH label="Views"   field="views"   />
-                  <SortableTH label="Seller"  field="seller"  />
+                  <SortableTH label="Transactions" field="transactions" />
                   <SortableTH label="Created" field="created" />
                   <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest text-right">
                     Actions
@@ -343,13 +388,13 @@ export default function ListingsPage() {
               <TableBody>
                 {loadingListings ? (
                   <TableRow>
-                    <TableCell colSpan={9} className="py-16 text-center text-sm text-stone-400 dark:text-stone-500">
+                    <TableCell colSpan={10} className="py-16 text-center text-sm text-stone-400 dark:text-stone-500">
                       Loading listings…
                     </TableCell>
                   </TableRow>
                 ) : paged.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={9} className="py-16 text-center text-sm text-stone-400 dark:text-stone-500">
+                    <TableCell colSpan={10} className="py-16 text-center text-sm text-stone-400 dark:text-stone-500">
                       No listings match the current filters.
                     </TableCell>
                   </TableRow>
@@ -362,17 +407,71 @@ export default function ListingsPage() {
                         key={listing.id}
                         className="border-stone-100 dark:border-[#2a2d3e] hover:bg-stone-50 dark:hover:bg-[#252837] transition-colors"
                       >
-                        {/* Title + location */}
-                        <TableCell className="py-3.5 max-w-[200px]">
-                          <p className="text-sm font-bold text-stone-800 dark:text-stone-100 truncate">
-                            {listing.title}
-                          </p>
-                          <p className="text-xs text-stone-400 dark:text-stone-500 truncate">
-                            {listing.location}
-                          </p>
+                        {/* Listing */}
+                        <TableCell className="py-3.5 max-w-50">
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <Link
+                              href={`/listing/${listing.id}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              title="View listing"
+                              aria-label="View listing"
+                              className="shrink-0"
+                            >
+                              {listing.listing_image_url ? (
+                                <img
+                                  src={listing.listing_image_url}
+                                  alt={listing.title}
+                                  className="w-10 h-10 rounded-md object-cover border border-stone-200 dark:border-[#2a2d3e] shrink-0"
+                                />
+                              ) : (
+                                <div className="w-10 h-10 rounded-md bg-stone-100 dark:bg-[#13151f] border border-stone-200 dark:border-[#2a2d3e] flex items-center justify-center shrink-0">
+                                  📦
+                                </div>
+                              )}
+                            </Link>
+                            <div className="min-w-0">
+                              <p className="text-sm font-bold text-stone-800 dark:text-stone-100 truncate">
+                                {listing.title}
+                              </p>
+                              <p className="text-xs text-stone-400 dark:text-stone-500 truncate">
+                                {listing.location}
+                              </p>
+                            </div>
+                          </div>
                         </TableCell>
 
-                        {/* Type badge */}
+                        {/* Listing Owner */}
+                        <TableCell className="py-3.5 text-sm text-stone-600 dark:text-stone-300 whitespace-nowrap">
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <Link
+                              href={`/profile?userId=${listing.seller_id}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              title="View seller profile"
+                              aria-label="View seller profile"
+                              className="shrink-0"
+                            >
+                              <Image
+                                src={validateImageURL(listing.seller_profile_image_url) || "/profile-icon.png"}
+                                alt={listing.seller}
+                                width={32}
+                                height={32}
+                                className="w-9 h-9 rounded-full object-cover border border-stone-200 dark:border-[#2a2d3e] shrink-0"
+                              />
+                            </Link>
+                            <div className="min-w-0">
+                              <p className="text-sm font-bold text-stone-800 dark:text-stone-100 truncate">
+                                {listing.seller}
+                              </p>
+                              <p className="text-xs text-stone-400 dark:text-stone-500 truncate">
+                                {listing.seller_location}
+                              </p>
+                            </div>
+                          </div>
+                        </TableCell>
+
+                        {/* Type Badge */}
                         <TableCell className="py-3.5 whitespace-nowrap">
                           <span className={cn(
                             "inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full",
@@ -412,9 +511,9 @@ export default function ListingsPage() {
                           {listing.views.toLocaleString()}
                         </TableCell>
 
-                        {/* Seller */}
-                        <TableCell className="py-3.5 text-sm text-stone-600 dark:text-stone-300 whitespace-nowrap">
-                          {listing.seller}
+                        {/* Transactions */}
+                        <TableCell className="py-3.5 text-sm font-semibold text-stone-600 dark:text-stone-300 text-center">
+                          {listing.transaction_count.toLocaleString()}
                         </TableCell>
 
                         {/* Created */}
@@ -428,18 +527,14 @@ export default function ListingsPage() {
                             <Button
                               variant="ghost"
                               size="icon"
-                              asChild
-                              className="w-7 h-7 text-stone-500 dark:text-stone-300 hover:text-stone-700 dark:hover:text-stone-100 hover:bg-stone-100 dark:hover:bg-[#252837]"
+                              type="button"
+                              title={listing.status === "HIDDEN" ? "Set to unavailable" : "Hide listing"}
+                              aria-label={listing.status === "HIDDEN" ? "Set to unavailable" : "Hide listing"}
+                              onClick={() => handleToggleVisibility(listing.id, listing.status)}
+                              disabled={actionLoadingListingId === listing.id}
+                              className="w-7 h-7 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/20 hover:text-amber-700 disabled:opacity-50"
                             >
-                              <Link
-                                href={`/listing/${listing.id}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                title="View listing"
-                                aria-label="View listing"
-                              >
-                                <ExternalLink className="w-4 h-4" />
-                              </Link>
+                              <EyeOff className="w-4 h-4" />
                             </Button>
                             <Button
                               variant="ghost"

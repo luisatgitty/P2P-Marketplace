@@ -500,3 +500,139 @@ func DeactivateAccount(userId string) error {
 
 	return nil
 }
+
+func SubmitUserVerification(userId string, body model.SubmitVerificationBody) error {
+	db := middleware.DBConn
+	tx := db.Begin()
+	if tx.Error != nil {
+		return tx.Error
+	}
+
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	birthdate, err := time.Parse("2006-01-02", strings.TrimSpace(body.IdBirthdate))
+	if err != nil {
+		tx.Rollback()
+		return fmt.Errorf("Invalid birthdate format")
+	}
+
+	frontURL, err := saveVerificationImageTx(tx, userId, body.IdImageFront, "id-front")
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	backURL, err := saveVerificationImageTx(tx, userId, body.IdImageBack, "id-back")
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	selfieURL, err := saveVerificationImageTx(tx, userId, body.SelfieImage, "selfie")
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	insertQuery := `
+		INSERT INTO public.user_verifications (
+			user_id,
+			id_type,
+			id_number,
+			id_first_name,
+			id_last_name,
+			id_birthdate,
+			mobile_number,
+			id_image_front_url,
+			id_image_back_url,
+			selfie_url,
+			user_agent,
+			ip_address,
+			hardware_info,
+			verification_status,
+			submitted_at
+		)
+		VALUES (
+			$1, $2, $3, $4, $5, $6, $7,
+			$8, $9, $10,
+			$11, $12, $13,
+			'PENDING', now()
+		)
+	`
+
+	if err := tx.Exec(
+		insertQuery,
+		userId,
+		strings.TrimSpace(body.IdType),
+		strings.TrimSpace(body.IdNumber),
+		strings.TrimSpace(body.IdFirstName),
+		strings.TrimSpace(body.IdLastName),
+		birthdate,
+		body.MobileNumber,
+		frontURL,
+		backURL,
+		selfieURL,
+		strings.TrimSpace(body.UserAgent),
+		strings.TrimSpace(body.IpAddress),
+		strings.TrimSpace(body.HardwareInfo),
+	).Error; err != nil {
+		tx.Rollback()
+		return fmt.Errorf("Failed to save verification submission")
+	}
+
+	if err := tx.Exec(`
+		UPDATE public.users
+		SET
+			verification_status = 'PENDING',
+			updated_at = now()
+		WHERE id = $1
+	`, userId).Error; err != nil {
+		tx.Rollback()
+		return fmt.Errorf("Failed to update user verification status")
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func saveVerificationImageTx(tx *gorm.DB, userId string, image *model.ListingImageBody, kind string) (string, error) {
+	if image == nil || strings.TrimSpace(image.Data) == "" {
+		return "", fmt.Errorf("Missing verification image")
+	}
+
+	uploadRoot := getUploadRootDir()
+	baseDir := filepath.Join(uploadRoot, "verifications", userId, kind)
+	if err := os.MkdirAll(baseDir, 0755); err != nil {
+		return "", fmt.Errorf("Failed to create verification upload directory")
+	}
+
+	decoded, err := base64.StdEncoding.DecodeString(strings.TrimSpace(image.Data))
+	if err != nil {
+		return "", fmt.Errorf("Failed to decode verification image payload")
+	}
+
+	ext, err := extFromMime(image.MimeType)
+	if err != nil {
+		return "", err
+	}
+
+	randPart, err := randomHex(10)
+	if err != nil {
+		return "", fmt.Errorf("Failed to generate verification image filename")
+	}
+
+	fileName := fmt.Sprintf("%d_%s%s", time.Now().UnixNano(), randPart, ext)
+	filePath := filepath.Join(baseDir, fileName)
+	if err := os.WriteFile(filePath, decoded, 0644); err != nil {
+		return "", fmt.Errorf("Failed to save verification image file")
+	}
+
+	return fmt.Sprintf("/uploads/verifications/%s/%s/%s", userId, kind, fileName), nil
+}

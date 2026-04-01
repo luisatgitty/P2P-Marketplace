@@ -17,6 +17,7 @@ interface MessageInputProps {
   disabled?:  boolean;
   replyTo?:   ReplyPreview | null;
   onCancelReply?: () => void;
+  autoFocusKey?: string;
 }
 
 const ATTACH_OPTS = [
@@ -29,6 +30,7 @@ export default function MessageInput({
   disabled,
   replyTo,
   onCancelReply,
+  autoFocusKey,
 }: MessageInputProps) {
   const [value,      setValue]      = useState("");
   const [attachOpen, setAttachOpen] = useState(false);
@@ -50,6 +52,17 @@ export default function MessageInput({
   useEffect(() => {
     if (replyTo) textareaRef.current?.focus();
   }, [replyTo]);
+
+  // Focus textarea whenever a conversation is opened/switched and input becomes enabled.
+  useEffect(() => {
+    if (!autoFocusKey || disabled) return;
+
+    const timer = window.setTimeout(() => {
+      textareaRef.current?.focus();
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, [autoFocusKey, disabled]);
 
   // Close attach menu on outside click
   useEffect(() => {

@@ -6,10 +6,12 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
 import { useUser } from "@/utils/UserContext";
+import { LogoutModal } from "@/components/auth/logout-modal";
 import {
   LayoutDashboard,
   Users,
   Package,
+  Handshake,
   Flag,
   ShieldCheck,
   Settings,
@@ -23,12 +25,13 @@ import {
   Moon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getAdminReports } from "@/services/adminReportsService";
+import { getAdminVerifications } from "@/services/adminVerificationsService";
 
-// ── Badge counts — wire to real API later ──────────────────────────────────────
-const BADGES: Record<string, number> = {
-  "/admin/reports": 23,
-  "/admin/verifications": 12,
-};
+const BADGE_KEYS = {
+  reports: "/admin/reports",
+  verifications: "/admin/verifications",
+} as const;
 
 interface NavItem {
   href: string;
@@ -43,6 +46,7 @@ const NAV: NavItem[] = [
   { href: "/admin/dashboard", label: "Dashboard", Icon: LayoutDashboard },
   { href: "/admin/users", label: "Users", Icon: Users },
   { href: "/admin/listings", label: "Listings", Icon: Package },
+  { href: "/admin/transactions", label: "Transactions", Icon: Handshake },
   { href: "/admin/reports", label: "Reports", Icon: Flag },
   { href: "/admin/verifications", label: "Verifications", Icon: ShieldCheck },
 ];
@@ -65,17 +69,23 @@ interface SidebarContentProps {
   onNavigate?: () => void;
   collapsed?: boolean;
   onToggleCollapse?: () => void;
+  onRequestLogout?: () => void;
 }
 
 function SidebarContent({
   onNavigate,
   collapsed = false,
   onToggleCollapse,
+  onRequestLogout,
 }: SidebarContentProps) {
   const pathname = usePathname();
   const { theme, resolvedTheme, setTheme } = useTheme();
-  const { user, clearUserData } = useUser();
+  const { user } = useUser();
   const [dropdownOpen, setDropdown] = useState(false);
+  const [badges, setBadges] = useState<Record<string, number>>({
+    [BADGE_KEYS.reports]: 0,
+    [BADGE_KEYS.verifications]: 0,
+  });
   const effectiveTheme = resolvedTheme ?? theme;
   const isDarkMode = effectiveTheme === "dark";
   const roleFromUser = String(user?.role ?? "").toUpperCase();
@@ -90,6 +100,38 @@ function SidebarContent({
   const filteredUserMenu = USER_MENU.filter(
     (item) => !item.roles || (currentAdminRole !== null && item.roles.includes(currentAdminRole)),
   );
+
+  useEffect(() => {
+    let active = true;
+
+    const loadPendingCounts = async () => {
+      try {
+        const [reports, verifications] = await Promise.all([
+          getAdminReports(),
+          getAdminVerifications(),
+        ]);
+
+        if (!active) return;
+
+        const pendingReports = reports.filter((item) => item.status === "PENDING").length;
+        const pendingVerifications = verifications.filter((item) => item.status === "PENDING").length;
+
+        setBadges({
+          [BADGE_KEYS.reports]: pendingReports,
+          [BADGE_KEYS.verifications]: pendingVerifications,
+        });
+      } catch {
+        if (!active) return;
+        setBadges((prev) => prev);
+      }
+    };
+
+    void loadPendingCounts();
+
+    return () => {
+      active = false;
+    };
+  }, [pathname]);
 
   return (
     // overflow-visible so the user dropdown can render above the bottom section
@@ -150,7 +192,7 @@ function SidebarContent({
       >
         {filteredNav.map(({ href, label, Icon }) => {
           const active = pathname === href || pathname.startsWith(href + "/");
-          const badge = BADGES[href];
+          const badge = badges[href];
 
           return (
             <Link
@@ -255,7 +297,7 @@ function SidebarContent({
                 type="button"
                 onClick={() => {
                   setDropdown(false);
-                  clearUserData();
+                  onRequestLogout?.();
                 }}
                 className="flex items-center gap-3 w-full px-4 py-2.5 text-sm font-medium text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors"
               >
@@ -324,6 +366,7 @@ export default function AdminLayout({
 }) {
   const [collapsed, setCollapsed] = useState(false);
   const [isSmallScreen, setIsSmallScreen] = useState(false);
+  const [logoutModalOpen, setLogoutModalOpen] = useState(false);
 
   useEffect(() => {
     const checkScreen = () => {
@@ -338,27 +381,35 @@ export default function AdminLayout({
   const effectiveCollapsed = isSmallScreen ? true : collapsed;
 
   return (
-    <div className="fixed inset-0 z-[100] flex bg-stone-100 dark:bg-[#0f1117] overflow-hidden">
-      {/* ── Sidebar ─────────────────────────────────────────────────────── */}
-      <div
-        className={cn(
-          "flex flex-col flex-shrink-0 bg-[#1e2433] h-full",
-          "transition-all duration-300 ease-in-out",
-          effectiveCollapsed ? "w-16" : "w-60",
-        )}
-      >
-        <SidebarContent
-          collapsed={effectiveCollapsed}
-          onToggleCollapse={
-            isSmallScreen ? undefined : () => setCollapsed((c) => !c)
-          }
-        />
-      </div>
+    <>
+      <LogoutModal
+        open={logoutModalOpen}
+        onClose={() => setLogoutModalOpen(false)}
+      />
 
-      {/* ── Main area ───────────────────────────────────────────────────── */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <main className="flex-1 overflow-y-auto">{children}</main>
+      <div className="fixed inset-0 z-[100] flex bg-stone-100 dark:bg-[#0f1117] overflow-hidden">
+        {/* ── Sidebar ─────────────────────────────────────────────────────── */}
+        <div
+          className={cn(
+            "flex flex-col flex-shrink-0 bg-[#1e2433] h-full",
+            "transition-all duration-300 ease-in-out",
+            effectiveCollapsed ? "w-16" : "w-60",
+          )}
+        >
+          <SidebarContent
+            collapsed={effectiveCollapsed}
+            onToggleCollapse={
+              isSmallScreen ? undefined : () => setCollapsed((c) => !c)
+            }
+            onRequestLogout={() => setLogoutModalOpen(true)}
+          />
+        </div>
+
+        {/* ── Main area ───────────────────────────────────────────────────── */}
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <main className="flex-1 overflow-y-auto">{children}</main>
+        </div>
       </div>
-    </div>
+    </>
   );
 }

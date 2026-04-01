@@ -59,6 +59,8 @@ interface AdminUser {
   is_email_verified: boolean;
   failed_login:      number;
   listings:          number;
+  client_transactions:number;
+  owner_transactions: number;
   last_login:        string | null;
   joined:            string;
   location:          string;
@@ -342,6 +344,9 @@ export default function UsersPage() {
                 <TableRow className="border-stone-200 dark:border-[#2a2d3e] bg-stone-50 dark:bg-[#13151f] hover:bg-stone-50 dark:hover:bg-[#13151f]">
                   <SortableTH label="Name"         field="name"         />
                   <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest whitespace-nowrap">
+                    Contact Info
+                  </TableHead>
+                  <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest whitespace-nowrap">
                     Location
                   </TableHead>
                   <SortableTH label="Verification" field="verification" />
@@ -349,6 +354,9 @@ export default function UsersPage() {
                     Status
                   </TableHead>
                   <SortableTH label="Listings"     field="listings"     />
+                  <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest whitespace-nowrap">
+                    Transactions
+                  </TableHead>
                   <SortableTH label="Joined"       field="joined"       />
                   <SortableTH label="Last Login"   field="last_login"   />
                   <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest text-right">
@@ -360,13 +368,13 @@ export default function UsersPage() {
               <TableBody>
                 {loadingUsers ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="py-16 text-center text-sm text-stone-400 dark:text-stone-500">
+                    <TableCell colSpan={10} className="py-16 text-center text-sm text-stone-400 dark:text-stone-500">
                       Loading users…
                     </TableCell>
                   </TableRow>
                 ) : paged.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="py-16 text-center text-sm text-stone-400 dark:text-stone-500">
+                    <TableCell colSpan={10} className="py-16 text-center text-sm text-stone-400 dark:text-stone-500">
                       No users match the current filters.
                     </TableCell>
                   </TableRow>
@@ -376,25 +384,45 @@ export default function UsersPage() {
                       key={user.id}
                       className="border-stone-100 dark:border-[#2a2d3e] hover:bg-stone-50 dark:hover:bg-[#252837] transition-colors"
                     >
-                      {/* Name + email + phone */}
+                      {/* Name */}
                       <TableCell className="py-2">
                         <div className="flex items-center gap-3 min-w-0">
-                          <Image
-                            src={validateImageURL(user.profile_image_url) || "/profile-icon.png"}
-                            alt="Profile"
-                            width={32}
-                            height={32}
-                            className="w-10 h-10 rounded-full object-cover border border-stone-200 dark:border-[#2a2d3e] shrink-0"
-                          />
+                          <Link
+                            href={`/profile?userId=${user.id}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            title="Open profile"
+                            aria-label="Open profile"
+                            className="shrink-0"
+                          >
+                            <Image
+                              src={validateImageURL(user.profile_image_url) || "/profile-icon.png"}
+                              alt="Profile"
+                              width={32}
+                              height={32}
+                              className="w-10 h-10 rounded-full object-cover border border-stone-200 dark:border-[#2a2d3e]"
+                            />
+                          </Link>
                           <div className="min-w-0">
                             <p className="text-sm font-bold text-stone-800 dark:text-stone-100 truncate max-w-40">
-                              {user.first_name} {user.last_name}
+                              {user.first_name}
                             </p>
-                            <p className="text-xs text-stone-400 dark:text-stone-500 truncate max-w-40">
+                            <p className="text-sm font-bold text-stone-800 dark:text-stone-100 truncate max-w-40">
+                              {user.last_name}
+                            </p>
+                          </div>
+                        </div>
+                      </TableCell>
+
+                      {/* Email + Phone Number */}
+                      <TableCell className="py-2">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="min-w-0">
+                            <p className="text-sm truncate max-w-40">
                               {user.email}
                             </p>
                             {user.phone && (
-                              <p className="text-xs text-stone-400 dark:text-stone-500">
+                              <p className="text-sm text-stone-400 dark:text-stone-500">
                                 {user.phone}
                               </p>
                             )}
@@ -422,6 +450,18 @@ export default function UsersPage() {
                         {user.listings}
                       </TableCell>
 
+                      {/* Transactions */}
+                      <TableCell className="py-3.5 whitespace-nowrap">
+                        <div className="text-sm">
+                          <p className="text-stone-700 dark:text-stone-200 font-semibold">
+                            Client: {user.client_transactions.toLocaleString()}
+                          </p>
+                          <p className="text-stone-500 dark:text-stone-400">
+                            Owner: {user.owner_transactions.toLocaleString()}
+                          </p>
+                        </div>
+                      </TableCell>
+
                       {/* Joined */}
                       <TableCell className="py-3.5 text-sm text-stone-500 dark:text-stone-400 whitespace-nowrap">
                         {formatDateTime(user.joined)}
@@ -432,10 +472,12 @@ export default function UsersPage() {
                         {user.last_login
                           ? (
                             <div className="leading-tight">
-                              <p className="text-sm font-semibold">
+                              <p className="text-sm font-medium">
+                                {formatDateTime(user.last_login)}
+                              </p>
+                              <p className="text-xs">
                                 {formatTime12h(user.last_login)}
                               </p>
-                              <p>{formatDateTime(user.last_login)}</p>
                             </div>
                           )
                           : <span className="text-stone-300 dark:text-stone-600">Never</span>
@@ -445,24 +487,6 @@ export default function UsersPage() {
                       {/* Actions */}
                       <TableCell className="py-3.5">
                         <div className="flex items-center justify-end gap-1">
-
-                          {/* View profile */}
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            asChild
-                            className="w-7 h-7 text-stone-500 dark:text-stone-300 hover:text-stone-700 dark:hover:text-stone-100 hover:bg-stone-100 dark:hover:bg-[#252837]"
-                          >
-                            <Link
-                              href={`/profile?userId=${user.id}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              title="View profile"
-                              aria-label="View profile"
-                            >
-                              <ExternalLink className="w-4 h-4" />
-                            </Link>
-                          </Button>
 
                           {/* Activate / deactivate */}
                           <Button
@@ -476,8 +500,8 @@ export default function UsersPage() {
                             className="w-7 h-7 hover:bg-stone-100 dark:hover:bg-[#252837] disabled:opacity-50"
                           >
                             {user.is_active
-                              ? <UserX     className="w-4 h-4 text-amber-500" />
-                              : <UserCheck className="w-4 h-4 text-teal-500"  />
+                              ? <UserX     className="w-4 h-4 text-amber-500 hover:text-amber-800" />
+                              : <UserCheck className="w-4 h-4 text-teal-500 hover:text-teal-800"  />
                             }
                           </Button>
 

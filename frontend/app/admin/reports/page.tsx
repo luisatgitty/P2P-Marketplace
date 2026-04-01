@@ -2,14 +2,12 @@
 
 import { Fragment, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import {
   Search,
   X,
   CheckCircle2,
   XCircle,
-  Eye,
-  EyeOff,
-  ExternalLink,
   Flag,
   AlertTriangle,
   ChevronLeft,
@@ -17,10 +15,10 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { validateImageURL } from "@/utils/validation";
 import {
   getAdminReports,
-  setAdminReportStatus,
-  type AdminReportRecord,
+  setAdminReportAction,
 } from "@/services/adminReportsService";
 
 // ── shadcn components ──────────────────────────────────────────────────────────
@@ -36,25 +34,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-
-// ── Types ──────────────────────────────────────────────────────────────────────
-type ReportStatus = "PENDING" | "RESOLVED" | "DISMISSED";
-type ReportTarget = "LISTING" | "USER";
-
-interface AdminReport {
-  id:            string;
-  reporter:      string;
-  target_type:   ReportTarget;
-  target_name:   string;
-  target_id:     string;
-  listing_owner: string;
-  reason:        string;
-  description:   string | null;
-  status:        ReportStatus;
-  reviewed_by:   string | null;
-  reviewed_at:   string | null;
-  created_at:    string;
-}
+import { AdminReport, ReportStatus } from "@/types/admin";
+import ReportActionsModal from "@/components/admin/report-actions-modal";
 
 const REPORTS: AdminReport[] = [];
 
@@ -63,6 +44,12 @@ const STATUS_CONFIG: Record<ReportStatus, { cls: string; label: string }> = {
   RESOLVED:  { cls: "bg-teal-100 dark:bg-teal-900/40 text-teal-700 dark:text-teal-300",      label: "Resolved"  },
   DISMISSED: { cls: "bg-stone-100 dark:bg-stone-800 text-stone-500 dark:text-stone-400",     label: "Dismissed" },
 };
+
+const phpFmt = new Intl.NumberFormat("en-PH", {
+  style: "currency",
+  currency: "PHP",
+  minimumFractionDigits: 0,
+});
 
 // ── Shared filter select ───────────────────────────────────────────────────────
 function FilterSelect({
@@ -100,9 +87,9 @@ export default function ReportsPage() {
   const [statusFilter,   setStatusFilter]   = useState("ALL");
   const [page,           setPage]           = useState(1);
   const [reports,        setReports]        = useState<AdminReport[]>(REPORTS);
-  const [expandedRow,    setExpandedRow]    = useState<string | null>(null);
   const [loadingReports, setLoadingReports] = useState(true);
   const [actionLoadingId,setActionLoadingId]= useState<string | null>(null);
+  const [resolving,      setResolving]      = useState<AdminReport | null>(null);
   const PER_PAGE = 8;
 
   // ── Load ──────────────────────────────────────────────────────────────────────
@@ -113,7 +100,7 @@ export default function ReportsPage() {
       try {
         const data = await getAdminReports();
         if (!mounted) return;
-        setReports((data ?? []) as AdminReportRecord[]);
+        setReports((data ?? []) as AdminReport[]);
       } catch (err) {
         if (!mounted) return;
         const message = typeof err === "string" ? err : "Failed to load reports";
@@ -155,23 +142,35 @@ export default function ReportsPage() {
   }
 
   // ── Actions ───────────────────────────────────────────────────────────────────
-  async function handleAction(id: string, action: "RESOLVED" | "DISMISSED") {
+  async function handleModalSubmit(id: string, action: "DISMISS" | "BAN_LISTING" | "LOCK_3" | "LOCK_7" | "LOCK_30" | "DELETE_LISTING" | "PERMANENT_BAN", reason: string) {
     setActionLoadingId(id);
     try {
-      await setAdminReportStatus(id, action);
+      await setAdminReportAction(id, { action, reason });
+      const nowIso = new Date().toISOString();
+      const nextStatus = action === "DISMISS" ? "DISMISSED" : "RESOLVED";
       setReports(rs =>
         rs.map(r =>
           r.id === id
-            ? { ...r, status: action, reviewed_at: new Date().toISOString(), reviewed_by: r.reviewed_by ?? "Admin" }
+            ? {
+                ...r,
+                status: nextStatus,
+                action_taken: action,
+                action_reason: reason,
+                resolved_at: nowIso,
+                reviewed_at: nowIso,
+                resolved_by: r.resolved_by ?? "Admin",
+                reviewed_by: r.reviewed_by ?? "Admin",
+              }
             : r,
         ),
       );
       toast.success(
-        `Report ${action === "RESOLVED" ? "resolved" : "dismissed"} successfully`,
+        "Report action submitted successfully",
         { position: "top-center" },
       );
+      setResolving(null);
     } catch (err) {
-      const message = typeof err === "string" ? err : "Failed to update report status";
+      const message = typeof err === "string" ? err : "Failed to submit report action";
       toast.error(message, { position: "top-center" });
     } finally {
       setActionLoadingId(null);
@@ -274,11 +273,9 @@ export default function ReportsPage() {
                     <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest">
                       Reporter
                     </TableHead>
+                    <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest">Listing Owner</TableHead>
                     <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest">
                       Reported Listing
-                    </TableHead>
-                    <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest">
-                      Listing Owner
                     </TableHead>
                     <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest">
                       Reason
@@ -317,29 +314,97 @@ export default function ReportsPage() {
                           {/* Reporter */}
                           <TableCell className="py-3.5">
                             <div className="flex items-center gap-2.5">
-                              <div className="w-7 h-7 rounded-full bg-stone-200 dark:bg-stone-700 flex items-center justify-center text-xs font-bold text-stone-600 dark:text-stone-200 shrink-0">
-                                {report.reporter.charAt(0)}
+                              <Link
+                                href={`/profile?userId=${report.reporter_id}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                title="Open reporter profile"
+                                aria-label="Open reporter profile"
+                                className="shrink-0"
+                              >
+                                <Image
+                                  src={validateImageURL(report.reporter_profile_image_url) || "/profile-icon.png"}
+                                  alt="Profile"
+                                  width={32}
+                                  height={32}
+                                  className="w-9 h-9 rounded-full object-cover border border-stone-200 dark:border-[#2a2d3e] shrink-0"
+                                />
+                              </Link>
+                              <div className="min-w-0">
+                                <p className="text-sm font-semibold text-stone-800 dark:text-stone-100 whitespace-nowrap truncate">
+                                  {report.reporter}
+                                </p>
+                                <p className="text-xs text-stone-500 dark:text-stone-400 whitespace-nowrap truncate">
+                                  {report.reporter_location || "-"}
+                                </p>
                               </div>
-                              <span className="text-sm font-semibold text-stone-800 dark:text-stone-100 whitespace-nowrap">
-                                {report.reporter}
-                              </span>
                             </div>
-                          </TableCell>
-
-                          {/* Reported listing */}
-                          <TableCell className="py-3.5 max-w-[260px]">
-                            {report.target_type === "LISTING" ? (
-                              <p className="text-xs text-stone-600 dark:text-stone-300 line-clamp-2">
-                                {report.target_name}
-                              </p>
-                            ) : (
-                              <span className="text-xs text-stone-400">—</span>
-                            )}
                           </TableCell>
 
                           {/* Listing owner */}
                           <TableCell className="py-3.5 text-sm text-stone-600 dark:text-stone-300 whitespace-nowrap">
-                            {report.target_type === "LISTING" ? report.listing_owner : "—"}
+                            {report.target_type === "LISTING" ? (
+                              <div className="flex items-center gap-2.5">
+                                <Link
+                                  href={`/profile?userId=${report.listing_owner_id}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  title="Open listing owner profile"
+                                  aria-label="Open listing owner profile"
+                                  className="shrink-0"
+                                >
+                                  <Image
+                                    src={validateImageURL(report.listing_owner_profile_image_url) || "/profile-icon.png"}
+                                    alt="Profile"
+                                    width={32}
+                                    height={32}
+                                    className="w-9 h-9 rounded-full object-cover border border-stone-200 dark:border-[#2a2d3e] shrink-0"
+                                  />
+                                </Link>
+                                <div className="min-w-0">
+                                  <p className="text-sm font-semibold text-stone-800 dark:text-stone-100 whitespace-nowrap truncate">
+                                    {report.listing_owner}
+                                  </p>
+                                  <p className="text-xs text-stone-500 dark:text-stone-400 whitespace-nowrap truncate">
+                                    {report.listing_owner_location || "-"}
+                                  </p>
+                                </div>
+                              </div>
+                            ) : "—"}
+                          </TableCell>
+
+                          {/* Reported listing */}
+                          <TableCell className="py-3.5 max-w-65">
+                            {report.target_type === "LISTING" ? (
+                              <div className="flex items-center gap-2.5 min-w-0">
+                                <Link
+                                  href={`/listing/${report.target_id}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  title="Open listing"
+                                  aria-label="Open listing"
+                                  className="shrink-0"
+                                >
+                                  <Image
+                                    src={validateImageURL(report.listing_image_url) || "/logo.png"}
+                                    alt={report.target_name}
+                                    width={40}
+                                    height={40}
+                                    className="w-10 h-10 rounded-md object-cover border border-stone-200 dark:border-[#2a2d3e] shrink-0"
+                                  />
+                                </Link>
+                                <div className="min-w-0">
+                                  <p className="text-sm font-semibold text-stone-700 dark:text-stone-200 truncate">
+                                    {report.target_name}
+                                  </p>
+                                  <p className="text-xs text-stone-500 dark:text-stone-400 truncate">
+                                    {phpFmt.format(report.listing_price ?? 0)} / {report.listing_price_unit || "unit"}
+                                  </p>
+                                </div>
+                              </div>
+                            ) : (
+                              <span className="text-xs text-stone-400">—</span>
+                            )}
                           </TableCell>
 
                           {/* Reason */}
@@ -368,94 +433,24 @@ export default function ReportsPage() {
                           {/* Actions */}
                           <TableCell className="py-3.5">
                             <div className="flex items-center justify-end gap-1">
-
-                              {/* Open listing (only for listing reports) */}
-                              {report.target_type === "LISTING" && (
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  asChild
-                                  className="w-7 h-7 text-teal-600 dark:text-teal-400 hover:bg-teal-50 dark:hover:bg-teal-950/30 hover:text-teal-700"
-                                >
-                                  <Link
-                                    href={`/listing/${report.target_id}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    title="Open listing"
-                                    aria-label="Open listing"
-                                  >
-                                    <ExternalLink className="w-4 h-4" />
-                                  </Link>
-                                </Button>
-                              )}
-
-                              {/* Toggle description row */}
                               <Button
-                                variant="ghost"
-                                size="icon"
                                 type="button"
-                                title={expandedRow === report.id ? "Hide Details" : "View Details"}
-                                aria-label={expandedRow === report.id ? "Hide Details" : "View Details"}
-                                onClick={() => setExpandedRow(prev => prev === report.id ? null : report.id)}
+                                size="sm"
+                                variant={report.status === "PENDING" ? "default" : "outline"}
+                                onClick={() => setResolving(report)}
                                 disabled={actionLoadingId === report.id}
-                                className="w-7 h-7 text-stone-500 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-[#252837]"
+                                className={cn(
+                                  "h-8 rounded-lg",
+                                  report.status === "PENDING"
+                                    ? "bg-[#1e2433] text-white hover:bg-[#2a3650]"
+                                    : "dark:border-[#2a2d3e] dark:text-stone-300 dark:hover:bg-[#252837]"
+                                )}
                               >
-                                {expandedRow === report.id
-                                  ? <EyeOff className="w-4 h-4" />
-                                  : <Eye    className="w-4 h-4" />
-                                }
+                                {report.status === "PENDING" ? "Take Action" : "View Resolution"}
                               </Button>
-
-                              {/* Resolve + dismiss (pending only) */}
-                              {report.status === "PENDING" && (
-                                <>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    type="button"
-                                    title="Take Action"
-                                    aria-label="Take Action"
-                                    onClick={() => void handleAction(report.id, "RESOLVED")}
-                                    disabled={actionLoadingId === report.id}
-                                    className="w-7 h-7 text-teal-600 dark:text-teal-400 hover:bg-teal-50 dark:hover:bg-teal-950/30 hover:text-teal-700 disabled:opacity-50"
-                                  >
-                                    <CheckCircle2 className="w-4 h-4" />
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    type="button"
-                                    title="Dismiss"
-                                    aria-label="Dismiss"
-                                    onClick={() => void handleAction(report.id, "DISMISSED")}
-                                    disabled={actionLoadingId === report.id}
-                                    className="w-7 h-7 text-stone-500 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-[#252837] disabled:opacity-50"
-                                  >
-                                    <XCircle className="w-4 h-4" />
-                                  </Button>
-                                </>
-                              )}
                             </div>
                           </TableCell>
                         </TableRow>
-
-                        {/* ── Expanded description row ── */}
-                        {expandedRow === report.id && (
-                          <TableRow className="bg-stone-50 dark:bg-[#13151f] border-stone-100 dark:border-[#2a2d3e]">
-                            <TableCell colSpan={7} className="px-4 py-4">
-                              <p className="text-xs font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest mb-1">
-                                Report Description
-                              </p>
-                              <p className="text-sm text-stone-600 dark:text-stone-300 leading-relaxed">
-                                {report.description ?? (
-                                  <span className="italic text-stone-400">
-                                    No additional description provided.
-                                  </span>
-                                )}
-                              </p>
-                            </TableCell>
-                          </TableRow>
-                        )}
                       </Fragment>
                     ))
                   )}
@@ -511,6 +506,14 @@ export default function ReportsPage() {
           </CardContent>
         </Card>
       </div>
+
+      {resolving && (
+        <ReportActionsModal
+          report={resolving}
+          onClose={() => setResolving(null)}
+          onSubmit={handleModalSubmit}
+        />
+      )}
     </div>
   );
 }

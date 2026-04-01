@@ -1,16 +1,10 @@
-export type AdminReportRecord = {
-  id: string;
-  reporter: string;
-  target_type: "LISTING" | "USER";
-  target_name: string;
-  target_id: string;
-  listing_owner: string;
+import type { AdminReport, ReportActionType } from "@/types/admin";
+
+export type AdminReportRecord = AdminReport;
+
+export type AdminReportActionPayload = {
+  action: ReportActionType;
   reason: string;
-  description: string | null;
-  status: "PENDING" | "RESOLVED" | "DISMISSED";
-  reviewed_by: string | null;
-  reviewed_at: string | null;
-  created_at: string;
 };
 
 export async function getAdminReports(): Promise<AdminReportRecord[]> {
@@ -46,6 +40,27 @@ export async function setAdminReportStatus(
     const parsedJson = await res.json();
     if (!res.ok) {
       throw parsedJson?.data?.message || "Failed to update report status.";
+    }
+  } catch (error: any) {
+    throw error?.message || "An unexpected error occurred. Please try again later.";
+  }
+}
+
+export async function setAdminReportAction(
+  reportId: string,
+  payload: AdminReportActionPayload,
+): Promise<void> {
+  try {
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/reports/${encodeURIComponent(reportId)}/status`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify(payload),
+    });
+
+    const parsedJson = await res.json();
+    if (!res.ok) {
+      throw parsedJson?.data?.message || "Failed to apply report action.";
     }
   } catch (error: any) {
     throw error?.message || "An unexpected error occurred. Please try again later.";

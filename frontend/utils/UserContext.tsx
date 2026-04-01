@@ -34,8 +34,9 @@ const AUTH_ROUTES = [
   "/verify-email",
 ];
 const ADMIN_ROUTES = [
-  "/",
   "/admin",
+];
+const SHARED_AUTH_ROUTES = [
   "/listing",
   "/profile",
 ];
@@ -47,6 +48,7 @@ const KNOWN_APP_ROUTES = [
   "/reset-password",
   "/verify-email",
   "/listing",
+  "/become-seller",
   "/create",
   "/messages",
   "/profile",
@@ -126,11 +128,41 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const isPublicRoute = PUBLIC_ROUTES.some(isRouteRootMatch);
   const isAuthRoute = AUTH_ROUTES.some(isRouteRootMatch);
   const isAdminRoute = ADMIN_ROUTES.some(isRouteRootMatch);
+  const isSharedAuthRoute = SHARED_AUTH_ROUTES.some(isRouteRootMatch);
   const isKnownAppRoute = KNOWN_APP_ROUTES.some(isRouteRootMatch);
   const isAdminRole = ["ADMIN", "SUPER_ADMIN"].includes((user?.role ?? "").toUpperCase());
 
+  // Save user data during login
+  const saveUserData = (userData: User) => {
+    console.log("Logged User Data:", userData);
+    setUser(userData);
+    setIsAuth(true);
+    setIsLoading(false);
+    setRoleCookie(userData.role);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(userData));
+  };
+
+  // Clear user saved data after logout
+  const clearUserData = async () => {
+    try {
+      await sendDeleteRequest("/auth/logout");
+    }  catch {
+      // Ignore errors during logout since we will clear client state regardless
+    } finally {
+      // Clear user data and validation state regardless of logout success
+      // But the session cookie will remain incase of server error
+      setUser(null);
+      setIsAuth(false);
+      setIsLoading(false);
+      setPresenceByUserId({});
+      setRoleCookie("");
+      localStorage.removeItem(STORAGE_KEY);
+      router.replace("/login");
+    }
+  };
+
   useEffect(() => {
-    if (!isAuth) return;
+    // if (!isAuth) return;
 
     let ws: WebSocket | null = null;
     let pingInterval: ReturnType<typeof setInterval> | null = null;
@@ -143,9 +175,15 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     const connect = () => {
       if (closedByCleanup) return;
 
+      let wasEverOpen = false;
       ws = new WebSocket(wsUrl);
 
-      ws.onopen = () => {
+      ws.onopen = async () => {
+        // Update user local storage of account data
+        const user = await sendGetRequest("/auth/me", true);
+        saveUserData(user);
+        
+        wasEverOpen = true;
         window.dispatchEvent(new Event("messages:updated"));
 
         if (pingInterval) clearInterval(pingInterval);
@@ -229,28 +267,45 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
           if (parsed.type === "listing:status") {
             window.dispatchEvent(new CustomEvent("realtime:listing-status", { detail: parsed.data }));
             window.dispatchEvent(new Event("messages:updated"));
+            return;
+          }
+
+          if (parsed.type === "conversation:deal-updated") {
+            window.dispatchEvent(new CustomEvent("realtime:deal-updated", { detail: parsed.data }));
+            window.dispatchEvent(new Event("messages:updated"));
           }
         } catch {
           // Ignore malformed realtime payloads.
         }
       };
 
-      ws.onclose = () => {
+      ws.onclose = (event) => {
         if (pingInterval) {
           clearInterval(pingInterval);
           pingInterval = null;
         }
 
-        if (!closedByCleanup) {
-          reconnectTimeout = setTimeout(connect, 2000);
+        if (closedByCleanup) return;
+
+        // If the connection was never successfully opened, the server rejected the WebSocket handshake
+        // Most likely because the session is invalid or the account was deactivated.
+        const isAuthRejection =
+          !wasEverOpen &&
+          (event.code === 1006 || (event.code >= 4000 && event.code <= 4099));
+
+        if (isAuthRejection) {
+          void clearUserData();
+          return;
         }
+
+        reconnectTimeout = setTimeout(connect, 2000);
       };
 
       ws.onerror = () => {
         ws?.close();
       };
     };
-
+    
     connect();
 
     return () => {
@@ -260,63 +315,6 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       ws?.close();
     };
   }, [applyPresenceUpdate, isAuth]);
-
-  // Save user data during login
-  const saveUserData = (userData: User) => {
-    console.log("Logged User Data:", userData);
-    setUser(userData);
-    setIsAuth(true);
-    setRoleCookie(userData.role);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(userData));
-  };
-
-  // Clear user saved data after logout
-  const clearUserData = async () => {
-    try {
-      await sendDeleteRequest("/auth/logout");
-    } finally {
-      // Clear user data and validation state regardless of logout success
-      // But the session cookie will remain incase of server error
-      setUser(null);
-      setIsAuth(false);
-      setPresenceByUserId({});
-      setRoleCookie("");
-      localStorage.removeItem(STORAGE_KEY);
-      router.replace("/login");
-    }
-  };
-
-  // Validate user on mount
-  useEffect(() => {
-    const validateUser = async () => {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        const userData = JSON.parse(stored) as User;
-        if (userData) {
-          saveUserData(userData);
-          setIsLoading(false);
-          return;
-        }
-      }
-
-      try {
-        // If the client has a stored session cookie (HTTP only)
-        if (document.cookie.includes("session_token")) {
-          const user = await sendGetRequest("/auth/me", true);
-          saveUserData(user);
-        }
-      } catch {
-        setUser(null);
-        setIsAuth(false);
-        setPresenceByUserId({});
-        setRoleCookie("");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    validateUser();
-  }, []);
 
   useEffect(() => {
     setUser((prev) => {
@@ -351,7 +349,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    if (isAuth && isAdminRole && !isAdminRoute) {
+    if (isAuth && isAdminRole && !isAdminRoute && !isSharedAuthRoute) {
       router.replace("/admin");
       return;
     }
@@ -368,7 +366,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       }
       router.replace("/login");
     }
-  }, [isAdminRole, isAdminRoute, isAuth, isAuthRoute, isKnownAppRoute, isPublicRoute, isLoading, router]);
+  }, [isAdminRole, isAdminRoute, isAuth, isAuthRoute, isKnownAppRoute, isPublicRoute, isSharedAuthRoute, isLoading, router]);
 
   // Guard against BFCache restoring a protected page after logout
   useEffect(() => {
@@ -399,8 +397,6 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     </UserContext.Provider>
   );
 }
-
-
 
 export function useUser(): UserContextType {
   const context = useContext(UserContext);

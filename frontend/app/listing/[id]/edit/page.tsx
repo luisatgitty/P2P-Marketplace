@@ -71,10 +71,13 @@ export default function EditListingPage() {
     deliveryMethod: data.deliveryMethod ?? "",
     minPeriod: data.minPeriod ?? "",
     availability: data.availability ?? "",
+    dayoffs: data.dayoffs ?? [],
+    timeWindows: data.timeWindows ?? [],
     deposit: data.deposit ?? "",
     amenities: data.amenities ?? [],
     turnaround: data.turnaround ?? "",
     serviceArea: data.serviceArea ?? "",
+    arrangement: data.arrangement ?? "",
     inclusions: data.inclusions ?? [""],
   };
 

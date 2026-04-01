@@ -71,8 +71,14 @@ func GetListingEditById(c *fiber.Ctx) error {
 		return SendErrorResponse(c, 404, err.Error(), err)
 	}
 
+	timeWindows, err := repository.GetListingTimeWindows(listingId)
+	if err != nil {
+		return SendErrorResponse(c, 500, err.Error(), err)
+	}
+
 	included := parseJSONStringArray(listing.Included)
 	highlights := parseJSONStringArray(listing.Highlights)
+	daysOff := parseJSONStringArray(listing.DaysOff)
 
 	data := map[string]any{
 		"id":             listing.Id,
@@ -93,8 +99,11 @@ func GetListingEditById(c *fiber.Ctx) error {
 		"deposit":        listing.Deposit,
 		"turnaround":     listing.Turnaround,
 		"serviceArea":    listing.ServiceArea,
+		"arrangement":    listing.Arrangement,
 		"inclusions":     []string{},
 		"amenities":      []string{},
+		"dayoffs":        daysOff,
+		"timeWindows":    timeWindows,
 	}
 
 	if listing.AvailableFrom != nil {
@@ -186,6 +195,11 @@ func GetListingById(c *fiber.Ctx) error {
 		return SendErrorResponse(c, 500, err.Error(), err)
 	}
 
+	timeWindows, err := repository.GetListingTimeWindows(listingId)
+	if err != nil {
+		return SendErrorResponse(c, 500, err.Error(), err)
+	}
+
 	userId := getOptionalUserIdFromSession(c)
 	related, err := repository.GetRelatedListings(listingId, listing.CategoryID, listing.Type, userId)
 	if err != nil {
@@ -204,6 +218,7 @@ func GetListingById(c *fiber.Ctx) error {
 	baseURL := c.BaseURL()
 	features := parseJSONStringArray(listing.Highlights)
 	included := parseJSONStringArray(listing.Included)
+	daysOff := parseJSONStringArray(listing.DaysOff)
 
 	extra := map[string]any{
 		"description":    listing.Description,
@@ -219,17 +234,27 @@ func GetListingById(c *fiber.Ctx) error {
 	case "rent":
 		extra["minPeriod"] = formatMinPeriod(listing.MinRentalPeriod)
 		if listing.AvailableFrom != nil {
+			extra["available_from"] = listing.AvailableFrom.Format("2006-01-02")
 			extra["availability"] = listing.AvailableFrom.Format("Jan 02, 2006")
 		}
 		extra["deposit"] = listing.Deposit
 		extra["amenities"] = included
+		extra["daysOff"] = daysOff
 	case "service":
+		if listing.AvailableFrom != nil {
+			extra["available_from"] = listing.AvailableFrom.Format("2006-01-02")
+			extra["availability"] = listing.AvailableFrom.Format("Jan 02, 2006")
+		}
 		extra["turnaround"] = listing.Turnaround
 		extra["serviceArea"] = listing.ServiceArea
+		extra["arrangement"] = listing.Arrangement
 		extra["inclusions"] = included
+		extra["daysOff"] = daysOff
 	default:
 		extra["inclusions"] = included
 	}
+
+	extra["timeWindows"] = timeWindows
 
 	listingCard := map[string]any{
 		"id":         listing.Id,
@@ -300,7 +325,7 @@ func RemoveListingBookmark(c *fiber.Ctx) error {
 	})
 }
 
-func MarkListingAsSold(c *fiber.Ctx) error {
+func MarkListingAsComplete(c *fiber.Ctx) error {
 	listingId := strings.TrimSpace(c.Params("id"))
 	if listingId == "" {
 		return SendErrorResponse(c, 400, "Listing ID is required", nil)
@@ -311,29 +336,57 @@ func MarkListingAsSold(c *fiber.Ctx) error {
 		return SendErrorResponse(c, 401, "User is not authenticated", nil)
 	}
 
-	if err := repository.MarkListingAsSold(userId, listingId); err != nil {
+	affectedConversationIds, listingMarkedSold, err := repository.MarkListingAsComplete(userId, listingId)
+	if err != nil {
 		return SendErrorResponse(c, 400, err.Error(), err)
 	}
 
-	participantIds, participantErr := repository.GetParticipantUserIdsByListing(listingId)
-	if participantErr == nil {
-		for _, targetUserId := range participantIds {
-			middleware.RealtimeHub.SendToUser(targetUserId, map[string]any{
-				"type": "listing:status",
-				"data": map[string]any{
-					"listingId":   listingId,
-					"status":      "SOLD",
-					"sellStatus":  "SOLD",
-					"updatedById": userId,
-				},
-			})
+	if listingMarkedSold {
+		participantIds, participantErr := repository.GetParticipantUserIdsByListing(listingId)
+		if participantErr == nil {
+			for _, targetUserId := range participantIds {
+				middleware.RealtimeHub.SendToUser(targetUserId, map[string]any{
+					"type": "listing:status",
+					"data": map[string]any{
+						"listingId":   listingId,
+						"status":      "SOLD",
+						"sellStatus":  "SOLD",
+						"updatedById": userId,
+					},
+				})
+			}
 		}
 	}
 
-	return SendSuccessResponse(c, 200, "Listing marked as sold successfully", map[string]any{
+	for _, conversationId := range affectedConversationIds {
+		trimmedConversationId := strings.TrimSpace(conversationId)
+		if trimmedConversationId == "" {
+			continue
+		}
+
+		realtimeMessagePayload := map[string]any{
+			"type": "message:new",
+			"data": map[string]any{
+				"conversationId": trimmedConversationId,
+			},
+		}
+
+		peerUserId, peerErr := repository.GetConversationPeerUserId(userId, trimmedConversationId)
+		if peerErr == nil && strings.TrimSpace(peerUserId) != "" {
+			middleware.RealtimeHub.SendToUser(peerUserId, realtimeMessagePayload)
+		}
+		middleware.RealtimeHub.SendToUser(userId, realtimeMessagePayload)
+	}
+
+	response := map[string]any{
 		"listingId": listingId,
-		"status":    "SOLD",
-	})
+		"completed": true,
+	}
+	if listingMarkedSold {
+		response["status"] = "SOLD"
+	}
+
+	return SendSuccessResponse(c, 200, "Listing transaction completed successfully", response)
 }
 
 func ReportListing(c *fiber.Ctx) error {
@@ -592,7 +645,18 @@ func parseJSONStringArray(raw string) []string {
 
 	var parsed []string
 	if err := json.Unmarshal([]byte(trimmed), &parsed); err != nil {
-		return []string{trimmed}
+		parts := strings.Split(trimmed, ",")
+		out := make([]string, 0, len(parts))
+		for _, part := range parts {
+			value := strings.TrimSpace(part)
+			if value != "" {
+				out = append(out, value)
+			}
+		}
+		if len(out) == 0 {
+			return []string{trimmed}
+		}
+		return out
 	}
 
 	out := make([]string, 0, len(parsed))

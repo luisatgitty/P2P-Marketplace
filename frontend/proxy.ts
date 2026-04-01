@@ -13,8 +13,10 @@ export function proxy(request: NextRequest) {
   ];
 
   const ADMIN_ROUTES = [
-    "/",
     "/admin",
+  ];
+
+  const SHARED_AUTH_ROUTES = [
     "/listing",
     "/profile",
   ];
@@ -27,6 +29,7 @@ export function proxy(request: NextRequest) {
     "/reset-password",
     "/verify-email",
     "/listing",
+    "/become-seller",
     "/create",
     "/messages",
     "/profile",
@@ -56,6 +59,7 @@ export function proxy(request: NextRequest) {
   const isPublicRoute = PUBLIC_ROUTES.some(matchesRoute);
   const isAuthRoute = AUTH_ROUTES.some(matchesRoute);
   const isAdminRoute = ADMIN_ROUTES.some(matchesRoute);
+  const isSharedAuthRoute = SHARED_AUTH_ROUTES.some(matchesRoute);
   const isKnownAppRoute = KNOWN_APP_ROUTES.some(matchesRoute);
 
   // Unknown app route → not found page.
@@ -75,7 +79,7 @@ export function proxy(request: NextRequest) {
     }
 
     // Admin users are confined to /admin routes only.
-    if (isAdminRole && !isAdminRoute) {
+    if (isAdminRole && !isAdminRoute && !isSharedAuthRoute) {
       return NextResponse.redirect(new URL("/admin", request.url));
     }
 
