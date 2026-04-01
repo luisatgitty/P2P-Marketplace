@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import {
   Search,
   ChevronUp,
@@ -11,7 +12,6 @@ import {
   ChevronRight,
   Trash2,
   EyeOff,
-  ExternalLink,
   X,
   ShoppingBag,
   Home,
@@ -39,11 +39,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { validateImageURL } from "@/utils/validation";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 type ListingType   = "SELL" | "RENT" | "SERVICE";
 type ListingStatus = "AVAILABLE" | "UNAVAILABLE" | "SOLD" | "HIDDEN";
-type SortField     = "title" | "type" | "price" | "views" | "created" | "owner" | "status";
+type SortField     = "title" | "type" | "price" | "views" | "transactions" | "created" | "owner" | "status";
 type SortDir       = "asc" | "desc";
 
 interface AdminListing {
@@ -61,6 +62,7 @@ interface AdminListing {
   seller_location: string;
   seller_profile_image_url: string;
   views:    number;
+  transaction_count: number;
   created:  string;
 }
 
@@ -102,17 +104,6 @@ function SortIcon({ field, sort }: { field: SortField; sort: { field: SortField;
   return sort.dir === "asc"
     ? <ChevronUp   className="w-3 h-3 ml-1" />
     : <ChevronDown className="w-3 h-3 ml-1" />;
-}
-
-function Avatar({ src, alt, fallback }: { src?: string; alt: string; fallback: string }) {
-  if (src) {
-    return <img src={src} alt={alt} className="w-8 h-8 rounded-full object-cover border border-stone-200 dark:border-[#2a2d3e] shrink-0" />;
-  }
-  return (
-    <div className="w-8 h-8 rounded-full bg-stone-200 dark:bg-[#2a2d3e] border border-stone-200 dark:border-[#2a2d3e] flex items-center justify-center text-[10px] font-bold text-stone-700 dark:text-stone-200 shrink-0">
-      {fallback}
-    </div>
-  );
 }
 
 // ── Shared select ──────────────────────────────────────────────────────────────
@@ -208,6 +199,7 @@ export default function ListingsPage() {
       if      (sort.field === "title")  { va = a.title;  vb = b.title;  }
       else if (sort.field === "price")  { va = a.price;  vb = b.price;  }
       else if (sort.field === "views")  { va = a.views;  vb = b.views;  }
+      else if (sort.field === "transactions") { va = a.transaction_count; vb = b.transaction_count; }
       else if (sort.field === "owner") { va = a.seller; vb = b.seller; }
       else if (sort.field === "type")   { va = a.type;   vb = b.type;   }
       else if (sort.field === "status") { va = a.status; vb = b.status; }
@@ -385,6 +377,7 @@ export default function ListingsPage() {
                     Status
                   </TableHead>
                   <SortableTH label="Views"   field="views"   />
+                  <SortableTH label="Transactions" field="transactions" />
                   <SortableTH label="Created" field="created" />
                   <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest text-right">
                     Actions
@@ -395,13 +388,13 @@ export default function ListingsPage() {
               <TableBody>
                 {loadingListings ? (
                   <TableRow>
-                    <TableCell colSpan={9} className="py-16 text-center text-sm text-stone-400 dark:text-stone-500">
+                    <TableCell colSpan={10} className="py-16 text-center text-sm text-stone-400 dark:text-stone-500">
                       Loading listings…
                     </TableCell>
                   </TableRow>
                 ) : paged.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={9} className="py-16 text-center text-sm text-stone-400 dark:text-stone-500">
+                    <TableCell colSpan={10} className="py-16 text-center text-sm text-stone-400 dark:text-stone-500">
                       No listings match the current filters.
                     </TableCell>
                   </TableRow>
@@ -429,10 +422,10 @@ export default function ListingsPage() {
                                 <img
                                   src={listing.listing_image_url}
                                   alt={listing.title}
-                                  className="w-11 h-11 rounded-md object-cover border border-stone-200 dark:border-[#2a2d3e] shrink-0"
+                                  className="w-10 h-10 rounded-md object-cover border border-stone-200 dark:border-[#2a2d3e] shrink-0"
                                 />
                               ) : (
-                                <div className="w-11 h-11 rounded-md bg-stone-100 dark:bg-[#13151f] border border-stone-200 dark:border-[#2a2d3e] flex items-center justify-center shrink-0">
+                                <div className="w-10 h-10 rounded-md bg-stone-100 dark:bg-[#13151f] border border-stone-200 dark:border-[#2a2d3e] flex items-center justify-center shrink-0">
                                   📦
                                 </div>
                               )}
@@ -448,7 +441,7 @@ export default function ListingsPage() {
                           </div>
                         </TableCell>
 
-                        {/* ListingOwner */}
+                        {/* Listing Owner */}
                         <TableCell className="py-3.5 text-sm text-stone-600 dark:text-stone-300 whitespace-nowrap">
                           <div className="flex items-center gap-2.5 min-w-0">
                             <Link
@@ -459,10 +452,12 @@ export default function ListingsPage() {
                               aria-label="View seller profile"
                               className="shrink-0"
                             >
-                              <Avatar
-                                src={listing.seller_profile_image_url}
+                              <Image
+                                src={validateImageURL(listing.seller_profile_image_url) || "/profile-icon.png"}
                                 alt={listing.seller}
-                                fallback={listing.seller?.charAt(0)?.toUpperCase() || "U"}
+                                width={32}
+                                height={32}
+                                className="w-9 h-9 rounded-full object-cover border border-stone-200 dark:border-[#2a2d3e] shrink-0"
                               />
                             </Link>
                             <div className="min-w-0">
@@ -476,7 +471,7 @@ export default function ListingsPage() {
                           </div>
                         </TableCell>
 
-                        {/* Type badge */}
+                        {/* Type Badge */}
                         <TableCell className="py-3.5 whitespace-nowrap">
                           <span className={cn(
                             "inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full",
@@ -514,6 +509,11 @@ export default function ListingsPage() {
                         {/* Views */}
                         <TableCell className="py-3.5 text-sm font-semibold text-stone-600 dark:text-stone-300 text-center">
                           {listing.views.toLocaleString()}
+                        </TableCell>
+
+                        {/* Transactions */}
+                        <TableCell className="py-3.5 text-sm font-semibold text-stone-600 dark:text-stone-300 text-center">
+                          {listing.transaction_count.toLocaleString()}
                         </TableCell>
 
                         {/* Created */}

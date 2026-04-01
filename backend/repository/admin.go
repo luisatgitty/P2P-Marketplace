@@ -185,6 +185,8 @@ func GetAdminUsers() ([]model.AdminUserListItemFromDb, error) {
 			u.is_email_verified,
 			u.failed_login_attempts AS failed_login,
 			COALESCE(lc.listings, 0)::int AS listings,
+			COALESCE(ct.client_transactions, 0)::int AS client_transactions,
+			COALESCE(ot.owner_transactions, 0)::int AS owner_transactions,
 			u.last_login_at AS last_login,
 			u.created_at AS joined,
 			TRIM(BOTH ', ' FROM CONCAT_WS(', ', NULLIF(TRIM(u.location_barangay), ''), NULLIF(TRIM(u.location_city), ''), NULLIF(TRIM(u.location_province), ''))) AS location
@@ -194,6 +196,17 @@ func GetAdminUsers() ([]model.AdminUserListItemFromDb, error) {
 			FROM public.listings
 			GROUP BY user_id
 		) lc ON lc.user_id = u.id
+		LEFT JOIN (
+			SELECT client_id, COUNT(*)::int AS client_transactions
+			FROM public.listing_transactions
+			GROUP BY client_id
+		) ct ON ct.client_id = u.id
+		LEFT JOIN (
+			SELECT l.user_id AS owner_id, COUNT(*)::int AS owner_transactions
+			FROM public.listing_transactions lt
+			INNER JOIN public.listings l ON l.id = lt.listing_id
+			GROUP BY l.user_id
+		) ot ON ot.owner_id = u.id
 		WHERE u.deleted_at IS NULL
 			AND u.role = 'USER'
 		ORDER BY u.created_at DESC
@@ -513,10 +526,18 @@ func GetAdminListings() ([]model.AdminListingListItemFromDb, error) {
 			TRIM(BOTH ', ' FROM CONCAT_WS(', ', NULLIF(TRIM(u.location_city), ''), NULLIF(TRIM(u.location_province), ''))) AS seller_location,
 			COALESCE(u.profile_image_url, '') AS seller_profile_image_url,
 			COALESCE(l.view_count, 0)::int AS views,
+			COALESCE(tx.transaction_count, 0)::int AS transaction_count,
 			l.created_at AS created
 		FROM public.listings l
 		LEFT JOIN public.categories c ON c.id = l.category_id
 		LEFT JOIN public.users u ON u.id = l.user_id
+		LEFT JOIN (
+			SELECT
+				listing_id,
+				COUNT(*)::int AS transaction_count
+			FROM public.listing_transactions
+			GROUP BY listing_id
+		) tx ON tx.listing_id = l.id
 		LEFT JOIN LATERAL (
 			SELECT image_url
 			FROM public.listing_images
@@ -728,29 +749,52 @@ func GetAdminReports() ([]model.AdminReportListItemFromDb, error) {
 			r.id::text AS id,
 			COALESCE(r.reporter_id::text, '') AS reporter_id,
 			TRIM(BOTH ' ' FROM CONCAT_WS(' ', NULLIF(TRIM(rep.first_name), ''), NULLIF(TRIM(rep.last_name), ''))) AS reporter,
+			COALESCE(rep.email, '') AS reporter_email,
 			COALESCE(rep.profile_image_url, '') AS reporter_profile_image_url,
+			TRIM(BOTH ', ' FROM CONCAT_WS(', ', NULLIF(TRIM(rep.location_city), ''), NULLIF(TRIM(rep.location_province), ''))) AS reporter_location,
+			COALESCE(ru.id::text, '') AS reported_user_id,
+			COALESCE(NULLIF(TRIM(CONCAT_WS(' ', NULLIF(TRIM(ru.first_name), ''), NULLIF(TRIM(ru.last_name), ''))), ''), ru.email, 'Unknown User') AS reported_name,
+			COALESCE(ru.email, '') AS reported_email,
+			TRIM(BOTH ', ' FROM CONCAT_WS(', ', NULLIF(TRIM(ru.location_city), ''), NULLIF(TRIM(ru.location_province), ''))) AS reported_location,
 			CASE WHEN r.reported_listing_id IS NOT NULL THEN 'LISTING' ELSE 'USER' END AS target_type,
 			CASE
 				WHEN r.reported_listing_id IS NOT NULL THEN COALESCE(l.title, 'Unknown Listing')
 				ELSE COALESCE(NULLIF(TRIM(CONCAT_WS(' ', NULLIF(TRIM(ru.first_name), ''), NULLIF(TRIM(ru.last_name), ''))), ''), ru.email, 'Unknown User')
 			END AS target_name,
 			COALESCE(r.reported_listing_id::text, r.reported_user_id::text, '') AS target_id,
+			COALESCE(l.title, '') AS listing_title,
+			COALESCE(li.image_url, '') AS listing_image_url,
+			COALESCE(l.price, 0)::int AS listing_price,
+			COALESCE(l.price_unit, '') AS listing_price_unit,
 			COALESCE(owner.id::text, '') AS listing_owner_id,
 			COALESCE(NULLIF(TRIM(CONCAT_WS(' ', NULLIF(TRIM(owner.first_name), ''), NULLIF(TRIM(owner.last_name), ''))), ''), owner.email, '—') AS listing_owner,
 			COALESCE(owner.profile_image_url, '') AS listing_owner_profile_image_url,
+			TRIM(BOTH ', ' FROM CONCAT_WS(', ', NULLIF(TRIM(owner.location_city), ''), NULLIF(TRIM(owner.location_province), ''))) AS listing_owner_location,
 			r.reason,
 			r.description,
 			r.status::text AS status,
 			NULLIF(TRIM(CONCAT_WS(' ', NULLIF(TRIM(rev.first_name), ''), NULLIF(TRIM(rev.last_name), ''))), '') AS reviewed_by,
 			r.reviewed_at,
 			r.created_at,
-			r.reported_user_id::text AS reported_user_id
+			r.created_at AS submitted_at,
+			NULLIF(TRIM(CONCAT_WS(' ', NULLIF(TRIM(res.first_name), ''), NULLIF(TRIM(res.last_name), ''))), '') AS resolved_by,
+			r.resolved_at,
+			r.action_taken::text AS action_taken,
+			r.action_reason
 		FROM public.reports r
 		LEFT JOIN public.users rep ON rep.id = r.reporter_id
 		LEFT JOIN public.listings l ON l.id = r.reported_listing_id
+		LEFT JOIN LATERAL (
+			SELECT image_url
+			FROM public.listing_images
+			WHERE listing_id = l.id
+			ORDER BY is_primary DESC, id ASC
+			LIMIT 1
+		) li ON TRUE
 		LEFT JOIN public.users owner ON owner.id = l.user_id
 		LEFT JOIN public.users ru ON ru.id = r.reported_user_id
 		LEFT JOIN public.users rev ON rev.id = r.reviewed_by_id
+		LEFT JOIN public.users res ON res.id = r.resolved_by_id
 		ORDER BY r.created_at DESC
 	`
 
@@ -763,6 +807,15 @@ func GetAdminReports() ([]model.AdminReportListItemFromDb, error) {
 		reports[i].Status = strings.ToUpper(strings.TrimSpace(reports[i].Status))
 		if strings.TrimSpace(reports[i].Reporter) == "" {
 			reports[i].Reporter = "Unknown Reporter"
+		}
+		if strings.TrimSpace(reports[i].ReporterLocation) == "" {
+			reports[i].ReporterLocation = "-"
+		}
+		if strings.TrimSpace(reports[i].ReportedLocation) == "" {
+			reports[i].ReportedLocation = "-"
+		}
+		if strings.TrimSpace(reports[i].ListingOwnerLocation) == "" {
+			reports[i].ListingOwnerLocation = "-"
 		}
 	}
 
@@ -788,6 +841,57 @@ func SetAdminReportStatus(reportId, reviewedById, status string) error {
 
 	if result.Error != nil {
 		return fmt.Errorf("Failed to update report status")
+	}
+	if result.RowsAffected == 0 {
+		return fmt.Errorf("Report not found")
+	}
+
+	return nil
+}
+
+func SetAdminReportAction(reportId, adminUserId, action, reason string) error {
+	db := middleware.DBConn
+
+	normalizedAction := strings.ToUpper(strings.TrimSpace(action))
+	trimmedReason := strings.TrimSpace(reason)
+	if trimmedReason == "" {
+		return fmt.Errorf("Reason is required")
+	}
+
+	allowed := map[string]bool{
+		"DISMISS":        true,
+		"WARN_USER":      true,
+		"HIDE_LISTING":   true,
+		"DELETE_LISTING": true,
+		"LOCK_3":         true,
+		"LOCK_7":         true,
+		"LOCK_30":        true,
+		"PERMANENT_BAN":  true,
+	}
+	if !allowed[normalizedAction] {
+		return fmt.Errorf("Invalid report action")
+	}
+
+	nextStatus := "RESOLVED"
+	if normalizedAction == "DISMISS" {
+		nextStatus = "DISMISSED"
+	}
+
+	result := db.Exec(`
+		UPDATE public.reports
+		SET
+			status = $1::report_status,
+			reviewed_by_id = $2,
+			reviewed_at = now(),
+			resolved_by_id = $2,
+			resolved_at = now(),
+			action_taken = $3::report_action,
+			action_reason = $4
+		WHERE id = $5
+	`, nextStatus, adminUserId, normalizedAction, trimmedReason, reportId)
+
+	if result.Error != nil {
+		return fmt.Errorf("Failed to apply report action")
 	}
 	if result.RowsAffected == 0 {
 		return fmt.Errorf("Report not found")

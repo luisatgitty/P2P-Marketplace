@@ -6,7 +6,7 @@ import Image from "next/image";
 import {
   Search, X, CheckCircle2, XCircle, ShieldCheck, Clock,
   Eye, AlertTriangle, IdCard, ChevronLeft, ChevronRight,
-  User, Phone, Mail, Calendar, Hash, Monitor, Globe,
+  User, Phone, Calendar, Hash, Monitor, Globe,
   Cpu, CreditCard, ChevronDown, ChevronUp,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -57,10 +57,11 @@ interface AdminVerification {
   hardware_info:     string;   // JSON string from getDeviceInfo()
   // Review state
   status:            VerifStatus;
-  rejection_reason:  string | null;
+  reason:  string | null;
   reviewed_by:       string | null;
   reviewed_at:       string | null;
-  submitted_at:      string;
+  submitted_date:      string;
+  submitted_time:    string;
 }
 
 const STATUS_CONFIG: Record<VerifStatus, { cls: string; label: string; Icon: React.ElementType }> = {
@@ -116,17 +117,17 @@ function IdImageCard({ label, imageUrl }: { label: string; imageUrl?: string | n
         <button
           type="button"
           onClick={() => window.open(resolvedUrl, "_blank", "noopener,noreferrer")}
-          className="aspect-[4/3] w-full rounded-xl overflow-hidden border border-stone-200 dark:border-[#2a2d3e] bg-stone-100 dark:bg-[#13151f] hover:opacity-95 transition-opacity"
+          className="w-full rounded-xl overflow-hidden border border-stone-200 dark:border-[#2a2d3e] bg-stone-100 dark:bg-[#13151f] hover:opacity-95 transition-opacity"
           title="View full image"
         >
           <img
             src={resolvedUrl}
             alt={label}
-            className="w-full h-full object-cover"
+            className="w-full h-auto object-contain max-h-[70vh]"
           />
         </button>
       ) : (
-        <div className="aspect-[4/3] rounded-xl bg-stone-100 dark:bg-[#13151f] border-2 border-dashed border-stone-200 dark:border-[#2a2d3e] flex flex-col items-center justify-center gap-2">
+        <div className="aspect-4/3 rounded-xl bg-stone-100 dark:bg-[#13151f] border-2 border-dashed border-stone-200 dark:border-[#2a2d3e] flex flex-col items-center justify-center gap-2">
           <IdCard className="w-9 h-9 text-stone-300 dark:text-stone-600" />
           <span className="text-xs font-medium text-stone-400 dark:text-stone-500">No image</span>
         </div>
@@ -170,7 +171,7 @@ interface DetailModalProps {
 function DetailModal({ verif, onClose, onApprove, onReject, actionLoading = false }: DetailModalProps) {
   const [rejectReason, setRejectReason] = useState(
     // Pre-fill when viewing a previously rejected submission
-    verif.status === "REJECTED" ? (verif.rejection_reason ?? "") : "",
+    verif.status === "REJECTED" ? (verif.reason ?? "") : "",
   );
   const [hardwareOpen, setHardwareOpen] = useState(false);
 
@@ -202,7 +203,7 @@ function DetailModal({ verif, onClose, onApprove, onReject, actionLoading = fals
             <div className="min-w-0">
               <h2 className="text-white font-bold text-base leading-none">Verification Request</h2>
               <p className="text-slate-400 text-sm mt-0.5 truncate">
-                By {verif.user_name} · Submitted on {verif.submitted_at}
+                By {verif.user_name} · Submitted on {verif.submitted_date} · {verif.submitted_time}
               </p>
             </div>
             <span className={cn(
@@ -240,10 +241,12 @@ function DetailModal({ verif, onClose, onApprove, onReject, actionLoading = fals
                         Profile
                       </p>
                       <div className="flex items-center gap-2.5">
-                        <img
+                        <Image
                           src={validateImageURL(verif.profile_image_url) || "/profile-icon.png"}
                           alt={verif.user_name}
-                          className="w-10 h-10 rounded-full object-cover border border-stone-200 dark:border-[#2a2d3e] shrink-0"
+                          width={32}
+                          height={32}
+                          className="w-9 h-9 rounded-full object-cover border border-stone-200 dark:border-[#2a2d3e] shrink-0"
                         />
                         <div className="min-w-0">
                           <p className="text-sm font-bold text-stone-800 dark:text-stone-100 truncate">
@@ -350,23 +353,21 @@ function DetailModal({ verif, onClose, onApprove, onReject, actionLoading = fals
               )}
             </div>
 
-            {/* ── Existing rejection reason (read-only, REJECTED state) ── */}
-            {verif.status === "REJECTED" && verif.rejection_reason && (
-              <>
-                <Separator className="dark:bg-[#2a2d3e]" />
-                <div className="rounded-xl bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 p-3.5 space-y-1.5">
-                  <SectionLabel>Rejection Reason</SectionLabel>
-                  <p className="text-sm text-red-600 dark:text-red-400 leading-relaxed">
-                    {verif.rejection_reason}
+            {/* ── Existing reason ── */}``
+            <>
+              <Separator className="dark:bg-[#2a2d3e]" />
+              <div className="rounded-xl bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 p-3.5 space-y-1.5">
+                <SectionLabel>Reason</SectionLabel>
+                <p className="text-sm text-red-600 dark:text-red-400 leading-relaxed">
+                  {verif.reason}
+                </p>
+                {verif.reviewed_by && (
+                  <p className="text-xs text-red-400 dark:text-red-500 mt-1">
+                    By {verif.reviewed_by} · {verif.reviewed_at}
                   </p>
-                  {verif.reviewed_by && (
-                    <p className="text-xs text-red-400 dark:text-red-500 mt-1">
-                      By {verif.reviewed_by} · {verif.reviewed_at}
-                    </p>
-                  )}
-                </div>
-              </>
-            )}
+                )}
+              </div>
+            </>
           </div>
 
           {/* ════ RIGHT — ID images + reject input ════ */}
@@ -388,7 +389,7 @@ function DetailModal({ verif, onClose, onApprove, onReject, actionLoading = fals
                 <Separator className="dark:bg-[#2a2d3e]" />
                 <div className="space-y-1.5">
                   <Label className="text-xs font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest">
-                    Rejection Reason
+                    Reason
                     <span className="normal-case font-normal text-stone-400 dark:text-stone-600 ml-1.5">
                       — required for approve/reject
                     </span>
@@ -482,13 +483,16 @@ export default function VerificationsPage() {
       user_agent: record.user_agent,
       hardware_info: record.hardware_info,
       status: record.status,
-      rejection_reason: record.rejection_reason,
+      reason: record.rejection_reason,
       reviewed_by: record.reviewed_by,
       reviewed_at: reviewed && !Number.isNaN(reviewed.getTime())
         ? reviewed.toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" })
         : null,
-      submitted_at: !Number.isNaN(submitted.getTime())
-        ? `${submitted.toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" })} · ${submitted.toLocaleTimeString("en-PH", { hour: "numeric", minute: "2-digit" })}`
+      submitted_date: !Number.isNaN(submitted.getTime())
+        ? submitted.toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" })
+        : record.submitted_at,
+        submitted_time: !Number.isNaN(submitted.getTime())
+        ? submitted.toLocaleTimeString("en-PH", { hour: "numeric", minute: "2-digit" })
         : record.submitted_at,
     };
   }, []);
@@ -640,6 +644,7 @@ export default function VerificationsPage() {
               <TableHeader>
                 <TableRow className="border-stone-200 dark:border-[#2a2d3e] bg-stone-50 dark:bg-[#13151f] hover:bg-stone-50 dark:hover:bg-[#13151f]">
                   <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest">Applicant</TableHead>
+                  <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest">Submitted Name</TableHead>
                   <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest whitespace-nowrap">ID Type</TableHead>
                   <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest">Status</TableHead>
                   <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest whitespace-nowrap">Submitted</TableHead>
@@ -666,6 +671,8 @@ export default function VerificationsPage() {
                     const StatusIcon = sc.Icon;
                     return (
                       <TableRow key={verif.id} className="border-stone-100 dark:border-[#2a2d3e] hover:bg-stone-50 dark:hover:bg-[#252837] transition-colors">
+
+                        {/* Applicant */}
                         <TableCell className="py-2">
                           <div className="flex items-center gap-3">
                             <Link
@@ -681,7 +688,7 @@ export default function VerificationsPage() {
                                 alt={verif.user_name}
                                 width={32}
                                 height={32}
-                                className="w-8 h-8 rounded-full object-cover border border-stone-200 dark:border-[#2a2d3e] shrink-0"
+                                className="w-9 h-9 rounded-full object-cover border border-stone-200 dark:border-[#2a2d3e] shrink-0"
                               />
                             </Link>
                             <div>
@@ -690,25 +697,46 @@ export default function VerificationsPage() {
                             </div>
                           </div>
                         </TableCell>
+
+                        <TableCell className="py-3.5 text-sm text-stone-500 dark:text-stone-400 whitespace-nowrap">
+                            <p className="text-stone-800 dark:text-stone-100">{`${verif.id_first_name} ${verif.id_last_name}`}</p>
+                        </TableCell>
+
+                        {/* ID Type */}
                         <TableCell className="py-3.5">
-                          <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-stone-600 dark:text-stone-300 bg-stone-100 dark:bg-[#13151f] px-2 py-1 rounded-lg">
+                          <span className="inline-flex items-center gap-1.5 text-xs font-bold text-stone-600 dark:text-stone-300 bg-stone-100 dark:bg-[#13151f] px-2 py-1 rounded-lg">
                             <IdCard className="w-3 h-3 text-stone-400" /> {verif.id_type.toUpperCase()}
                           </span>
                         </TableCell>
+
+                        {/* Status */}
                         <TableCell className="py-3.5 whitespace-nowrap">
                           <span className={cn("inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full", sc.cls)}>
                             <StatusIcon className="w-2.5 h-2.5" /> {sc.label}
                           </span>
                         </TableCell>
+
+                        {/* Submitted At */}
                         <TableCell className="py-3.5 text-sm text-stone-500 dark:text-stone-400 whitespace-nowrap">
-                          {verif.submitted_at}
+                          <div>
+                            <p className="text-sm font-bold text-stone-800 dark:text-stone-100">{verif.submitted_date}</p>
+                            <p className="text-xs text-stone-400 dark:text-stone-500">{verif.submitted_time}</p>
+                          </div>
                         </TableCell>
+
+                        {/* Reviewed By */}
                         <TableCell className="py-3.5 text-sm text-stone-500 dark:text-stone-400 whitespace-nowrap">
                           {verif.reviewed_by
-                            ? <div className="leading-tight"><p className="text-sm font-semibold">{verif.reviewed_by}</p><p>{verif.reviewed_at}</p></div>
-                            : <span className="text-stone-300 dark:text-stone-600">Not yet reviewed</span>
+                            ? (
+                              <div>
+                                <p className="text-sm font-bold text-stone-800 dark:text-stone-100">{verif.reviewed_by}</p>
+                                <p className="text-xs text-stone-400 dark:text-stone-500">{verif.reviewed_at}</p>
+                              </div>
+                            ) : <span className="text-stone-300 dark:text-stone-600">Not yet reviewed</span>
                           }
                         </TableCell>
+
+                        {/* Actions */}
                         <TableCell className="py-3.5">
                           <div className="flex items-center justify-end gap-1">
                             <Button

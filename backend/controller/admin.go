@@ -275,6 +275,13 @@ func GetAdminReports(c *fiber.Ctx) error {
 		return SendErrorResponse(c, 500, err.Error(), err)
 	}
 
+	baseURL := c.BaseURL()
+	for i := range reports {
+		reports[i].ReporterImage = adminToAbsoluteAssetURL(baseURL, reports[i].ReporterImage)
+		reports[i].OwnerImage = adminToAbsoluteAssetURL(baseURL, reports[i].OwnerImage)
+		reports[i].ListingImageURL = adminToAbsoluteAssetURL(baseURL, reports[i].ListingImageURL)
+	}
+
 	return SendSuccessResponse(c, 200, "Reports fetched successfully", map[string]any{
 		"reports": reports,
 	})
@@ -294,6 +301,29 @@ func SetAdminReportStatus(c *fiber.Ctx) error {
 	var body model.AdminSetReportStatusBody
 	if err := c.BodyParser(&body); err != nil {
 		return SendErrorResponse(c, 400, "Invalid request body", err)
+	}
+
+	normalizedAction := strings.ToUpper(strings.TrimSpace(body.Action))
+	if normalizedAction != "" {
+		reason := strings.TrimSpace(body.Reason)
+		if reason == "" {
+			return SendErrorResponse(c, 400, "Reason is required", nil)
+		}
+
+		if err := repository.SetAdminReportAction(reportId, adminUserId, normalizedAction, reason); err != nil {
+			if strings.EqualFold(err.Error(), "Report not found") {
+				return SendErrorResponse(c, 404, err.Error(), err)
+			}
+			if strings.Contains(strings.ToLower(err.Error()), "invalid") || strings.Contains(strings.ToLower(err.Error()), "required") {
+				return SendErrorResponse(c, 400, err.Error(), err)
+			}
+			return SendErrorResponse(c, 500, err.Error(), err)
+		}
+
+		return SendSuccessResponse(c, 200, "Report action applied successfully", map[string]any{
+			"reportId": reportId,
+			"action":   normalizedAction,
+		})
 	}
 
 	normalizedStatus := strings.ToUpper(strings.TrimSpace(body.Status))

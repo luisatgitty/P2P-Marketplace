@@ -13,6 +13,7 @@ export type AdminListingRecord = {
   seller_location: string;
   seller_profile_image_url: string;
   views: number;
+  transaction_count: number;
   created: string;
 };
 

@@ -363,6 +363,8 @@ export default function TransactionsPage() {
                         key={transaction.id}
                         className="border-stone-100 dark:border-[#2a2d3e] hover:bg-stone-50 dark:hover:bg-[#252837] transition-colors"
                       >
+
+                        {/* Client */}
                         <TableCell className="py-3.5 min-w-55">
                           <div className="flex items-center gap-2.5">
                             <Link href={`/profile?userId=${transaction.client_user_id}`} target="_blank" rel="noopener noreferrer" title="Open client profile" className="shrink-0">
@@ -378,6 +380,7 @@ export default function TransactionsPage() {
                           </div>
                         </TableCell>
 
+                        {/* Owner */}
                         <TableCell className="py-3.5 min-w-55">
                           <div className="flex items-center gap-2.5">
                             <Link href={`/profile?userId=${transaction.owner_user_id}`} target="_blank" rel="noopener noreferrer" title="Open owner profile" className="shrink-0">
@@ -393,6 +396,7 @@ export default function TransactionsPage() {
                           </div>
                         </TableCell>
 
+                        {/* Listing */}
                         <TableCell className="py-3.5 min-w-65">
                           <div className="flex items-center gap-2.5">
                             <Link href={`/listing/${transaction.listing_id}`} target="_blank" rel="noopener noreferrer" title="Open listing" className="shrink-0">
@@ -414,31 +418,37 @@ export default function TransactionsPage() {
                           </div>
                         </TableCell>
 
+                        {/* Schedule */}
                         <TableCell className="py-3.5 min-w-57.5 whitespace-nowrap">
-                          <p className="text-sm font-semibold text-stone-800 dark:text-stone-100">{formatDateRange(transaction.start_date, transaction.end_date)}</p>
+                          <p className="text-sm text-stone-800 dark:text-stone-100">{formatDateRange(transaction.start_date, transaction.end_date)}</p>
                           <p className="text-xs text-stone-500 dark:text-stone-400">{transaction.selected_time_window || "N/A"}</p>
                         </TableCell>
 
+                        {/* Total Price */}
                         <TableCell className="py-3.5 min-w-37.5 whitespace-nowrap">
                           <p className="text-sm font-bold text-stone-800 dark:text-stone-100">{phpFmt.format(transaction.total_price)}</p>
                           <p className="text-xs text-stone-500 dark:text-stone-400">{buildScheduleUnitsLabel(transaction)}</p>
                         </TableCell>
 
+                        {/* Agreement */}
                         <TableCell className="py-3.5 min-w-45 space-y-1.5">
                           <DealStateRow label="Owner" agreed={Boolean(transaction.provider_agreed)} />
                           <DealStateRow label="Client" agreed={Boolean(transaction.client_agreed)} />
                         </TableCell>
 
+                        {/* Status */}
                         <TableCell className="py-3.5 whitespace-nowrap">
                           <span className={cn("text-xs font-bold px-2 py-0.5 rounded-full", STATUS_CONFIG[transaction.status])}>
                             {transaction.status.charAt(0) + transaction.status.slice(1).toLowerCase()}
                           </span>
                         </TableCell>
 
+                        {/* Completed At */}
                         <TableCell className="py-3.5 text-sm text-stone-500 dark:text-stone-400 whitespace-nowrap">
                           {formatDateTime(transaction.completed_at)}
                         </TableCell>
 
+                        {/* Created At */}
                         <TableCell className="py-3.5 text-sm text-stone-500 dark:text-stone-400 whitespace-nowrap">
                           {formatDateTime(transaction.created_at)}
                         </TableCell>
