@@ -4,10 +4,8 @@ import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import {
-  X, Flag, User, Tag, FileText,
-  AlertTriangle, Trash2, Clock,
-  ShieldX, MessageSquareWarning, ChevronDown,
-  CheckCircle2, Eye, EyeOff, Gavel,
+  X, Flag, User, FileText, AlertTriangle, Trash2, Clock,
+  ShieldX, ChevronDown, CheckCircle2, Gavel,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button }            from "@/components/ui/button";
@@ -39,62 +37,54 @@ const ACTION_OPTIONS: ActionOption[] = [
   {
     value: "DISMISS",
     label: "Dismiss Report",
-    description: "Mark as reviewed — no action taken",
+    description: "No necessary action needed.",
     icon: CheckCircle2,
     severity: "low",
-    group: "No Action",
+    group: "Minor Actions",
   },
   {
-    value: "WARN_USER",
-    label: "Warning",
-    description: "Notify the reported user via email",
-    icon: MessageSquareWarning,
+    value: "BAN_LISTING",
+    label: "Shadow Ban Listing",
+    description: "Shadow ban the listing for 1 day",
+    icon: ShieldX,
     severity: "medium",
-    group: "User Actions",
-  },
-  {
-    value: "HIDE_LISTING",
-    label: "Hide Listing",
-    description: "Remove listing from public view",
-    icon: EyeOff,
-    severity: "medium",
-    group: "Listing Actions",
-  },
-  {
-    value: "DELETE_LISTING",
-    label: "Delete Listing",
-    description: "Permanently remove the listing",
-    icon: Trash2,
-    severity: "high",
-    group: "Listing Actions",
+    group: "Minor Actions",
   },
   {
     value: "LOCK_3",
-    label: "Lock — 3 Days",
-    description: "Temporarily restrict account access",
+    label: "Lockout 1st Offense",
+    description: "Temporarily restrict account access for 3 Days",
     icon: Clock,
     severity: "high",
     group: "Account Lockout",
   },
   {
     value: "LOCK_7",
-    label: "Lock — 7 Days",
-    description: "Temporarily restrict account access",
+    label: "Lockout 2nd Offense",
+    description: "Temporarily restrict account access for 7 Days",
     icon: Clock,
     severity: "high",
     group: "Account Lockout",
   },
   {
     value: "LOCK_30",
-    label: "Lock — 30 Days",
-    description: "Extended account restriction",
+    label: "Lockout 3rd Offense", 
+    description: "Extended account restriction for 30 Days",
     icon: Clock,
     severity: "high",
     group: "Account Lockout",
   },
   {
+    value: "DELETE_LISTING",
+    label: "Delete Listing",
+    description: "Permanently remove the listing, and notify the owner.",
+    icon: Trash2,
+    severity: "high",
+    group: "Permanent Actions",
+  },
+  {
     value: "PERMANENT_BAN",
-    label: "Permanent Ban",
+    label: "Ban Account",
     description: "Irreversibly ban account from the platform",
     icon: ShieldX,
     severity: "critical",
@@ -129,7 +119,7 @@ const SEVERITY_STYLES: Record<ActionOption["severity"], {
   },
 };
 
-const ACTION_GROUPS = ["No Action", "User Actions", "Listing Actions", "Account Lockout", "Permanent Actions"];
+const ACTION_GROUPS = ["Minor Actions", "Account Lockout", "Permanent Actions"];
 
 const phpFmt = new Intl.NumberFormat("en-PH", {
   style: "currency",
@@ -273,7 +263,7 @@ export default function ReportActionsModal({ report, onClose, onSubmit }: Report
                 <div>
                   <SectionLabel>Reporter</SectionLabel>
                   <Card className="p-0 dark:bg-[#13151f] dark:border-[#2a2d3e]">
-                    <CardContent className="p-3.5 space-y-2.5">
+                    <CardContent className="p-3.5">
                       <div className="flex items-center gap-2.5 mb-1">
                         <Link
                           href={`/profile?userId=${report.reporter_id}`}
@@ -309,7 +299,7 @@ export default function ReportActionsModal({ report, onClose, onSubmit }: Report
                 <div>
                   <SectionLabel>Reported User</SectionLabel>
                   <Card className="p-0 dark:bg-[#13151f] border-red-100 dark:border-red-900/40">
-                    <CardContent className="p-3.5 space-y-2.5">
+                    <CardContent className="p-3.5">
                       <div className="flex items-center gap-2.5 mb-1">
                         <Link
                           href={`/profile?userId=${report.listing_owner_id}`}
@@ -345,7 +335,7 @@ export default function ReportActionsModal({ report, onClose, onSubmit }: Report
                   <div>
                     <SectionLabel>Reported Listing</SectionLabel>
                     <Card className="p-0 dark:bg-[#13151f] dark:border-[#2a2d3e]">
-                      <CardContent className="p-3.5 space-y-2.5">
+                      <CardContent className="p-3.5">
                         <div className="flex items-center gap-2.5 min-w-0">
                           <Link
                             href={`/listing/${report.target_id}`}
@@ -382,23 +372,21 @@ export default function ReportActionsModal({ report, onClose, onSubmit }: Report
                 {/* Report reason + description */}
                 <div>
                   <SectionLabel>Report Content</SectionLabel>
-                  <div className="space-y-3">
-                    <div className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-stone-100 dark:bg-[#13151f] border border-stone-200 dark:border-[#2a2d3e]">
-                      <Flag className="w-3 h-3 text-red-400 shrink-0" />
-                      <span className="text-xs font-semibold text-stone-700 dark:text-stone-200">
-                        {report.reason}
-                      </span>
-                    </div>
-                    {report.description && (
-                      <div className="rounded-xl bg-stone-50 dark:bg-[#13151f] border border-stone-200 dark:border-[#2a2d3e] p-3.5">
-                        <p className="text-xs font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest mb-1.5">
-                          Description
-                        </p>
-                        <p className="text-sm text-stone-600 dark:text-stone-300 leading-relaxed">
-                          {report.description}
-                        </p>
+                  <div className="rounded-xl bg-stone-50 dark:bg-[#13151f] border border-stone-200 dark:border-[#2a2d3e] p-3.5">
+                    <div className="flex items-start justify-between gap-2 mb-1.5">
+                      <p className="text-xs font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest">
+                        Description
+                      </p>
+                      <div className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-stone-100 dark:bg-[#1c1f2e] border border-stone-200 dark:border-[#2a2d3e] shrink-0">
+                        <Flag className="w-3 h-3 text-red-400 shrink-0" />
+                        <span className="text-xs font-semibold text-stone-700 dark:text-stone-200">
+                          {report.reason}
+                        </span>
                       </div>
-                    )}
+                    </div>
+                    <p className="text-sm text-stone-600 dark:text-stone-300 leading-relaxed">
+                      {report.description || "No description provided."}
+                    </p>
                   </div>
                 </div>
 
@@ -430,7 +418,13 @@ export default function ReportActionsModal({ report, onClose, onSubmit }: Report
             <div className="flex-1 p-5 space-y-5">
               <div>
                 <SectionLabel>
-                  {isPending ? "Select Action" : "Action Taken"}
+                  {isPending ? (
+                    <>
+                      Select Action<span className="text-red-500 ml-0.5">*</span>
+                    </>
+                  ) : (
+                    "Action Taken"
+                  )}
                 </SectionLabel>
 
                 {isPending ? (
@@ -484,7 +478,7 @@ export default function ReportActionsModal({ report, onClose, onSubmit }: Report
                                           : opt.severity === "high"   ? "text-orange-700 dark:text-orange-300"
                                           :                             "text-red-700 dark:text-red-300"
                                         : "text-stone-700 dark:text-stone-200",
-                                    )}>
+                                    )}> 
                                       {opt.label}
                                     </p>
                                     <p className="text-xs text-stone-400 dark:text-stone-500 mt-0.5 leading-none">
@@ -561,8 +555,8 @@ export default function ReportActionsModal({ report, onClose, onSubmit }: Report
                   <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
                   <p className="leading-relaxed">
                     {selectedOpt.severity === "critical"
-                      ? "⚠ Permanent Ban is irreversible. The account will be permanently removed from the platform. Ensure this action is warranted."
-                      : `This action will affect the user's account or listing. Double-check your reason before submitting.`
+                      ? "Permanent Ban is irreversible. The account will be permanently removed from the platform. Ensure this action is warranted."  
+                      : "This action will affect the user's account. Double-check your reason before submitting."
                     }
                   </p>
                 </div>

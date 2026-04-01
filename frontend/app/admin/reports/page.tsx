@@ -142,7 +142,7 @@ export default function ReportsPage() {
   }
 
   // ── Actions ───────────────────────────────────────────────────────────────────
-  async function handleModalSubmit(id: string, action: "DISMISS" | "WARN_USER" | "HIDE_LISTING" | "DELETE_LISTING" | "LOCK_3" | "LOCK_7" | "LOCK_30" | "PERMANENT_BAN", reason: string) {
+  async function handleModalSubmit(id: string, action: "DISMISS" | "BAN_LISTING" | "LOCK_3" | "LOCK_7" | "LOCK_30" | "DELETE_LISTING" | "PERMANENT_BAN", reason: string) {
     setActionLoadingId(id);
     try {
       await setAdminReportAction(id, { action, reason });

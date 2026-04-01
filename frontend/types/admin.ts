@@ -3,12 +3,11 @@ export type ReportTarget = "LISTING" | "USER";
 
 export type ReportActionType =
   | "DISMISS"
-  | "WARN_USER"
-  | "HIDE_LISTING"
-  | "DELETE_LISTING"
+  | "BAN_LISTING"
   | "LOCK_3"
   | "LOCK_7"
   | "LOCK_30"
+  | "DELETE_LISTING"
   | "PERMANENT_BAN";
 
 export interface AdminReport {
