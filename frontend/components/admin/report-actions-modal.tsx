@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
+import Image from "next/image";
 import {
   X, Flag, User, Tag, FileText,
   AlertTriangle, Trash2, Clock,
@@ -14,6 +16,7 @@ import { Label }             from "@/components/ui/label";
 import { Separator }         from "@/components/ui/separator";
 import { Textarea }          from "@/components/ui/textarea";
 import { AdminReport, ReportActionType } from "@/types/admin";
+import { validateImageURL } from "@/utils/validation";
 
 interface ReportActionsModalProps {
   report:    AdminReport;
@@ -128,6 +131,12 @@ const SEVERITY_STYLES: Record<ActionOption["severity"], {
 
 const ACTION_GROUPS = ["No Action", "User Actions", "Listing Actions", "Account Lockout", "Permanent Actions"];
 
+const phpFmt = new Intl.NumberFormat("en-PH", {
+  style: "currency",
+  currency: "PHP",
+  minimumFractionDigits: 0,
+});
+
 // ── Info pair ──────────────────────────────────────────────────────────────────
 
 function InfoPair({ icon: Icon, label, value, mono = false }: {
@@ -140,7 +149,7 @@ function InfoPair({ icon: Icon, label, value, mono = false }: {
     <div className="flex items-start gap-2">
       <Icon className="w-3.5 h-3.5 text-stone-400 dark:text-stone-500 shrink-0 mt-0.75" />
       <div className="min-w-0">
-        <p className="text-[10px] font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest leading-none mb-0.5">
+        <p className="text-xs font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest leading-none mb-0.5">
           {label}
         </p>
         <p className={cn(
@@ -157,7 +166,7 @@ function InfoPair({ icon: Icon, label, value, mono = false }: {
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <p className="text-[10px] font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest mb-2.5">
+    <p className="text-xs font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest mb-2.5">
       {children}
     </p>
   );
@@ -214,7 +223,7 @@ export default function ReportActionsModal({ report, onClose, onSubmit }: Report
           </div>
           <div className="flex items-center gap-2">
             <span className={cn(
-              "text-[10px] font-bold px-2.5 py-1 rounded-full inline-flex items-center gap-1",
+              "text-xs font-bold px-2.5 py-1 rounded-full inline-flex items-center gap-1",
               report.status === "PENDING"
                 ? "bg-amber-500/20 text-amber-300 border border-amber-500/30"
                 : report.status === "RESOLVED"
@@ -258,7 +267,7 @@ export default function ReportActionsModal({ report, onClose, onSubmit }: Report
                 }
               </button>
 
-              <div className={cn(!detailOpen && "hidden lg:block", "space-y-5")}>
+              <div className={cn(!detailOpen && "hidden lg:block", "space-y-4")}>
 
                 {/* Reporter */}
                 <div>
@@ -266,14 +275,28 @@ export default function ReportActionsModal({ report, onClose, onSubmit }: Report
                   <Card className="p-0 dark:bg-[#13151f] dark:border-[#2a2d3e]">
                     <CardContent className="p-3.5 space-y-2.5">
                       <div className="flex items-center gap-2.5 mb-1">
-                        <div className="w-8 h-8 rounded-full bg-linear-to-br from-blue-500 to-blue-700 flex items-center justify-center text-white text-xs font-bold shrink-0">
-                          {(report.reporter || "R").charAt(0)}
-                        </div>
+                        <Link
+                          href={`/profile?userId=${report.reporter_id}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title="Open reporter profile"
+                          aria-label="Open reporter profile"
+                          className="shrink-0"
+                        >
+                          <Image
+                            src={validateImageURL(report.reporter_profile_image_url) || "/profile-icon.png"}
+                            alt="Profile"
+                            width={32}
+                            height={32}
+                            className="w-9 h-9 rounded-full object-cover border border-stone-200 dark:border-[#2a2d3e] shrink-0"
+                          />
+                        </Link>
+
                         <div>
-                          <p className="text-xs font-bold text-stone-800 dark:text-stone-100">
+                          <p className="text-sm font-bold text-stone-800 dark:text-stone-100">
                             {report.reporter}
                           </p>
-                          <p className="text-[11px] text-stone-400 dark:text-stone-500">
+                          <p className="text-xs text-stone-400 dark:text-stone-500">
                             {report.reporter_location}
                           </p>
                         </div>
@@ -288,14 +311,27 @@ export default function ReportActionsModal({ report, onClose, onSubmit }: Report
                   <Card className="p-0 dark:bg-[#13151f] border-red-100 dark:border-red-900/40">
                     <CardContent className="p-3.5 space-y-2.5">
                       <div className="flex items-center gap-2.5 mb-1">
-                        <div className="w-8 h-8 rounded-full bg-linear-to-br from-red-500 to-red-700 flex items-center justify-center text-white text-xs font-bold shrink-0">
-                          {(report.reported_name || "U").charAt(0)}
-                        </div>
+                        <Link
+                          href={`/profile?userId=${report.listing_owner_id}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title="Open listing owner profile"
+                          aria-label="Open listing owner profile"
+                          className="shrink-0"
+                        >
+                          <Image
+                            src={validateImageURL(report.listing_owner_profile_image_url) || "/profile-icon.png"}
+                            alt="Profile"
+                            width={32}
+                            height={32}
+                            className="w-9 h-9 rounded-full object-cover border border-stone-200 dark:border-[#2a2d3e] shrink-0"
+                          />
+                        </Link>
                         <div>
-                          <p className="text-xs font-bold text-stone-800 dark:text-stone-100">
+                          <p className="text-sm font-bold text-stone-800 dark:text-stone-100">
                             {report.reported_name}
                           </p>
-                          <p className="text-[11px] text-stone-400 dark:text-stone-500">
+                          <p className="text-xs text-stone-400 dark:text-stone-500">
                             {report.reported_location}
                           </p>
                         </div>
@@ -304,22 +340,38 @@ export default function ReportActionsModal({ report, onClose, onSubmit }: Report
                   </Card>
                 </div>
 
-                <Separator className="dark:bg-[#2a2d3e]" />
-
                 {/* Listing */}
                 {report.listing_title && (
                   <div>
                     <SectionLabel>Reported Listing</SectionLabel>
                     <Card className="p-0 dark:bg-[#13151f] dark:border-[#2a2d3e]">
                       <CardContent className="p-3.5 space-y-2.5">
-                        <InfoPair icon={Eye}  label="Listing Title" value={report.listing_title} />
-                        {report.listing_price != null && (
-                          <InfoPair
-                            icon={Tag}
-                            label="Price"
-                            value={`₱${report.listing_price.toLocaleString("en-PH")}${report.listing_price_unit ? ` ${report.listing_price_unit}` : ""}`}
-                          />
-                        )}
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <Link
+                            href={`/listing/${report.target_id}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            title="Open listing"
+                            aria-label="Open listing"
+                            className="shrink-0"
+                          >
+                            <Image
+                              src={validateImageURL(report.listing_image_url) || "/logo.png"}
+                              alt={report.target_name}
+                              width={40}
+                              height={40}
+                              className="w-10 h-10 rounded-md object-cover border border-stone-200 dark:border-[#2a2d3e] shrink-0"
+                            />
+                          </Link>
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold text-stone-700 dark:text-stone-200 line-clamp-2">
+                              {report.target_name}
+                            </p>
+                            <p className="text-xs text-stone-500 dark:text-stone-400 truncate">
+                              {phpFmt.format(report.listing_price ?? 0)} / {report.listing_price_unit || "unit"}
+                            </p>
+                          </div>
+                        </div>
                       </CardContent>
                     </Card>
                   </div>
@@ -339,10 +391,10 @@ export default function ReportActionsModal({ report, onClose, onSubmit }: Report
                     </div>
                     {report.description && (
                       <div className="rounded-xl bg-stone-50 dark:bg-[#13151f] border border-stone-200 dark:border-[#2a2d3e] p-3.5">
-                        <p className="text-[10px] font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest mb-1.5">
+                        <p className="text-xs font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest mb-1.5">
                           Description
                         </p>
-                        <p className="text-xs text-stone-600 dark:text-stone-300 leading-relaxed">
+                        <p className="text-sm text-stone-600 dark:text-stone-300 leading-relaxed">
                           {report.description}
                         </p>
                       </div>
@@ -388,7 +440,7 @@ export default function ReportActionsModal({ report, onClose, onSubmit }: Report
                       return (
                         <div key={group}>
                           {/* Group label */}
-                          <p className="text-[10px] font-bold text-stone-300 dark:text-stone-600 uppercase tracking-widest mb-1.5 mt-3 first:mt-0">
+                          <p className="text-xs font-bold text-stone-300 dark:text-stone-600 uppercase tracking-widest mb-1.5 mt-3 first:mt-0">
                             {group}
                           </p>
                           <div className="space-y-1.5">
@@ -425,7 +477,7 @@ export default function ReportActionsModal({ report, onClose, onSubmit }: Report
                                   </div>
                                   <div className="flex-1 min-w-0">
                                     <p className={cn(
-                                      "text-xs font-semibold leading-none",
+                                      "text-sm font-semibold leading-none",
                                       isSelected
                                         ? opt.severity === "low"      ? "text-teal-700 dark:text-teal-300"
                                           : opt.severity === "medium" ? "text-amber-700 dark:text-amber-300"
@@ -435,7 +487,7 @@ export default function ReportActionsModal({ report, onClose, onSubmit }: Report
                                     )}>
                                       {opt.label}
                                     </p>
-                                    <p className="text-[11px] text-stone-400 dark:text-stone-500 mt-0.5 leading-none">
+                                    <p className="text-xs text-stone-400 dark:text-stone-500 mt-0.5 leading-none">
                                       {opt.description}
                                     </p>
                                   </div>
@@ -474,13 +526,10 @@ export default function ReportActionsModal({ report, onClose, onSubmit }: Report
 
               {/* Reason textarea */}
               <div className="space-y-1.5">
-                <Label className="text-[10px] font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest">
+                <Label className="text-xs font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest">
                   {isPending ? (
                     <>
-                      Action Reason
-                      <span className="normal-case font-normal text-stone-400 dark:text-stone-600 ml-1.5">
-                        — required
-                      </span>
+                      Action Reason<span className="text-red-500 ml-0.5">*</span>
                     </>
                   ) : "Action Reason (Read-only)"}
                 </Label>
@@ -499,11 +548,6 @@ export default function ReportActionsModal({ report, onClose, onSubmit }: Report
                     !isPending && "cursor-default opacity-75",
                   )}
                 />
-                {isPending && (
-                  <p className="text-[10px] text-stone-400 dark:text-stone-500">
-                    This reason will be logged in the report history and may be sent to the user.
-                  </p>
-                )}
               </div>
 
               {/* Severity warning for destructive actions */}
