@@ -7,7 +7,7 @@ import Link from "next/link";
 import {
   MapPin, Star, MessageCircle, Bookmark, Share2,
   ChevronLeft, ChevronRight, Flag, Eye, Clock, Package,
-  CheckCircle, Phone, Zap, ArrowLeft, Truck
+  CheckCircle, Phone, Zap, ArrowLeft, Truck, AlertTriangle
 } from "lucide-react";
 import { useUser } from "@/utils/UserContext";
 import { addListingBookmark, getListingDetailById, removeListingBookmark, submitListingReport } from "@/services/listingDetailService";
@@ -284,6 +284,11 @@ export default function ListingDetailPage() {
   const isService    = listing.type === "service";
   const listingStatus = (listing.status ?? "").trim().toLowerCase();
   const listingSellStatus = (listing.sellStatus ?? "").trim().toLowerCase();
+  const isUnavailableState = listingStatus === "unavailable";
+  const isBannedState = listingStatus === "banned";
+  const isDeletedState = listingStatus === "deleted";
+  const ownerUnavailableState = isUnavailableState || isDeletedState;
+  const visitorUnavailableState = isUnavailableState || isBannedState || isDeletedState;
   const isSold = isSell && (listingStatus === "sold" || listingSellStatus === "sold");
   const images       = extra.images.filter(Boolean);
   const sellerRating = Number.isFinite(listing.seller.rating) ? Number(listing.seller.rating) : 0;
@@ -719,7 +724,14 @@ export default function ListingDetailPage() {
                 {/* ── CTA buttons ── */}
                 {isOwnListing ? (
                   <div className="flex flex-col gap-2">
-                    {isSold ? (
+                    {ownerUnavailableState ? (
+                      <button
+                        disabled
+                        className="flex items-center justify-center gap-2 w-full py-3 rounded-full bg-stone-400/80 text-white text-sm font-bold cursor-not-allowed opacity-95"
+                      >
+                        <AlertTriangle className="w-4 h-4" /> Unavailable
+                      </button>
+                    ) : isSold ? (
                       <button
                         disabled
                         className="flex items-center justify-center gap-2 w-full py-3 rounded-full bg-emerald-600/90 text-white text-sm font-bold cursor-not-allowed opacity-95"
@@ -731,21 +743,28 @@ export default function ListingDetailPage() {
                         <Link
                           href={`/listing/${id}/edit`}
                           className="flex items-center justify-center gap-2 w-full py-3 rounded-full bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 text-sm font-bold hover:opacity-90 transition-opacity">
-                          ✏️ Edit Listing
+                          Edit Listing
                         </Link>
                         <button
                           onClick={handleRemoveListing}
                           disabled={deleting}
                           className="flex items-center justify-center gap-2 w-full py-3 rounded-full border border-red-200 dark:border-red-800 text-red-500 dark:text-red-400 text-sm font-semibold hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
                         >
-                          🗑 {deleting ? "Removing..." : "Remove Listing"}
+                          {deleting ? "Removing..." : "Remove Listing"}
                         </button>
                       </>
                     )}
                   </div>
                 ) : (
                   <div className="flex flex-col gap-2">
-                    {isSold ? (
+                    {visitorUnavailableState ? (
+                      <button
+                        disabled
+                        className="flex items-center justify-center gap-2 w-full py-3 rounded-full bg-stone-400/80 text-white text-sm font-bold cursor-not-allowed opacity-95"
+                      >
+                        <AlertTriangle className="w-4 h-4" /> Unavailable
+                      </button>
+                    ) : isSold ? (
                       <button
                         disabled
                         className="flex items-center justify-center gap-2 w-full py-3 rounded-full bg-emerald-600/90 text-white text-sm font-bold cursor-not-allowed opacity-95"
@@ -920,7 +939,14 @@ export default function ListingDetailPage() {
       {/* ── Mobile sticky bar ── */}
       {!isOwnListing && (
         <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white dark:bg-[#1c1f2e] border-t border-stone-200 dark:border-[#2a2d3e] px-4 py-3 flex gap-3 shadow-lg">
-          {isSold ? (
+          {visitorUnavailableState ? (
+            <button
+              disabled
+              className="flex-1 flex items-center justify-center gap-2 py-3 rounded-full bg-stone-400/80 text-white text-sm font-bold cursor-not-allowed opacity-95"
+            >
+              <AlertTriangle className="w-4 h-4" /> Unavailable
+            </button>
+          ) : isSold ? (
             <button
               disabled
               className="flex-1 flex items-center justify-center gap-2 py-3 rounded-full bg-emerald-600/90 text-white text-sm font-bold cursor-not-allowed opacity-95"
