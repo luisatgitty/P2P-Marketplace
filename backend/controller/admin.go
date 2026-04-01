@@ -314,7 +314,7 @@ func SetAdminReportStatus(c *fiber.Ctx) error {
 			if strings.EqualFold(err.Error(), "Report not found") {
 				return SendErrorResponse(c, 404, err.Error(), err)
 			}
-			if strings.Contains(strings.ToLower(err.Error()), "invalid") || strings.Contains(strings.ToLower(err.Error()), "required") {
+			if strings.Contains(strings.ToLower(err.Error()), "invalid") || strings.Contains(strings.ToLower(err.Error()), "required") || strings.Contains(strings.ToLower(err.Error()), "already") {
 				return SendErrorResponse(c, 400, err.Error(), err)
 			}
 			return SendErrorResponse(c, 500, err.Error(), err)

@@ -763,6 +763,7 @@ func GetAdminReports() ([]model.AdminReportListItemFromDb, error) {
 			END AS target_name,
 			COALESCE(r.reported_listing_id::text, r.reported_user_id::text, '') AS target_id,
 			COALESCE(l.title, '') AS listing_title,
+			COALESCE(l.status::text, '') AS listing_status,
 			COALESCE(li.image_url, '') AS listing_image_url,
 			COALESCE(l.price, 0)::int AS listing_price,
 			COALESCE(l.price_unit, '') AS listing_price_unit,
@@ -779,7 +780,10 @@ func GetAdminReports() ([]model.AdminReportListItemFromDb, error) {
 			r.created_at AS submitted_at,
 			NULLIF(TRIM(CONCAT_WS(' ', NULLIF(TRIM(res.first_name), ''), NULLIF(TRIM(res.last_name), ''))), '') AS resolved_by,
 			r.resolved_at,
-			r.action_taken::text AS action_taken,
+			CASE
+				WHEN r.action_taken::text = 'HIDE_LISTING' THEN 'BAN_LISTING'
+				ELSE r.action_taken::text
+			END AS action_taken,
 			r.action_reason
 		FROM public.reports r
 		LEFT JOIN public.users rep ON rep.id = r.reporter_id
@@ -805,6 +809,7 @@ func GetAdminReports() ([]model.AdminReportListItemFromDb, error) {
 	for i := range reports {
 		reports[i].TargetType = strings.ToUpper(strings.TrimSpace(reports[i].TargetType))
 		reports[i].Status = strings.ToUpper(strings.TrimSpace(reports[i].Status))
+		reports[i].ListingStatus = strings.ToUpper(strings.TrimSpace(reports[i].ListingStatus))
 		if strings.TrimSpace(reports[i].Reporter) == "" {
 			reports[i].Reporter = "Unknown Reporter"
 		}
@@ -853,6 +858,9 @@ func SetAdminReportAction(reportId, adminUserId, action, reason string) error {
 	db := middleware.DBConn
 
 	normalizedAction := strings.ToUpper(strings.TrimSpace(action))
+	if normalizedAction == "BAN_LISTING" {
+		normalizedAction = "HIDE_LISTING"
+	}
 	trimmedReason := strings.TrimSpace(reason)
 	if trimmedReason == "" {
 		return fmt.Errorf("Reason is required")
@@ -860,7 +868,6 @@ func SetAdminReportAction(reportId, adminUserId, action, reason string) error {
 
 	allowed := map[string]bool{
 		"DISMISS":        true,
-		"WARN_USER":      true,
 		"HIDE_LISTING":   true,
 		"DELETE_LISTING": true,
 		"LOCK_3":         true,
@@ -872,12 +879,224 @@ func SetAdminReportAction(reportId, adminUserId, action, reason string) error {
 		return fmt.Errorf("Invalid report action")
 	}
 
+	tx := db.Begin()
+	if tx.Error != nil {
+		return tx.Error
+	}
+
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	type reportTarget struct {
+		ReportedUserId    *string `gorm:"column:reported_user_id"`
+		ReportedListingId *string `gorm:"column:reported_listing_id"`
+		ListingOwnerId    *string `gorm:"column:listing_owner_id"`
+		Status            string  `gorm:"column:status"`
+	}
+
+	var target reportTarget
+	targetQuery := `
+		SELECT
+			r.reported_user_id::text AS reported_user_id,
+			r.reported_listing_id::text AS reported_listing_id,
+			l.user_id::text AS listing_owner_id,
+			r.status::text AS status
+		FROM public.reports r
+		LEFT JOIN public.listings l ON l.id = r.reported_listing_id
+		WHERE r.id = $1
+		LIMIT 1
+	`
+	result := tx.Raw(targetQuery, reportId).Scan(&target)
+	if result.Error != nil {
+		tx.Rollback()
+		return fmt.Errorf("Failed to validate report")
+	}
+	if result.RowsAffected == 0 {
+		tx.Rollback()
+		return fmt.Errorf("Report not found")
+	}
+
+	if strings.EqualFold(strings.TrimSpace(target.Status), "RESOLVED") || strings.EqualFold(strings.TrimSpace(target.Status), "DISMISSED") {
+		tx.Rollback()
+		return fmt.Errorf("Report is already finalized")
+	}
+
+	var targetUserId string
+	if target.ReportedUserId != nil && strings.TrimSpace(*target.ReportedUserId) != "" {
+		targetUserId = strings.TrimSpace(*target.ReportedUserId)
+	} else if target.ListingOwnerId != nil && strings.TrimSpace(*target.ListingOwnerId) != "" {
+		targetUserId = strings.TrimSpace(*target.ListingOwnerId)
+	}
+
+	targetListingId := ""
+	if target.ReportedListingId != nil {
+		targetListingId = strings.TrimSpace(*target.ReportedListingId)
+	}
+
+	effectiveAction := normalizedAction
+	now := time.Now()
+
+	if (effectiveAction == "LOCK_3" || effectiveAction == "LOCK_7" || effectiveAction == "LOCK_30") && targetUserId == "" {
+		tx.Rollback()
+		return fmt.Errorf("Reported user is required for account lockout")
+	}
+	if (effectiveAction == "HIDE_LISTING" || effectiveAction == "DELETE_LISTING") && targetListingId == "" {
+		tx.Rollback()
+		return fmt.Errorf("Reported listing is required for listing action")
+	}
+	if effectiveAction == "PERMANENT_BAN" && targetUserId == "" {
+		tx.Rollback()
+		return fmt.Errorf("Reported user is required for account ban")
+	}
+
+	if effectiveAction == "HIDE_LISTING" {
+		updateListingResult := tx.Exec(`
+			UPDATE public.listings
+			SET
+				status = 'BANNED'::listing_status,
+				banned_until = now() + INTERVAL '1 day',
+				updated_at = now()
+			WHERE id = $1
+		`, targetListingId)
+		if updateListingResult.Error != nil {
+			tx.Rollback()
+			return fmt.Errorf("Failed to shadow ban listing")
+		}
+		if updateListingResult.RowsAffected == 0 {
+			tx.Rollback()
+			return fmt.Errorf("Listing not found")
+		}
+	}
+
+	if effectiveAction == "DELETE_LISTING" {
+		updateListingResult := tx.Exec(`
+			UPDATE public.listings
+			SET
+				status = 'DELETED'::listing_status,
+				deleted_at = now(),
+				updated_at = now()
+			WHERE id = $1
+		`, targetListingId)
+		if updateListingResult.Error != nil {
+			tx.Rollback()
+			return fmt.Errorf("Failed to delete listing")
+		}
+		if updateListingResult.RowsAffected == 0 {
+			tx.Rollback()
+			return fmt.Errorf("Listing not found")
+		}
+
+		if targetUserId != "" {
+			if err := tx.Exec(`
+				INSERT INTO public.notifications (user_id, type, message)
+				VALUES ($1, 'REPORT_ACTION', $2)
+			`, targetUserId, "Your listing was removed after moderator review. Reason: "+trimmedReason).Error; err != nil {
+				tx.Rollback()
+				return fmt.Errorf("Failed to notify listing owner")
+			}
+		}
+	}
+
+	if effectiveAction == "LOCK_3" || effectiveAction == "LOCK_7" || effectiveAction == "LOCK_30" {
+		var priorLockoutCount int
+		if err := tx.Raw(`
+			SELECT COUNT(*)::int
+			FROM public.reports r
+			LEFT JOIN public.listings l ON l.id = r.reported_listing_id
+			WHERE r.status IN ('RESOLVED', 'DISMISSED')
+				AND r.action_taken IN ('LOCK_3', 'LOCK_7', 'LOCK_30')
+				AND COALESCE(r.reported_user_id, l.user_id) = $1::uuid
+		`, targetUserId).Scan(&priorLockoutCount).Error; err != nil {
+			tx.Rollback()
+			return fmt.Errorf("Failed to validate prior account lockouts")
+		}
+
+		if priorLockoutCount >= 2 {
+			effectiveAction = "PERMANENT_BAN"
+		} else {
+			lockDays := 3
+			if effectiveAction == "LOCK_7" {
+				lockDays = 7
+			} else if effectiveAction == "LOCK_30" {
+				lockDays = 30
+			}
+			lockUntil := now.Add(time.Duration(lockDays) * 24 * time.Hour)
+
+			lockResult := tx.Exec(`
+				UPDATE public.users
+				SET
+					account_locked_until = $1,
+					updated_at = now()
+				WHERE id = $2
+					AND deleted_at IS NULL
+			`, lockUntil, targetUserId)
+			if lockResult.Error != nil {
+				tx.Rollback()
+				return fmt.Errorf("Failed to lock reported account")
+			}
+			if lockResult.RowsAffected == 0 {
+				tx.Rollback()
+				return fmt.Errorf("Reported user not found")
+			}
+
+			if err := tx.Exec(`DELETE FROM public.sessions WHERE user_id = $1`, targetUserId).Error; err != nil {
+				tx.Rollback()
+				return fmt.Errorf("Failed to revoke user sessions")
+			}
+
+			if err := tx.Exec(`
+				INSERT INTO public.notifications (user_id, type, message)
+				VALUES ($1, 'REPORT_ACTION', $2)
+			`, targetUserId, fmt.Sprintf("Your account has been temporarily locked for %d day(s) after moderator review. Reason: %s", lockDays, trimmedReason)).Error; err != nil {
+				tx.Rollback()
+				return fmt.Errorf("Failed to notify locked user")
+			}
+		}
+	}
+
+	if effectiveAction == "PERMANENT_BAN" {
+		banResult := tx.Exec(`
+			UPDATE public.users
+			SET
+				is_active = FALSE,
+				account_locked_until = NULL,
+				deleted_at = now(),
+				updated_at = now()
+			WHERE id = $1
+				AND deleted_at IS NULL
+		`, targetUserId)
+		if banResult.Error != nil {
+			tx.Rollback()
+			return fmt.Errorf("Failed to permanently ban reported user")
+		}
+		if banResult.RowsAffected == 0 {
+			tx.Rollback()
+			return fmt.Errorf("Reported user not found")
+		}
+
+		if err := tx.Exec(`DELETE FROM public.sessions WHERE user_id = $1`, targetUserId).Error; err != nil {
+			tx.Rollback()
+			return fmt.Errorf("Failed to revoke user sessions")
+		}
+
+		if err := tx.Exec(`
+			INSERT INTO public.notifications (user_id, type, message)
+			VALUES ($1, 'REPORT_ACTION', $2)
+		`, targetUserId, "Your account has been permanently banned after moderator review. Reason: "+trimmedReason).Error; err != nil {
+			tx.Rollback()
+			return fmt.Errorf("Failed to notify banned user")
+		}
+	}
+
 	nextStatus := "RESOLVED"
-	if normalizedAction == "DISMISS" {
+	if effectiveAction == "DISMISS" {
 		nextStatus = "DISMISSED"
 	}
 
-	result := db.Exec(`
+	result = tx.Exec(`
 		UPDATE public.reports
 		SET
 			status = $1::report_status,
@@ -888,13 +1107,19 @@ func SetAdminReportAction(reportId, adminUserId, action, reason string) error {
 			action_taken = $3::report_action,
 			action_reason = $4
 		WHERE id = $5
-	`, nextStatus, adminUserId, normalizedAction, trimmedReason, reportId)
+	`, nextStatus, adminUserId, effectiveAction, trimmedReason, reportId)
 
 	if result.Error != nil {
+		tx.Rollback()
 		return fmt.Errorf("Failed to apply report action")
 	}
 	if result.RowsAffected == 0 {
+		tx.Rollback()
 		return fmt.Errorf("Report not found")
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		return err
 	}
 
 	return nil

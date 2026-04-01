@@ -143,7 +143,7 @@ function InfoPair({ icon: Icon, label, value, mono = false }: {
           {label}
         </p>
         <p className={cn(
-          "text-xs text-stone-700 dark:text-stone-200 wrap-break-word",
+          "text-sm text-stone-700 dark:text-stone-200 wrap-break-word",
           mono && "font-mono",
           !value && "italic text-stone-400 dark:text-stone-600",
         )}>
@@ -174,9 +174,13 @@ export default function ReportActionsModal({ report, onClose, onSubmit }: Report
 
   const isPending    = report.status === "PENDING";
   const isResolved   = report.status !== "PENDING";
+  const isSoldListing = report.listing_status === "SOLD";
+  const visibleActionOptions = isSoldListing
+    ? ACTION_OPTIONS.filter((option) => option.value !== "BAN_LISTING")
+    : ACTION_OPTIONS;
   const canSubmit    = selectedAction !== null && reason.trim().length > 0;
 
-  const selectedOpt  = ACTION_OPTIONS.find(a => a.value === selectedAction) ?? null;
+  const selectedOpt  = visibleActionOptions.find(a => a.value === selectedAction) ?? null;
 
   async function handleSubmit() {
     if (!selectedAction || !reason.trim()) return;
@@ -389,160 +393,156 @@ export default function ReportActionsModal({ report, onClose, onSubmit }: Report
                     </p>
                   </div>
                 </div>
-
-                {/* Resolution record (read-only, shown when resolved) */}
-                {isResolved && report.action_taken && (
-                  <>
-                    <Separator className="dark:bg-[#2a2d3e]" />
-                    <div>
-                      <SectionLabel>Resolution Record</SectionLabel>
-                      <Card className="dark:bg-[#13151f] border-teal-200 dark:border-teal-900/40">
-                        <CardContent className="p-3.5 space-y-2.5">
-                          <InfoPair
-                            icon={Gavel}
-                            label="Action Taken"
-                            value={ACTION_OPTIONS.find(a => a.value === report.action_taken)?.label ?? report.action_taken}
-                          />
-                          <InfoPair icon={User}     label="Reviewed By" value={report.resolved_by}  />
-                          <InfoPair icon={FileText} label="Reason"       value={report.action_reason} />
-                          <InfoPair icon={Clock}    label="Reviewed At"  value={report.resolved_at}  />
-                        </CardContent>
-                      </Card>
-                    </div>
-                  </>
-                )}
               </div>
             </div>
 
             {/* ══ RIGHT — Action selection + reason ══ */}
             <div className="flex-1 p-5 space-y-5">
-              <div>
-                <SectionLabel>
-                  {isPending ? (
-                    <>
-                      Select Action<span className="text-red-500 ml-0.5">*</span>
-                    </>
-                  ) : (
-                    "Action Taken"
-                  )}
-                </SectionLabel>
-
-                {isPending ? (
-                  <div className="space-y-2">
-                    {ACTION_GROUPS.map(group => {
-                      const groupOptions = ACTION_OPTIONS.filter(a => a.group === group);
-                      return (
-                        <div key={group}>
-                          {/* Group label */}
-                          <p className="text-xs font-bold text-stone-300 dark:text-stone-600 uppercase tracking-widest mb-1.5 mt-3 first:mt-0">
-                            {group}
-                          </p>
-                          <div className="space-y-1.5">
-                            {groupOptions.map(opt => {
-                              const styles  = SEVERITY_STYLES[opt.severity];
-                              const isSelected = selectedAction === opt.value;
-                              const Icon    = opt.icon;
-                              return (
-                                <button
-                                  key={opt.value}
-                                  type="button"
-                                  onClick={() => setSelectedAction(opt.value)}
-                                  className={cn(
-                                    "w-full flex items-center gap-3 px-3.5 py-3 rounded-xl border text-left transition-all duration-150",
-                                    isSelected ? styles.selected : styles.idle,
-                                    "bg-white dark:bg-[#13151f]",
-                                  )}
-                                >
-                                  <div className={cn(
-                                    "w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-colors",
-                                    isSelected
-                                      ? "bg-current/10"
-                                      : "bg-stone-100 dark:bg-[#252837]",
-                                  )}>
-                                    <Icon className={cn(
-                                      "w-3.5 h-3.5 transition-colors",
-                                      isSelected
-                                        ? opt.severity === "low"      ? "text-teal-600 dark:text-teal-400"
-                                          : opt.severity === "medium" ? "text-amber-600 dark:text-amber-400"
-                                          : opt.severity === "high"   ? "text-orange-600 dark:text-orange-400"
-                                          :                             "text-red-600 dark:text-red-400"
-                                        : "text-stone-500 dark:text-stone-400",
-                                    )} />
-                                  </div>
-                                  <div className="flex-1 min-w-0">
-                                    <p className={cn(
-                                      "text-sm font-semibold leading-none",
-                                      isSelected
-                                        ? opt.severity === "low"      ? "text-teal-700 dark:text-teal-300"
-                                          : opt.severity === "medium" ? "text-amber-700 dark:text-amber-300"
-                                          : opt.severity === "high"   ? "text-orange-700 dark:text-orange-300"
-                                          :                             "text-red-700 dark:text-red-300"
-                                        : "text-stone-700 dark:text-stone-200",
-                                    )}> 
-                                      {opt.label}
-                                    </p>
-                                    <p className="text-xs text-stone-400 dark:text-stone-500 mt-0.5 leading-none">
-                                      {opt.description}
-                                    </p>
-                                  </div>
-                                  <div className={cn(
-                                    "w-2 h-2 rounded-full shrink-0 transition-opacity",
-                                    styles.dot,
-                                    isSelected ? "opacity-100" : "opacity-0",
-                                  )} />
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  /* Resolved — show selected action read-only */
-                  <div className={cn(
-                    "flex items-center gap-3 px-3.5 py-3 rounded-xl border",
-                    selectedOpt ? SEVERITY_STYLES[selectedOpt.severity].selected : "",
-                  )}>
-                    {selectedOpt && (
+              {(!isResolved && !report.action_taken)
+              ? (
+                <>
+                <div>
+                  <SectionLabel>
+                    {isPending ? (
                       <>
-                        <selectedOpt.icon className="w-4 h-4 shrink-0 text-stone-500" />
-                        <p className="text-sm font-semibold text-stone-700 dark:text-stone-200">
-                          {selectedOpt.label}
-                        </p>
+                        Select Action<span className="text-red-500 ml-0.5">*</span>
                       </>
+                    ) : (
+                      "Action Taken"
                     )}
-                  </div>
-                )}
-              </div>
+                  </SectionLabel>
 
-              <Separator className="dark:bg-[#2a2d3e]" />
-
-              {/* Reason textarea */}
-              <div className="space-y-1.5">
-                <Label className="text-xs font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest">
                   {isPending ? (
-                    <>
-                      Action Reason<span className="text-red-500 ml-0.5">*</span>
-                    </>
-                  ) : "Action Reason (Read-only)"}
-                </Label>
-                <Textarea
-                  rows={isPending ? 4 : 3}
-                  value={reason}
-                  onChange={e => isPending && setReason(e.target.value)}
-                  readOnly={!isPending}
-                  placeholder={
-                    isPending
-                      ? "Describe the reason for this action. This will be visible to the reported user if applicable…"
-                      : undefined
-                  }
-                  className={cn(
-                    "resize-none text-xs dark:bg-[#13151f] dark:border-[#2a2d3e] dark:text-stone-100 dark:placeholder-stone-600",
-                    !isPending && "cursor-default opacity-75",
+                    <div className="space-y-2">
+                      {ACTION_GROUPS.map(group => {
+                        const groupOptions = visibleActionOptions.filter(a => a.group === group);
+                        return (
+                          <div key={group}>
+                            {/* Group label */}
+                            <p className="text-xs font-bold text-stone-300 dark:text-stone-600 uppercase tracking-widest mb-1.5 mt-3 first:mt-0">
+                              {group}
+                            </p>
+                            <div className="space-y-1.5">
+                              {groupOptions.map(opt => {
+                                const styles  = SEVERITY_STYLES[opt.severity];
+                                const isSelected = selectedAction === opt.value;
+                                const Icon    = opt.icon;
+                                return (
+                                  <button
+                                    key={opt.value}
+                                    type="button"
+                                    onClick={() => setSelectedAction(opt.value)}
+                                    className={cn(
+                                      "w-full flex items-center gap-3 px-3.5 py-3 rounded-xl border text-left transition-all duration-150",
+                                      isSelected ? styles.selected : styles.idle,
+                                      "bg-white dark:bg-[#13151f]",
+                                    )}
+                                  >
+                                    <div className={cn(
+                                      "w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-colors",
+                                      isSelected
+                                        ? "bg-current/10"
+                                        : "bg-stone-100 dark:bg-[#252837]",
+                                    )}>
+                                      <Icon className={cn(
+                                        "w-3.5 h-3.5 transition-colors",
+                                        isSelected
+                                          ? opt.severity === "low"      ? "text-teal-600 dark:text-teal-400"
+                                            : opt.severity === "medium" ? "text-amber-600 dark:text-amber-400"
+                                            : opt.severity === "high"   ? "text-orange-600 dark:text-orange-400"
+                                            :                             "text-red-600 dark:text-red-400"
+                                          : "text-stone-500 dark:text-stone-400",
+                                      )} />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                      <p className={cn(
+                                        "text-sm font-semibold leading-none",
+                                        isSelected
+                                          ? opt.severity === "low"      ? "text-teal-700 dark:text-teal-300"
+                                            : opt.severity === "medium" ? "text-amber-700 dark:text-amber-300"
+                                            : opt.severity === "high"   ? "text-orange-700 dark:text-orange-300"
+                                            :                             "text-red-700 dark:text-red-300"
+                                          : "text-stone-700 dark:text-stone-200",
+                                      )}> 
+                                        {opt.label}
+                                      </p>
+                                      <p className="text-xs text-stone-400 dark:text-stone-500 mt-0.5 leading-none">
+                                        {opt.description}
+                                      </p>
+                                    </div>
+                                    <div className={cn(
+                                      "w-2 h-2 rounded-full shrink-0 transition-opacity",
+                                      styles.dot,
+                                      isSelected ? "opacity-100" : "opacity-0",
+                                    )} />
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    /* Resolved — show selected action read-only */
+                    <div className={cn(
+                      "flex items-center gap-3 px-3.5 py-3 rounded-xl border",
+                      selectedOpt ? SEVERITY_STYLES[selectedOpt.severity].selected : "",
+                    )}>
+                      {selectedOpt && (
+                        <>
+                          <selectedOpt.icon className="w-4 h-4 shrink-0 text-stone-500" />
+                          <p className="text-sm font-semibold text-stone-700 dark:text-stone-200">
+                            {selectedOpt.label}
+                          </p>
+                        </>
+                      )}
+                    </div>
                   )}
-                />
-              </div>
+                </div>
+
+                <Separator className="dark:bg-[#2a2d3e]" />
+
+                {/* Reason textarea */}
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest">
+                    Action Reason
+                    {isPending && <span className="text-red-500 ml-0.5">*</span>}
+                  </Label>
+                  <Textarea
+                    rows={isPending ? 4 : 3}
+                    value={reason}
+                    onChange={e => isPending && setReason(e.target.value)}
+                    readOnly={!isPending}
+                    placeholder={
+                      isPending
+                        ? "Describe the reason for this action. This will be visible to the reported user if applicable…"
+                        : undefined
+                    }
+                    className={cn(
+                      "resize-none text-xs dark:bg-[#13151f] dark:border-[#2a2d3e] dark:text-stone-100 dark:placeholder-stone-600",
+                      !isPending && "cursor-default opacity-75",
+                    )}
+                  />
+                </div>
+                </>
+              ) : (
+                <div>
+                  <SectionLabel>Resolution Record</SectionLabel>
+                  <Card className="p-0 dark:bg-[#13151f] border-teal-200 dark:border-teal-900/40">
+                    <CardContent className="p-3.5 space-y-2.5">
+                      <InfoPair
+                        icon={Gavel}
+                        label="Action Taken"
+                        value={ACTION_OPTIONS.find(a => a.value === report.action_taken)?.label ?? report.action_taken}
+                      />
+                      <InfoPair icon={User}     label="Reviewed By" value={report.resolved_by}  />
+                      <InfoPair icon={FileText} label="Reason"       value={report.action_reason} />
+                      <InfoPair icon={Clock}    label="Reviewed At"  value={report.resolved_at}  />
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
 
               {/* Severity warning for destructive actions */}
               {isPending && selectedAction && selectedOpt && (selectedOpt.severity === "high" || selectedOpt.severity === "critical") && (

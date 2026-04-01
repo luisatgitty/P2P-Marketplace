@@ -389,6 +389,7 @@ type AdminReportListItemFromDb struct {
 	TargetName           string     `gorm:"column:target_name" json:"target_name"`
 	TargetId             string     `gorm:"column:target_id" json:"target_id"`
 	ListingTitle         string     `gorm:"column:listing_title" json:"listing_title"`
+	ListingStatus        string     `gorm:"column:listing_status" json:"listing_status"`
 	ListingImageURL      string     `gorm:"column:listing_image_url" json:"listing_image_url"`
 	ListingPrice         int        `gorm:"column:listing_price" json:"listing_price"`
 	ListingPriceUnit     string     `gorm:"column:listing_price_unit" json:"listing_price_unit"`

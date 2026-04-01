@@ -1,5 +1,6 @@
 export type ReportStatus = "PENDING" | "RESOLVED" | "DISMISSED";
 export type ReportTarget = "LISTING" | "USER";
+export type ListingStatus = "AVAILABLE" | "UNAVAILABLE" | "SOLD" | "HIDDEN" | "BANNED" | "DELETED";
 
 export type ReportActionType =
   | "DISMISS"
@@ -26,6 +27,7 @@ export interface AdminReport {
   target_name: string;
   target_id: string;
   listing_title: string;
+  listing_status: ListingStatus | "";
   listing_image_url: string;
   listing_price: number | null;
   listing_price_unit: string | null;
