@@ -112,13 +112,13 @@ const MODAL_CONTENT: Record<ModalKey, { title: string; body: React.ReactNode }> 
 
 // Buy, Rent, Services keep their href; FAQ/Privacy/Terms open a modal
 const LINKS = [
-  { label: "Buy",      href: "/?type=sell" as const },
-  { label: "Rent",     href: "/?type=rent" as const },
-  { label: "Services", href: "/?type=service" as const },
-  { label: "FAQ",      modal: "faq" as const },
-  { label: "Privacy",  modal: "privacy" as const },
-  { label: "Terms",    modal: "terms" as const },
-] as const;
+  { label: "Buy",      href: "/?type=sell"    },
+  { label: "Rent",     href: "/?type=rent"    },
+  { label: "Services", href: "/?type=service" },
+  { label: "FAQ",      modal: "faq" as ModalKey },
+  { label: "Privacy",  modal: "privacy" as ModalKey },
+  { label: "Terms",    modal: "terms" as ModalKey },
+];
 
 const SOCIALS = [
   { icon: <TwitterIcon />,   href: "#" },
@@ -154,10 +154,10 @@ export default function Footer() {
 
             <nav className="flex flex-wrap gap-x-2 gap-y-2">
               {LINKS.map((link) =>
-                "href" in link && link.href ? (
+                "href" in link ? (
                   <Link
                     key={link.label}
-                    href={link.href}
+                    href={link.href as string}
                     className="px-2 py-1 text-stone-400 text-sm hover:bg-amber-800 hover:text-stone-100 rounded-lg whitespace-nowrap"
                   >
                     {link.label}
