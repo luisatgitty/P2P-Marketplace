@@ -3,6 +3,7 @@ package controller
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"p2p_marketplace/backend/config"
 	"p2p_marketplace/backend/middleware"
@@ -64,6 +65,11 @@ func ProfileById(c *fiber.Ctx) error {
 	user, err := repository.GetProfileUserById(profileUserId)
 	if err != nil {
 		return SendErrorResponse(c, 404, err.Error(), err)
+	}
+
+	now := time.Now().UTC()
+	if !user.IsActive || (user.AccountLockedUntil != nil && user.AccountLockedUntil.After(now)) {
+		return SendErrorResponse(c, 404, "User not found", nil)
 	}
 
 	listings, err := repository.GetUserListings(profileUserId)
