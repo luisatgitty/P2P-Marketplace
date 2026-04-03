@@ -13,6 +13,30 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
+func getOptionalRequesterRoleFromSession(c *fiber.Ctx) string {
+	sessionToken := strings.TrimSpace(c.Cookies(config.SessionCookieName))
+	if sessionToken == "" {
+		return ""
+	}
+
+	sessionId := middleware.HashToken(sessionToken)
+	sessionFromDb, err := repository.GetSessionById(sessionId)
+	if err != nil {
+		return ""
+	}
+
+	if sessionFromDb.UserId == "" || sessionFromDb.IsRevoked || sessionFromDb.ExpiresAt.Before(time.Now()) {
+		return ""
+	}
+
+	requester, err := repository.GetUserById(sessionFromDb.UserId)
+	if err != nil || !requester.IsActive {
+		return ""
+	}
+
+	return strings.ToUpper(strings.TrimSpace(requester.Role))
+}
+
 func MeProfile(c *fiber.Ctx) error {
 	userId := fmt.Sprintf("%v", c.Locals("userId"))
 	if strings.TrimSpace(userId) == "" || userId == "%!v(<nil>)" {
@@ -68,7 +92,9 @@ func ProfileById(c *fiber.Ctx) error {
 	}
 
 	now := time.Now().UTC()
-	if !user.IsActive || (user.AccountLockedUntil != nil && user.AccountLockedUntil.After(now)) {
+	requesterRole := getOptionalRequesterRoleFromSession(c)
+	canViewBlockedProfile := requesterRole == "ADMIN" || requesterRole == "SUPER_ADMIN"
+	if (!user.IsActive || (user.AccountLockedUntil != nil && user.AccountLockedUntil.After(now))) && !canViewBlockedProfile {
 		return SendErrorResponse(c, 404, "User not found", nil)
 	}
 
