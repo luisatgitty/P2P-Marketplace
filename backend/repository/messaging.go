@@ -65,7 +65,15 @@ func GetConversationsByUser(userId string) ([]model.ConversationFromDb, error) {
 			c.last_message_at,
 			COALESCE(other_cm.last_read_message_id::text, '') AS other_last_read_message_id,
 			COALESCE(unread.unread_count, 0) AS unread_count,
-			(c.seller_id = $1) AS is_seller
+			(c.seller_id = $1) AS is_seller,
+			EXISTS(
+				SELECT 1
+				FROM public.reports rp
+				WHERE rp.reporter_id = $1::uuid
+					AND rp.reported_listing_id = c.listing_id
+					AND rp.reported_user_id = u.id
+					AND rp.status = 'PENDING'
+			) AS has_pending_report
 		FROM public.conversation_members cm
 		JOIN public.conversations c
 			ON c.id = cm.conversation_id
@@ -185,7 +193,15 @@ func GetConversationById(userId, conversationId string) (model.ConversationFromD
 			c.last_message_at,
 			COALESCE(other_cm.last_read_message_id::text, '') AS other_last_read_message_id,
 			COALESCE(unread.unread_count, 0) AS unread_count,
-			(c.seller_id = $1) AS is_seller
+			(c.seller_id = $1) AS is_seller,
+			EXISTS(
+				SELECT 1
+				FROM public.reports rp
+				WHERE rp.reporter_id = $1::uuid
+					AND rp.reported_listing_id = c.listing_id
+					AND rp.reported_user_id = u.id
+					AND rp.status = 'PENDING'
+			) AS has_pending_report
 		FROM public.conversation_members cm
 		JOIN public.conversations c
 			ON c.id = cm.conversation_id

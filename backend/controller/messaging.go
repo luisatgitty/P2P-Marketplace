@@ -145,6 +145,7 @@ func mapConversationPayload(baseURL string, row model.ConversationFromDb) map[st
 		"otherLastReadMessageId": strings.TrimSpace(row.OtherLastReadMsgId),
 		"unreadCount":            row.UnreadCount,
 		"isSeller":               row.IsSeller,
+		"hasPendingReport":       row.HasPendingReport,
 		"canSendMessage":         canSendMessage,
 		"self": map[string]any{
 			"isActive":           row.SelfIsActive,

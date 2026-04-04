@@ -35,6 +35,7 @@ type ConversationFromDb struct {
 	OtherLastReadMsgId string     `gorm:"column:other_last_read_message_id"`
 	UnreadCount        int        `gorm:"column:unread_count"`
 	IsSeller           bool       `gorm:"column:is_seller"`
+	HasPendingReport   bool       `gorm:"column:has_pending_report"`
 }
 
 type MessageFromDb struct {

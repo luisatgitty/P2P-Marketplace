@@ -65,6 +65,7 @@ export interface Conversation {
   otherLastReadMessageId?: string;
   unreadCount: number;
   isSeller: boolean;
+  hasPendingReport?: boolean;
   canSendMessage?: boolean;
 }
 
