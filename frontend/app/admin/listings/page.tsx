@@ -43,7 +43,7 @@ import { validateImageURL } from "@/utils/validation";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 type ListingType   = "SELL" | "RENT" | "SERVICE";
-type ListingStatus = "AVAILABLE" | "UNAVAILABLE" | "SOLD" | "HIDDEN";
+type ListingStatus = "AVAILABLE" | "UNAVAILABLE" | "SOLD" | "BANNED" | "DELETED";
 type SortField     = "title" | "type" | "price" | "views" | "transactions" | "created" | "owner" | "status";
 type SortDir       = "asc" | "desc";
 
@@ -88,7 +88,8 @@ const STATUS_CONFIG: Record<ListingStatus, string> = {
   AVAILABLE: "bg-teal-100 dark:bg-teal-900/40 text-teal-700 dark:text-teal-300",
   UNAVAILABLE: "bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300",
   SOLD:      "bg-stone-100 dark:bg-stone-800 text-stone-500 dark:text-stone-400",
-  HIDDEN:    "bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400",
+  BANNED:    "bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400",
+  DELETED:   "bg-stone-200 dark:bg-stone-700 text-stone-600 dark:text-stone-300",
 };
 
 const phpFmt = new Intl.NumberFormat("en-PH", {
@@ -214,14 +215,23 @@ export default function ListingsPage() {
 
   // ── Actions ───────────────────────────────────────────────────────────────────
   async function handleRemove(id: string) {
-    if (!window.confirm("Remove this listing permanently?")) return;
+    if (!window.confirm("Mark this listing as deleted?")) return;
     setActionLoadingListingId(id);
     try {
-      await deleteAdminListing(id);
-      setListings(ls => ls.filter(l => l.id !== id));
-      toast.success("Listing removed successfully", { position: "top-center" });
+      const updated = await deleteAdminListing(id);
+      setListings((prev) =>
+        prev.map((listing) =>
+          listing.id === id
+            ? {
+                ...listing,
+                status: updated.status,
+              }
+            : listing
+        )
+      );
+      toast.success("Listing marked as deleted.", { position: "top-center" });
     } catch (err) {
-      const message = typeof err === "string" ? err : "Failed to remove listing";
+      const message = typeof err === "string" ? err : "Failed to delete listing";
       toast.error(message, { position: "top-center" });
     } finally {
       setActionLoadingListingId(null);
@@ -229,11 +239,16 @@ export default function ListingsPage() {
   }
 
   async function handleToggleVisibility(id: string, currentStatus: ListingStatus) {
-    const shouldUnhide = currentStatus === "HIDDEN";
+    if (currentStatus === "DELETED") {
+      toast.error("Cannot update visibility for deleted listing", { position: "top-center" });
+      return;
+    }
+
+    const shouldUnban = currentStatus === "BANNED";
     const confirmed = window.confirm(
-      shouldUnhide
+      shouldUnban
         ? "Set this listing to UNAVAILABLE?"
-        : "Set this listing to HIDDEN?"
+        : "Shadow ban this listing?"
     );
     if (!confirmed) return;
 
@@ -251,8 +266,8 @@ export default function ListingsPage() {
         )
       );
       toast.success(
-        updated.status === "HIDDEN"
-          ? "Listing is now hidden."
+        updated.status === "BANNED"
+          ? "Listing is now shadow banned."
           : "Listing is now unavailable.",
         { position: "top-center" }
       );
@@ -327,7 +342,8 @@ export default function ListingsPage() {
               ["AVAILABLE", "Available"  ],
               ["UNAVAILABLE", "Unavailable"],
               ["SOLD",      "Sold"       ],
-              ["HIDDEN",    "Hidden"     ],
+              ["BANNED",    "Banned"     ],
+              ["DELETED",   "Deleted"    ],
             ]}
           />
           <FilterSelect
@@ -524,30 +540,35 @@ export default function ListingsPage() {
                         {/* Actions */}
                         <TableCell className="py-3.5">
                           <div className="flex items-center justify-end gap-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              type="button"
-                              title={listing.status === "HIDDEN" ? "Set to unavailable" : "Hide listing"}
-                              aria-label={listing.status === "HIDDEN" ? "Set to unavailable" : "Hide listing"}
-                              onClick={() => handleToggleVisibility(listing.id, listing.status)}
-                              disabled={actionLoadingListingId === listing.id}
-                              className="w-7 h-7 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/20 hover:text-amber-700 disabled:opacity-50"
-                            >
-                              <EyeOff className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              type="button"
-                              title="Remove listing"
-                              aria-label="Remove listing"
-                              onClick={() => handleRemove(listing.id)}
-                              disabled={actionLoadingListingId === listing.id}
-                              className="w-7 h-7 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 hover:text-red-600 disabled:opacity-50"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
+                            {/* Shadow Ban Button */}
+                            {(listing.status === "AVAILABLE" || listing.status === "BANNED") && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                type="button"
+                                title={listing.status === "BANNED" ? "Set to unavailable" : "Shadow ban listing"}
+                                aria-label={listing.status === "BANNED" ? "Set to unavailable" : "Shadow ban listing"}
+                                onClick={() => handleToggleVisibility(listing.id, listing.status)}
+                                disabled={actionLoadingListingId === listing.id}
+                                className="w-7 h-7 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/20 hover:text-amber-700 disabled:opacity-50"
+                              >
+                                <EyeOff className="w-4 h-4" />
+                              </Button>
+                            )}
+                            {listing.status !== "DELETED" && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                type="button"
+                                title="Delete listing"
+                                aria-label="Delete listing"
+                                onClick={() => handleRemove(listing.id)}
+                                disabled={actionLoadingListingId === listing.id}
+                                className="w-7 h-7 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 hover:text-red-600 disabled:opacity-50"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            )}
                           </div>
                         </TableCell>
                       </TableRow>

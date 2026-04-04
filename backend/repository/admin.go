@@ -584,8 +584,15 @@ func ToggleAdminListingVisibility(listingId string) (string, error) {
 	}
 
 	normalized := strings.ToUpper(strings.TrimSpace(currentStatus))
-	nextStatus := "HIDDEN"
-	if normalized == "HIDDEN" {
+	if normalized == "DELETED" {
+		return "", fmt.Errorf("Cannot update visibility for deleted listing")
+	}
+	if normalized != "AVAILABLE" && normalized != "BANNED" {
+		return "", fmt.Errorf("Listing cannot be shadow banned from current status")
+	}
+
+	nextStatus := "BANNED"
+	if normalized == "BANNED" {
 		nextStatus = "UNAVAILABLE"
 	}
 
@@ -593,6 +600,7 @@ func ToggleAdminListingVisibility(listingId string) (string, error) {
 		UPDATE public.listings
 		SET
 			status = $1::listing_status,
+			banned_until = CASE WHEN $1 = 'BANNED' THEN now() + INTERVAL '3 days' ELSE NULL END,
 			updated_at = now()
 		WHERE id = $2
 	`, nextStatus, listingId)
@@ -679,62 +687,19 @@ func GetAdminTransactions() ([]model.AdminTransactionListItemFromDb, error) {
 
 func DeleteAdminListing(listingId string) error {
 	db := middleware.DBConn
-	tx := db.Begin()
-	if tx.Error != nil {
-		return tx.Error
+	result := db.Exec(`
+		UPDATE public.listings
+		SET
+			status = 'DELETED'::listing_status,
+			deleted_at = now(),
+			updated_at = now()
+		WHERE id = $1
+	`, listingId)
+	if result.Error != nil {
+		return fmt.Errorf("Failed to delete listing")
 	}
-
-	defer func() {
-		if r := recover(); r != nil {
-			tx.Rollback()
-		}
-	}()
-
-	var existingId string
-	if err := tx.Raw(`SELECT id::text FROM public.listings WHERE id = $1 LIMIT 1`, listingId).Scan(&existingId).Error; err != nil {
-		tx.Rollback()
-		return fmt.Errorf("Failed to validate listing")
-	}
-	if strings.TrimSpace(existingId) == "" {
-		tx.Rollback()
+	if result.RowsAffected == 0 {
 		return fmt.Errorf("Listing not found")
-	}
-
-	if err := tx.Exec(`DELETE FROM public.bookmarks WHERE listing_id = $1`, listingId).Error; err != nil {
-		tx.Rollback()
-		return fmt.Errorf("Failed to remove listing bookmarks")
-	}
-
-	if err := tx.Exec(`DELETE FROM public.listing_sell_details WHERE listing_id = $1`, listingId).Error; err != nil {
-		tx.Rollback()
-		return fmt.Errorf("Failed to remove listing sell details")
-	}
-	if err := tx.Exec(`DELETE FROM public.listing_rent_details WHERE listing_id = $1`, listingId).Error; err != nil {
-		tx.Rollback()
-		return fmt.Errorf("Failed to remove listing rent details")
-	}
-	if err := tx.Exec(`DELETE FROM public.listing_service_details WHERE listing_id = $1`, listingId).Error; err != nil {
-		tx.Rollback()
-		return fmt.Errorf("Failed to remove listing service details")
-	}
-
-	if err := deleteListingImagesTx(tx, listingId); err != nil {
-		tx.Rollback()
-		return err
-	}
-
-	deleteResult := tx.Exec(`DELETE FROM public.listings WHERE id = $1`, listingId)
-	if deleteResult.Error != nil {
-		tx.Rollback()
-		return fmt.Errorf("Failed to remove listing")
-	}
-	if deleteResult.RowsAffected == 0 {
-		tx.Rollback()
-		return fmt.Errorf("Listing not found")
-	}
-
-	if err := tx.Commit().Error; err != nil {
-		return err
 	}
 
 	return nil
