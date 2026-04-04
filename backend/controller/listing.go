@@ -221,13 +221,13 @@ func GetListingById(c *fiber.Ctx) error {
 	daysOff := parseJSONStringArray(listing.DaysOff)
 
 	extra := map[string]any{
-		"description":    listing.Description,
-		"condition":      mapConditionDisplay(listing.Condition),
-		"images":         mapAssetURLs(baseURL, images),
-		"features":       features,
-		"views":          listing.ViewCount,
-		"offers":         0,
-		"deliveryMethod": mapDeliveryDisplay(listing.DeliveryMethod),
+		"description":      listing.Description,
+		"condition":        mapConditionDisplay(listing.Condition),
+		"images":           mapAssetURLs(baseURL, images),
+		"features":         features,
+		"transactionCount": listing.TransactionCount,
+		"reviewCount":      listing.ReviewCount,
+		"deliveryMethod":   mapDeliveryDisplay(listing.DeliveryMethod),
 	}
 
 	switch listing.Type {

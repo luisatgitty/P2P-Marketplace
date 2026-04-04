@@ -1010,6 +1010,8 @@ func GetListingDetailById(listingId string) (model.ListingDetailFromDb, error) {
 			l.id,
 			l.user_id AS seller_id,
 			u.is_active AS seller_is_active,
+			COALESCE(txn.transaction_count, 0) AS transaction_count,
+			COALESCE(rc.review_count, 0) AS review_count,
 			l.title,
 			l.price,
 			l.price_unit,
@@ -1020,7 +1022,6 @@ func GetListingDetailById(listingId string) (model.ListingDetailFromDb, error) {
 			l.location_city,
 			l.location_province,
 			l.created_at,
-			l.view_count,
 			LOWER(l.status::text) AS status,
 			LOWER(COALESCE(l.status::text, '')) AS sell_status,
 			COALESCE(l.highlights, '[]') AS highlights,
@@ -1049,6 +1050,16 @@ func GetListingDetailById(listingId string) (model.ListingDetailFromDb, error) {
 			FROM public.reviews r
 			WHERE r.reviewed_user_id = l.user_id
 		) rv ON TRUE
+		LEFT JOIN LATERAL (
+			SELECT COUNT(*)::int AS transaction_count
+			FROM public.listing_transactions lt
+			WHERE lt.listing_id = l.id
+		) txn ON TRUE
+		LEFT JOIN LATERAL (
+			SELECT COUNT(*)::int AS review_count
+			FROM public.reviews lr
+			WHERE lr.listing_id = l.id
+		) rc ON TRUE
 		WHERE l.id = $1
 		LIMIT 1
 	`

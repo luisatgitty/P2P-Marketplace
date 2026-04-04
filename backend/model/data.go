@@ -452,6 +452,8 @@ type ListingDetailFromDb struct {
 	Id                 string     `gorm:"column:id"`
 	SellerId           string     `gorm:"column:seller_id"`
 	SellerIsActive     bool       `gorm:"column:seller_is_active"`
+	TransactionCount   int        `gorm:"column:transaction_count"`
+	ReviewCount        int        `gorm:"column:review_count"`
 	Title              string     `gorm:"column:title"`
 	Price              int        `gorm:"column:price"`
 	PriceUnit          string     `gorm:"column:price_unit"`
@@ -462,7 +464,6 @@ type ListingDetailFromDb struct {
 	LocationCity       string     `gorm:"column:location_city"`
 	LocationProv       string     `gorm:"column:location_province"`
 	CreatedAt          time.Time  `gorm:"column:created_at"`
-	ViewCount          int        `gorm:"column:view_count"`
 	Status             string     `gorm:"column:status"`
 	SellStatus         string     `gorm:"column:sell_status"`
 	Highlights         string     `gorm:"column:highlights"`

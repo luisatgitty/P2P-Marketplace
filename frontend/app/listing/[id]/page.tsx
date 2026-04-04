@@ -30,8 +30,8 @@ interface ExtraDetail {
   condition:      string;       // sell only — "Brand New"|"Like New"|"Good"|"Fair"|"For Parts"
   images:         string[];
   features:       string[];     // highlights (up to 8 keywords)
-  views:          number;
-  offers:         number;
+  transactionCount: number;
+  reviewCount:    number;
   // Common
   deliveryMethod: string;       // from form's deliveryMethod field
   // Rent-specific
@@ -55,8 +55,8 @@ function getDefaultExtra(listing: PostCardProps): ExtraDetail {
     condition:      listing.type === "sell" ? "Good" : "",
     images:         [listing.imageUrl, listing.imageUrl, listing.imageUrl],
     features:       [],
-    views:          Math.floor(Math.random() * 200) + 20,
-    offers:         Math.floor(Math.random() * 10),
+    transactionCount: 0,
+    reviewCount:    0,
     deliveryMethod: listing.type === "service" ? "On-site service" : "Meet-up or Delivery",
     daysOff:        [],
     timeWindows:    [],
@@ -659,8 +659,13 @@ export default function ListingDetailPage() {
                 },
                 {
                   icon:  <Eye className="w-4 h-4 text-stone-400" />,
-                  label: "Listing stats",
-                  value: `${extra.views} views · ${extra.offers} ${isService ? "bookings" : "offers"} received`,
+                  label: "Transactions",
+                  value: extra.transactionCount > 1 ? `${extra.transactionCount} Interactions` : `${extra.transactionCount} Interaction`,
+                },
+                {
+                  icon:  <Star className="w-4 h-4 text-stone-400" />,
+                  label: "Reviews",
+                  value: extra.reviewCount > 1 ? `${extra.reviewCount} Reviews` : `${extra.reviewCount} Review`,
                 },
               ].map((row) => (
                 <div key={row.label} className="flex items-center gap-3 px-5 py-3.5">
