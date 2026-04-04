@@ -331,22 +331,25 @@ type AdminCreateAdminBody struct {
 }
 
 type AdminListingListItemFromDb struct {
-	Id               string    `gorm:"column:id" json:"id"`
-	Title            string    `gorm:"column:title" json:"title"`
-	Type             string    `gorm:"column:type" json:"type"`
-	Category         string    `gorm:"column:category" json:"category"`
-	Price            int       `gorm:"column:price" json:"price"`
-	Unit             string    `gorm:"column:unit" json:"unit"`
-	Location         string    `gorm:"column:location" json:"location"`
-	Status           string    `gorm:"column:status" json:"status"`
-	ListingImageURL  string    `gorm:"column:listing_image_url" json:"listing_image_url"`
-	SellerId         string    `gorm:"column:seller_id" json:"seller_id"`
-	Seller           string    `gorm:"column:seller" json:"seller"`
-	SellerLocation   string    `gorm:"column:seller_location" json:"seller_location"`
-	SellerProfileURL string    `gorm:"column:seller_profile_image_url" json:"seller_profile_image_url"`
-	Views            int       `gorm:"column:views" json:"views"`
-	TransactionCount int       `gorm:"column:transaction_count" json:"transaction_count"`
-	Created          time.Time `gorm:"column:created" json:"created"`
+	Id               string     `gorm:"column:id" json:"id"`
+	Title            string     `gorm:"column:title" json:"title"`
+	Type             string     `gorm:"column:type" json:"type"`
+	Category         string     `gorm:"column:category" json:"category"`
+	Price            int        `gorm:"column:price" json:"price"`
+	Unit             string     `gorm:"column:unit" json:"unit"`
+	Location         string     `gorm:"column:location" json:"location"`
+	Status           string     `gorm:"column:status" json:"status"`
+	ListingImageURL  string     `gorm:"column:listing_image_url" json:"listing_image_url"`
+	SellerId         string     `gorm:"column:seller_id" json:"seller_id"`
+	Seller           string     `gorm:"column:seller" json:"seller"`
+	SellerLocation   string     `gorm:"column:seller_location" json:"seller_location"`
+	SellerProfileURL string     `gorm:"column:seller_profile_image_url" json:"seller_profile_image_url"`
+	TransactionCount int        `gorm:"column:transaction_count" json:"transaction_count"`
+	ReviewCount      int        `gorm:"column:review_count" json:"review_count"`
+	Created          time.Time  `gorm:"column:created" json:"created"`
+	UpdatedAt        time.Time  `gorm:"column:updated_at" json:"updated_at"`
+	BannedUntil      *time.Time `gorm:"column:banned_until" json:"banned_until"`
+	DeletedAt        *time.Time `gorm:"column:deleted_at" json:"deleted_at"`
 }
 
 type AdminTransactionListItemFromDb struct {

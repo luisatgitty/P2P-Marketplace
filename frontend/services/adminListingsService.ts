@@ -12,9 +12,12 @@ export type AdminListingRecord = {
   seller: string;
   seller_location: string;
   seller_profile_image_url: string;
-  views: number;
   transaction_count: number;
+  review_count: number;
   created: string;
+  updated_at: string;
+  banned_until: string | null;
+  deleted_at: string | null;
 };
 
 export async function getAdminListings(): Promise<AdminListingRecord[]> {
