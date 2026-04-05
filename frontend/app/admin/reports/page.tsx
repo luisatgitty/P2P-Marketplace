@@ -129,6 +129,7 @@ export default function ReportsPage() {
   const totalPages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
   const paged      = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
 
+  const totalCount     = reports.length;
   const pendingCount   = reports.filter(r => r.status === "PENDING").length;
   const resolvedCount  = reports.filter(r => r.status === "RESOLVED").length;
   const dismissedCount = reports.filter(r => r.status === "DISMISSED").length;
@@ -194,21 +195,25 @@ export default function ReportsPage() {
       </div>
 
       {/* ── Summary cards — clickable to filter by status ── */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {[
-          { label: "Pending",   count: pendingCount,   color: "text-amber-600 dark:text-amber-400", bg: "bg-amber-50 dark:bg-amber-950/20",  border: "border-amber-200 dark:border-amber-800",  Icon: AlertTriangle },
-          { label: "Resolved",  count: resolvedCount,  color: "text-teal-600 dark:text-teal-400",   bg: "bg-teal-50 dark:bg-teal-950/20",    border: "border-teal-200 dark:border-teal-800",    Icon: CheckCircle2  },
-          { label: "Dismissed", count: dismissedCount, color: "text-stone-500 dark:text-stone-400", bg: "bg-stone-50 dark:bg-[#13151f]",     border: "border-stone-200 dark:border-[#2a2d3e]", Icon: XCircle       },
-        ].map(({ label, count, color, bg, border, Icon }) => (
+          { label: "Total Reports", count: totalCount,     status: "ALL",       color: "text-stone-700 dark:text-stone-200", bg: "bg-stone-100 dark:bg-[#13151f]",     border: "border-stone-200 dark:border-[#2a2d3e]", Icon: Flag         },
+          { label: "Pending",       count: pendingCount,   status: "PENDING",   color: "text-amber-600 dark:text-amber-400", bg: "bg-amber-50 dark:bg-amber-950/20",  border: "border-amber-200 dark:border-amber-800",  Icon: AlertTriangle },
+          { label: "Resolved",      count: resolvedCount,  status: "RESOLVED",  color: "text-teal-600 dark:text-teal-400",   bg: "bg-teal-50 dark:bg-teal-950/20",    border: "border-teal-200 dark:border-teal-800",    Icon: CheckCircle2  },
+          { label: "Dismissed",     count: dismissedCount, status: "DISMISSED", color: "text-stone-500 dark:text-stone-400", bg: "bg-stone-50 dark:bg-[#13151f]",     border: "border-stone-200 dark:border-[#2a2d3e]", Icon: XCircle       },
+        ].map(({ label, count, status, color, bg, border, Icon }) => (
           <Card
             key={label}
             className={cn(
               "rounded-lg cursor-pointer hover:shadow-sm transition-all border",
               bg, border,
-              statusFilter === label.toUpperCase() && "ring-2 ring-offset-1 ring-current",
+              statusFilter === status && "ring-2 ring-offset-1 ring-current",
             )}
             onClick={() => {
-              setStatusFilter(prev => prev === label.toUpperCase() ? "ALL" : label.toUpperCase());
+              setStatusFilter(prev => {
+                if (status === "ALL") return "ALL";
+                return prev === status ? "ALL" : status;
+              });
               setPage(1);
             }}
           >
