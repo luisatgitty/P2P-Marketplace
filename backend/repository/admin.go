@@ -210,8 +210,7 @@ func GetAdminUsers() ([]model.AdminUserListItemFromDb, error) {
 			INNER JOIN public.listings l ON l.id = lt.listing_id
 			GROUP BY l.user_id
 		) ot ON ot.owner_id = u.id
-		WHERE u.deleted_at IS NULL
-			AND u.role = 'USER'
+		WHERE u.role = 'USER'
 		ORDER BY u.created_at DESC
 	`
 

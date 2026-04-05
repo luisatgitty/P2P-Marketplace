@@ -226,12 +226,14 @@ export default function ListingsPage() {
     setActionLoadingListingId(id);
     try {
       const updated = await deleteAdminListing(id);
+      const deletedAtPlaceholder = new Date().toISOString();
       setListings((prev) =>
         prev.map((listing) =>
           listing.id === id
             ? {
                 ...listing,
                 status: updated.status,
+                deleted_at: deletedAtPlaceholder,
               }
             : listing
         )
@@ -262,12 +264,17 @@ export default function ListingsPage() {
     setActionLoadingListingId(id);
     try {
       const updated = await toggleAdminListingVisibility(id);
+      const nextBannedUntil = updated.status === "BANNED"
+        ? new Date(Date.now() + (3 * 24 * 60 * 60 * 1000)).toISOString()
+        : null;
+
       setListings((prev) =>
         prev.map((listing) =>
           listing.id === id
             ? {
                 ...listing,
                 status: updated.status as ListingStatus,
+                banned_until: nextBannedUntil,
               }
             : listing
         )
@@ -399,7 +406,7 @@ export default function ListingsPage() {
                   <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest whitespace-nowrap">
                     Status
                   </TableHead>
-                  <SortableTH label="Inquiry" field="transactions" />
+                  <SortableTH label="Transactions" field="transactions" />
                   <SortableTH label="Reviews" field="reviews" />
                   <SortableTH label="Created" field="created" />
                   <SortableTH label="Updated" field="updated" />

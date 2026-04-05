@@ -230,11 +230,19 @@ export default function UsersPage() {
     const target = users.find(u => u.id === id);
     if (!target) return;
     if (target.is_active && !window.confirm("Deactivate this user account?")) return;
+    if (!target.is_active && !window.confirm("Activate this user account?")) return;
     const nextIsActive = !target.is_active;
     setActionLoadingUserId(id);
     try {
       await setAdminUserActive(id, nextIsActive);
-      setUsers(u => u.map(user => user.id === id ? { ...user, is_active: nextIsActive } : user));
+      const updatedAtPlaceholder = new Date().toISOString();
+      setUsers((prev) =>
+        prev.map((user) =>
+          user.id === id
+            ? { ...user, is_active: nextIsActive, updated_at: updatedAtPlaceholder }
+            : user
+        )
+      );
       toast.success(`User ${nextIsActive ? "activated" : "deactivated"} successfully`, { position: "top-center" });
     } catch (err) {
       const message = typeof err === "string" ? err : "Failed to update user status";
@@ -249,7 +257,19 @@ export default function UsersPage() {
     setActionLoadingUserId(id);
     try {
       await deleteAdminUser(id);
-      setUsers(u => u.filter(user => user.id !== id));
+      const nowIso = new Date().toISOString();
+      setUsers((prev) =>
+        prev.map((user) =>
+          user.id === id
+            ? {
+                ...user,
+                is_active: false,
+                deleted_at: nowIso,
+                updated_at: nowIso,
+              }
+            : user
+        )
+      );
       toast.success("User deleted successfully", { position: "top-center" });
     } catch (err) {
       const message = typeof err === "string" ? err : "Failed to delete user";
@@ -529,38 +549,39 @@ export default function UsersPage() {
                       {/* Actions */}
                       <TableCell className="py-3.5">
                         <div className="flex items-center justify-end gap-1">
-
-                          {/* Activate / deactivate */}
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            type="button"
-                            title={user.is_active ? "Deactivate" : "Activate"}
-                            aria-label={user.is_active ? "Deactivate" : "Activate"}
-                            onClick={() => handleToggleActive(user.id)}
-                            disabled={actionLoadingUserId === user.id}
-                            className="w-7 h-7 hover:bg-stone-100 dark:hover:bg-[#252837] disabled:opacity-50"
-                          >
-                            {user.is_active
-                              ? <UserX     className="w-4 h-4 text-amber-500 hover:text-amber-800" />
-                              : <UserCheck className="w-4 h-4 text-teal-500 hover:text-teal-800"  />
-                            }
-                          </Button>
-
-                          {/* Delete */}
                           {!user.deleted_at && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              type="button"
-                              title="Delete user"
-                              aria-label="Delete user"
-                              onClick={() => handleDelete(user.id)}
-                              disabled={actionLoadingUserId === user.id}
-                              className="w-7 h-7 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 hover:text-red-600 disabled:opacity-50"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
+                            <>
+                              {/* Activate / deactivate */}
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                type="button"
+                                title={user.is_active ? "Deactivate" : "Activate"}
+                                aria-label={user.is_active ? "Deactivate" : "Activate"}
+                                onClick={() => handleToggleActive(user.id)}
+                                disabled={actionLoadingUserId === user.id}
+                                className="w-7 h-7 hover:bg-stone-100 dark:hover:bg-[#252837] disabled:opacity-50"
+                              >
+                                {user.is_active
+                                  ? <UserX     className="w-4 h-4 text-amber-500 hover:text-amber-800" />
+                                  : <UserCheck className="w-4 h-4 text-teal-500 hover:text-teal-800"  />
+                                }
+                              </Button>
+
+                              {/* Delete */}
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                type="button"
+                                title="Delete user"
+                                aria-label="Delete user"
+                                onClick={() => handleDelete(user.id)}
+                                disabled={actionLoadingUserId === user.id}
+                                className="w-7 h-7 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 hover:text-red-600 disabled:opacity-50"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </>
                           )}
                         </div>
                       </TableCell>
