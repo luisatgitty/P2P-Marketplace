@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { useSearchParams } from "next/navigation";
 import {
   MapPin, Mail, Calendar, Eye, EyeOff, Star,
@@ -384,6 +385,7 @@ async function encodeFileToPayload(file: File): Promise<EncodedImagePayload> {
 
 // ─── MAIN PAGE ────────────────────────────────────────────────────────────────
 export default function ProfilePage() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const { user, isUserOnline, saveUserData, clearUserData } = useUser();
   const externalUserId = (searchParams.get("userId") ?? "").trim();
@@ -607,6 +609,10 @@ export default function ProfilePage() {
           locationBrgy: payload.user.locationBrgy ?? "",
         }));
       } catch {
+        if (isViewingExternalProfile) {
+          router.replace("/not-found");
+          return;
+        }
         showErrorToast("Failed to load profile data");
       } finally {
         setLoadingProfile(false);
@@ -614,7 +620,7 @@ export default function ProfilePage() {
     };
 
     loadProfile();
-  }, [isViewingExternalProfile, externalUserId]);
+  }, [isViewingExternalProfile, externalUserId, router]);
 
   useEffect(() => {
     if (!form.locationProv || provinces.length === 0) return;

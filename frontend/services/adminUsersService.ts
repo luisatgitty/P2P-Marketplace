@@ -13,8 +13,11 @@ export type AdminUserRecord = {
   listings: number;
   client_transactions: number;
   owner_transactions: number;
+  account_locked_until: string | null;
   last_login: string | null;
   joined: string;
+  updated_at: string;
+  deleted_at: string | null;
   location: string;
 };
 

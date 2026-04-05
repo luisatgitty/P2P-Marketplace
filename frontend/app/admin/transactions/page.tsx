@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import {
   Search,
+  Clock,
   ChevronUp,
   ChevronDown,
   ChevronsUpDown,
@@ -225,6 +226,12 @@ export default function TransactionsPage() {
   const totalPages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
   const paged      = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
 
+  const totalCount     = transactions.length;
+  const pendingCount   = transactions.filter(tx => tx.status === "PENDING").length;
+  const confirmedCount = transactions.filter(tx => tx.status === "CONFIRMED").length;
+  const completedCount = transactions.filter(tx => tx.status === "COMPLETED").length;
+  const cancelledCount = transactions.filter(tx => tx.status === "CANCELLED").length;
+
   const hasActiveFilters = search || typeFilter !== "ALL" || statusFilter !== "ALL";
 
   // ── Sortable column header ────────────────────────────────────────────────────
@@ -252,6 +259,39 @@ export default function TransactionsPage() {
         <p className="text-sm text-stone-500 dark:text-stone-400 mt-0.5">
           Monitor all listing transactions across selling, renting, and service listings.
         </p>
+      </div>
+
+      {/* ── Summary cards — clickable to filter by status ── */}
+      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
+        {[
+          { label: "Total Transactions",     count: totalCount,     status: "ALL",       color: "text-stone-700 dark:text-stone-200", bg: "bg-stone-100 dark:bg-[#13151f]",     border: "border-stone-200 dark:border-[#2a2d3e]", Icon: Handshake   },
+          { label: "Pending",   count: pendingCount,   status: "PENDING",   color: "text-amber-600 dark:text-amber-400", bg: "bg-amber-50 dark:bg-amber-950/20",  border: "border-amber-200 dark:border-amber-800",  Icon: Clock       },
+          { label: "Confirmed", count: confirmedCount, status: "CONFIRMED", color: "text-blue-600 dark:text-blue-400",   bg: "bg-blue-50 dark:bg-blue-950/20",    border: "border-blue-200 dark:border-blue-800",    Icon: Handshake   },
+          { label: "Completed", count: completedCount, status: "COMPLETED", color: "text-teal-600 dark:text-teal-400",   bg: "bg-teal-50 dark:bg-teal-950/20",    border: "border-teal-200 dark:border-teal-800",    Icon: CheckCircle2 },
+          { label: "Cancelled", count: cancelledCount, status: "CANCELLED", color: "text-red-600 dark:text-red-400",     bg: "bg-red-50 dark:bg-red-950/20",      border: "border-red-200 dark:border-red-800",      Icon: XCircle     },
+        ].map(({ label, count, status, color, bg, border, Icon }) => (
+          <Card
+            key={label}
+            className={cn(
+              "rounded-lg cursor-pointer hover:shadow-sm transition-all border",
+              bg, border,
+              statusFilter === status && "ring-2 ring-offset-1 ring-current",
+            )}
+            onClick={() => {
+              setStatusFilter(prev => {
+                if (status === "ALL") return "ALL";
+                return prev === status ? "ALL" : status;
+              });
+              setPage(1);
+            }}
+          >
+            <CardContent className="text-center">
+              <Icon className={cn("w-5 h-5 mx-auto mb-1.5", color)} />
+              <p className={cn("text-xl font-extrabold", color)}>{count}</p>
+              <p className="text-sm text-stone-500 dark:text-stone-400 mt-0.5">{label}</p>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
       {/* ── Filters ── */}
@@ -284,7 +324,7 @@ export default function TransactionsPage() {
             value={statusFilter}
             onChange={v => { setStatusFilter(v); setPage(1); }}
             options={[
-              ["ALL", "All Transaction Status"],
+              ["ALL", "All Status"],
               ["PENDING", "Pending"],
               ["CONFIRMED", "Confirmed"],
               ["COMPLETED", "Completed"],

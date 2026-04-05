@@ -234,8 +234,9 @@ func DeleteAdminListing(c *fiber.Ctx) error {
 		return SendErrorResponse(c, 500, err.Error(), err)
 	}
 
-	return SendSuccessResponse(c, 200, "Listing removed successfully", map[string]any{
+	return SendSuccessResponse(c, 200, "Listing deleted successfully", map[string]any{
 		"listingId": targetListingId,
+		"status":    "DELETED",
 	})
 }
 
@@ -255,10 +256,16 @@ func ToggleAdminListingVisibility(c *fiber.Ctx) error {
 		if strings.EqualFold(err.Error(), "Listing not found") {
 			return SendErrorResponse(c, 404, err.Error(), err)
 		}
+		if strings.EqualFold(err.Error(), "Cannot update visibility for deleted listing") {
+			return SendErrorResponse(c, 400, err.Error(), err)
+		}
+		if strings.EqualFold(err.Error(), "Listing cannot be shadow banned from current status") {
+			return SendErrorResponse(c, 400, err.Error(), err)
+		}
 		return SendErrorResponse(c, 500, err.Error(), err)
 	}
 
-	return SendSuccessResponse(c, 200, "Listing visibility updated successfully", map[string]any{
+	return SendSuccessResponse(c, 200, "Listing shadow-ban status updated successfully", map[string]any{
 		"listingId": targetListingId,
 		"status":    nextStatus,
 	})

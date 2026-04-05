@@ -23,6 +23,10 @@ function ConversationShell({ children }: { children: React.ReactNode }) {
     replyTo,
     onCancelReply,
   } = shellState;
+  const listingStatus = String(conversation?.listing?.status ?? "").trim().toUpperCase();
+  const isListingBlocked = listingStatus === "BANNED" || listingStatus === "DELETED";
+  const hideListingActionButtons = Boolean(conversation && (conversation.canSendMessage === false || isListingBlocked));
+  const canShowInput = Boolean(conversation && conversation.canSendMessage !== false && !isListingBlocked);
 
   return (
     <div className="flex flex-col h-full overflow-hidden bg-white dark:bg-[#0f1117]">
@@ -35,19 +39,22 @@ function ConversationShell({ children }: { children: React.ReactNode }) {
                 conversationId={conversation.id}
                 listing={conversation.listing}
                 isSeller={conversation.isSeller}
+                hideActionButtons={hideListingActionButtons}
                 onMarkedComplete={onMarkedComplete}
                 onOfferUpdated={onOfferUpdated}
               />
             </div>
             {children}
           </div>
-          <MessageInput
-            onSend={onSend}
-            disabled={inputDisabled}
-            replyTo={replyTo}
-            onCancelReply={onCancelReply}
-            autoFocusKey={conversation.id}
-          />
+          {canShowInput && (
+            <MessageInput
+              onSend={onSend}
+              disabled={inputDisabled}
+              replyTo={replyTo}
+              onCancelReply={onCancelReply}
+              autoFocusKey={conversation.id}
+            />
+          )}
           <div className="h-14 md:h-0 shrink-0" />
         </>
       ) : (

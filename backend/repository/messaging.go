@@ -57,11 +57,23 @@ func GetConversationsByUser(userId string) ([]model.ConversationFromDb, error) {
 			u.first_name AS other_first_name,
 			u.last_name AS other_last_name,
 			COALESCE(u.profile_image_url, '') AS other_profile_image_url,
+			COALESCE(u.is_active, FALSE) AS other_is_active,
+			u.account_locked_until AS other_account_locked_until,
+			COALESCE(su.is_active, FALSE) AS self_is_active,
+			su.account_locked_until AS self_account_locked_until,
 			COALESCE(c.last_message, '') AS last_message,
 			c.last_message_at,
 			COALESCE(other_cm.last_read_message_id::text, '') AS other_last_read_message_id,
 			COALESCE(unread.unread_count, 0) AS unread_count,
-			(c.seller_id = $1) AS is_seller
+			(c.seller_id = $1) AS is_seller,
+			EXISTS(
+				SELECT 1
+				FROM public.reports rp
+				WHERE rp.reporter_id = $1::uuid
+					AND rp.reported_listing_id = c.listing_id
+					AND rp.reported_user_id = u.id
+					AND rp.status = 'PENDING'
+			) AS has_pending_report
 		FROM public.conversation_members cm
 		JOIN public.conversations c
 			ON c.id = cm.conversation_id
@@ -102,6 +114,8 @@ func GetConversationsByUser(userId string) ([]model.ConversationFromDb, error) {
 		) tx ON TRUE
 		JOIN public.users u
 			ON u.id = CASE WHEN c.buyer_id = $1 THEN c.seller_id ELSE c.buyer_id END
+		JOIN public.users su
+			ON su.id = $1::uuid
 		LEFT JOIN public.conversation_members other_cm
 			ON other_cm.conversation_id = c.id
 			AND other_cm.user_id = CASE WHEN c.buyer_id = $1 THEN c.seller_id ELSE c.buyer_id END
@@ -171,11 +185,23 @@ func GetConversationById(userId, conversationId string) (model.ConversationFromD
 			u.first_name AS other_first_name,
 			u.last_name AS other_last_name,
 			COALESCE(u.profile_image_url, '') AS other_profile_image_url,
+			COALESCE(u.is_active, FALSE) AS other_is_active,
+			u.account_locked_until AS other_account_locked_until,
+			COALESCE(su.is_active, FALSE) AS self_is_active,
+			su.account_locked_until AS self_account_locked_until,
 			COALESCE(c.last_message, '') AS last_message,
 			c.last_message_at,
 			COALESCE(other_cm.last_read_message_id::text, '') AS other_last_read_message_id,
 			COALESCE(unread.unread_count, 0) AS unread_count,
-			(c.seller_id = $1) AS is_seller
+			(c.seller_id = $1) AS is_seller,
+			EXISTS(
+				SELECT 1
+				FROM public.reports rp
+				WHERE rp.reporter_id = $1::uuid
+					AND rp.reported_listing_id = c.listing_id
+					AND rp.reported_user_id = u.id
+					AND rp.status = 'PENDING'
+			) AS has_pending_report
 		FROM public.conversation_members cm
 		JOIN public.conversations c
 			ON c.id = cm.conversation_id
@@ -216,6 +242,8 @@ func GetConversationById(userId, conversationId string) (model.ConversationFromD
 		) tx ON TRUE
 		JOIN public.users u
 			ON u.id = CASE WHEN c.buyer_id = $1 THEN c.seller_id ELSE c.buyer_id END
+		JOIN public.users su
+			ON su.id = $1::uuid
 		LEFT JOIN public.conversation_members other_cm
 			ON other_cm.conversation_id = c.id
 			AND other_cm.user_id = CASE WHEN c.buyer_id = $1 THEN c.seller_id ELSE c.buyer_id END
@@ -505,6 +533,30 @@ func GetParticipantUserIdsByListing(listingId string) ([]string, error) {
 	return ids, nil
 }
 
+func getMessagingUserStatusTx(tx *gorm.DB, userId string) (bool, *time.Time, error) {
+	var row struct {
+		IsActive           bool       `gorm:"column:is_active"`
+		AccountLockedUntil *time.Time `gorm:"column:account_locked_until"`
+	}
+
+	result := tx.Raw(`
+		SELECT
+			COALESCE(is_active, FALSE) AS is_active,
+			account_locked_until
+		FROM public.users
+		WHERE id = $1
+		LIMIT 1
+	`, userId).Scan(&row)
+	if result.Error != nil {
+		return false, nil, fmt.Errorf("Failed to validate account status")
+	}
+	if result.RowsAffected == 0 {
+		return false, nil, fmt.Errorf("User not found")
+	}
+
+	return row.IsActive, row.AccountLockedUntil, nil
+}
+
 func CreateMessage(userId, conversationId, content, replyToMessageId string, attachments []model.MessageAttachmentBody) (model.MessageFromDb, error) {
 	db := middleware.DBConn
 	var created model.MessageFromDb
@@ -545,6 +597,31 @@ func CreateMessage(userId, conversationId, content, replyToMessageId string, att
 	receiverId := buyerId
 	if buyerId == userId {
 		receiverId = sellerId
+	}
+
+	now := time.Now().UTC()
+	senderIsActive, senderLockedUntil, senderErr := getMessagingUserStatusTx(tx, userId)
+	if senderErr != nil {
+		tx.Rollback()
+		return created, senderErr
+	}
+	if !senderIsActive {
+		tx.Rollback()
+		return created, fmt.Errorf("Your account is inactive. Messaging is unavailable")
+	}
+	if senderLockedUntil != nil && senderLockedUntil.After(now) {
+		tx.Rollback()
+		return created, fmt.Errorf("Your account is temporarily locked. Messaging is unavailable")
+	}
+
+	receiverIsActive, receiverLockedUntil, receiverErr := getMessagingUserStatusTx(tx, receiverId)
+	if receiverErr != nil {
+		tx.Rollback()
+		return created, receiverErr
+	}
+	if !receiverIsActive || (receiverLockedUntil != nil && receiverLockedUntil.After(now)) {
+		tx.Rollback()
+		return created, fmt.Errorf("Recipient is unavailable")
 	}
 
 	insertQuery := `
@@ -1032,6 +1109,32 @@ func GetOrCreateConversationByListing(
 		tx.Rollback()
 		return "", fmt.Errorf("You cannot message your own listing")
 	}
+
+	now := time.Now().UTC()
+	requesterIsActive, requesterLockedUntil, requesterErr := getMessagingUserStatusTx(tx, userId)
+	if requesterErr != nil {
+		tx.Rollback()
+		return "", requesterErr
+	}
+	if !requesterIsActive {
+		tx.Rollback()
+		return "", fmt.Errorf("Your account is inactive. Messaging is unavailable")
+	}
+	if requesterLockedUntil != nil && requesterLockedUntil.After(now) {
+		tx.Rollback()
+		return "", fmt.Errorf("Your account is temporarily locked. Messaging is unavailable")
+	}
+
+	sellerIsActive, sellerLockedUntil, sellerErr := getMessagingUserStatusTx(tx, sellerId)
+	if sellerErr != nil {
+		tx.Rollback()
+		return "", sellerErr
+	}
+	if !sellerIsActive || (sellerLockedUntil != nil && sellerLockedUntil.After(now)) {
+		tx.Rollback()
+		return "", fmt.Errorf("Recipient is unavailable")
+	}
+
 	if listingType == "sell" && listingStatus == "sold" {
 		tx.Rollback()
 		return "", fmt.Errorf("This listing is already sold")

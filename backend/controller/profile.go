@@ -3,6 +3,7 @@ package controller
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"p2p_marketplace/backend/config"
 	"p2p_marketplace/backend/middleware"
@@ -11,6 +12,30 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 )
+
+func getOptionalRequesterRoleFromSession(c *fiber.Ctx) string {
+	sessionToken := strings.TrimSpace(c.Cookies(config.SessionCookieName))
+	if sessionToken == "" {
+		return ""
+	}
+
+	sessionId := middleware.HashToken(sessionToken)
+	sessionFromDb, err := repository.GetSessionById(sessionId)
+	if err != nil {
+		return ""
+	}
+
+	if sessionFromDb.UserId == "" || sessionFromDb.IsRevoked || sessionFromDb.ExpiresAt.Before(time.Now()) {
+		return ""
+	}
+
+	requester, err := repository.GetUserById(sessionFromDb.UserId)
+	if err != nil || !requester.IsActive {
+		return ""
+	}
+
+	return strings.ToUpper(strings.TrimSpace(requester.Role))
+}
 
 func MeProfile(c *fiber.Ctx) error {
 	userId := fmt.Sprintf("%v", c.Locals("userId"))
@@ -64,6 +89,13 @@ func ProfileById(c *fiber.Ctx) error {
 	user, err := repository.GetProfileUserById(profileUserId)
 	if err != nil {
 		return SendErrorResponse(c, 404, err.Error(), err)
+	}
+
+	now := time.Now().UTC()
+	requesterRole := getOptionalRequesterRoleFromSession(c)
+	canViewBlockedProfile := requesterRole == "ADMIN" || requesterRole == "SUPER_ADMIN"
+	if (!user.IsActive || (user.AccountLockedUntil != nil && user.AccountLockedUntil.After(now))) && !canViewBlockedProfile {
+		return SendErrorResponse(c, 404, "User not found", nil)
 	}
 
 	listings, err := repository.GetUserListings(profileUserId)

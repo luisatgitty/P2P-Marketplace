@@ -187,8 +187,11 @@ func GetAdminUsers() ([]model.AdminUserListItemFromDb, error) {
 			COALESCE(lc.listings, 0)::int AS listings,
 			COALESCE(ct.client_transactions, 0)::int AS client_transactions,
 			COALESCE(ot.owner_transactions, 0)::int AS owner_transactions,
+			u.account_locked_until,
 			u.last_login_at AS last_login,
 			u.created_at AS joined,
+			u.updated_at,
+			u.deleted_at,
 			TRIM(BOTH ', ' FROM CONCAT_WS(', ', NULLIF(TRIM(u.location_barangay), ''), NULLIF(TRIM(u.location_city), ''), NULLIF(TRIM(u.location_province), ''))) AS location
 		FROM public.users u
 		LEFT JOIN (
@@ -207,8 +210,7 @@ func GetAdminUsers() ([]model.AdminUserListItemFromDb, error) {
 			INNER JOIN public.listings l ON l.id = lt.listing_id
 			GROUP BY l.user_id
 		) ot ON ot.owner_id = u.id
-		WHERE u.deleted_at IS NULL
-			AND u.role = 'USER'
+		WHERE u.role = 'USER'
 		ORDER BY u.created_at DESC
 	`
 
@@ -525,9 +527,12 @@ func GetAdminListings() ([]model.AdminListingListItemFromDb, error) {
 			TRIM(BOTH ' ' FROM CONCAT_WS(' ', NULLIF(TRIM(u.first_name), ''), NULLIF(TRIM(u.last_name), ''))) AS seller,
 			TRIM(BOTH ', ' FROM CONCAT_WS(', ', NULLIF(TRIM(u.location_city), ''), NULLIF(TRIM(u.location_province), ''))) AS seller_location,
 			COALESCE(u.profile_image_url, '') AS seller_profile_image_url,
-			COALESCE(l.view_count, 0)::int AS views,
 			COALESCE(tx.transaction_count, 0)::int AS transaction_count,
-			l.created_at AS created
+			COALESCE(rv.review_count, 0)::int AS review_count,
+			l.created_at AS created,
+			l.updated_at AS updated_at,
+			l.banned_until AS banned_until,
+			l.deleted_at AS deleted_at
 		FROM public.listings l
 		LEFT JOIN public.categories c ON c.id = l.category_id
 		LEFT JOIN public.users u ON u.id = l.user_id
@@ -538,6 +543,13 @@ func GetAdminListings() ([]model.AdminListingListItemFromDb, error) {
 			FROM public.listing_transactions
 			GROUP BY listing_id
 		) tx ON tx.listing_id = l.id
+		LEFT JOIN (
+			SELECT
+				listing_id,
+				COUNT(*)::int AS review_count
+			FROM public.reviews
+			GROUP BY listing_id
+		) rv ON rv.listing_id = l.id
 		LEFT JOIN LATERAL (
 			SELECT image_url
 			FROM public.listing_images
@@ -584,8 +596,15 @@ func ToggleAdminListingVisibility(listingId string) (string, error) {
 	}
 
 	normalized := strings.ToUpper(strings.TrimSpace(currentStatus))
-	nextStatus := "HIDDEN"
-	if normalized == "HIDDEN" {
+	if normalized == "DELETED" {
+		return "", fmt.Errorf("Cannot update visibility for deleted listing")
+	}
+	if normalized != "AVAILABLE" && normalized != "BANNED" {
+		return "", fmt.Errorf("Listing cannot be shadow banned from current status")
+	}
+
+	nextStatus := "BANNED"
+	if normalized == "BANNED" {
 		nextStatus = "UNAVAILABLE"
 	}
 
@@ -593,6 +612,7 @@ func ToggleAdminListingVisibility(listingId string) (string, error) {
 		UPDATE public.listings
 		SET
 			status = $1::listing_status,
+			banned_until = CASE WHEN $1 = 'BANNED' THEN now() + INTERVAL '3 days' ELSE NULL END,
 			updated_at = now()
 		WHERE id = $2
 	`, nextStatus, listingId)
@@ -679,62 +699,19 @@ func GetAdminTransactions() ([]model.AdminTransactionListItemFromDb, error) {
 
 func DeleteAdminListing(listingId string) error {
 	db := middleware.DBConn
-	tx := db.Begin()
-	if tx.Error != nil {
-		return tx.Error
+	result := db.Exec(`
+		UPDATE public.listings
+		SET
+			status = 'DELETED'::listing_status,
+			deleted_at = now(),
+			updated_at = now()
+		WHERE id = $1
+	`, listingId)
+	if result.Error != nil {
+		return fmt.Errorf("Failed to delete listing")
 	}
-
-	defer func() {
-		if r := recover(); r != nil {
-			tx.Rollback()
-		}
-	}()
-
-	var existingId string
-	if err := tx.Raw(`SELECT id::text FROM public.listings WHERE id = $1 LIMIT 1`, listingId).Scan(&existingId).Error; err != nil {
-		tx.Rollback()
-		return fmt.Errorf("Failed to validate listing")
-	}
-	if strings.TrimSpace(existingId) == "" {
-		tx.Rollback()
+	if result.RowsAffected == 0 {
 		return fmt.Errorf("Listing not found")
-	}
-
-	if err := tx.Exec(`DELETE FROM public.bookmarks WHERE listing_id = $1`, listingId).Error; err != nil {
-		tx.Rollback()
-		return fmt.Errorf("Failed to remove listing bookmarks")
-	}
-
-	if err := tx.Exec(`DELETE FROM public.listing_sell_details WHERE listing_id = $1`, listingId).Error; err != nil {
-		tx.Rollback()
-		return fmt.Errorf("Failed to remove listing sell details")
-	}
-	if err := tx.Exec(`DELETE FROM public.listing_rent_details WHERE listing_id = $1`, listingId).Error; err != nil {
-		tx.Rollback()
-		return fmt.Errorf("Failed to remove listing rent details")
-	}
-	if err := tx.Exec(`DELETE FROM public.listing_service_details WHERE listing_id = $1`, listingId).Error; err != nil {
-		tx.Rollback()
-		return fmt.Errorf("Failed to remove listing service details")
-	}
-
-	if err := deleteListingImagesTx(tx, listingId); err != nil {
-		tx.Rollback()
-		return err
-	}
-
-	deleteResult := tx.Exec(`DELETE FROM public.listings WHERE id = $1`, listingId)
-	if deleteResult.Error != nil {
-		tx.Rollback()
-		return fmt.Errorf("Failed to remove listing")
-	}
-	if deleteResult.RowsAffected == 0 {
-		tx.Rollback()
-		return fmt.Errorf("Listing not found")
-	}
-
-	if err := tx.Commit().Error; err != nil {
-		return err
 	}
 
 	return nil

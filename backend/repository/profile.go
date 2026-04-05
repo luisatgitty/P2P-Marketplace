@@ -23,6 +23,8 @@ func GetProfileUserById(userId string) (model.ProfileUserFromDb, error) {
 			first_name,
 			last_name,
 			email,
+			COALESCE(is_active, FALSE) AS is_active,
+			account_locked_until,
 			phone_number,
 			bio,
 			location_barangay,

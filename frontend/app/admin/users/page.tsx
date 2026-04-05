@@ -5,6 +5,11 @@ import Link from "next/link";
 import Image from "next/image";
 import {
   Search,
+  ShieldCheck,
+  Clock,
+  AlertTriangle,
+  XCircle,
+  Users,
   ChevronUp,
   ChevronDown,
   ChevronsUpDown,
@@ -61,8 +66,11 @@ interface AdminUser {
   listings:          number;
   client_transactions:number;
   owner_transactions: number;
+  account_locked_until: string | null;
   last_login:        string | null;
   joined:            string;
+  updated_at:        string;
+  deleted_at:        string | null;
   location:          string;
 }
 
@@ -222,16 +230,30 @@ export default function UsersPage() {
   const totalPages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
   const paged      = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
 
+  const totalUsersCount  = users.length;
+  const verifiedCount    = users.filter(u => u.verification === "VERIFIED").length;
+  const pendingCount     = users.filter(u => u.verification === "PENDING").length;
+  const unverifiedCount  = users.filter(u => u.verification === "UNVERIFIED").length;
+  const rejectedCount    = users.filter(u => u.verification === "REJECTED").length;
+
   // ── Actions ───────────────────────────────────────────────────────────────────
   async function handleToggleActive(id: string) {
     const target = users.find(u => u.id === id);
     if (!target) return;
     if (target.is_active && !window.confirm("Deactivate this user account?")) return;
+    if (!target.is_active && !window.confirm("Activate this user account?")) return;
     const nextIsActive = !target.is_active;
     setActionLoadingUserId(id);
     try {
       await setAdminUserActive(id, nextIsActive);
-      setUsers(u => u.map(user => user.id === id ? { ...user, is_active: nextIsActive } : user));
+      const updatedAtPlaceholder = new Date().toISOString();
+      setUsers((prev) =>
+        prev.map((user) =>
+          user.id === id
+            ? { ...user, is_active: nextIsActive, updated_at: updatedAtPlaceholder }
+            : user
+        )
+      );
       toast.success(`User ${nextIsActive ? "activated" : "deactivated"} successfully`, { position: "top-center" });
     } catch (err) {
       const message = typeof err === "string" ? err : "Failed to update user status";
@@ -246,7 +268,19 @@ export default function UsersPage() {
     setActionLoadingUserId(id);
     try {
       await deleteAdminUser(id);
-      setUsers(u => u.filter(user => user.id !== id));
+      const nowIso = new Date().toISOString();
+      setUsers((prev) =>
+        prev.map((user) =>
+          user.id === id
+            ? {
+                ...user,
+                is_active: false,
+                deleted_at: nowIso,
+                updated_at: nowIso,
+              }
+            : user
+        )
+      );
       toast.success("User deleted successfully", { position: "top-center" });
     } catch (err) {
       const message = typeof err === "string" ? err : "Failed to delete user";
@@ -283,6 +317,40 @@ export default function UsersPage() {
         <p className="text-sm text-stone-500 dark:text-stone-400">
           Search, filter, and manage all registered user accounts
         </p>
+      </div>
+
+      {/* ── Summary cards — clickable to filter by status ── */}
+      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
+        {[
+          { label: "Total Users", count: totalUsersCount, status: "ALL",        color: "text-stone-700 dark:text-stone-200", bg: "bg-stone-100 dark:bg-[#13151f]",      border: "border-stone-200 dark:border-[#2a2d3e]", Icon: Users },
+          { label: "Verified",    count: verifiedCount,   status: "VERIFIED",   color: "text-teal-600 dark:text-teal-400",   bg: "bg-teal-50 dark:bg-teal-950/20",       border: "border-teal-200 dark:border-teal-800", Icon: ShieldCheck },
+          { label: "Pending",     count: pendingCount,    status: "PENDING",    color: "text-amber-600 dark:text-amber-400", bg: "bg-amber-50 dark:bg-amber-950/20",     border: "border-amber-200 dark:border-amber-800", Icon: Clock },
+          { label: "Unverified",  count: unverifiedCount, status: "UNVERIFIED", color: "text-stone-600 dark:text-stone-300", bg: "bg-stone-100 dark:bg-stone-800",         border: "border-stone-200 dark:border-stone-700", Icon: AlertTriangle },
+          { label: "Rejected",    count: rejectedCount,   status: "REJECTED",   color: "text-red-600 dark:text-red-400",     bg: "bg-red-50 dark:bg-red-950/20",         border: "border-red-200 dark:border-red-800", Icon: XCircle },
+        ].map(({ label, count, status, color, bg, border, Icon }) => (
+          <Card
+            key={label}
+            className={cn(
+              "rounded-lg cursor-pointer hover:shadow-sm transition-all border",
+              bg,
+              border,
+              verifFilter === status && "ring-2 ring-offset-1 ring-current",
+            )}
+            onClick={() => {
+              setVerif(prev => {
+                if (status === "ALL") return "ALL";
+                return prev === status ? "ALL" : status;
+              });
+              setPage(1);
+            }}
+          >
+            <CardContent className="text-center">
+              <Icon className={cn("w-5 h-5 mx-auto mb-1.5", color)} />
+              <p className={cn("text-xl font-extrabold", color)}>{count}</p>
+              <p className="text-sm text-stone-500 dark:text-stone-400 mt-0.5">{label}</p>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
       {/* ── Search + filters ── */}
@@ -357,8 +425,17 @@ export default function UsersPage() {
                   <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest whitespace-nowrap">
                     Transactions
                   </TableHead>
+                  <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest whitespace-nowrap">
+                    Locked Until
+                  </TableHead>
                   <SortableTH label="Joined"       field="joined"       />
                   <SortableTH label="Last Login"   field="last_login"   />
+                  <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest whitespace-nowrap">
+                    Updated
+                  </TableHead>
+                  <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest whitespace-nowrap">
+                    Deleted
+                  </TableHead>
                   <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest text-right">
                     Actions
                   </TableHead>
@@ -368,13 +445,13 @@ export default function UsersPage() {
               <TableBody>
                 {loadingUsers ? (
                   <TableRow>
-                    <TableCell colSpan={10} className="py-16 text-center text-sm text-stone-400 dark:text-stone-500">
+                    <TableCell colSpan={13} className="py-16 text-center text-sm text-stone-400 dark:text-stone-500">
                       Loading users…
                     </TableCell>
                   </TableRow>
                 ) : paged.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={10} className="py-16 text-center text-sm text-stone-400 dark:text-stone-500">
+                    <TableCell colSpan={13} className="py-16 text-center text-sm text-stone-400 dark:text-stone-500">
                       No users match the current filters.
                     </TableCell>
                   </TableRow>
@@ -462,6 +539,23 @@ export default function UsersPage() {
                         </div>
                       </TableCell>
 
+                      {/* Account locked until */}
+                      <TableCell className="py-3.5 text-sm text-stone-500 dark:text-stone-400 whitespace-nowrap">
+                        {user.account_locked_until
+                          ? (
+                            <div className="leading-tight">
+                              <p className="text-sm font-medium">
+                                {formatDateTime(user.account_locked_until)}
+                              </p>
+                              <p className="text-xs">
+                                {formatTime12h(user.account_locked_until)}
+                              </p>
+                            </div>
+                          )
+                          : <span className="text-stone-300 dark:text-stone-600">Never</span>
+                        }
+                      </TableCell>
+
                       {/* Joined */}
                       <TableCell className="py-3.5 text-sm text-stone-500 dark:text-stone-400 whitespace-nowrap">
                         {formatDateTime(user.joined)}
@@ -484,40 +578,56 @@ export default function UsersPage() {
                         }
                       </TableCell>
 
+                      {/* Updated */}
+                      <TableCell className="py-3.5 text-sm text-stone-500 dark:text-stone-400 whitespace-nowrap">
+                        {formatDateTime(user.updated_at)}
+                      </TableCell>
+
+                      {/* Deleted */}
+                      <TableCell className="py-3.5 text-sm text-stone-500 dark:text-stone-400 whitespace-nowrap">
+                        {user.deleted_at
+                          ? formatDateTime(user.deleted_at)
+                          : <span className="text-stone-300 dark:text-stone-600">—</span>
+                        }
+                      </TableCell>
+
                       {/* Actions */}
                       <TableCell className="py-3.5">
                         <div className="flex items-center justify-end gap-1">
+                          {!user.deleted_at && (
+                            <>
+                              {/* Activate / deactivate */}
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                type="button"
+                                title={user.is_active ? "Deactivate" : "Activate"}
+                                aria-label={user.is_active ? "Deactivate" : "Activate"}
+                                onClick={() => handleToggleActive(user.id)}
+                                disabled={actionLoadingUserId === user.id}
+                                className="w-7 h-7 hover:bg-stone-100 dark:hover:bg-[#252837] disabled:opacity-50"
+                              >
+                                {user.is_active
+                                  ? <UserX     className="w-4 h-4 text-amber-500 hover:text-amber-800" />
+                                  : <UserCheck className="w-4 h-4 text-teal-500 hover:text-teal-800"  />
+                                }
+                              </Button>
 
-                          {/* Activate / deactivate */}
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            type="button"
-                            title={user.is_active ? "Deactivate" : "Activate"}
-                            aria-label={user.is_active ? "Deactivate" : "Activate"}
-                            onClick={() => handleToggleActive(user.id)}
-                            disabled={actionLoadingUserId === user.id}
-                            className="w-7 h-7 hover:bg-stone-100 dark:hover:bg-[#252837] disabled:opacity-50"
-                          >
-                            {user.is_active
-                              ? <UserX     className="w-4 h-4 text-amber-500 hover:text-amber-800" />
-                              : <UserCheck className="w-4 h-4 text-teal-500 hover:text-teal-800"  />
-                            }
-                          </Button>
-
-                          {/* Delete */}
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            type="button"
-                            title="Delete user"
-                            aria-label="Delete user"
-                            onClick={() => handleDelete(user.id)}
-                            disabled={actionLoadingUserId === user.id}
-                            className="w-7 h-7 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 hover:text-red-600 disabled:opacity-50"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
+                              {/* Delete */}
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                type="button"
+                                title="Delete user"
+                                aria-label="Delete user"
+                                onClick={() => handleDelete(user.id)}
+                                disabled={actionLoadingUserId === user.id}
+                                className="w-7 h-7 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 hover:text-red-600 disabled:opacity-50"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>

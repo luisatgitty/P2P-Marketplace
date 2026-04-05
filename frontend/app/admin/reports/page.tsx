@@ -12,6 +12,7 @@ import {
   AlertTriangle,
   ChevronLeft,
   ChevronRight,
+  Eye,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -129,6 +130,7 @@ export default function ReportsPage() {
   const totalPages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
   const paged      = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
 
+  const totalCount     = reports.length;
   const pendingCount   = reports.filter(r => r.status === "PENDING").length;
   const resolvedCount  = reports.filter(r => r.status === "RESOLVED").length;
   const dismissedCount = reports.filter(r => r.status === "DISMISSED").length;
@@ -194,21 +196,25 @@ export default function ReportsPage() {
       </div>
 
       {/* ── Summary cards — clickable to filter by status ── */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {[
-          { label: "Pending",   count: pendingCount,   color: "text-amber-600 dark:text-amber-400", bg: "bg-amber-50 dark:bg-amber-950/20",  border: "border-amber-200 dark:border-amber-800",  Icon: AlertTriangle },
-          { label: "Resolved",  count: resolvedCount,  color: "text-teal-600 dark:text-teal-400",   bg: "bg-teal-50 dark:bg-teal-950/20",    border: "border-teal-200 dark:border-teal-800",    Icon: CheckCircle2  },
-          { label: "Dismissed", count: dismissedCount, color: "text-stone-500 dark:text-stone-400", bg: "bg-stone-50 dark:bg-[#13151f]",     border: "border-stone-200 dark:border-[#2a2d3e]", Icon: XCircle       },
-        ].map(({ label, count, color, bg, border, Icon }) => (
+          { label: "Total Reports", count: totalCount,     status: "ALL",       color: "text-stone-700 dark:text-stone-200", bg: "bg-stone-100 dark:bg-[#13151f]",     border: "border-stone-200 dark:border-[#2a2d3e]", Icon: Flag         },
+          { label: "Pending",       count: pendingCount,   status: "PENDING",   color: "text-amber-600 dark:text-amber-400", bg: "bg-amber-50 dark:bg-amber-950/20",  border: "border-amber-200 dark:border-amber-800",  Icon: AlertTriangle },
+          { label: "Resolved",      count: resolvedCount,  status: "RESOLVED",  color: "text-teal-600 dark:text-teal-400",   bg: "bg-teal-50 dark:bg-teal-950/20",    border: "border-teal-200 dark:border-teal-800",    Icon: CheckCircle2  },
+          { label: "Dismissed",     count: dismissedCount, status: "DISMISSED", color: "text-stone-500 dark:text-stone-400", bg: "bg-stone-50 dark:bg-[#13151f]",     border: "border-stone-200 dark:border-[#2a2d3e]", Icon: XCircle       },
+        ].map(({ label, count, status, color, bg, border, Icon }) => (
           <Card
             key={label}
             className={cn(
               "rounded-lg cursor-pointer hover:shadow-sm transition-all border",
               bg, border,
-              statusFilter === label.toUpperCase() && "ring-2 ring-offset-1 ring-current",
+              statusFilter === status && "ring-2 ring-offset-1 ring-current",
             )}
             onClick={() => {
-              setStatusFilter(prev => prev === label.toUpperCase() ? "ALL" : label.toUpperCase());
+              setStatusFilter(prev => {
+                if (status === "ALL") return "ALL";
+                return prev === status ? "ALL" : status;
+              });
               setPage(1);
             }}
           >
@@ -434,19 +440,14 @@ export default function ReportsPage() {
                           <TableCell className="py-3.5">
                             <div className="flex items-center justify-end gap-1">
                               <Button
+                                variant="ghost"
                                 type="button"
-                                size="sm"
-                                variant={report.status === "PENDING" ? "default" : "outline"}
+                                size="icon"
                                 onClick={() => setResolving(report)}
                                 disabled={actionLoadingId === report.id}
-                                className={cn(
-                                  "h-8 rounded-lg",
-                                  report.status === "PENDING"
-                                    ? "bg-[#1e2433] text-white hover:bg-[#2a3650]"
-                                    : "dark:border-[#2a2d3e] dark:text-stone-300 dark:hover:bg-[#252837]"
-                                )}
-                              >
-                                {report.status === "PENDING" ? "Take Action" : "View Resolution"}
+                                className="w-7 h-7 text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-100 hover:bg-stone-100 dark:hover:bg-[#252837]"
+                            >
+                              <Eye className="w-4 h-4" />
                               </Button>
                             </div>
                           </TableCell>

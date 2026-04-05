@@ -30,11 +30,19 @@ interface ListingContextCardProps {
   conversationId?: string;
   listing: ConversationListing;
   isSeller?: boolean;
+  hideActionButtons?: boolean;
   onMarkedComplete?: () => void | Promise<void>;
   onOfferUpdated?: () => void | Promise<void>;
 }
 
-export default function ListingContextCard({ conversationId, listing, isSeller = false, onMarkedComplete, onOfferUpdated }: ListingContextCardProps) {
+export default function ListingContextCard({
+  conversationId,
+  listing,
+  isSeller = false,
+  hideActionButtons = false,
+  onMarkedComplete,
+  onOfferUpdated,
+}: ListingContextCardProps) {
   const fmt = (n: number) =>
     "₱" + n.toLocaleString("en-PH", { minimumFractionDigits: 0 });
 
@@ -56,6 +64,8 @@ export default function ListingContextCard({ conversationId, listing, isSeller =
   const normalizedStatus = String(listing.status ?? "").trim().toUpperCase();
   const normalizedTransactionStatus = String(listing.transactionStatus ?? "").trim().toUpperCase();
   const isSold = normalizedStatus === "SOLD";
+  const isListingBlocked = normalizedStatus === "BANNED" || normalizedStatus === "DELETED";
+  const shouldHideButtons = hideActionButtons || isListingBlocked;
   const hasTransaction = normalizedTransactionStatus !== "";
   const isTransactionConfirmed = normalizedTransactionStatus === "CONFIRMED";
   const canMarkAsComplete = isSeller && isTransactionConfirmed && (listing.listingType !== "SELL" || !isSold);
@@ -333,7 +343,7 @@ export default function ListingContextCard({ conversationId, listing, isSeller =
         </div>
 
         {/* Edit Price Button */}
-        {listing.listingType === "SELL" && !isSold && (
+        {!shouldHideButtons && listing.listingType === "SELL" && !isSold && (
           <button
             type="button"
             onClick={() => setEditPriceOpen(true)}
@@ -349,7 +359,7 @@ export default function ListingContextCard({ conversationId, listing, isSeller =
 
         {/* Edit Schedule Button */}
         
-        {(listing.listingType === "RENT" || listing.listingType === "SERVICE") && (
+        {!shouldHideButtons && (listing.listingType === "RENT" || listing.listingType === "SERVICE") && (
           <button
             type="button"
             onClick={() => setEditScheduleOpen(true)}
@@ -365,7 +375,7 @@ export default function ListingContextCard({ conversationId, listing, isSeller =
         )}
 
         {/* Deal Button */}
-        {canDeal && (
+        {!shouldHideButtons && canDeal && (
           <button
             type="button"
             onClick={handleDealAction}
@@ -382,7 +392,7 @@ export default function ListingContextCard({ conversationId, listing, isSeller =
         )}
 
         {/* Mark as complete button */}
-        {canMarkAsComplete && (
+        {!shouldHideButtons && canMarkAsComplete && (
           <button
             type="button"
             onClick={() => setConfirmOpen(true)}
@@ -394,7 +404,7 @@ export default function ListingContextCard({ conversationId, listing, isSeller =
         )}
 
         {/* Review button */}
-        {canReview && (
+        {!shouldHideButtons && canReview && (
           <button
             type="button"
             onClick={handleOpenReviewModal}
@@ -409,15 +419,7 @@ export default function ListingContextCard({ conversationId, listing, isSeller =
                 : "Review"}
           </button>
         )}
-
-        {/* View link */}
-        <Link
-          href={`/listing/${listing.id}`}
-          className="p-2 rounded-md text-stone-400 dark:text-stone-500 hover:text-amber-600 dark:hover:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors shrink-0"
-          title="View listing"
-        >
-          <ExternalLink size={14} />
-        </Link>
+        
       </div>
       <ConfirmActionModal
         open={confirmOpen}
