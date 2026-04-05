@@ -61,8 +61,11 @@ interface AdminUser {
   listings:          number;
   client_transactions:number;
   owner_transactions: number;
+  account_locked_until: string | null;
   last_login:        string | null;
   joined:            string;
+  updated_at:        string;
+  deleted_at:        string | null;
   location:          string;
 }
 
@@ -357,8 +360,17 @@ export default function UsersPage() {
                   <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest whitespace-nowrap">
                     Transactions
                   </TableHead>
+                  <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest whitespace-nowrap">
+                    Locked Until
+                  </TableHead>
                   <SortableTH label="Joined"       field="joined"       />
                   <SortableTH label="Last Login"   field="last_login"   />
+                  <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest whitespace-nowrap">
+                    Updated
+                  </TableHead>
+                  <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest whitespace-nowrap">
+                    Deleted
+                  </TableHead>
                   <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest text-right">
                     Actions
                   </TableHead>
@@ -368,13 +380,13 @@ export default function UsersPage() {
               <TableBody>
                 {loadingUsers ? (
                   <TableRow>
-                    <TableCell colSpan={10} className="py-16 text-center text-sm text-stone-400 dark:text-stone-500">
+                    <TableCell colSpan={13} className="py-16 text-center text-sm text-stone-400 dark:text-stone-500">
                       Loading users…
                     </TableCell>
                   </TableRow>
                 ) : paged.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={10} className="py-16 text-center text-sm text-stone-400 dark:text-stone-500">
+                    <TableCell colSpan={13} className="py-16 text-center text-sm text-stone-400 dark:text-stone-500">
                       No users match the current filters.
                     </TableCell>
                   </TableRow>
@@ -462,6 +474,23 @@ export default function UsersPage() {
                         </div>
                       </TableCell>
 
+                      {/* Account locked until */}
+                      <TableCell className="py-3.5 text-sm text-stone-500 dark:text-stone-400 whitespace-nowrap">
+                        {user.account_locked_until
+                          ? (
+                            <div className="leading-tight">
+                              <p className="text-sm font-medium">
+                                {formatDateTime(user.account_locked_until)}
+                              </p>
+                              <p className="text-xs">
+                                {formatTime12h(user.account_locked_until)}
+                              </p>
+                            </div>
+                          )
+                          : <span className="text-stone-300 dark:text-stone-600">Never</span>
+                        }
+                      </TableCell>
+
                       {/* Joined */}
                       <TableCell className="py-3.5 text-sm text-stone-500 dark:text-stone-400 whitespace-nowrap">
                         {formatDateTime(user.joined)}
@@ -481,6 +510,19 @@ export default function UsersPage() {
                             </div>
                           )
                           : <span className="text-stone-300 dark:text-stone-600">Never</span>
+                        }
+                      </TableCell>
+
+                      {/* Updated */}
+                      <TableCell className="py-3.5 text-sm text-stone-500 dark:text-stone-400 whitespace-nowrap">
+                        {formatDateTime(user.updated_at)}
+                      </TableCell>
+
+                      {/* Deleted */}
+                      <TableCell className="py-3.5 text-sm text-stone-500 dark:text-stone-400 whitespace-nowrap">
+                        {user.deleted_at
+                          ? formatDateTime(user.deleted_at)
+                          : <span className="text-stone-300 dark:text-stone-600">—</span>
                         }
                       </TableCell>
 
@@ -506,18 +548,20 @@ export default function UsersPage() {
                           </Button>
 
                           {/* Delete */}
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            type="button"
-                            title="Delete user"
-                            aria-label="Delete user"
-                            onClick={() => handleDelete(user.id)}
-                            disabled={actionLoadingUserId === user.id}
-                            className="w-7 h-7 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 hover:text-red-600 disabled:opacity-50"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
+                          {!user.deleted_at && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              type="button"
+                              title="Delete user"
+                              aria-label="Delete user"
+                              onClick={() => handleDelete(user.id)}
+                              disabled={actionLoadingUserId === user.id}
+                              className="w-7 h-7 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 hover:text-red-600 disabled:opacity-50"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>

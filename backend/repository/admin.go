@@ -187,8 +187,11 @@ func GetAdminUsers() ([]model.AdminUserListItemFromDb, error) {
 			COALESCE(lc.listings, 0)::int AS listings,
 			COALESCE(ct.client_transactions, 0)::int AS client_transactions,
 			COALESCE(ot.owner_transactions, 0)::int AS owner_transactions,
+			u.account_locked_until,
 			u.last_login_at AS last_login,
 			u.created_at AS joined,
+			u.updated_at,
+			u.deleted_at,
 			TRIM(BOTH ', ' FROM CONCAT_WS(', ', NULLIF(TRIM(u.location_barangay), ''), NULLIF(TRIM(u.location_city), ''), NULLIF(TRIM(u.location_province), ''))) AS location
 		FROM public.users u
 		LEFT JOIN (

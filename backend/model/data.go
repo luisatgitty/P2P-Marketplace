@@ -299,8 +299,11 @@ type AdminUserListItemFromDb struct {
 	Listings           int        `gorm:"column:listings" json:"listings"`
 	ClientTransactions int        `gorm:"column:client_transactions" json:"client_transactions"`
 	OwnerTransactions  int        `gorm:"column:owner_transactions" json:"owner_transactions"`
+	AccountLockedUntil *time.Time `gorm:"column:account_locked_until" json:"account_locked_until"`
 	LastLogin          *time.Time `gorm:"column:last_login" json:"last_login"`
 	Joined             time.Time  `gorm:"column:joined" json:"joined"`
+	UpdatedAt          time.Time  `gorm:"column:updated_at" json:"updated_at"`
+	DeletedAt          *time.Time `gorm:"column:deleted_at" json:"deleted_at"`
 	Location           string     `gorm:"column:location" json:"location"`
 }
 
