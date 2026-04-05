@@ -5,6 +5,9 @@ import Link from "next/link";
 import Image from "next/image";
 import {
   Search,
+  AlertTriangle,
+  CheckCircle2,
+  XCircle,
   ChevronUp,
   ChevronDown,
   ChevronsUpDown,
@@ -220,6 +223,13 @@ export default function ListingsPage() {
   const totalPages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
   const paged      = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
 
+  const totalCount       = listings.length;
+  const availableCount   = listings.filter(l => l.status === "AVAILABLE").length;
+  const unavailableCount = listings.filter(l => l.status === "UNAVAILABLE").length;
+  const soldCount        = listings.filter(l => l.status === "SOLD").length;
+  const bannedCount      = listings.filter(l => l.status === "BANNED").length;
+  const deletedCount     = listings.filter(l => l.status === "DELETED").length;
+
   // ── Actions ───────────────────────────────────────────────────────────────────
   async function handleRemove(id: string) {
     if (!window.confirm("Mark this listing as deleted?")) return;
@@ -320,6 +330,40 @@ export default function ListingsPage() {
         <p className="text-sm text-stone-500 dark:text-stone-400 mt-0.5">
           View, search, and manage all marketplace listings
         </p>
+      </div>
+
+      {/* ── Summary cards — clickable to filter by status ── */}
+      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
+        {[
+          { label: "Total Listings", count: totalCount,     status: "ALL",         color: "text-stone-700 dark:text-stone-200", bg: "bg-stone-100 dark:bg-[#13151f]",       border: "border-stone-200 dark:border-[#2a2d3e]",   Icon: ShoppingBag   },
+          { label: "Available",   count: availableCount,   status: "AVAILABLE",   color: "text-teal-600 dark:text-teal-400",   bg: "bg-teal-50 dark:bg-teal-950/20",      border: "border-teal-200 dark:border-teal-800",      Icon: CheckCircle2  },
+          { label: "Unavailable", count: unavailableCount, status: "UNAVAILABLE", color: "text-amber-600 dark:text-amber-400", bg: "bg-amber-50 dark:bg-amber-950/20",    border: "border-amber-200 dark:border-amber-800",    Icon: AlertTriangle },
+          { label: "Sold",        count: soldCount,        status: "SOLD",        color: "text-stone-600 dark:text-stone-300", bg: "bg-stone-100 dark:bg-stone-800",        border: "border-stone-200 dark:border-stone-700",    Icon: ShoppingBag   },
+          { label: "Banned",      count: bannedCount,      status: "BANNED",      color: "text-red-600 dark:text-red-400",     bg: "bg-red-50 dark:bg-red-950/20",        border: "border-red-200 dark:border-red-800",        Icon: Ban           },
+          { label: "Deleted",     count: deletedCount,     status: "DELETED",     color: "text-stone-500 dark:text-stone-400", bg: "bg-stone-50 dark:bg-[#13151f]",       border: "border-stone-200 dark:border-[#2a2d3e]",   Icon: XCircle       },
+        ].map(({ label, count, status, color, bg, border, Icon }) => (
+          <Card
+            key={label}
+            className={cn(
+              "rounded-lg cursor-pointer hover:shadow-sm transition-all border",
+              bg, border,
+              statusFilter === status && "ring-2 ring-offset-1 ring-current",
+            )}
+            onClick={() => {
+              setStatusFilter(prev => {
+                if (status === "ALL") return "ALL";
+                return prev === status ? "ALL" : status;
+              });
+              setPage(1);
+            }}
+          >
+            <CardContent className="text-center">
+              <Icon className={cn("w-5 h-5 mx-auto mb-1.5", color)} />
+              <p className={cn("text-xl font-extrabold", color)}>{count}</p>
+              <p className="text-sm text-stone-500 dark:text-stone-400 mt-0.5">{label}</p>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
       {/* ── Filters ── */}
