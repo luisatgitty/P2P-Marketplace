@@ -5,6 +5,11 @@ import Link from "next/link";
 import Image from "next/image";
 import {
   Search,
+  ShieldCheck,
+  Clock,
+  AlertTriangle,
+  XCircle,
+  Users,
   ChevronUp,
   ChevronDown,
   ChevronsUpDown,
@@ -225,6 +230,12 @@ export default function UsersPage() {
   const totalPages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
   const paged      = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
 
+  const totalUsersCount  = users.length;
+  const verifiedCount    = users.filter(u => u.verification === "VERIFIED").length;
+  const pendingCount     = users.filter(u => u.verification === "PENDING").length;
+  const unverifiedCount  = users.filter(u => u.verification === "UNVERIFIED").length;
+  const rejectedCount    = users.filter(u => u.verification === "REJECTED").length;
+
   // ── Actions ───────────────────────────────────────────────────────────────────
   async function handleToggleActive(id: string) {
     const target = users.find(u => u.id === id);
@@ -306,6 +317,40 @@ export default function UsersPage() {
         <p className="text-sm text-stone-500 dark:text-stone-400">
           Search, filter, and manage all registered user accounts
         </p>
+      </div>
+
+      {/* ── Summary cards — clickable to filter by status ── */}
+      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
+        {[
+          { label: "Total Users", count: totalUsersCount, status: "ALL",        color: "text-stone-700 dark:text-stone-200", bg: "bg-stone-100 dark:bg-[#13151f]",      border: "border-stone-200 dark:border-[#2a2d3e]", Icon: Users },
+          { label: "Verified",    count: verifiedCount,   status: "VERIFIED",   color: "text-teal-600 dark:text-teal-400",   bg: "bg-teal-50 dark:bg-teal-950/20",       border: "border-teal-200 dark:border-teal-800", Icon: ShieldCheck },
+          { label: "Pending",     count: pendingCount,    status: "PENDING",    color: "text-amber-600 dark:text-amber-400", bg: "bg-amber-50 dark:bg-amber-950/20",     border: "border-amber-200 dark:border-amber-800", Icon: Clock },
+          { label: "Unverified",  count: unverifiedCount, status: "UNVERIFIED", color: "text-stone-600 dark:text-stone-300", bg: "bg-stone-100 dark:bg-stone-800",         border: "border-stone-200 dark:border-stone-700", Icon: AlertTriangle },
+          { label: "Rejected",    count: rejectedCount,   status: "REJECTED",   color: "text-red-600 dark:text-red-400",     bg: "bg-red-50 dark:bg-red-950/20",         border: "border-red-200 dark:border-red-800", Icon: XCircle },
+        ].map(({ label, count, status, color, bg, border, Icon }) => (
+          <Card
+            key={label}
+            className={cn(
+              "rounded-lg cursor-pointer hover:shadow-sm transition-all border",
+              bg,
+              border,
+              verifFilter === status && "ring-2 ring-offset-1 ring-current",
+            )}
+            onClick={() => {
+              setVerif(prev => {
+                if (status === "ALL") return "ALL";
+                return prev === status ? "ALL" : status;
+              });
+              setPage(1);
+            }}
+          >
+            <CardContent className="text-center">
+              <Icon className={cn("w-5 h-5 mx-auto mb-1.5", color)} />
+              <p className={cn("text-xl font-extrabold", color)}>{count}</p>
+              <p className="text-sm text-stone-500 dark:text-stone-400 mt-0.5">{label}</p>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
       {/* ── Search + filters ── */}
