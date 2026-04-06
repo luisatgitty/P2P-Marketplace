@@ -48,7 +48,7 @@ import {
 // ── Types ──────────────────────────────────────────────────────────────────────
 type Role        = "USER" | "ADMIN" | "SUPER_ADMIN";
 type VerifStatus = "UNVERIFIED" | "PENDING" | "VERIFIED" | "REJECTED";
-type SortField   = "name" | "email" | "role" | "verification" | "joined" | "last_login" | "listings";
+type SortField   = "name" | "email" | "role" | "verification" | "joined" | "last_login" | "listings" | "locked_until" | "updated" | "deleted";
 type SortDir     = "asc" | "desc";
 
 interface AdminUser {
@@ -221,6 +221,9 @@ export default function UsersPage() {
       else if (sort.field === "listings")   { va = a.listings;   vb = b.listings;   }
       else if (sort.field === "joined")     { va = new Date(a.joined).getTime();     vb = new Date(b.joined).getTime();     }
       else if (sort.field === "last_login") { va = a.last_login ? new Date(a.last_login).getTime() : 0; vb = b.last_login ? new Date(b.last_login).getTime() : 0; }
+      else if (sort.field === "locked_until") { va = a.account_locked_until ? new Date(a.account_locked_until).getTime() : 0; vb = b.account_locked_until ? new Date(b.account_locked_until).getTime() : 0; }
+      else if (sort.field === "updated")    { va = a.updated_at ? new Date(a.updated_at).getTime() : 0; vb = b.updated_at ? new Date(b.updated_at).getTime() : 0; }
+      else if (sort.field === "deleted")    { va = a.deleted_at ? new Date(a.deleted_at).getTime() : 0; vb = b.deleted_at ? new Date(b.deleted_at).getTime() : 0; }
       else { va = ""; vb = ""; }
       return sort.dir === "asc" ? (va > vb ? 1 : -1) : va < vb ? 1 : -1;
     });
@@ -417,7 +420,9 @@ export default function UsersPage() {
                   <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest whitespace-nowrap">
                     Location
                   </TableHead>
-                  <SortableTH label="Verification" field="verification" />
+                  <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest whitespace-nowrap">
+                    Verification
+                  </TableHead>
                   <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest whitespace-nowrap">
                     Status
                   </TableHead>
@@ -425,17 +430,11 @@ export default function UsersPage() {
                   <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest whitespace-nowrap">
                     Transactions
                   </TableHead>
-                  <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest whitespace-nowrap">
-                    Locked Until
-                  </TableHead>
+                  <SortableTH label="Locked Until" field="locked_until" />
                   <SortableTH label="Joined"       field="joined"       />
                   <SortableTH label="Last Login"   field="last_login"   />
-                  <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest whitespace-nowrap">
-                    Updated
-                  </TableHead>
-                  <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest whitespace-nowrap">
-                    Deleted
-                  </TableHead>
+                  <SortableTH label="Updated" field="updated" />
+                  <SortableTH label="Deleted" field="deleted" />
                   <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest text-right">
                     Actions
                   </TableHead>

@@ -393,6 +393,14 @@ export default function ListingsPage() {
             ]}
           />
           <FilterSelect
+            value={categoryFilter}
+            onChange={v => { setCategoryFilter(v); setPage(1); }}
+            options={[
+              ["ALL", "All Categories"],
+              ...categoryOptions.map(c => [c, c] as [string, string]),
+            ]}
+          />
+          <FilterSelect
             value={statusFilter}
             onChange={v => { setStatusFilter(v); setPage(1); }}
             options={[
@@ -402,14 +410,6 @@ export default function ListingsPage() {
               ["SOLD",      "Sold"       ],
               ["BANNED",    "Banned"     ],
               ["DELETED",   "Deleted"    ],
-            ]}
-          />
-          <FilterSelect
-            value={categoryFilter}
-            onChange={v => { setCategoryFilter(v); setPage(1); }}
-            options={[
-              ["ALL", "All Categories"],
-              ...categoryOptions.map(c => [c, c] as [string, string]),
             ]}
           />
 

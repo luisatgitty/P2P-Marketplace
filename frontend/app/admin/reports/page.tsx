@@ -10,6 +10,9 @@ import {
   XCircle,
   Flag,
   AlertTriangle,
+  ChevronUp,
+  ChevronDown,
+  ChevronsUpDown,
   ChevronLeft,
   ChevronRight,
   Eye,
@@ -37,6 +40,9 @@ import {
 } from "@/components/ui/table";
 import { AdminReport, ReportStatus } from "@/types/admin";
 import ReportActionsModal from "@/components/admin/report-actions-modal";
+
+type SortField = "reporter" | "listingOwner" | "reportedListing" | "submitted";
+type SortDir = "asc" | "desc";
 
 const REPORTS: AdminReport[] = [];
 
@@ -86,12 +92,19 @@ function FilterSelect({
 export default function ReportsPage() {
   const [search,         setSearch]         = useState("");
   const [statusFilter,   setStatusFilter]   = useState("ALL");
+  const [reasonFilter,   setReasonFilter]   = useState("ALL");
+  const [sort,           setSort]           = useState<{ field: SortField; dir: SortDir }>({ field: "submitted", dir: "desc" });
   const [page,           setPage]           = useState(1);
   const [reports,        setReports]        = useState<AdminReport[]>(REPORTS);
   const [loadingReports, setLoadingReports] = useState(true);
   const [actionLoadingId,setActionLoadingId]= useState<string | null>(null);
   const [resolving,      setResolving]      = useState<AdminReport | null>(null);
   const PER_PAGE = 8;
+
+  function toggleSort(field: SortField) {
+    setSort(s => s.field === field ? { field, dir: s.dir === "asc" ? "desc" : "asc" } : { field, dir: "asc" });
+    setPage(1);
+  }
 
   // ── Load ──────────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -124,8 +137,43 @@ export default function ReportsPage() {
         r.reason.toLowerCase().includes(search.toLowerCase()),
       );
     if (statusFilter !== "ALL") data = data.filter(r => r.status === statusFilter);
+    if (reasonFilter !== "ALL") data = data.filter(r => r.reason === reasonFilter);
+
+    data.sort((a, b) => {
+      let va: string | number = "";
+      let vb: string | number = "";
+
+      if (sort.field === "reporter") {
+        va = (a.reporter || "").toLowerCase();
+        vb = (b.reporter || "").toLowerCase();
+      } else if (sort.field === "listingOwner") {
+        va = (a.listing_owner || "").toLowerCase();
+        vb = (b.listing_owner || "").toLowerCase();
+      } else if (sort.field === "reportedListing") {
+        va = (a.target_name || "").toLowerCase();
+        vb = (b.target_name || "").toLowerCase();
+      } else {
+        va = a.created_at ? new Date(a.created_at).getTime() : 0;
+        vb = b.created_at ? new Date(b.created_at).getTime() : 0;
+      }
+
+      if (typeof va === "string" && typeof vb === "string") {
+        return sort.dir === "asc" ? va.localeCompare(vb) : vb.localeCompare(va);
+      }
+
+      return sort.dir === "asc"
+        ? Number(va) - Number(vb)
+        : Number(vb) - Number(va);
+    });
+
     return data;
-  }, [reports, search, statusFilter]);
+  }, [reports, search, statusFilter, reasonFilter, sort]);
+
+  const reasonOptions = useMemo(() => {
+    const uniqueReasons = Array.from(new Set(reports.map(r => r.reason).filter(Boolean)));
+    uniqueReasons.sort((a, b) => a.localeCompare(b));
+    return uniqueReasons;
+  }, [reports]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
   const paged      = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
@@ -179,7 +227,27 @@ export default function ReportsPage() {
     }
   }
 
-  const hasActiveFilters = search || statusFilter !== "ALL";
+  const hasActiveFilters = search || statusFilter !== "ALL" || reasonFilter !== "ALL";
+
+  const SortIcon = ({ field }: { field: SortField }) => {
+    if (sort.field !== field)
+      return <ChevronsUpDown className="w-3 h-3 text-stone-300 dark:text-stone-600 ml-1" />;
+    return sort.dir === "asc"
+      ? <ChevronUp className="w-3 h-3 ml-1" />
+      : <ChevronDown className="w-3 h-3 ml-1" />;
+  };
+
+  const SortableTH = ({ label, field }: { label: string; field: SortField }) => (
+    <TableHead
+      className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest cursor-pointer select-none hover:text-stone-700 dark:hover:text-stone-200 whitespace-nowrap"
+      onClick={() => toggleSort(field)}
+    >
+      <span className="inline-flex items-center">
+        {label}
+        <SortIcon field={field} />
+      </span>
+    </TableHead>
+  );
 
   // ── Render ────────────────────────────────────────────────────────────────────
   return (
@@ -242,6 +310,16 @@ export default function ReportsPage() {
         </div>
 
         <div className="flex gap-2">
+          {/* Reason filter */}
+          <FilterSelect
+            value={reasonFilter}
+            onChange={v => { setReasonFilter(v); setPage(1); }}
+            options={[
+              ["ALL", "All Reasons"],
+              ...reasonOptions.map(reason => [reason, reason] as [string, string]),
+            ]}
+          />
+
           {/* Status filter */}
           <FilterSelect
             value={statusFilter}
@@ -259,7 +337,7 @@ export default function ReportsPage() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => { setSearch(""); setStatusFilter("ALL"); setPage(1); }}
+              onClick={() => { setSearch(""); setReasonFilter("ALL"); setStatusFilter("ALL"); setPage(1); }}
               className="gap-1.5 border-red-200 dark:border-red-800 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 hover:text-red-600 hover:border-red-300"
             >
               <X className="w-3 h-3" /> Clear
@@ -276,22 +354,16 @@ export default function ReportsPage() {
               <Table>
                 <TableHeader>
                   <TableRow className="border-stone-200 dark:border-[#2a2d3e] bg-stone-50 dark:bg-[#13151f] hover:bg-stone-50 dark:hover:bg-[#13151f]">
-                    <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest">
-                      Reporter
-                    </TableHead>
-                    <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest">Listing Owner</TableHead>
-                    <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest">
-                      Reported Listing
-                    </TableHead>
+                      <SortableTH label="Reporter" field="reporter" />
+                      <SortableTH label="Listing Owner" field="listingOwner" />
+                      <SortableTH label="Reported Listing" field="reportedListing" />
                     <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest">
                       Reason
                     </TableHead>
                     <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest">
                       Status
                     </TableHead>
-                    <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest whitespace-nowrap">
-                      Submitted
-                    </TableHead>
+                      <SortableTH label="Submitted" field="submitted" />
                     <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest text-right">
                       Actions
                     </TableHead>

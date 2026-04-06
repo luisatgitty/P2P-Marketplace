@@ -42,7 +42,7 @@ import {
 // ── Types ──────────────────────────────────────────────────────────────────────
 type ListingType = "SELL" | "RENT" | "SERVICE";
 type TransactionStatus = "PENDING" | "CONFIRMED" | "COMPLETED" | "CANCELLED";
-type SortField = "totalPrice" | "completedAt" | "createdAt";
+type SortField = "client" | "owner" | "listing" | "scheduleEnd" | "totalPrice" | "completedAt" | "createdAt";
 type SortDir       = "asc" | "desc";
 
 interface AdminTransaction extends AdminTransactionRecord {}
@@ -206,9 +206,21 @@ export default function TransactionsPage() {
     if (typeFilter !== "ALL") data = data.filter(tx => tx.listing_type === typeFilter);
     if (statusFilter !== "ALL") data = data.filter(tx => tx.status === statusFilter);
     data.sort((a, b) => {
-      let va = 0;
-      let vb = 0;
-      if (sort.field === "totalPrice") {
+      let va: string | number = 0;
+      let vb: string | number = 0;
+      if (sort.field === "client") {
+        va = (a.client_full_name || "").toLowerCase();
+        vb = (b.client_full_name || "").toLowerCase();
+      } else if (sort.field === "owner") {
+        va = (a.owner_full_name || "").toLowerCase();
+        vb = (b.owner_full_name || "").toLowerCase();
+      } else if (sort.field === "listing") {
+        va = (a.listing_title || "").toLowerCase();
+        vb = (b.listing_title || "").toLowerCase();
+      } else if (sort.field === "scheduleEnd") {
+        va = a.end_date ? new Date(a.end_date).getTime() : 0;
+        vb = b.end_date ? new Date(b.end_date).getTime() : 0;
+      } else if (sort.field === "totalPrice") {
         va = Number(a.total_price) || 0;
         vb = Number(b.total_price) || 0;
       } else if (sort.field === "completedAt") {
@@ -218,7 +230,12 @@ export default function TransactionsPage() {
         va = new Date(a.created_at).getTime();
         vb = new Date(b.created_at).getTime();
       }
-      return sort.dir === "asc" ? va - vb : vb - va;
+      if (typeof va === "string" && typeof vb === "string") {
+        return sort.dir === "asc" ? va.localeCompare(vb) : vb.localeCompare(va);
+      }
+      return sort.dir === "asc"
+        ? Number(va) - Number(vb)
+        : Number(vb) - Number(va);
     });
     return data;
   }, [transactions, search, typeFilter, statusFilter, sort]);
@@ -357,18 +374,10 @@ export default function TransactionsPage() {
             <Table>
               <TableHeader>
                 <TableRow className="border-stone-200 dark:border-[#2a2d3e] bg-stone-50 dark:bg-[#13151f] hover:bg-stone-50 dark:hover:bg-[#13151f]">
-                  <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest whitespace-nowrap">
-                    Client
-                  </TableHead>
-                  <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest whitespace-nowrap">
-                    Listing Owner
-                  </TableHead>
-                  <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest whitespace-nowrap">
-                    Listing
-                  </TableHead>
-                  <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest whitespace-nowrap">
-                    Schedule
-                  </TableHead>
+                  <SortableTH label="Client" field="client" />
+                  <SortableTH label="Listing Owner" field="owner" />
+                  <SortableTH label="Listing" field="listing" />
+                  <SortableTH label="Schedule" field="scheduleEnd" />
                   <SortableTH label="Total" field="totalPrice" />
                   <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest whitespace-nowrap">
                     Agreement
