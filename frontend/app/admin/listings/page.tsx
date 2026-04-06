@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import {
@@ -16,6 +16,7 @@ import {
   Trash2,
   Ban,
   CircleDashed,
+  RotateCw,
   X,
   ShoppingBag,
   Home,
@@ -154,29 +155,28 @@ export default function ListingsPage() {
   const [page,           setPage]           = useState(1);
   const [listings,       setListings]       = useState<AdminListing[]>([]);
   const [loadingListings,setLoadingListings]= useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [actionLoadingListingId, setActionLoadingListingId] = useState<string | null>(null);
   const PER_PAGE = 8;
 
   // ── Load ──────────────────────────────────────────────────────────────────────
-  useEffect(() => {
-    let mounted = true;
-    const loadListings = async () => {
-      setLoadingListings(true);
-      try {
-        const data = await getAdminListings();
-        if (!mounted) return;
-        setListings((data ?? []) as AdminListingRecord[]);
-      } catch (err) {
-        if (!mounted) return;
-        const message = typeof err === "string" ? err : "Failed to load listings";
-        toast.error(message, { position: "top-center" });
-      } finally {
-        if (mounted) setLoadingListings(false);
-      }
-    };
-    void loadListings();
-    return () => { mounted = false; };
+  const loadListings = useCallback(async () => {
+    setLoadingListings(true);
+    try {
+      const data = await getAdminListings();
+      setListings((data ?? []) as AdminListingRecord[]);
+    } catch (err) {
+      const message = typeof err === "string" ? err : "Failed to load listings";
+      toast.error(message, { position: "top-center" });
+    } finally {
+      setLoadingListings(false);
+      setIsRefreshing(false);
+    }
   }, []);
+
+  useEffect(() => {
+    void loadListings();
+  }, [loadListings]);
 
   // ── Dynamic category options ──────────────────────────────────────────────────
   const categoryOptions = useMemo(() => {
@@ -429,6 +429,20 @@ export default function ListingsPage() {
             </Button>
           )}
         </div>
+
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => {
+            setIsRefreshing(true);
+            setPage(1);
+            void loadListings();
+          }}
+          disabled={loadingListings}
+          className="gap-1.5 shrink-0 dark:border-[#2a2d3e] dark:text-stone-300 dark:hover:bg-[#252837]"
+        >
+          <RotateCw className={cn("w-3.5 h-3.5", loadingListings && isRefreshing && "animate-spin")} />
+        </Button>
       </div>
 
       {/* ── Table ── */}

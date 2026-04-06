@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import {
@@ -19,6 +19,7 @@ import {
   UserX,
   Trash2,
   ExternalLink,
+  RotateCw,
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -174,29 +175,28 @@ export default function UsersPage() {
   const [page,               setPage]               = useState(1);
   const [users,              setUsers]              = useState<AdminUser[]>([]);
   const [loadingUsers,       setLoadingUsers]       = useState(true);
+  const [isRefreshing,       setIsRefreshing]       = useState(false);
   const [actionLoadingUserId,setActionLoadingUserId]= useState<string | null>(null);
   const PER_PAGE = 8;
 
   // ── Load ──────────────────────────────────────────────────────────────────────
-  useEffect(() => {
-    let mounted = true;
-    const loadUsers = async () => {
-      setLoadingUsers(true);
-      try {
-        const data = await getAdminUsers();
-        if (!mounted) return;
-        setUsers((data ?? []) as AdminUserRecord[]);
-      } catch (err) {
-        if (!mounted) return;
-        const message = typeof err === "string" ? err : "Failed to load users";
-        toast.error(message, { position: "top-center" });
-      } finally {
-        if (mounted) setLoadingUsers(false);
-      }
-    };
-    void loadUsers();
-    return () => { mounted = false; };
+  const loadUsers = useCallback(async () => {
+    setLoadingUsers(true);
+    try {
+      const data = await getAdminUsers();
+      setUsers((data ?? []) as AdminUserRecord[]);
+    } catch (err) {
+      const message = typeof err === "string" ? err : "Failed to load users";
+      toast.error(message, { position: "top-center" });
+    } finally {
+      setLoadingUsers(false);
+      setIsRefreshing(false);
+    }
   }, []);
+
+  useEffect(() => {
+    void loadUsers();
+  }, [loadUsers]);
 
   // ── Sort ──────────────────────────────────────────────────────────────────────
   function toggleSort(field: SortField) {
@@ -404,6 +404,20 @@ export default function UsersPage() {
             </Button>
           )}
         </div>
+
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => {
+            setIsRefreshing(true);
+            setPage(1);
+            void loadUsers();
+          }}
+          disabled={loadingUsers}
+          className="gap-1.5 shrink-0 dark:border-[#2a2d3e] dark:text-stone-300 dark:hover:bg-[#252837]"
+        >
+          <RotateCw className={cn("w-3.5 h-3.5", loadingUsers && isRefreshing && "animate-spin")} />
+        </Button>
       </div>
 
       {/* ── Table ── */}

@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import {
@@ -16,6 +16,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Eye,
+  RotateCw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -97,6 +98,7 @@ export default function ReportsPage() {
   const [page,           setPage]           = useState(1);
   const [reports,        setReports]        = useState<AdminReport[]>(REPORTS);
   const [loadingReports, setLoadingReports] = useState(true);
+  const [isRefreshing,   setIsRefreshing]   = useState(false);
   const [actionLoadingId,setActionLoadingId]= useState<string | null>(null);
   const [resolving,      setResolving]      = useState<AdminReport | null>(null);
   const PER_PAGE = 8;
@@ -107,25 +109,23 @@ export default function ReportsPage() {
   }
 
   // ── Load ──────────────────────────────────────────────────────────────────────
-  useEffect(() => {
-    let mounted = true;
-    const loadReports = async () => {
-      setLoadingReports(true);
-      try {
-        const data = await getAdminReports();
-        if (!mounted) return;
-        setReports((data ?? []) as AdminReport[]);
-      } catch (err) {
-        if (!mounted) return;
-        const message = typeof err === "string" ? err : "Failed to load reports";
-        toast.error(message, { position: "top-center" });
-      } finally {
-        if (mounted) setLoadingReports(false);
-      }
-    };
-    void loadReports();
-    return () => { mounted = false; };
+  const loadReports = useCallback(async () => {
+    setLoadingReports(true);
+    try {
+      const data = await getAdminReports();
+      setReports((data ?? []) as AdminReport[]);
+    } catch (err) {
+      const message = typeof err === "string" ? err : "Failed to load reports";
+      toast.error(message, { position: "top-center" });
+    } finally {
+      setLoadingReports(false);
+      setIsRefreshing(false);
+    }
   }, []);
+
+  useEffect(() => {
+    void loadReports();
+  }, [loadReports]);
 
   // ── Filter + paginate ─────────────────────────────────────────────────────────
   const filtered = useMemo(() => {
@@ -347,6 +347,20 @@ export default function ReportsPage() {
             </Button>
           )}
         </div>
+
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => {
+            setIsRefreshing(true);
+            setPage(1);
+            void loadReports();
+          }}
+          disabled={loadingReports}
+          className="gap-1.5 shrink-0 dark:border-[#2a2d3e] dark:text-stone-300 dark:hover:bg-[#252837]"
+        >
+          <RotateCw className={cn("w-3.5 h-3.5", loadingReports && isRefreshing && "animate-spin")} />
+        </Button>
       </div>
 
       {/* ── Table ── */}

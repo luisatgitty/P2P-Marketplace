@@ -7,7 +7,7 @@ import {
   Search, X, CheckCircle2, XCircle, ShieldCheck, Clock,
   Eye, AlertTriangle, IdCard, ChevronLeft, ChevronRight,
   User, Phone, Calendar, Hash, Monitor, Globe,
-  Cpu, CreditCard, ChevronDown, ChevronUp, ChevronsUpDown,
+  Cpu, CreditCard, ChevronDown, ChevronUp, ChevronsUpDown, RotateCw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -479,6 +479,7 @@ export default function VerificationsPage() {
   const [selected, setSelected] = useState<AdminVerification | null>(null);
   const [records, setRecords] = useState<AdminVerification[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const PER_PAGE = 8;
 
@@ -537,6 +538,7 @@ export default function VerificationsPage() {
       toast.error(message, { position: "top-center" });
     } finally {
       setLoading(false);
+      setIsRefreshing(false);
     }
   }, [mapRecord]);
 
@@ -756,6 +758,19 @@ export default function VerificationsPage() {
             </Button>
           )}
         </div>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => {
+            setIsRefreshing(true);
+            setPage(1);
+            void loadVerifications();
+          }}
+          disabled={loading}
+          className="gap-1.5 shrink-0 dark:border-[#2a2d3e] dark:text-stone-300 dark:hover:bg-[#252837]"
+        >
+          <RotateCw className={cn("w-3.5 h-3.5", loading && isRefreshing && "animate-spin")} />
+        </Button>
       </div>
 
       {/* Table */}

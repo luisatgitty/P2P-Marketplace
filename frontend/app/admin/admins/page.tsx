@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import {
   Search, Plus, Trash2, Eye, EyeOff, X, UserCog,
   Shield, ShieldCheck, CheckCircle2, AlertTriangle,
   ChevronLeft, ChevronRight, UserX, UserCheck,
+  RotateCw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -306,6 +307,7 @@ export default function AdminsPage() {
   const [showAdd,      setShowAdd]      = useState(false);
   const [addSuccess,   setAddSuccess]   = useState<string | null>(null);
   const [loadingAdmins,setLoadingAdmins]= useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [removingId,   setRemovingId]   = useState<string | null>(null);
   const [actionLoadingUserId, setActionLoadingUserId] = useState<string | null>(null);
   const [page,         setPage]         = useState(1);
@@ -334,25 +336,23 @@ export default function AdminsPage() {
   }
 
   // ── Load ──────────────────────────────────────────────────────────────────────
-  useEffect(() => {
-    let mounted = true;
-    const loadAdmins = async () => {
-      setLoadingAdmins(true);
-      try {
-        const data = await getAdminAccounts();
-        if (!mounted) return;
-        setAdmins((data ?? []).map(mapAdminRecord));
-      } catch (err) {
-        if (!mounted) return;
-        const message = typeof err === "string" ? err : "Failed to load admin accounts";
-        toast.error(message, { position: "top-center" });
-      } finally {
-        if (mounted) setLoadingAdmins(false);
-      }
-    };
-    void loadAdmins();
-    return () => { mounted = false; };
+  const loadAdmins = useCallback(async () => {
+    setLoadingAdmins(true);
+    try {
+      const data = await getAdminAccounts();
+      setAdmins((data ?? []).map(mapAdminRecord));
+    } catch (err) {
+      const message = typeof err === "string" ? err : "Failed to load admin accounts";
+      toast.error(message, { position: "top-center" });
+    } finally {
+      setLoadingAdmins(false);
+      setIsRefreshing(false);
+    }
   }, []);
+
+  useEffect(() => {
+    void loadAdmins();
+  }, [loadAdmins]);
 
   // ── Filter + paginate ─────────────────────────────────────────────────────────
   const filtered = useMemo(() => {
@@ -513,6 +513,20 @@ export default function AdminsPage() {
             </svg>
           </div>
         </div>
+
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => {
+            setIsRefreshing(true);
+            setPage(1);
+            void loadAdmins();
+          }}
+          disabled={loadingAdmins}
+          className="gap-1.5 shrink-0 dark:border-[#2a2d3e] dark:text-stone-300 dark:hover:bg-[#252837]"
+        >
+          <RotateCw className={cn("w-3.5 h-3.5", loadingAdmins && isRefreshing && "animate-spin")} />
+        </Button>
       </div>
 
       {/* ── Table ── */}

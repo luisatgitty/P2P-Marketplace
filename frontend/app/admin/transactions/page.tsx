@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import Link from "next/link";
 import {
   Search,
@@ -13,6 +13,7 @@ import {
   CheckCircle2,
   XCircle,
   Handshake,
+  RotateCw,
   X,
   ShoppingBag,
   Home,
@@ -164,28 +165,27 @@ export default function TransactionsPage() {
   const [page, setPage] = useState(1);
   const [transactions, setTransactions] = useState<AdminTransaction[]>([]);
   const [loadingTransactions, setLoadingTransactions] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const PER_PAGE = 8;
 
   // ── Load ──────────────────────────────────────────────────────────────────────
-  useEffect(() => {
-    let mounted = true;
-    const loadTransactions = async () => {
-      setLoadingTransactions(true);
-      try {
-        const data = await getAdminTransactions();
-        if (!mounted) return;
-        setTransactions((data ?? []) as AdminTransaction[]);
-      } catch (err) {
-        if (!mounted) return;
-        const message = typeof err === "string" ? err : "Failed to load transactions";
-        toast.error(message, { position: "top-center" });
-      } finally {
-        if (mounted) setLoadingTransactions(false);
-      }
-    };
-    void loadTransactions();
-    return () => { mounted = false; };
+  const loadTransactions = useCallback(async () => {
+    setLoadingTransactions(true);
+    try {
+      const data = await getAdminTransactions();
+      setTransactions((data ?? []) as AdminTransaction[]);
+    } catch (err) {
+      const message = typeof err === "string" ? err : "Failed to load transactions";
+      toast.error(message, { position: "top-center" });
+    } finally {
+      setLoadingTransactions(false);
+      setIsRefreshing(false);
+    }
   }, []);
+
+  useEffect(() => {
+    void loadTransactions();
+  }, [loadTransactions]);
 
   // ── Sort ──────────────────────────────────────────────────────────────────────
   function toggleSort(field: SortField) {
@@ -365,6 +365,20 @@ export default function TransactionsPage() {
             </Button>
           )}
         </div>
+
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => {
+            setIsRefreshing(true);
+            setPage(1);
+            void loadTransactions();
+          }}
+          disabled={loadingTransactions}
+          className="gap-1.5 shrink-0 dark:border-[#2a2d3e] dark:text-stone-300 dark:hover:bg-[#252837]"
+        >
+          <RotateCw className={cn("w-3.5 h-3.5", loadingTransactions && isRefreshing && "animate-spin")} />
+        </Button>
       </div>
 
       {/* ── Table ── */}
