@@ -308,6 +308,7 @@ function AddAdminModal({ onClose, onAdd }: AddModalProps) {
 export default function AdminsPage() {
   const [search,       setSearch]       = useState("");
   const [roleFilter,   setRoleFilter]   = useState("ALL");
+  const [statusFilter, setStatusFilter] = useState("ALL");
   const [sort,         setSort]         = useState<{ field: SortField; dir: SortDir }>({ field: "created", dir: "desc" });
   const [admins,       setAdmins]       = useState<AdminAccount[]>(ADMINS);
   const [showAdd,      setShowAdd]      = useState(false);
@@ -389,6 +390,9 @@ export default function AdminsPage() {
         a.email.toLowerCase().includes(searchLower),
       );
     if (roleFilter !== "ALL") data = data.filter(a => a.role === roleFilter);
+    if (statusFilter === "ACTIVE") data = data.filter(a => !a.deleted_at && a.is_active);
+    if (statusFilter === "INACTIVE") data = data.filter(a => !a.deleted_at && !a.is_active);
+    if (statusFilter === "DELETED") data = data.filter(a => !!a.deleted_at);
 
     data.sort((a, b) => {
       let va: string | number = "";
@@ -419,13 +423,13 @@ export default function AdminsPage() {
     });
 
     return data;
-  }, [admins, roleFilter, search, sort]);
+  }, [admins, roleFilter, search, sort, statusFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
   const paged      = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
 
   // Reset to page 1 when filters change
-  useMemo(() => { setPage(1); }, [search, roleFilter]);
+  useMemo(() => { setPage(1); }, [search, roleFilter, statusFilter]);
 
   const SortIcon = ({ field }: { field: SortField }) => {
     if (sort.field !== field) return <ChevronsUpDown className="w-3 h-3 text-stone-300 dark:text-stone-600 ml-1" />;
@@ -433,6 +437,8 @@ export default function AdminsPage() {
       ? <ChevronUp className="w-3 h-3 ml-1" />
       : <ChevronDown className="w-3 h-3 ml-1" />;
   };
+
+  const hasActiveFilters = search || roleFilter !== "ALL" || statusFilter !== "ALL";
 
   const SortableTH = ({ label, field }: { label: string; field: SortField }) => (
     <TableHead
@@ -542,20 +548,49 @@ export default function AdminsPage() {
       )}
 
       {/* ── Summary cards ── */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-3 gap-3">
         {[
+          {
+            label: "Total Admins",
+            value: admins.filter(a => !a.deleted_at).length,
+            role: "ALL",
+            color: "text-stone-700 dark:text-stone-200",
+            bg: "bg-stone-100 dark:bg-[#13151f]",
+            border: "border-stone-200 dark:border-[#2a2d3e]",
+          },
           {
             label: "Super Admins",
             value: admins.filter(a => a.role === "SUPER_ADMIN" && !a.deleted_at).length,
+            role: "SUPER_ADMIN",
             color: "text-amber-600 dark:text-amber-400",
+            bg: "bg-amber-50 dark:bg-amber-950/20",
+            border: "border-amber-200 dark:border-amber-800",
           },
           {
             label: "Regular Admins",
             value: admins.filter(a => a.role === "ADMIN" && !a.deleted_at).length,
+            role: "ADMIN",
             color: "text-violet-600 dark:text-violet-400",
+            bg: "bg-violet-50 dark:bg-violet-950/20",
+            border: "border-violet-200 dark:border-violet-800",
           },
-        ].map(({ label, value, color }) => (
-          <Card key={label} className="rounded-lg dark:bg-[#1c1f2e] dark:border-[#2a2d3e]">
+        ].map(({ label, value, role, color, bg, border }) => (
+          <Card
+            key={label}
+            className={cn(
+              "rounded-lg cursor-pointer hover:shadow-sm transition-all border",
+              bg,
+              border,
+              roleFilter === role && "ring-2 ring-offset-1 ring-current",
+            )}
+            onClick={() => {
+              setRoleFilter((prev) => {
+                if (role === "ALL") return "ALL";
+                return prev === role ? "ALL" : role;
+              });
+              setPage(1);
+            }}
+          >
             <CardContent className="text-center">
               <p className={cn("text-2xl font-extrabold", color)}>{value}</p>
               <p className="text-sm text-stone-500 dark:text-stone-400 mt-0.5">{label}</p>
@@ -598,6 +633,35 @@ export default function AdminsPage() {
             </svg>
           </div>
         </div>
+
+        {/* Status filter */}
+        <div className="relative shrink-0">
+          <select
+            value={statusFilter}
+            onChange={e => { setStatusFilter(e.target.value); setPage(1); }}
+            className="pl-3 pr-8 py-2 h-9 bg-transparent border border-stone-200 dark:border-[#2a2d3e] rounded-md text-sm text-stone-700 dark:text-stone-200 outline-none focus:border-stone-400 transition-colors appearance-none cursor-pointer dark:bg-[#13151f]"
+          >
+            <option value="ALL">All Status</option>
+            <option value="ACTIVE">Active</option>
+            <option value="INACTIVE">Inactive</option>
+            <option value="DELETED">Deleted</option>
+          </select>
+          <div className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2">
+            <svg className="w-3.5 h-3.5 text-stone-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+            </svg>
+          </div>
+        </div>
+
+        {hasActiveFilters && (
+          <Button
+            variant="outline"
+            onClick={() => { setSearch(""); setRoleFilter("ALL"); setStatusFilter("ALL"); setPage(1); }}
+            className="gap-1.5 border-red-200 dark:border-red-800 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 hover:text-red-600 hover:border-red-300"
+          >
+            <X className="w-3 h-3" /> Clear
+          </Button>
+        )}
 
         <Button
           type="button"
