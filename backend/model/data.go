@@ -322,6 +322,8 @@ type AdminAccountListItemFromDb struct {
 	IsActive        bool       `gorm:"column:is_active" json:"is_active"`
 	CreatedAt       time.Time  `gorm:"column:created_at" json:"created_at"`
 	LastLogin       *time.Time `gorm:"column:last_login" json:"last_login"`
+	UpdatedAt       time.Time  `gorm:"column:updated_at" json:"updated_at"`
+	DeletedAt       *time.Time `gorm:"column:deleted_at" json:"deleted_at"`
 }
 
 type AdminCreateAdminBody struct {

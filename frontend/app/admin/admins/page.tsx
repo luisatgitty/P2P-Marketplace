@@ -5,7 +5,7 @@ import Image from "next/image";
 import {
   Search, Plus, Trash2, Eye, EyeOff, X, UserCog,
   Shield, ShieldCheck, CheckCircle2, AlertTriangle,
-  ChevronLeft, ChevronRight, UserX, UserCheck,
+  ChevronLeft, ChevronRight, ChevronUp, ChevronDown, ChevronsUpDown, UserX, UserCheck,
   RotateCw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -36,10 +36,13 @@ import {
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 type AdminRole = "ADMIN" | "SUPER_ADMIN";
+type SortField = "name" | "created" | "last_login" | "updated" | "deleted";
+type SortDir = "asc" | "desc";
 
 interface AdminAccount {
   id:         string;
-  name:       string;
+  first_name: string;
+  last_name:  string;
   profile_image_url: string;
   email:      string;
   phone:      string;
@@ -47,6 +50,8 @@ interface AdminAccount {
   is_active:  boolean;
   created_at: string;
   last_login: string | null;
+  updated_at: string;
+  deleted_at: string | null;
   added_by:   string;
 }
 
@@ -303,6 +308,7 @@ function AddAdminModal({ onClose, onAdd }: AddModalProps) {
 export default function AdminsPage() {
   const [search,       setSearch]       = useState("");
   const [roleFilter,   setRoleFilter]   = useState("ALL");
+  const [sort,         setSort]         = useState<{ field: SortField; dir: SortDir }>({ field: "created", dir: "desc" });
   const [admins,       setAdmins]       = useState<AdminAccount[]>(ADMINS);
   const [showAdd,      setShowAdd]      = useState(false);
   const [addSuccess,   setAddSuccess]   = useState<string | null>(null);
@@ -320,17 +326,27 @@ export default function AdminsPage() {
     return date.toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" });
   }
 
+  function formatTime(value?: string | null): string {
+    if (!value) return "";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "";
+    return date.toLocaleTimeString("en-PH", { hour: "numeric", minute: "2-digit", hour12: true });
+  }
+
   function mapAdminRecord(record: AdminAccountRecord): AdminAccount {
     return {
       id:         record.id,
-      name:       `${record.first_name} ${record.last_name}`.trim(),
+      first_name: record.first_name,
+      last_name:  record.last_name,
       profile_image_url: record.profile_image_url,
       email:      record.email,
       phone:      record.phone,
       role:       record.role,
       is_active:  record.is_active,
-      created_at: formatDate(record.created_at),
-      last_login: record.last_login ? formatDate(record.last_login) : null,
+      created_at: record.created_at,
+      last_login: record.last_login,
+      updated_at: record.updated_at,
+      deleted_at: record.deleted_at,
       added_by:   "System",
     };
   }
@@ -354,23 +370,81 @@ export default function AdminsPage() {
     void loadAdmins();
   }, [loadAdmins]);
 
+  function toggleSort(field: SortField) {
+    setSort((current) => (
+      current.field === field
+        ? { field, dir: current.dir === "asc" ? "desc" : "asc" }
+        : { field, dir: "asc" }
+    ));
+    setPage(1);
+  }
+
   // ── Filter + paginate ─────────────────────────────────────────────────────────
   const filtered = useMemo(() => {
     let data = [...admins];
+    const searchLower = search.toLowerCase();
     if (search)
       data = data.filter(a =>
-        a.name.toLowerCase().includes(search.toLowerCase()) ||
-        a.email.toLowerCase().includes(search.toLowerCase()),
+        `${a.first_name} ${a.last_name}`.toLowerCase().includes(searchLower) ||
+        a.email.toLowerCase().includes(searchLower),
       );
     if (roleFilter !== "ALL") data = data.filter(a => a.role === roleFilter);
+
+    data.sort((a, b) => {
+      let va: string | number = "";
+      let vb: string | number = "";
+
+      if (sort.field === "name") {
+        va = `${a.first_name} ${a.last_name}`.trim().toLowerCase();
+        vb = `${b.first_name} ${b.last_name}`.trim().toLowerCase();
+      } else if (sort.field === "created") {
+        va = a.created_at ? new Date(a.created_at).getTime() : 0;
+        vb = b.created_at ? new Date(b.created_at).getTime() : 0;
+      } else if (sort.field === "last_login") {
+        va = a.last_login ? new Date(a.last_login).getTime() : 0;
+        vb = b.last_login ? new Date(b.last_login).getTime() : 0;
+      } else if (sort.field === "updated") {
+        va = a.updated_at ? new Date(a.updated_at).getTime() : 0;
+        vb = b.updated_at ? new Date(b.updated_at).getTime() : 0;
+      } else if (sort.field === "deleted") {
+        va = a.deleted_at ? new Date(a.deleted_at).getTime() : 0;
+        vb = b.deleted_at ? new Date(b.deleted_at).getTime() : 0;
+      }
+
+      if (typeof va === "string" && typeof vb === "string") {
+        return sort.dir === "asc" ? va.localeCompare(vb) : vb.localeCompare(va);
+      }
+
+      return sort.dir === "asc" ? Number(va) - Number(vb) : Number(vb) - Number(va);
+    });
+
     return data;
-  }, [admins, search, roleFilter]);
+  }, [admins, roleFilter, search, sort]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
   const paged      = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
 
   // Reset to page 1 when filters change
   useMemo(() => { setPage(1); }, [search, roleFilter]);
+
+  const SortIcon = ({ field }: { field: SortField }) => {
+    if (sort.field !== field) return <ChevronsUpDown className="w-3 h-3 text-stone-300 dark:text-stone-600 ml-1" />;
+    return sort.dir === "asc"
+      ? <ChevronUp className="w-3 h-3 ml-1" />
+      : <ChevronDown className="w-3 h-3 ml-1" />;
+  };
+
+  const SortableTH = ({ label, field }: { label: string; field: SortField }) => (
+    <TableHead
+      className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest cursor-pointer select-none hover:text-stone-700 dark:hover:text-stone-200 whitespace-nowrap"
+      onClick={() => toggleSort(field)}
+    >
+      <span className="inline-flex items-center">
+        {label}
+        <SortIcon field={field} />
+      </span>
+    </TableHead>
+  );
 
   // ── Actions ───────────────────────────────────────────────────────────────────
   async function handleAdd({ firstName, lastName, email, phone, role, password }: {
@@ -381,7 +455,8 @@ export default function AdminsPage() {
       const newAdmin = mapAdminRecord(created);
       setAdmins(as => [newAdmin, ...as]);
       setShowAdd(false);
-      setAddSuccess(`${newAdmin.name} has been added as ${role === "SUPER_ADMIN" ? "Super Admin" : "Admin"}.`);
+      const fullName = `${newAdmin.first_name} ${newAdmin.last_name}`.trim();
+      setAddSuccess(`${fullName} has been added as ${role === "SUPER_ADMIN" ? "Super Admin" : "Admin"}.`);
       setTimeout(() => setAddSuccess(null), 5000);
       toast.success("Admin account created successfully", { position: "top-center" });
     } catch (err) {
@@ -396,7 +471,17 @@ export default function AdminsPage() {
     setRemovingId(id);
     try {
       await deleteAdminAccount(id);
-      setAdmins(as => as.filter(a => a.id !== id));
+      const nowIso = new Date().toISOString();
+      setAdmins((as) => as.map((admin) => (
+        admin.id === id
+          ? {
+              ...admin,
+              is_active: false,
+              updated_at: nowIso,
+              deleted_at: nowIso,
+            }
+          : admin
+      )));
       toast.success("Admin account removed successfully", { position: "top-center" });
     } catch (err) {
       const message = typeof err === "string" ? err : "Failed to remove admin account";
@@ -408,7 +493,7 @@ export default function AdminsPage() {
 
   async function handleToggleActive(id: string) {
     const target = admins.find((admin) => admin.id === id);
-    if (!target || target.role === "SUPER_ADMIN") return;
+    if (!target || target.role === "SUPER_ADMIN" || target.deleted_at) return;
 
     const nextActive = !target.is_active;
     setActionLoadingUserId(id);
@@ -461,12 +546,12 @@ export default function AdminsPage() {
         {[
           {
             label: "Super Admins",
-            value: admins.filter(a => a.role === "SUPER_ADMIN").length,
+            value: admins.filter(a => a.role === "SUPER_ADMIN" && !a.deleted_at).length,
             color: "text-amber-600 dark:text-amber-400",
           },
           {
             label: "Regular Admins",
-            value: admins.filter(a => a.role === "ADMIN").length,
+            value: admins.filter(a => a.role === "ADMIN" && !a.deleted_at).length,
             color: "text-violet-600 dark:text-violet-400",
           },
         ].map(({ label, value, color }) => (
@@ -536,8 +621,9 @@ export default function AdminsPage() {
             <Table>
               <TableHeader>
                 <TableRow className="border-stone-200 dark:border-[#2a2d3e] bg-stone-50 dark:bg-[#13151f] hover:bg-stone-50 dark:hover:bg-[#13151f]">
-                  <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest">
-                    Admin
+                  <SortableTH label="Admin Name" field="name" />
+                  <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest whitespace-nowrap">
+                    Contact Info
                   </TableHead>
                   <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest">
                     Role
@@ -545,12 +631,10 @@ export default function AdminsPage() {
                   <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest whitespace-nowrap">
                     Status
                   </TableHead>
-                  <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest whitespace-nowrap">
-                    Created
-                  </TableHead>
-                  <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest whitespace-nowrap">
-                    Last Login
-                  </TableHead>
+                  <SortableTH label="Created" field="created" />
+                  <SortableTH label="Last Login" field="last_login" />
+                  <SortableTH label="Updated" field="updated" />
+                  <SortableTH label="Deleted" field="deleted" />
                   <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest text-right">
                     Actions
                   </TableHead>
@@ -561,7 +645,7 @@ export default function AdminsPage() {
                 {loadingAdmins ? (
                   <TableRow>
                     <TableCell
-                      colSpan={6}
+                      colSpan={9}
                       className="py-16 text-center text-sm text-stone-400 dark:text-stone-500"
                     >
                       Loading admin accounts…
@@ -570,7 +654,7 @@ export default function AdminsPage() {
                 ) : paged.length === 0 ? (
                   <TableRow>
                     <TableCell
-                      colSpan={6}
+                      colSpan={9}
                       className="py-16 text-center text-sm text-stone-400 dark:text-stone-500"
                     >
                       No admin accounts found.
@@ -582,7 +666,7 @@ export default function AdminsPage() {
                       key={admin.id}
                       className="border-stone-100 dark:border-[#2a2d3e] hover:bg-stone-50 dark:hover:bg-[#252837] transition-colors"
                     >
-                      {/* Name + email + number */}
+                      {/* Name */}
                       <TableCell className="py-2">
                         <div className="flex items-center gap-3">
                           <Image
@@ -594,17 +678,28 @@ export default function AdminsPage() {
                           />
                           <div className="min-w-0">
                             <p className="text-sm font-bold text-stone-800 dark:text-stone-100 truncate">
-                              {admin.name}
+                              {admin.first_name}
                             </p>
-                            <p className="text-xs text-stone-400 dark:text-stone-500 truncate">
-                              {admin.email}
+                            <p className="text-sm font-bold text-stone-800 dark:text-stone-100 truncate">
+                              {admin.last_name}
                             </p>
-                            {admin.phone && (
-                              <p className="text-xs text-stone-400 dark:text-stone-500">
-                                {admin.phone}
-                              </p>
-                            )}
                           </div>
+                        </div>
+                      </TableCell>
+
+                      {/* Contact info */}
+                      <TableCell className="py-2">
+                        <div className="min-w-0">
+                          <p className="text-sm text-stone-700 dark:text-stone-200 truncate max-w-44">
+                            {admin.email}
+                          </p>
+                          {admin.phone ? (
+                            <p className="text-sm text-stone-400 dark:text-stone-500 truncate max-w-44">
+                              {admin.phone}
+                            </p>
+                          ) : (
+                            <p className="text-sm text-stone-300 dark:text-stone-600">—</p>
+                          )}
                         </div>
                       </TableCell>
 
@@ -626,31 +721,54 @@ export default function AdminsPage() {
 
                       {/* Active status */}
                       <TableCell className="py-3.5 whitespace-nowrap">
-                        <span className={cn(
-                          "inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full",
-                          admin.is_active
-                            ? "bg-teal-100 dark:bg-teal-900/40 text-teal-700 dark:text-teal-300"
-                            : "bg-stone-200 dark:bg-stone-700 text-stone-700 dark:text-stone-300",
-                        )}>
-                          {admin.is_active ? "Active" : "Inactive"}
-                        </span>
+                        {admin.deleted_at ? (
+                          <span className="inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300">
+                            Deleted
+                          </span>
+                        ) : (
+                          <span className={cn(
+                            "inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full",
+                            admin.is_active
+                              ? "bg-teal-100 dark:bg-teal-900/40 text-teal-700 dark:text-teal-300"
+                              : "bg-stone-200 dark:bg-stone-700 text-stone-700 dark:text-stone-300",
+                          )}>
+                            {admin.is_active ? "Active" : "Inactive"}
+                          </span>
+                        )}
                       </TableCell>
 
                       {/* Created */}
                       <TableCell className="py-3.5 text-sm text-stone-500 dark:text-stone-400 whitespace-nowrap">
-                        {admin.created_at}
+                        {formatDate(admin.created_at)}
                       </TableCell>
 
                       {/* Last login */}
                       <TableCell className="py-3.5 text-sm text-stone-500 dark:text-stone-400 whitespace-nowrap">
-                        {admin.last_login ?? (
-                          <span className="text-stone-300 dark:text-stone-600">Never</span>
-                        )}
+                        {admin.last_login ? (
+                          <div className="leading-tight">
+                            <p className="text-sm font-medium">{formatDate(admin.last_login)}</p>
+                            <p className="text-xs">{formatTime(admin.last_login)}</p>
+                          </div>
+                        ) : <span className="text-stone-300 dark:text-stone-600">Never</span>}
+                      </TableCell>
+
+                      {/* Updated */}
+                      <TableCell className="py-3.5 text-sm text-stone-500 dark:text-stone-400 whitespace-nowrap">
+                        {formatDate(admin.updated_at)}
+                      </TableCell>
+
+                      {/* Deleted */}
+                      <TableCell className="py-3.5 text-sm text-stone-500 dark:text-stone-400 whitespace-nowrap">
+                        {admin.deleted_at ? formatDate(admin.deleted_at) : <span className="text-stone-300 dark:text-stone-600">—</span>}
                       </TableCell>
 
                       {/* Actions */}
                       <TableCell className="py-3.5 text-right">
-                        {admin.role === "SUPER_ADMIN" ? (
+                        {admin.deleted_at ? (
+                          <span className="text-sm text-stone-300 dark:text-stone-600 pr-1">
+                            Deleted
+                          </span>
+                        ) : admin.role === "SUPER_ADMIN" ? (
                           <span className="text-sm text-stone-300 dark:text-stone-600 pr-1">
                             Protected
                           </span>
@@ -678,7 +796,7 @@ export default function AdminsPage() {
                               size="icon"
                               title={removingId === admin.id ? "Removing..." : "Remove admin"}
                               aria-label={removingId === admin.id ? "Removing..." : "Remove admin"}
-                              onClick={() => void handleDelete(admin.id, admin.name)}
+                              onClick={() => void handleDelete(admin.id, `${admin.first_name} ${admin.last_name}`.trim())}
                               disabled={removingId === admin.id || actionLoadingUserId === admin.id}
                               className="w-7 h-7 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 hover:text-red-600 disabled:opacity-50"
                             >

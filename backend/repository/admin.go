@@ -298,11 +298,13 @@ func GetAdminAccounts() ([]model.AdminAccountListItemFromDb, error) {
 			u.role::text AS role,
 			u.is_active,
 			u.created_at,
-			u.last_login_at AS last_login
+			u.last_login_at AS last_login,
+			u.updated_at,
+			u.deleted_at
 		FROM public.users u
-		WHERE u.deleted_at IS NULL
-			AND u.role IN ('ADMIN', 'SUPER_ADMIN')
+		WHERE u.role IN ('ADMIN', 'SUPER_ADMIN')
 		ORDER BY
+			CASE WHEN u.deleted_at IS NULL THEN 0 ELSE 1 END ASC,
 			CASE WHEN u.role = 'SUPER_ADMIN' THEN 0 ELSE 1 END ASC,
 			u.created_at ASC
 	`
@@ -372,7 +374,9 @@ func CreateAdminAccount(body model.AdminCreateAdminBody) (model.AdminAccountList
 			role::text AS role,
 			is_active,
 			created_at,
-			last_login_at AS last_login
+			last_login_at AS last_login,
+			updated_at,
+			deleted_at
 	`
 
 	if err := db.Raw(insertQuery, userInput.FirstName, userInput.LastName, userInput.Email, strings.TrimSpace(body.Phone), hashedPassword, role).Scan(&created).Error; err != nil {

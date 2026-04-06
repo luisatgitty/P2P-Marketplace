@@ -9,6 +9,8 @@ export type AdminAccountRecord = {
   is_active: boolean;
   created_at: string;
   last_login: string | null;
+  updated_at: string;
+  deleted_at: string | null;
 };
 
 export type CreateAdminPayload = {
