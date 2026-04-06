@@ -33,7 +33,7 @@ import {
 // ── Types ──────────────────────────────────────────────────────────────────────
 type VerifStatus = "PENDING" | "VERIFIED" | "REJECTED";
 type IdType = "ALL" | "philsys" | "postal" | "drivers" | "prc" | "passport" | "sss" | "gsis" | "hdmf" | "voters" | "acr";
-type SortField = "applicant" | "submitted" | "reviewedBy";
+type SortField = "applicant" | "dateOfBirth" | "submitted" | "reviewedBy";
 type SortDir = "asc" | "desc";
 
 const ID_TYPE_OPTIONS: [IdType, string][] = [
@@ -61,6 +61,7 @@ interface AdminVerification {
   id_first_name:     string;
   id_last_name:      string;
   id_birthdate:      string;
+  id_birthdate_raw:  string;
   mobile_number:     string;
   // ID document
   id_type:           string;
@@ -499,6 +500,7 @@ export default function VerificationsPage() {
       id_first_name: record.id_first_name,
       id_last_name: record.id_last_name,
       id_birthdate: record.id_birthdate ? new Date(record.id_birthdate).toLocaleDateString("en-PH", { month: "long", day: "numeric", year: "numeric" }) : "",
+      id_birthdate_raw: record.id_birthdate,
       mobile_number: record.mobile_number,
       id_type: record.id_type,
       id_number: record.id_number,
@@ -559,6 +561,9 @@ export default function VerificationsPage() {
       if (sort.field === "applicant") {
         va = a.user_name.toLowerCase();
         vb = b.user_name.toLowerCase();
+      } else if (sort.field === "dateOfBirth") {
+        va = a.id_birthdate_raw ? new Date(a.id_birthdate_raw).getTime() : 0;
+        vb = b.id_birthdate_raw ? new Date(b.id_birthdate_raw).getTime() : 0;
       } else if (sort.field === "submitted") {
         va = a.submitted_at_raw ? new Date(a.submitted_at_raw).getTime() : 0;
         vb = b.submitted_at_raw ? new Date(b.submitted_at_raw).getTime() : 0;
@@ -613,7 +618,22 @@ export default function VerificationsPage() {
     setActionLoading(true);
     try {
       await setAdminVerificationStatus(id, { status: "VERIFIED", reason });
-      await loadVerifications();
+      const nowIso = new Date().toISOString();
+      const nowDisplay = new Date(nowIso).toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" });
+      setRecords(prev =>
+        prev.map(v =>
+          v.id === id
+            ? {
+                ...v,
+                status: "VERIFIED",
+                reason,
+                reviewed_by: v.reviewed_by ?? "Admin",
+                reviewed_at_raw: nowIso,
+                reviewed_at: nowDisplay,
+              }
+            : v,
+        ),
+      );
       setSelected(null);
       toast.success("Verification approved successfully", { position: "top-center" });
     } catch (error) {
@@ -630,7 +650,22 @@ export default function VerificationsPage() {
     setActionLoading(true);
     try {
       await setAdminVerificationStatus(id, { status: "REJECTED", reason });
-      await loadVerifications();
+      const nowIso = new Date().toISOString();
+      const nowDisplay = new Date(nowIso).toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" });
+      setRecords(prev =>
+        prev.map(v =>
+          v.id === id
+            ? {
+                ...v,
+                status: "REJECTED",
+                reason,
+                reviewed_by: v.reviewed_by ?? "Admin",
+                reviewed_at_raw: nowIso,
+                reviewed_at: nowDisplay,
+              }
+            : v,
+        ),
+      );
       setSelected(null);
       toast.success("Verification rejected successfully", { position: "top-center" });
     } catch (error) {
@@ -731,7 +766,9 @@ export default function VerificationsPage() {
               <TableHeader>
                 <TableRow className="border-stone-200 dark:border-[#2a2d3e] bg-stone-50 dark:bg-[#13151f] hover:bg-stone-50 dark:hover:bg-[#13151f]">
                   <SortableTH label="Applicant" field="applicant" />
-                  <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest">Submitted Name</TableHead>
+                  <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest">Name</TableHead>
+                  <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest whitespace-nowrap">Mobile Number</TableHead>
+                  <SortableTH label="Date of Birth" field="dateOfBirth" />
                   <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest whitespace-nowrap">ID Type</TableHead>
                   <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest">Status</TableHead>
                   <SortableTH label="Submitted" field="submitted" />
@@ -742,13 +779,13 @@ export default function VerificationsPage() {
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="py-16 text-center text-sm text-stone-400 dark:text-stone-500">
+                    <TableCell colSpan={9} className="py-16 text-center text-sm text-stone-400 dark:text-stone-500">
                       Loading verification requests...
                     </TableCell>
                   </TableRow>
                 ) : paged.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="py-16 text-center text-sm text-stone-400 dark:text-stone-500">
+                    <TableCell colSpan={9} className="py-16 text-center text-sm text-stone-400 dark:text-stone-500">
                       No verification requests found.
                     </TableCell>
                   </TableRow>
@@ -787,6 +824,16 @@ export default function VerificationsPage() {
 
                         <TableCell className="py-3.5 text-sm text-stone-500 dark:text-stone-400 whitespace-nowrap">
                             <p className="text-stone-800 dark:text-stone-100">{`${verif.id_first_name} ${verif.id_last_name}`}</p>
+                        </TableCell>
+
+                        {/* Mobile Number */}
+                        <TableCell className="py-3.5 text-sm text-stone-500 dark:text-stone-400 whitespace-nowrap">
+                          {verif.mobile_number}
+                        </TableCell>
+
+                        {/* Date of Birth */}
+                        <TableCell className="py-3.5 text-sm text-stone-500 dark:text-stone-400 whitespace-nowrap">
+                          {verif.id_birthdate || "—"}
                         </TableCell>
 
                         {/* ID Type */}

@@ -41,7 +41,7 @@ import {
 import { AdminReport, ReportStatus } from "@/types/admin";
 import ReportActionsModal from "@/components/admin/report-actions-modal";
 
-type SortField = "reporter" | "listingOwner" | "reportedListing" | "submitted";
+type SortField = "reporter" | "listingOwner" | "reportedListing" | "submitted" | "reviewedAt";
 type SortDir = "asc" | "desc";
 
 const REPORTS: AdminReport[] = [];
@@ -152,6 +152,9 @@ export default function ReportsPage() {
       } else if (sort.field === "reportedListing") {
         va = (a.target_name || "").toLowerCase();
         vb = (b.target_name || "").toLowerCase();
+      } else if (sort.field === "reviewedAt") {
+        va = a.reviewed_at ? new Date(a.reviewed_at).getTime() : 0;
+        vb = b.reviewed_at ? new Date(b.reviewed_at).getTime() : 0;
       } else {
         va = a.created_at ? new Date(a.created_at).getTime() : 0;
         vb = b.created_at ? new Date(b.created_at).getTime() : 0;
@@ -364,6 +367,10 @@ export default function ReportsPage() {
                       Status
                     </TableHead>
                       <SortableTH label="Submitted" field="submitted" />
+                    <SortableTH label="Reviewer" field="reviewedAt" />
+                    <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest whitespace-nowrap">
+                      Action Taken
+                    </TableHead>
                     <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest text-right">
                       Actions
                     </TableHead>
@@ -373,13 +380,13 @@ export default function ReportsPage() {
                 <TableBody>
                   {loadingReports ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="py-16 text-center text-sm text-stone-400 dark:text-stone-500">
+                      <TableCell colSpan={9} className="py-16 text-center text-sm text-stone-400 dark:text-stone-500">
                         Loading reports…
                       </TableCell>
                     </TableRow>
                   ) : paged.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="py-16 text-center text-sm text-stone-400 dark:text-stone-500">
+                      <TableCell colSpan={9} className="py-16 text-center text-sm text-stone-400 dark:text-stone-500">
                         No reports match the current filters.
                       </TableCell>
                     </TableRow>
@@ -506,6 +513,26 @@ export default function ReportsPage() {
                           {/* Submitted date */}
                           <TableCell className="py-3.5 text-sm text-stone-500 dark:text-stone-400 whitespace-nowrap">
                             {formatDateTime(report.created_at)}
+                          </TableCell>
+
+                          {/* Reviewer */}
+                          <TableCell className="py-3.5 text-sm text-stone-500 dark:text-stone-400 whitespace-nowrap">
+                            {report.reviewed_by
+                              ? (
+                                <div>
+                                  <p className="text-sm font-bold text-stone-800 dark:text-stone-100">{report.reviewed_by}</p>
+                                  <p className="text-xs text-stone-400 dark:text-stone-500">{formatDateTime(report.reviewed_at)}</p>
+                                </div>
+                              ) : <span className="text-stone-300 dark:text-stone-600">—</span>
+                            }
+                          </TableCell>
+
+                          {/* Action Taken */}
+                          <TableCell className="py-3.5 text-sm text-stone-500 dark:text-stone-400 whitespace-nowrap">
+                            {report.action_taken
+                              ? report.action_taken.replaceAll("_", " ")
+                              : <span className="text-stone-300 dark:text-stone-600">—</span>
+                            }
                           </TableCell>
 
                           {/* Actions */}
