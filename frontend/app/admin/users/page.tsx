@@ -396,9 +396,8 @@ export default function UsersPage() {
           {hasActiveFilters && (
             <Button
               variant="outline"
-              size="sm"
               onClick={() => { setSearch(""); setVerif("ALL"); setStatus("ALL"); setPage(1); }}
-              className="gap-1.5 border-red-200 dark:border-red-800 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 hover:text-red-600 hover:border-red-300"
+              className="hover:bg-destructive/10! text-destructive! border-destructive! focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40"
             >
               <X className="w-3 h-3" /> Clear
             </Button>
@@ -414,9 +413,9 @@ export default function UsersPage() {
             void loadUsers();
           }}
           disabled={loadingUsers}
-          className="gap-1.5 shrink-0 dark:border-[#2a2d3e] dark:text-stone-300 dark:hover:bg-[#252837]"
+          className="border-sky-600 text-sky-600! hover:bg-sky-600/10 focus-visible:border-sky-600 focus-visible:ring-sky-600/20 dark:border-sky-400 dark:text-sky-400! dark:hover:bg-sky-400/10 dark:focus-visible:border-sky-400 dark:focus-visible:ring-sky-400/40"
         >
-          <RotateCw className={cn("w-3.5 h-3.5", loadingUsers && isRefreshing && "animate-spin")} />
+          <RotateCw className={cn("w-3.5 h-3.5", loadingUsers && isRefreshing && "animate-spin")} /> Refresh
         </Button>
       </div>
 
