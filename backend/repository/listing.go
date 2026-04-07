@@ -1255,7 +1255,7 @@ func GetAllListings(excludeUserId string, filter model.ListingsFilter) ([]model.
 			FROM public.reviews r
 			WHERE r.reviewed_user_id = l.user_id
 		) rv ON TRUE
-		WHERE l.status <> 'HIDDEN'
+		WHERE l.status = 'AVAILABLE'
 			AND NOT (
 				l.listing_type = 'SELL'
 				AND l.status = 'SOLD'
