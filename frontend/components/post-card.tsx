@@ -63,7 +63,7 @@ export default function PostCard(props: PostCardProps) {
         </h3>
         <p className="text-sm sm:text-base font-bold text-amber-700 dark:text-amber-500 leading-none mt-0.5">
           {formatPrice(price)}
-          {priceUnit && <span className="text-[11px] font-normal text-stone-400 dark:text-stone-500 ml-1">{priceUnit}</span>}
+          {priceUnit && <span className="text-[11px] font-normal text-black dark:text-white ml-1">{priceUnit}</span>}
         </p>
         <div className="flex-1" />
         <div className="flex items-center justify-between gap-1 text-[10px] sm:text-[11px] text-stone-400 dark:text-stone-500">
