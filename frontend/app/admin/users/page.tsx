@@ -520,7 +520,7 @@ export default function UsersPage() {
                       </TableCell>
 
                       {/* Verification badge */}
-                      <TableCell className="py-3.5 text-sm text-stone-500 dark:text-stone-400 max-w-44 whitespace-normal">
+                      <TableCell className="py-3.5 text-sm text-stone-500 dark:text-stone-400 max-w-44 truncate">
                         {user.location || <span className="text-stone-300 dark:text-stone-600">—</span>}
                       </TableCell>
 

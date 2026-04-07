@@ -830,9 +830,9 @@ export default function VerificationsPage() {
                                 className="w-9 h-9 rounded-full object-cover border border-stone-200 dark:border-[#2a2d3e] shrink-0"
                               />
                             </Link>
-                            <div>
-                              <p className="text-sm font-bold text-stone-800 dark:text-stone-100">{verif.user_name}</p>
-                              <p className="text-xs text-stone-400 dark:text-stone-500">{verif.user_email}</p>
+                            <div className="min-w-0">
+                              <p className="text-sm font-bold text-stone-800 dark:text-stone-100 truncate">{verif.user_name}</p>
+                              <p className="text-xs text-stone-400 dark:text-stone-500 truncate">{verif.user_email}</p>
                             </div>
                           </div>
                         </TableCell>
