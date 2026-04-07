@@ -1009,6 +1009,9 @@ func GetListingDetailById(listingId string) (model.ListingDetailFromDb, error) {
 		SELECT
 			l.id,
 			l.user_id AS seller_id,
+			u.is_active AS seller_is_active,
+			COALESCE(txn.transaction_count, 0) AS transaction_count,
+			COALESCE(rc.review_count, 0) AS review_count,
 			l.title,
 			l.price,
 			l.price_unit,
@@ -1019,7 +1022,6 @@ func GetListingDetailById(listingId string) (model.ListingDetailFromDb, error) {
 			l.location_city,
 			l.location_province,
 			l.created_at,
-			l.view_count,
 			LOWER(l.status::text) AS status,
 			LOWER(COALESCE(l.status::text, '')) AS sell_status,
 			COALESCE(l.highlights, '[]') AS highlights,
@@ -1048,6 +1050,16 @@ func GetListingDetailById(listingId string) (model.ListingDetailFromDb, error) {
 			FROM public.reviews r
 			WHERE r.reviewed_user_id = l.user_id
 		) rv ON TRUE
+		LEFT JOIN LATERAL (
+			SELECT COUNT(*)::int AS transaction_count
+			FROM public.listing_transactions lt
+			WHERE lt.listing_id = l.id
+		) txn ON TRUE
+		LEFT JOIN LATERAL (
+			SELECT COUNT(*)::int AS review_count
+			FROM public.reviews lr
+			WHERE lr.listing_id = l.id
+		) rc ON TRUE
 		WHERE l.id = $1
 		LIMIT 1
 	`
@@ -1143,10 +1155,9 @@ func GetRelatedListings(listingId, categoryId, listingType, excludeUserId string
 		) rv ON TRUE
 		WHERE l.id <> $1
 			AND (l.category_id = $2 OR l.listing_type::text = $3)
-			AND NOT (
-				l.listing_type = 'SELL'
-				AND l.status = 'SOLD'
-			)
+			AND l.status = 'AVAILABLE'
+			AND u.is_active = TRUE
+			AND (u.account_locked_until IS NULL OR u.account_locked_until <= now())
 	`
 
 	query := baseQuery
@@ -1255,11 +1266,10 @@ func GetAllListings(excludeUserId string, filter model.ListingsFilter) ([]model.
 			FROM public.reviews r
 			WHERE r.reviewed_user_id = l.user_id
 		) rv ON TRUE
-		WHERE l.status = 'AVAILABLE'
-			AND NOT (
-				l.listing_type = 'SELL'
-				AND l.status = 'SOLD'
-			)
+		WHERE l.status <> 'HIDDEN'
+			AND l.status NOT IN ('UNAVAILABLE', 'SOLD', 'BANNED', 'DELETED')
+			AND u.is_active = TRUE
+			AND (u.account_locked_until IS NULL OR u.account_locked_until <= now())
 	`
 
 	query := baseQuery

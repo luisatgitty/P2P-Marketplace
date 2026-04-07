@@ -46,14 +46,14 @@ func CreateListingReport(reporterId, listingId, reportedUserId, reason, descript
 		FROM public.reports
 		WHERE reporter_id = $1
 			AND reported_listing_id = $2
-			AND reported_user_id = $3
+			AND status = 'PENDING'
 	`
 	var duplicateCount int
-	if err := db.Raw(duplicateCheckQuery, reporterId, listingId, targetReportedUserId).Scan(&duplicateCount).Error; err != nil {
+	if err := db.Raw(duplicateCheckQuery, reporterId, listingId).Scan(&duplicateCount).Error; err != nil {
 		return "", fmt.Errorf("Failed to validate report")
 	}
 	if duplicateCount > 0 {
-		return "", fmt.Errorf("Report already exists for this user and listing")
+		return "", fmt.Errorf("You already submitted a report for this listing.")
 	}
 
 	var reportId string
@@ -81,7 +81,7 @@ func CreateListingReport(reporterId, listingId, reportedUserId, reason, descript
 
 	if err := db.Raw(insertQuery, reporterId, targetReportedUserId, listingId, trimmedReason, trimmedDescription).Scan(&reportId).Error; err != nil {
 		if strings.Contains(strings.ToLower(err.Error()), "uniq_reports_reporter_listing_user") || strings.Contains(strings.ToLower(err.Error()), "duplicate key") {
-			return "", fmt.Errorf("Report already exists for this user and listing")
+			return "", fmt.Errorf("You already have a pending report for this listing")
 		}
 		return "", fmt.Errorf("Failed to submit report")
 	}

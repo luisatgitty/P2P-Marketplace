@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { useSearchParams } from "next/navigation";
 import {
   MapPin, Mail, Calendar, Eye, EyeOff, Star,
@@ -384,6 +385,7 @@ async function encodeFileToPayload(file: File): Promise<EncodedImagePayload> {
 
 // ─── MAIN PAGE ────────────────────────────────────────────────────────────────
 export default function ProfilePage() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const { user, isUserOnline, saveUserData, clearUserData } = useUser();
   const externalUserId = (searchParams.get("userId") ?? "").trim();
@@ -607,6 +609,10 @@ export default function ProfilePage() {
           locationBrgy: payload.user.locationBrgy ?? "",
         }));
       } catch {
+        if (isViewingExternalProfile) {
+          router.replace("/not-found");
+          return;
+        }
         showErrorToast("Failed to load profile data");
       } finally {
         setLoadingProfile(false);
@@ -614,7 +620,7 @@ export default function ProfilePage() {
     };
 
     loadProfile();
-  }, [isViewingExternalProfile, externalUserId]);
+  }, [isViewingExternalProfile, externalUserId, router]);
 
   useEffect(() => {
     if (!form.locationProv || provinces.length === 0) return;
@@ -625,14 +631,17 @@ export default function ProfilePage() {
   }, [form.locationProv, provinces]);
 
   const activeListings = userListings.filter((l) => {
+    if ((l.status ?? "").toLowerCase() === "deleted") return false;
     const status = (l.status ?? "").toLowerCase();
     return status === "" || status === "active" || status === "available" || (!SOLD_STATUSES.has(status) && !BOOKED_STATUSES.has(status));
   });
 
-  const soldListings = userListings.filter((l) => SOLD_STATUSES.has((l.status ?? "").toLowerCase()));
-  const bookedListings = userListings.filter((l) => BOOKED_STATUSES.has((l.status ?? "").toLowerCase()));
+  const visibleUserListings = userListings.filter((l) => (l.status ?? "").toLowerCase() !== "deleted");
+  const soldListings = visibleUserListings.filter((l) => SOLD_STATUSES.has((l.status ?? "").toLowerCase()));
+  const bookedListings = visibleUserListings.filter((l) => BOOKED_STATUSES.has((l.status ?? "").toLowerCase()));
+  const visibleBookmarkListings = bookmarkListings.filter((l) => (l.status ?? "").toLowerCase() !== "deleted");
   const allListings: ProfileListingItem[] = listingTab === "all"
-    ? userListings
+    ? visibleUserListings
     : listingTab === "active"
       ? activeListings
       : listingTab === "sold"
@@ -1108,7 +1117,7 @@ export default function ProfilePage() {
                         ? "tab-active"
                         : "tab-inactive")}>
                     {tab === "all"
-                      ? `All (${userListings.length})`
+                      ? `All (${visibleUserListings.length})`
                       : tab === "active"
                       ? `Active (${activeListings.length})`
                       : tab === "sold"
@@ -1146,8 +1155,8 @@ export default function ProfilePage() {
           {!isViewingExternalProfile && profileTab === "bookmarks" && (
             loadingProfile
               ? <div className="text-center py-14"><p className="font-semibold text-stone-400 text-sm">Loading bookmarked items...</p></div>
-              : bookmarkListings.length > 0
-              ? <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 p-4">{bookmarkListings.map((l) => <ProfileListingCard key={l.id} listing={l} />)}</div>
+              : visibleBookmarkListings.length > 0
+              ? <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 p-4">{visibleBookmarkListings.map((l) => <ProfileListingCard key={l.id} listing={l} />)}</div>
               : <div className="text-center py-14"><Bookmark className="w-10 h-10 text-stone-200 dark:text-stone-700 mx-auto mb-3" /><p className="font-semibold text-stone-400 text-sm">No bookmarked items yet</p></div>
           )}
 

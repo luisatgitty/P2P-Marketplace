@@ -81,6 +81,21 @@ func mapConversationPayload(baseURL string, row model.ConversationFromDb) map[st
 		lastMessageAt = row.LastMessageAt.UTC().Format(time.RFC3339)
 	}
 
+	otherLockedUntil := ""
+	if row.OtherLockedUntil != nil {
+		otherLockedUntil = row.OtherLockedUntil.UTC().Format(time.RFC3339)
+	}
+
+	selfLockedUntil := ""
+	if row.SelfLockedUntil != nil {
+		selfLockedUntil = row.SelfLockedUntil.UTC().Format(time.RFC3339)
+	}
+
+	now := time.Now().UTC()
+	isOtherLocked := row.OtherLockedUntil != nil && row.OtherLockedUntil.After(now)
+	isSelfLocked := row.SelfLockedUntil != nil && row.SelfLockedUntil.After(now)
+	canSendMessage := row.OtherIsActive && !isOtherLocked && row.SelfIsActive && !isSelfLocked
+
 	offerPrice := row.OfferPrice
 	if offerPrice <= 0 {
 		offerPrice = row.ListingPrice
@@ -110,11 +125,14 @@ func mapConversationPayload(baseURL string, row model.ConversationFromDb) map[st
 			"status":            strings.ToUpper(strings.TrimSpace(row.ListingStatus)),
 		},
 		"otherParticipant": map[string]any{
-			"id":              row.OtherUserId,
-			"firstName":       row.OtherFirstName,
-			"lastName":        row.OtherLastName,
-			"profileImageUrl": toAbsoluteAssetURL(baseURL, row.OtherProfileImgUrl),
-			"isOnline":        middleware.RealtimeHub.IsOnline(row.OtherUserId),
+			"id":                 row.OtherUserId,
+			"firstName":          row.OtherFirstName,
+			"lastName":           row.OtherLastName,
+			"profileImageUrl":    toAbsoluteAssetURL(baseURL, row.OtherProfileImgUrl),
+			"isOnline":           middleware.RealtimeHub.IsOnline(row.OtherUserId),
+			"isActive":           row.OtherIsActive,
+			"isLocked":           isOtherLocked,
+			"accountLockedUntil": otherLockedUntil,
 		},
 		"lastMessage": func() string {
 			actionText := toActionPreviewText(row.LastMessage)
@@ -127,6 +145,13 @@ func mapConversationPayload(baseURL string, row model.ConversationFromDb) map[st
 		"otherLastReadMessageId": strings.TrimSpace(row.OtherLastReadMsgId),
 		"unreadCount":            row.UnreadCount,
 		"isSeller":               row.IsSeller,
+		"hasPendingReport":       row.HasPendingReport,
+		"canSendMessage":         canSendMessage,
+		"self": map[string]any{
+			"isActive":           row.SelfIsActive,
+			"isLocked":           isSelfLocked,
+			"accountLockedUntil": selfLockedUntil,
+		},
 	}
 }
 

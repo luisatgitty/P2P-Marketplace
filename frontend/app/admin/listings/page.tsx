@@ -1,17 +1,22 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import {
   Search,
+  AlertTriangle,
+  CheckCircle2,
+  XCircle,
   ChevronUp,
   ChevronDown,
   ChevronsUpDown,
   ChevronLeft,
   ChevronRight,
   Trash2,
-  EyeOff,
-  ExternalLink,
+  Ban,
+  CircleDashed,
+  RotateCw,
   X,
   ShoppingBag,
   Home,
@@ -39,11 +44,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { validateImageURL } from "@/utils/validation";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 type ListingType   = "SELL" | "RENT" | "SERVICE";
-type ListingStatus = "AVAILABLE" | "UNAVAILABLE" | "SOLD" | "HIDDEN";
-type SortField     = "title" | "type" | "price" | "views" | "created" | "owner" | "status";
+type ListingStatus = "AVAILABLE" | "UNAVAILABLE" | "SOLD" | "BANNED" | "DELETED";
+type SortField     = "title" | "type" | "price" | "transactions" | "reviews" | "created" | "updated" | "bannedUntil" | "deletedAt" | "owner" | "status";
 type SortDir       = "asc" | "desc";
 
 interface AdminListing {
@@ -60,8 +66,12 @@ interface AdminListing {
   seller:   string;
   seller_location: string;
   seller_profile_image_url: string;
-  views:    number;
+  transaction_count: number;
+  review_count: number;
   created:  string;
+  updated_at: string;
+  banned_until: string | null;
+  deleted_at: string | null;
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -86,7 +96,8 @@ const STATUS_CONFIG: Record<ListingStatus, string> = {
   AVAILABLE: "bg-teal-100 dark:bg-teal-900/40 text-teal-700 dark:text-teal-300",
   UNAVAILABLE: "bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300",
   SOLD:      "bg-stone-100 dark:bg-stone-800 text-stone-500 dark:text-stone-400",
-  HIDDEN:    "bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400",
+  BANNED:    "bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400",
+  DELETED:   "bg-stone-200 dark:bg-stone-700 text-stone-600 dark:text-stone-300",
 };
 
 const phpFmt = new Intl.NumberFormat("en-PH", {
@@ -102,17 +113,6 @@ function SortIcon({ field, sort }: { field: SortField; sort: { field: SortField;
   return sort.dir === "asc"
     ? <ChevronUp   className="w-3 h-3 ml-1" />
     : <ChevronDown className="w-3 h-3 ml-1" />;
-}
-
-function Avatar({ src, alt, fallback }: { src?: string; alt: string; fallback: string }) {
-  if (src) {
-    return <img src={src} alt={alt} className="w-8 h-8 rounded-full object-cover border border-stone-200 dark:border-[#2a2d3e] shrink-0" />;
-  }
-  return (
-    <div className="w-8 h-8 rounded-full bg-stone-200 dark:bg-[#2a2d3e] border border-stone-200 dark:border-[#2a2d3e] flex items-center justify-center text-[10px] font-bold text-stone-700 dark:text-stone-200 shrink-0">
-      {fallback}
-    </div>
-  );
 }
 
 // ── Shared select ──────────────────────────────────────────────────────────────
@@ -155,29 +155,28 @@ export default function ListingsPage() {
   const [page,           setPage]           = useState(1);
   const [listings,       setListings]       = useState<AdminListing[]>([]);
   const [loadingListings,setLoadingListings]= useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [actionLoadingListingId, setActionLoadingListingId] = useState<string | null>(null);
   const PER_PAGE = 8;
 
   // ── Load ──────────────────────────────────────────────────────────────────────
-  useEffect(() => {
-    let mounted = true;
-    const loadListings = async () => {
-      setLoadingListings(true);
-      try {
-        const data = await getAdminListings();
-        if (!mounted) return;
-        setListings((data ?? []) as AdminListingRecord[]);
-      } catch (err) {
-        if (!mounted) return;
-        const message = typeof err === "string" ? err : "Failed to load listings";
-        toast.error(message, { position: "top-center" });
-      } finally {
-        if (mounted) setLoadingListings(false);
-      }
-    };
-    void loadListings();
-    return () => { mounted = false; };
+  const loadListings = useCallback(async () => {
+    setLoadingListings(true);
+    try {
+      const data = await getAdminListings();
+      setListings((data ?? []) as AdminListingRecord[]);
+    } catch (err) {
+      const message = typeof err === "string" ? err : "Failed to load listings";
+      toast.error(message, { position: "top-center" });
+    } finally {
+      setLoadingListings(false);
+      setIsRefreshing(false);
+    }
   }, []);
+
+  useEffect(() => {
+    void loadListings();
+  }, [loadListings]);
 
   // ── Dynamic category options ──────────────────────────────────────────────────
   const categoryOptions = useMemo(() => {
@@ -207,7 +206,11 @@ export default function ListingsPage() {
       let va: any, vb: any;
       if      (sort.field === "title")  { va = a.title;  vb = b.title;  }
       else if (sort.field === "price")  { va = a.price;  vb = b.price;  }
-      else if (sort.field === "views")  { va = a.views;  vb = b.views;  }
+      else if (sort.field === "transactions") { va = a.transaction_count; vb = b.transaction_count; }
+      else if (sort.field === "reviews") { va = a.review_count; vb = b.review_count; }
+      else if (sort.field === "updated") { va = new Date(a.updated_at).getTime(); vb = new Date(b.updated_at).getTime(); }
+      else if (sort.field === "bannedUntil") { va = a.banned_until ? new Date(a.banned_until).getTime() : 0; vb = b.banned_until ? new Date(b.banned_until).getTime() : 0; }
+      else if (sort.field === "deletedAt") { va = a.deleted_at ? new Date(a.deleted_at).getTime() : 0; vb = b.deleted_at ? new Date(b.deleted_at).getTime() : 0; }
       else if (sort.field === "owner") { va = a.seller; vb = b.seller; }
       else if (sort.field === "type")   { va = a.type;   vb = b.type;   }
       else if (sort.field === "status") { va = a.status; vb = b.status; }
@@ -220,16 +223,34 @@ export default function ListingsPage() {
   const totalPages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
   const paged      = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
 
+  const totalCount       = listings.length;
+  const availableCount   = listings.filter(l => l.status === "AVAILABLE").length;
+  const unavailableCount = listings.filter(l => l.status === "UNAVAILABLE").length;
+  const soldCount        = listings.filter(l => l.status === "SOLD").length;
+  const bannedCount      = listings.filter(l => l.status === "BANNED").length;
+  const deletedCount     = listings.filter(l => l.status === "DELETED").length;
+
   // ── Actions ───────────────────────────────────────────────────────────────────
   async function handleRemove(id: string) {
-    if (!window.confirm("Remove this listing permanently?")) return;
+    if (!window.confirm("Mark this listing as deleted?")) return;
     setActionLoadingListingId(id);
     try {
-      await deleteAdminListing(id);
-      setListings(ls => ls.filter(l => l.id !== id));
-      toast.success("Listing removed successfully", { position: "top-center" });
+      const updated = await deleteAdminListing(id);
+      const deletedAtPlaceholder = new Date().toISOString();
+      setListings((prev) =>
+        prev.map((listing) =>
+          listing.id === id
+            ? {
+                ...listing,
+                status: updated.status,
+                deleted_at: deletedAtPlaceholder,
+              }
+            : listing
+        )
+      );
+      toast.success("Listing marked as deleted.", { position: "top-center" });
     } catch (err) {
-      const message = typeof err === "string" ? err : "Failed to remove listing";
+      const message = typeof err === "string" ? err : "Failed to delete listing";
       toast.error(message, { position: "top-center" });
     } finally {
       setActionLoadingListingId(null);
@@ -237,30 +258,40 @@ export default function ListingsPage() {
   }
 
   async function handleToggleVisibility(id: string, currentStatus: ListingStatus) {
-    const shouldUnhide = currentStatus === "HIDDEN";
+    if (currentStatus === "DELETED") {
+      toast.error("Cannot update visibility for deleted listing", { position: "top-center" });
+      return;
+    }
+
+    const shouldUnban = currentStatus === "BANNED";
     const confirmed = window.confirm(
-      shouldUnhide
+      shouldUnban
         ? "Set this listing to UNAVAILABLE?"
-        : "Set this listing to HIDDEN?"
+        : "Shadow ban this listing?"
     );
     if (!confirmed) return;
 
     setActionLoadingListingId(id);
     try {
       const updated = await toggleAdminListingVisibility(id);
+      const nextBannedUntil = updated.status === "BANNED"
+        ? new Date(Date.now() + (3 * 24 * 60 * 60 * 1000)).toISOString()
+        : null;
+
       setListings((prev) =>
         prev.map((listing) =>
           listing.id === id
             ? {
                 ...listing,
                 status: updated.status as ListingStatus,
+                banned_until: nextBannedUntil,
               }
             : listing
         )
       );
       toast.success(
-        updated.status === "HIDDEN"
-          ? "Listing is now hidden."
+        updated.status === "BANNED"
+          ? "Listing is now shadow banned."
           : "Listing is now unavailable.",
         { position: "top-center" }
       );
@@ -301,6 +332,40 @@ export default function ListingsPage() {
         </p>
       </div>
 
+      {/* ── Summary cards — clickable to filter by status ── */}
+      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
+        {[
+          { label: "Total Listings", count: totalCount,     status: "ALL",         color: "text-stone-700 dark:text-stone-200", bg: "bg-stone-100 dark:bg-[#13151f]",       border: "border-stone-200 dark:border-[#2a2d3e]",   Icon: ShoppingBag   },
+          { label: "Available",   count: availableCount,   status: "AVAILABLE",   color: "text-teal-600 dark:text-teal-400",   bg: "bg-teal-50 dark:bg-teal-950/20",      border: "border-teal-200 dark:border-teal-800",      Icon: CheckCircle2  },
+          { label: "Unavailable", count: unavailableCount, status: "UNAVAILABLE", color: "text-amber-600 dark:text-amber-400", bg: "bg-amber-50 dark:bg-amber-950/20",    border: "border-amber-200 dark:border-amber-800",    Icon: AlertTriangle },
+          { label: "Sold",        count: soldCount,        status: "SOLD",        color: "text-stone-600 dark:text-stone-300", bg: "bg-stone-100 dark:bg-stone-800",        border: "border-stone-200 dark:border-stone-700",    Icon: ShoppingBag   },
+          { label: "Banned",      count: bannedCount,      status: "BANNED",      color: "text-red-600 dark:text-red-400",     bg: "bg-red-50 dark:bg-red-950/20",        border: "border-red-200 dark:border-red-800",        Icon: Ban           },
+          { label: "Deleted",     count: deletedCount,     status: "DELETED",     color: "text-stone-500 dark:text-stone-400", bg: "bg-stone-50 dark:bg-[#13151f]",       border: "border-stone-200 dark:border-[#2a2d3e]",   Icon: XCircle       },
+        ].map(({ label, count, status, color, bg, border, Icon }) => (
+          <Card
+            key={label}
+            className={cn(
+              "rounded-lg cursor-pointer hover:shadow-sm transition-all border",
+              bg, border,
+              statusFilter === status && "ring-2 ring-offset-1 ring-current",
+            )}
+            onClick={() => {
+              setStatusFilter(prev => {
+                if (status === "ALL") return "ALL";
+                return prev === status ? "ALL" : status;
+              });
+              setPage(1);
+            }}
+          >
+            <CardContent className="text-center">
+              <Icon className={cn("w-5 h-5 mx-auto mb-1.5", color)} />
+              <p className={cn("text-xl font-extrabold", color)}>{count}</p>
+              <p className="text-sm text-stone-500 dark:text-stone-400 mt-0.5">{label}</p>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
       {/* ── Filters ── */}
       <div className="flex flex-col sm:flex-row gap-3">
 
@@ -328,17 +393,6 @@ export default function ListingsPage() {
             ]}
           />
           <FilterSelect
-            value={statusFilter}
-            onChange={v => { setStatusFilter(v); setPage(1); }}
-            options={[
-              ["ALL",       "All Status" ],
-              ["AVAILABLE", "Available"  ],
-              ["UNAVAILABLE", "Unavailable"],
-              ["SOLD",      "Sold"       ],
-              ["HIDDEN",    "Hidden"     ],
-            ]}
-          />
-          <FilterSelect
             value={categoryFilter}
             onChange={v => { setCategoryFilter(v); setPage(1); }}
             options={[
@@ -346,23 +400,48 @@ export default function ListingsPage() {
               ...categoryOptions.map(c => [c, c] as [string, string]),
             ]}
           />
+          <FilterSelect
+            value={statusFilter}
+            onChange={v => { setStatusFilter(v); setPage(1); }}
+            options={[
+              ["ALL",       "All Status" ],
+              ["AVAILABLE", "Available"  ],
+              ["UNAVAILABLE", "Unavailable"],
+              ["SOLD",      "Sold"       ],
+              ["BANNED",    "Banned"     ],
+              ["DELETED",   "Deleted"    ],
+            ]}
+          />
 
           {/* Clear filters */}
           {hasActiveFilters && (
             <Button
               variant="outline"
-              size="sm"
               onClick={() => {
                 setSearch(""); setTypeFilter("ALL");
                 setStatusFilter("ALL"); setCategoryFilter("ALL");
                 setPage(1);
               }}
-              className="gap-1.5 border-red-200 dark:border-red-800 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 hover:text-red-600 hover:border-red-300"
+              className="hover:bg-destructive/10! text-destructive! border-destructive! focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40"
             >
               <X className="w-3 h-3" /> Clear
             </Button>
           )}
         </div>
+
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => {
+            setIsRefreshing(true);
+            setPage(1);
+            void loadListings();
+          }}
+          disabled={loadingListings}
+          className="border-sky-600 text-sky-600! hover:bg-sky-600/10 focus-visible:border-sky-600 focus-visible:ring-sky-600/20 dark:border-sky-400 dark:text-sky-400! dark:hover:bg-sky-400/10 dark:focus-visible:border-sky-400 dark:focus-visible:ring-sky-400/40"
+        >
+          <RotateCw className={cn("w-3.5 h-3.5", loadingListings && isRefreshing && "animate-spin")} /> Refresh
+        </Button>
       </div>
 
       {/* ── Table ── */}
@@ -384,8 +463,12 @@ export default function ListingsPage() {
                   <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest whitespace-nowrap">
                     Status
                   </TableHead>
-                  <SortableTH label="Views"   field="views"   />
+                  <SortableTH label="Transactions" field="transactions" />
+                  <SortableTH label="Reviews" field="reviews" />
                   <SortableTH label="Created" field="created" />
+                  <SortableTH label="Updated" field="updated" />
+                  <SortableTH label="Banned Until" field="bannedUntil" />
+                  <SortableTH label="Deleted At" field="deletedAt" />
                   <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest text-right">
                     Actions
                   </TableHead>
@@ -395,13 +478,13 @@ export default function ListingsPage() {
               <TableBody>
                 {loadingListings ? (
                   <TableRow>
-                    <TableCell colSpan={9} className="py-16 text-center text-sm text-stone-400 dark:text-stone-500">
+                    <TableCell colSpan={13} className="py-16 text-center text-sm text-stone-400 dark:text-stone-500">
                       Loading listings…
                     </TableCell>
                   </TableRow>
                 ) : paged.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={9} className="py-16 text-center text-sm text-stone-400 dark:text-stone-500">
+                    <TableCell colSpan={13} className="py-16 text-center text-sm text-stone-400 dark:text-stone-500">
                       No listings match the current filters.
                     </TableCell>
                   </TableRow>
@@ -429,10 +512,10 @@ export default function ListingsPage() {
                                 <img
                                   src={listing.listing_image_url}
                                   alt={listing.title}
-                                  className="w-11 h-11 rounded-md object-cover border border-stone-200 dark:border-[#2a2d3e] shrink-0"
+                                  className="w-10 h-10 rounded-md object-cover border border-stone-200 dark:border-[#2a2d3e] shrink-0"
                                 />
                               ) : (
-                                <div className="w-11 h-11 rounded-md bg-stone-100 dark:bg-[#13151f] border border-stone-200 dark:border-[#2a2d3e] flex items-center justify-center shrink-0">
+                                <div className="w-10 h-10 rounded-md bg-stone-100 dark:bg-[#13151f] border border-stone-200 dark:border-[#2a2d3e] flex items-center justify-center shrink-0">
                                   📦
                                 </div>
                               )}
@@ -448,7 +531,7 @@ export default function ListingsPage() {
                           </div>
                         </TableCell>
 
-                        {/* ListingOwner */}
+                        {/* Listing Owner */}
                         <TableCell className="py-3.5 text-sm text-stone-600 dark:text-stone-300 whitespace-nowrap">
                           <div className="flex items-center gap-2.5 min-w-0">
                             <Link
@@ -459,10 +542,12 @@ export default function ListingsPage() {
                               aria-label="View seller profile"
                               className="shrink-0"
                             >
-                              <Avatar
-                                src={listing.seller_profile_image_url}
+                              <Image
+                                src={validateImageURL(listing.seller_profile_image_url) || "/profile-icon.png"}
                                 alt={listing.seller}
-                                fallback={listing.seller?.charAt(0)?.toUpperCase() || "U"}
+                                width={32}
+                                height={32}
+                                className="w-9 h-9 rounded-full object-cover border border-stone-200 dark:border-[#2a2d3e] shrink-0"
                               />
                             </Link>
                             <div className="min-w-0">
@@ -476,7 +561,7 @@ export default function ListingsPage() {
                           </div>
                         </TableCell>
 
-                        {/* Type badge */}
+                        {/* Type Badge */}
                         <TableCell className="py-3.5 whitespace-nowrap">
                           <span className={cn(
                             "inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full",
@@ -511,9 +596,14 @@ export default function ListingsPage() {
                           </span>
                         </TableCell>
 
-                        {/* Views */}
+                        {/* Transactions */}
                         <TableCell className="py-3.5 text-sm font-semibold text-stone-600 dark:text-stone-300 text-center">
-                          {listing.views.toLocaleString()}
+                          {listing.transaction_count.toLocaleString()}
+                        </TableCell>
+
+                        {/* Reviews */}
+                        <TableCell className="py-3.5 text-sm font-semibold text-stone-600 dark:text-stone-300 text-center">
+                          {listing.review_count.toLocaleString()}
                         </TableCell>
 
                         {/* Created */}
@@ -521,33 +611,53 @@ export default function ListingsPage() {
                           {formatDateTime(listing.created)}
                         </TableCell>
 
+                        {/* Updated */}
+                        <TableCell className="py-3.5 text-sm text-stone-500 dark:text-stone-400 whitespace-nowrap">
+                          {formatDateTime(listing.updated_at)}
+                        </TableCell>
+
+                        {/* Banned Until */}
+                        <TableCell className="py-3.5 text-sm text-stone-500 dark:text-stone-400 whitespace-nowrap">
+                          {formatDateTime(listing.banned_until)}
+                        </TableCell>
+
+                        {/* Deleted At */}
+                        <TableCell className="py-3.5 text-sm text-stone-500 dark:text-stone-400 whitespace-nowrap">
+                          {formatDateTime(listing.deleted_at)}
+                        </TableCell>
+
                         {/* Actions */}
                         <TableCell className="py-3.5">
                           <div className="flex items-center justify-end gap-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              type="button"
-                              title={listing.status === "HIDDEN" ? "Set to unavailable" : "Hide listing"}
-                              aria-label={listing.status === "HIDDEN" ? "Set to unavailable" : "Hide listing"}
-                              onClick={() => handleToggleVisibility(listing.id, listing.status)}
-                              disabled={actionLoadingListingId === listing.id}
-                              className="w-7 h-7 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/20 hover:text-amber-700 disabled:opacity-50"
-                            >
-                              <EyeOff className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              type="button"
-                              title="Remove listing"
-                              aria-label="Remove listing"
-                              onClick={() => handleRemove(listing.id)}
-                              disabled={actionLoadingListingId === listing.id}
-                              className="w-7 h-7 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 hover:text-red-600 disabled:opacity-50"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
+                            {/* Shadow Ban Button */}
+                            {(listing.status === "AVAILABLE" || listing.status === "BANNED") && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                type="button"
+                                title={listing.status === "BANNED" ? "Set to unavailable" : "Shadow ban listing"}
+                                aria-label={listing.status === "BANNED" ? "Set to unavailable" : "Shadow ban listing"}
+                                onClick={() => handleToggleVisibility(listing.id, listing.status)}
+                                disabled={actionLoadingListingId === listing.id}
+                                className="w-7 h-7 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/20 hover:text-amber-700 disabled:opacity-50"
+                              >
+                                {listing.status === "BANNED" ? <CircleDashed className="w-4 h-4" /> : <Ban className="w-4 h-4" />}
+                              </Button>
+                            )}
+                            {listing.status !== "DELETED" && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                type="button"
+                                title="Delete listing"
+                                aria-label="Delete listing"
+                                onClick={() => handleRemove(listing.id)}
+                                disabled={actionLoadingListingId === listing.id}
+                                className="w-7 h-7 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 hover:text-red-600 disabled:opacity-50"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            )}
                           </div>
                         </TableCell>
                       </TableRow>

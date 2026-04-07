@@ -5,8 +5,8 @@ export interface ListingExtra {
   condition: string;
   images: string[];
   features: string[];
-  views: number;
-  offers: number;
+  transactionCount: number;
+  reviewCount: number;
   deliveryMethod: string;
   minPeriod?: string;
   available_from?: string;

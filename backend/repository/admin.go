@@ -185,17 +185,35 @@ func GetAdminUsers() ([]model.AdminUserListItemFromDb, error) {
 			u.is_email_verified,
 			u.failed_login_attempts AS failed_login,
 			COALESCE(lc.listings, 0)::int AS listings,
+			COALESCE(ct.client_transactions, 0)::int AS client_transactions,
+			COALESCE(ot.owner_transactions, 0)::int AS owner_transactions,
+			u.account_locked_until,
 			u.last_login_at AS last_login,
 			u.created_at AS joined,
+			u.updated_at,
+			u.deleted_at,
+			COALESCE(NULLIF(TRIM(CONCAT_WS(' ', NULLIF(TRIM(du.first_name), ''), NULLIF(TRIM(du.last_name), ''))), ''), '') AS deleted_by_name,
+			COALESCE(du.email, '') AS deleted_by_email,
 			TRIM(BOTH ', ' FROM CONCAT_WS(', ', NULLIF(TRIM(u.location_barangay), ''), NULLIF(TRIM(u.location_city), ''), NULLIF(TRIM(u.location_province), ''))) AS location
 		FROM public.users u
+		LEFT JOIN public.users du ON du.id = u.deleted_by_id
 		LEFT JOIN (
 			SELECT user_id, COUNT(*)::int AS listings
 			FROM public.listings
 			GROUP BY user_id
 		) lc ON lc.user_id = u.id
-		WHERE u.deleted_at IS NULL
-			AND u.role = 'USER'
+		LEFT JOIN (
+			SELECT client_id, COUNT(*)::int AS client_transactions
+			FROM public.listing_transactions
+			GROUP BY client_id
+		) ct ON ct.client_id = u.id
+		LEFT JOIN (
+			SELECT l.user_id AS owner_id, COUNT(*)::int AS owner_transactions
+			FROM public.listing_transactions lt
+			INNER JOIN public.listings l ON l.id = lt.listing_id
+			GROUP BY l.user_id
+		) ot ON ot.owner_id = u.id
+		WHERE u.role = 'USER'
 		ORDER BY u.created_at DESC
 	`
 
@@ -206,8 +224,40 @@ func GetAdminUsers() ([]model.AdminUserListItemFromDb, error) {
 	return users, nil
 }
 
-func SetAdminUserActive(userId string, isActive bool) error {
+func SetAdminUserActive(userId string, isActive bool, actorUserId string) error {
 	db := middleware.DBConn
+
+	var targetRole string
+	roleResult := db.Raw(`
+		SELECT role::text
+		FROM public.users
+		WHERE id = $1
+			AND deleted_at IS NULL
+			AND role IN ('USER', 'ADMIN', 'SUPER_ADMIN')
+		LIMIT 1
+	`, userId).Scan(&targetRole)
+	if roleResult.Error != nil {
+		return fmt.Errorf("Failed to validate user")
+	}
+	if roleResult.RowsAffected == 0 {
+		return fmt.Errorf("User not found")
+	}
+
+	if strings.EqualFold(strings.TrimSpace(targetRole), "SUPER_ADMIN") && !isActive {
+		var activeSuperAdminCount int
+		if err := db.Raw(`
+			SELECT COUNT(*)::int
+			FROM public.users
+			WHERE deleted_at IS NULL
+				AND role = 'SUPER_ADMIN'
+				AND is_active = TRUE
+		`).Scan(&activeSuperAdminCount).Error; err != nil {
+			return fmt.Errorf("Failed to validate super admin count")
+		}
+		if activeSuperAdminCount <= 1 {
+			return fmt.Errorf("Cannot deactivate the last active super admin")
+		}
+	}
 
 	updateQuery := `
 		UPDATE public.users
@@ -218,7 +268,7 @@ func SetAdminUserActive(userId string, isActive bool) error {
 			account_locked_until = CASE WHEN $1 THEN NULL ELSE account_locked_until END
 		WHERE id = $2
 			AND deleted_at IS NULL
-			AND role = 'USER'
+			AND role IN ('USER', 'ADMIN', 'SUPER_ADMIN')
 	`
 
 	result := db.Exec(updateQuery, isActive, userId)
@@ -235,25 +285,59 @@ func SetAdminUserActive(userId string, isActive bool) error {
 		}
 	}
 
+	_ = actorUserId
+
 	return nil
 }
 
-func DeleteAdminUser(userId string) error {
+func DeleteAdminUser(userId string, actorUserId string) error {
 	db := middleware.DBConn
+
+	var targetRole string
+	roleResult := db.Raw(`
+		SELECT role::text
+		FROM public.users
+		WHERE id = $1
+			AND deleted_at IS NULL
+			AND role IN ('USER', 'ADMIN', 'SUPER_ADMIN')
+		LIMIT 1
+	`, userId).Scan(&targetRole)
+	if roleResult.Error != nil {
+		return fmt.Errorf("Failed to validate user")
+	}
+	if roleResult.RowsAffected == 0 {
+		return fmt.Errorf("User not found")
+	}
+
+	if strings.EqualFold(strings.TrimSpace(targetRole), "SUPER_ADMIN") {
+		var superAdminCount int
+		if err := db.Raw(`
+			SELECT COUNT(*)::int
+			FROM public.users
+			WHERE deleted_at IS NULL
+				AND role = 'SUPER_ADMIN'
+		`).Scan(&superAdminCount).Error; err != nil {
+			return fmt.Errorf("Failed to validate super admin count")
+		}
+		if superAdminCount <= 1 {
+			return fmt.Errorf("Cannot delete the last super admin")
+		}
+	}
 
 	updateQuery := `
 		UPDATE public.users
 		SET
 			is_active = FALSE,
 			deleted_at = $1,
-			updated_at = $1
-		WHERE id = $2
+			updated_at = $1,
+			deleted_by_id = $2
+		WHERE id = $3
 			AND deleted_at IS NULL
-			AND role = 'USER'
+			AND role IN ('USER', 'ADMIN', 'SUPER_ADMIN')
 	`
 
 	now := time.Now()
-	result := db.Exec(updateQuery, now, userId)
+	result := db.Exec(updateQuery, now, actorUserId, userId)
 	if result.Error != nil {
 		return fmt.Errorf("Failed to delete user")
 	}
@@ -283,11 +367,16 @@ func GetAdminAccounts() ([]model.AdminAccountListItemFromDb, error) {
 			u.role::text AS role,
 			u.is_active,
 			u.created_at,
-			u.last_login_at AS last_login
+			u.last_login_at AS last_login,
+			u.updated_at,
+			u.deleted_at,
+			COALESCE(NULLIF(TRIM(CONCAT_WS(' ', NULLIF(TRIM(du.first_name), ''), NULLIF(TRIM(du.last_name), ''))), ''), '') AS deleted_by_name,
+			COALESCE(du.email, '') AS deleted_by_email
 		FROM public.users u
-		WHERE u.deleted_at IS NULL
-			AND u.role IN ('ADMIN', 'SUPER_ADMIN')
+		LEFT JOIN public.users du ON du.id = u.deleted_by_id
+		WHERE u.role IN ('ADMIN', 'SUPER_ADMIN')
 		ORDER BY
+			CASE WHEN u.deleted_at IS NULL THEN 0 ELSE 1 END ASC,
 			CASE WHEN u.role = 'SUPER_ADMIN' THEN 0 ELSE 1 END ASC,
 			u.created_at ASC
 	`
@@ -357,7 +446,11 @@ func CreateAdminAccount(body model.AdminCreateAdminBody) (model.AdminAccountList
 			role::text AS role,
 			is_active,
 			created_at,
-			last_login_at AS last_login
+			last_login_at AS last_login,
+			updated_at,
+			deleted_at,
+			''::text AS deleted_by_name,
+			''::text AS deleted_by_email
 	`
 
 	if err := db.Raw(insertQuery, userInput.FirstName, userInput.LastName, userInput.Email, strings.TrimSpace(body.Phone), hashedPassword, role).Scan(&created).Error; err != nil {
@@ -512,11 +605,29 @@ func GetAdminListings() ([]model.AdminListingListItemFromDb, error) {
 			TRIM(BOTH ' ' FROM CONCAT_WS(' ', NULLIF(TRIM(u.first_name), ''), NULLIF(TRIM(u.last_name), ''))) AS seller,
 			TRIM(BOTH ', ' FROM CONCAT_WS(', ', NULLIF(TRIM(u.location_city), ''), NULLIF(TRIM(u.location_province), ''))) AS seller_location,
 			COALESCE(u.profile_image_url, '') AS seller_profile_image_url,
-			COALESCE(l.view_count, 0)::int AS views,
-			l.created_at AS created
+			COALESCE(tx.transaction_count, 0)::int AS transaction_count,
+			COALESCE(rv.review_count, 0)::int AS review_count,
+			l.created_at AS created,
+			l.updated_at AS updated_at,
+			l.banned_until AS banned_until,
+			l.deleted_at AS deleted_at
 		FROM public.listings l
 		LEFT JOIN public.categories c ON c.id = l.category_id
 		LEFT JOIN public.users u ON u.id = l.user_id
+		LEFT JOIN (
+			SELECT
+				listing_id,
+				COUNT(*)::int AS transaction_count
+			FROM public.listing_transactions
+			GROUP BY listing_id
+		) tx ON tx.listing_id = l.id
+		LEFT JOIN (
+			SELECT
+				listing_id,
+				COUNT(*)::int AS review_count
+			FROM public.reviews
+			GROUP BY listing_id
+		) rv ON rv.listing_id = l.id
 		LEFT JOIN LATERAL (
 			SELECT image_url
 			FROM public.listing_images
@@ -563,8 +674,15 @@ func ToggleAdminListingVisibility(listingId string) (string, error) {
 	}
 
 	normalized := strings.ToUpper(strings.TrimSpace(currentStatus))
-	nextStatus := "HIDDEN"
-	if normalized == "HIDDEN" {
+	if normalized == "DELETED" {
+		return "", fmt.Errorf("Cannot update visibility for deleted listing")
+	}
+	if normalized != "AVAILABLE" && normalized != "BANNED" {
+		return "", fmt.Errorf("Listing cannot be shadow banned from current status")
+	}
+
+	nextStatus := "BANNED"
+	if normalized == "BANNED" {
 		nextStatus = "UNAVAILABLE"
 	}
 
@@ -572,6 +690,7 @@ func ToggleAdminListingVisibility(listingId string) (string, error) {
 		UPDATE public.listings
 		SET
 			status = $1::listing_status,
+			banned_until = CASE WHEN $1 = 'BANNED' THEN now() + INTERVAL '3 days' ELSE NULL END,
 			updated_at = now()
 		WHERE id = $2
 	`, nextStatus, listingId)
@@ -658,62 +777,19 @@ func GetAdminTransactions() ([]model.AdminTransactionListItemFromDb, error) {
 
 func DeleteAdminListing(listingId string) error {
 	db := middleware.DBConn
-	tx := db.Begin()
-	if tx.Error != nil {
-		return tx.Error
+	result := db.Exec(`
+		UPDATE public.listings
+		SET
+			status = 'DELETED'::listing_status,
+			deleted_at = now(),
+			updated_at = now()
+		WHERE id = $1
+	`, listingId)
+	if result.Error != nil {
+		return fmt.Errorf("Failed to delete listing")
 	}
-
-	defer func() {
-		if r := recover(); r != nil {
-			tx.Rollback()
-		}
-	}()
-
-	var existingId string
-	if err := tx.Raw(`SELECT id::text FROM public.listings WHERE id = $1 LIMIT 1`, listingId).Scan(&existingId).Error; err != nil {
-		tx.Rollback()
-		return fmt.Errorf("Failed to validate listing")
-	}
-	if strings.TrimSpace(existingId) == "" {
-		tx.Rollback()
+	if result.RowsAffected == 0 {
 		return fmt.Errorf("Listing not found")
-	}
-
-	if err := tx.Exec(`DELETE FROM public.bookmarks WHERE listing_id = $1`, listingId).Error; err != nil {
-		tx.Rollback()
-		return fmt.Errorf("Failed to remove listing bookmarks")
-	}
-
-	if err := tx.Exec(`DELETE FROM public.listing_sell_details WHERE listing_id = $1`, listingId).Error; err != nil {
-		tx.Rollback()
-		return fmt.Errorf("Failed to remove listing sell details")
-	}
-	if err := tx.Exec(`DELETE FROM public.listing_rent_details WHERE listing_id = $1`, listingId).Error; err != nil {
-		tx.Rollback()
-		return fmt.Errorf("Failed to remove listing rent details")
-	}
-	if err := tx.Exec(`DELETE FROM public.listing_service_details WHERE listing_id = $1`, listingId).Error; err != nil {
-		tx.Rollback()
-		return fmt.Errorf("Failed to remove listing service details")
-	}
-
-	if err := deleteListingImagesTx(tx, listingId); err != nil {
-		tx.Rollback()
-		return err
-	}
-
-	deleteResult := tx.Exec(`DELETE FROM public.listings WHERE id = $1`, listingId)
-	if deleteResult.Error != nil {
-		tx.Rollback()
-		return fmt.Errorf("Failed to remove listing")
-	}
-	if deleteResult.RowsAffected == 0 {
-		tx.Rollback()
-		return fmt.Errorf("Listing not found")
-	}
-
-	if err := tx.Commit().Error; err != nil {
-		return err
 	}
 
 	return nil
@@ -728,29 +804,56 @@ func GetAdminReports() ([]model.AdminReportListItemFromDb, error) {
 			r.id::text AS id,
 			COALESCE(r.reporter_id::text, '') AS reporter_id,
 			TRIM(BOTH ' ' FROM CONCAT_WS(' ', NULLIF(TRIM(rep.first_name), ''), NULLIF(TRIM(rep.last_name), ''))) AS reporter,
+			COALESCE(rep.email, '') AS reporter_email,
 			COALESCE(rep.profile_image_url, '') AS reporter_profile_image_url,
+			TRIM(BOTH ', ' FROM CONCAT_WS(', ', NULLIF(TRIM(rep.location_city), ''), NULLIF(TRIM(rep.location_province), ''))) AS reporter_location,
+			COALESCE(ru.id::text, '') AS reported_user_id,
+			COALESCE(NULLIF(TRIM(CONCAT_WS(' ', NULLIF(TRIM(ru.first_name), ''), NULLIF(TRIM(ru.last_name), ''))), ''), ru.email, 'Unknown User') AS reported_name,
+			COALESCE(ru.email, '') AS reported_email,
+			TRIM(BOTH ', ' FROM CONCAT_WS(', ', NULLIF(TRIM(ru.location_city), ''), NULLIF(TRIM(ru.location_province), ''))) AS reported_location,
 			CASE WHEN r.reported_listing_id IS NOT NULL THEN 'LISTING' ELSE 'USER' END AS target_type,
 			CASE
 				WHEN r.reported_listing_id IS NOT NULL THEN COALESCE(l.title, 'Unknown Listing')
 				ELSE COALESCE(NULLIF(TRIM(CONCAT_WS(' ', NULLIF(TRIM(ru.first_name), ''), NULLIF(TRIM(ru.last_name), ''))), ''), ru.email, 'Unknown User')
 			END AS target_name,
 			COALESCE(r.reported_listing_id::text, r.reported_user_id::text, '') AS target_id,
+			COALESCE(l.title, '') AS listing_title,
+			COALESCE(l.status::text, '') AS listing_status,
+			COALESCE(li.image_url, '') AS listing_image_url,
+			COALESCE(l.price, 0)::int AS listing_price,
+			COALESCE(l.price_unit, '') AS listing_price_unit,
 			COALESCE(owner.id::text, '') AS listing_owner_id,
 			COALESCE(NULLIF(TRIM(CONCAT_WS(' ', NULLIF(TRIM(owner.first_name), ''), NULLIF(TRIM(owner.last_name), ''))), ''), owner.email, '—') AS listing_owner,
 			COALESCE(owner.profile_image_url, '') AS listing_owner_profile_image_url,
+			TRIM(BOTH ', ' FROM CONCAT_WS(', ', NULLIF(TRIM(owner.location_city), ''), NULLIF(TRIM(owner.location_province), ''))) AS listing_owner_location,
 			r.reason,
 			r.description,
 			r.status::text AS status,
 			NULLIF(TRIM(CONCAT_WS(' ', NULLIF(TRIM(rev.first_name), ''), NULLIF(TRIM(rev.last_name), ''))), '') AS reviewed_by,
 			r.reviewed_at,
 			r.created_at,
-			r.reported_user_id::text AS reported_user_id
+			r.created_at AS submitted_at,
+			NULLIF(TRIM(CONCAT_WS(' ', NULLIF(TRIM(res.first_name), ''), NULLIF(TRIM(res.last_name), ''))), '') AS resolved_by,
+			r.resolved_at,
+			CASE
+				WHEN r.action_taken::text = 'HIDE_LISTING' THEN 'BAN_LISTING'
+				ELSE r.action_taken::text
+			END AS action_taken,
+			r.action_reason
 		FROM public.reports r
 		LEFT JOIN public.users rep ON rep.id = r.reporter_id
 		LEFT JOIN public.listings l ON l.id = r.reported_listing_id
+		LEFT JOIN LATERAL (
+			SELECT image_url
+			FROM public.listing_images
+			WHERE listing_id = l.id
+			ORDER BY is_primary DESC, id ASC
+			LIMIT 1
+		) li ON TRUE
 		LEFT JOIN public.users owner ON owner.id = l.user_id
 		LEFT JOIN public.users ru ON ru.id = r.reported_user_id
 		LEFT JOIN public.users rev ON rev.id = r.reviewed_by_id
+		LEFT JOIN public.users res ON res.id = r.resolved_by_id
 		ORDER BY r.created_at DESC
 	`
 
@@ -761,8 +864,18 @@ func GetAdminReports() ([]model.AdminReportListItemFromDb, error) {
 	for i := range reports {
 		reports[i].TargetType = strings.ToUpper(strings.TrimSpace(reports[i].TargetType))
 		reports[i].Status = strings.ToUpper(strings.TrimSpace(reports[i].Status))
+		reports[i].ListingStatus = strings.ToUpper(strings.TrimSpace(reports[i].ListingStatus))
 		if strings.TrimSpace(reports[i].Reporter) == "" {
 			reports[i].Reporter = "Unknown Reporter"
+		}
+		if strings.TrimSpace(reports[i].ReporterLocation) == "" {
+			reports[i].ReporterLocation = "-"
+		}
+		if strings.TrimSpace(reports[i].ReportedLocation) == "" {
+			reports[i].ReportedLocation = "-"
+		}
+		if strings.TrimSpace(reports[i].ListingOwnerLocation) == "" {
+			reports[i].ListingOwnerLocation = "-"
 		}
 	}
 
@@ -791,6 +904,277 @@ func SetAdminReportStatus(reportId, reviewedById, status string) error {
 	}
 	if result.RowsAffected == 0 {
 		return fmt.Errorf("Report not found")
+	}
+
+	return nil
+}
+
+func SetAdminReportAction(reportId, adminUserId, action, reason string) error {
+	db := middleware.DBConn
+
+	normalizedAction := strings.ToUpper(strings.TrimSpace(action))
+	if normalizedAction == "BAN_LISTING" {
+		normalizedAction = "HIDE_LISTING"
+	}
+	trimmedReason := strings.TrimSpace(reason)
+	if trimmedReason == "" {
+		return fmt.Errorf("Reason is required")
+	}
+
+	allowed := map[string]bool{
+		"DISMISS":        true,
+		"HIDE_LISTING":   true,
+		"DELETE_LISTING": true,
+		"LOCK_3":         true,
+		"LOCK_7":         true,
+		"LOCK_30":        true,
+		"PERMANENT_BAN":  true,
+	}
+	if !allowed[normalizedAction] {
+		return fmt.Errorf("Invalid report action")
+	}
+
+	tx := db.Begin()
+	if tx.Error != nil {
+		return tx.Error
+	}
+
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	type reportTarget struct {
+		ReportedUserId    *string `gorm:"column:reported_user_id"`
+		ReportedListingId *string `gorm:"column:reported_listing_id"`
+		ListingOwnerId    *string `gorm:"column:listing_owner_id"`
+		Status            string  `gorm:"column:status"`
+	}
+
+	var target reportTarget
+	targetQuery := `
+		SELECT
+			r.reported_user_id::text AS reported_user_id,
+			r.reported_listing_id::text AS reported_listing_id,
+			l.user_id::text AS listing_owner_id,
+			r.status::text AS status
+		FROM public.reports r
+		LEFT JOIN public.listings l ON l.id = r.reported_listing_id
+		WHERE r.id = $1
+		LIMIT 1
+	`
+	result := tx.Raw(targetQuery, reportId).Scan(&target)
+	if result.Error != nil {
+		tx.Rollback()
+		return fmt.Errorf("Failed to validate report")
+	}
+	if result.RowsAffected == 0 {
+		tx.Rollback()
+		return fmt.Errorf("Report not found")
+	}
+
+	if strings.EqualFold(strings.TrimSpace(target.Status), "RESOLVED") || strings.EqualFold(strings.TrimSpace(target.Status), "DISMISSED") {
+		tx.Rollback()
+		return fmt.Errorf("Report is already finalized")
+	}
+
+	var targetUserId string
+	if target.ReportedUserId != nil && strings.TrimSpace(*target.ReportedUserId) != "" {
+		targetUserId = strings.TrimSpace(*target.ReportedUserId)
+	} else if target.ListingOwnerId != nil && strings.TrimSpace(*target.ListingOwnerId) != "" {
+		targetUserId = strings.TrimSpace(*target.ListingOwnerId)
+	}
+
+	targetListingId := ""
+	if target.ReportedListingId != nil {
+		targetListingId = strings.TrimSpace(*target.ReportedListingId)
+	}
+
+	effectiveAction := normalizedAction
+	now := time.Now()
+
+	if (effectiveAction == "LOCK_3" || effectiveAction == "LOCK_7" || effectiveAction == "LOCK_30") && targetUserId == "" {
+		tx.Rollback()
+		return fmt.Errorf("Reported user is required for account lockout")
+	}
+	if (effectiveAction == "HIDE_LISTING" || effectiveAction == "DELETE_LISTING") && targetListingId == "" {
+		tx.Rollback()
+		return fmt.Errorf("Reported listing is required for listing action")
+	}
+	if effectiveAction == "PERMANENT_BAN" && targetUserId == "" {
+		tx.Rollback()
+		return fmt.Errorf("Reported user is required for account ban")
+	}
+
+	if effectiveAction == "HIDE_LISTING" {
+		updateListingResult := tx.Exec(`
+			UPDATE public.listings
+			SET
+				status = 'BANNED'::listing_status,
+				banned_until = now() + INTERVAL '1 day',
+				updated_at = now()
+			WHERE id = $1
+		`, targetListingId)
+		if updateListingResult.Error != nil {
+			tx.Rollback()
+			return fmt.Errorf("Failed to shadow ban listing")
+		}
+		if updateListingResult.RowsAffected == 0 {
+			tx.Rollback()
+			return fmt.Errorf("Listing not found")
+		}
+	}
+
+	if effectiveAction == "DELETE_LISTING" {
+		updateListingResult := tx.Exec(`
+			UPDATE public.listings
+			SET
+				status = 'DELETED'::listing_status,
+				deleted_at = now(),
+				updated_at = now()
+			WHERE id = $1
+		`, targetListingId)
+		if updateListingResult.Error != nil {
+			tx.Rollback()
+			return fmt.Errorf("Failed to delete listing")
+		}
+		if updateListingResult.RowsAffected == 0 {
+			tx.Rollback()
+			return fmt.Errorf("Listing not found")
+		}
+
+		if targetUserId != "" {
+			if err := tx.Exec(`
+				INSERT INTO public.notifications (user_id, type, message)
+				VALUES ($1, 'REPORT_ACTION', $2)
+			`, targetUserId, "Your listing was removed after moderator review. Reason: "+trimmedReason).Error; err != nil {
+				tx.Rollback()
+				return fmt.Errorf("Failed to notify listing owner")
+			}
+		}
+	}
+
+	if effectiveAction == "LOCK_3" || effectiveAction == "LOCK_7" || effectiveAction == "LOCK_30" {
+		var priorLockoutCount int
+		if err := tx.Raw(`
+			SELECT COUNT(*)::int
+			FROM public.reports r
+			LEFT JOIN public.listings l ON l.id = r.reported_listing_id
+			WHERE r.status IN ('RESOLVED', 'DISMISSED')
+				AND r.action_taken IN ('LOCK_3', 'LOCK_7', 'LOCK_30')
+				AND COALESCE(r.reported_user_id, l.user_id) = $1::uuid
+		`, targetUserId).Scan(&priorLockoutCount).Error; err != nil {
+			tx.Rollback()
+			return fmt.Errorf("Failed to validate prior account lockouts")
+		}
+
+		if priorLockoutCount >= 2 {
+			effectiveAction = "PERMANENT_BAN"
+		} else {
+			lockDays := 3
+			if effectiveAction == "LOCK_7" {
+				lockDays = 7
+			} else if effectiveAction == "LOCK_30" {
+				lockDays = 30
+			}
+			lockUntil := now.Add(time.Duration(lockDays) * 24 * time.Hour)
+
+			lockResult := tx.Exec(`
+				UPDATE public.users
+				SET
+					account_locked_until = $1,
+					updated_at = now()
+				WHERE id = $2
+					AND deleted_at IS NULL
+			`, lockUntil, targetUserId)
+			if lockResult.Error != nil {
+				tx.Rollback()
+				return fmt.Errorf("Failed to lock reported account")
+			}
+			if lockResult.RowsAffected == 0 {
+				tx.Rollback()
+				return fmt.Errorf("Reported user not found")
+			}
+
+			if err := tx.Exec(`DELETE FROM public.sessions WHERE user_id = $1`, targetUserId).Error; err != nil {
+				tx.Rollback()
+				return fmt.Errorf("Failed to revoke user sessions")
+			}
+
+			if err := tx.Exec(`
+				INSERT INTO public.notifications (user_id, type, message)
+				VALUES ($1, 'REPORT_ACTION', $2)
+			`, targetUserId, fmt.Sprintf("Your account has been temporarily locked for %d day(s) after moderator review. Reason: %s", lockDays, trimmedReason)).Error; err != nil {
+				tx.Rollback()
+				return fmt.Errorf("Failed to notify locked user")
+			}
+		}
+	}
+
+	if effectiveAction == "PERMANENT_BAN" {
+		banResult := tx.Exec(`
+			UPDATE public.users
+			SET
+				is_active = FALSE,
+				account_locked_until = NULL,
+				deleted_at = now(),
+				updated_at = now()
+			WHERE id = $1
+				AND deleted_at IS NULL
+		`, targetUserId)
+		if banResult.Error != nil {
+			tx.Rollback()
+			return fmt.Errorf("Failed to permanently ban reported user")
+		}
+		if banResult.RowsAffected == 0 {
+			tx.Rollback()
+			return fmt.Errorf("Reported user not found")
+		}
+
+		if err := tx.Exec(`DELETE FROM public.sessions WHERE user_id = $1`, targetUserId).Error; err != nil {
+			tx.Rollback()
+			return fmt.Errorf("Failed to revoke user sessions")
+		}
+
+		if err := tx.Exec(`
+			INSERT INTO public.notifications (user_id, type, message)
+			VALUES ($1, 'REPORT_ACTION', $2)
+		`, targetUserId, "Your account has been permanently banned after moderator review. Reason: "+trimmedReason).Error; err != nil {
+			tx.Rollback()
+			return fmt.Errorf("Failed to notify banned user")
+		}
+	}
+
+	nextStatus := "RESOLVED"
+	if effectiveAction == "DISMISS" {
+		nextStatus = "DISMISSED"
+	}
+
+	result = tx.Exec(`
+		UPDATE public.reports
+		SET
+			status = $1::report_status,
+			reviewed_by_id = $2,
+			reviewed_at = now(),
+			resolved_by_id = $2,
+			resolved_at = now(),
+			action_taken = $3::report_action,
+			action_reason = $4
+		WHERE id = $5
+	`, nextStatus, adminUserId, effectiveAction, trimmedReason, reportId)
+
+	if result.Error != nil {
+		tx.Rollback()
+		return fmt.Errorf("Failed to apply report action")
+	}
+	if result.RowsAffected == 0 {
+		tx.Rollback()
+		return fmt.Errorf("Report not found")
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		return err
 	}
 
 	return nil

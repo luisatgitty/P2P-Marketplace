@@ -116,12 +116,28 @@ func SetAdminUserActive(c *fiber.Ctx) error {
 		return authErr
 	}
 
+	adminUser, err := repository.GetUserById(adminUserId)
+	if err != nil {
+		return SendErrorResponse(c, 401, "User is not authenticated", err)
+	}
+
 	targetUserId := strings.TrimSpace(c.Params("id"))
 	if targetUserId == "" {
 		return SendErrorResponse(c, 400, "User ID is required", nil)
 	}
 	if targetUserId == adminUserId {
 		return SendErrorResponse(c, 400, "You cannot update your own active status from this page", nil)
+	}
+
+	targetUser, err := repository.GetUserById(targetUserId)
+	if err != nil {
+		return SendErrorResponse(c, 404, "User not found", err)
+	}
+
+	adminRole := strings.ToUpper(strings.TrimSpace(adminUser.Role))
+	targetRole := strings.ToUpper(strings.TrimSpace(targetUser.Role))
+	if (targetRole == "ADMIN" || targetRole == "SUPER_ADMIN") && adminRole != "SUPER_ADMIN" {
+		return SendErrorResponse(c, 403, "Forbidden", nil)
 	}
 
 	var body model.AdminSetUserActiveBody
@@ -132,9 +148,12 @@ func SetAdminUserActive(c *fiber.Ctx) error {
 		return SendErrorResponse(c, 400, "isActive is required", nil)
 	}
 
-	if err := repository.SetAdminUserActive(targetUserId, *body.IsActive); err != nil {
+	if err := repository.SetAdminUserActive(targetUserId, *body.IsActive, adminUserId); err != nil {
 		if strings.EqualFold(err.Error(), "User not found") {
 			return SendErrorResponse(c, 404, err.Error(), err)
+		}
+		if strings.Contains(strings.ToLower(err.Error()), "last active super admin") {
+			return SendErrorResponse(c, 400, err.Error(), err)
 		}
 		return SendErrorResponse(c, 500, err.Error(), err)
 	}
@@ -151,6 +170,11 @@ func DeleteAdminUser(c *fiber.Ctx) error {
 		return authErr
 	}
 
+	adminUser, err := repository.GetUserById(adminUserId)
+	if err != nil {
+		return SendErrorResponse(c, 401, "User is not authenticated", err)
+	}
+
 	targetUserId := strings.TrimSpace(c.Params("id"))
 	if targetUserId == "" {
 		return SendErrorResponse(c, 400, "User ID is required", nil)
@@ -159,9 +183,23 @@ func DeleteAdminUser(c *fiber.Ctx) error {
 		return SendErrorResponse(c, 400, "You cannot delete your own account from this page", nil)
 	}
 
-	if err := repository.DeleteAdminUser(targetUserId); err != nil {
+	targetUser, err := repository.GetUserById(targetUserId)
+	if err != nil {
+		return SendErrorResponse(c, 404, "User not found", err)
+	}
+
+	adminRole := strings.ToUpper(strings.TrimSpace(adminUser.Role))
+	targetRole := strings.ToUpper(strings.TrimSpace(targetUser.Role))
+	if (targetRole == "ADMIN" || targetRole == "SUPER_ADMIN") && adminRole != "SUPER_ADMIN" {
+		return SendErrorResponse(c, 403, "Forbidden", nil)
+	}
+
+	if err := repository.DeleteAdminUser(targetUserId, adminUserId); err != nil {
 		if strings.EqualFold(err.Error(), "User not found") {
 			return SendErrorResponse(c, 404, err.Error(), err)
+		}
+		if strings.Contains(strings.ToLower(err.Error()), "last super admin") {
+			return SendErrorResponse(c, 400, err.Error(), err)
 		}
 		return SendErrorResponse(c, 500, err.Error(), err)
 	}
@@ -234,8 +272,9 @@ func DeleteAdminListing(c *fiber.Ctx) error {
 		return SendErrorResponse(c, 500, err.Error(), err)
 	}
 
-	return SendSuccessResponse(c, 200, "Listing removed successfully", map[string]any{
+	return SendSuccessResponse(c, 200, "Listing deleted successfully", map[string]any{
 		"listingId": targetListingId,
+		"status":    "DELETED",
 	})
 }
 
@@ -255,10 +294,16 @@ func ToggleAdminListingVisibility(c *fiber.Ctx) error {
 		if strings.EqualFold(err.Error(), "Listing not found") {
 			return SendErrorResponse(c, 404, err.Error(), err)
 		}
+		if strings.EqualFold(err.Error(), "Cannot update visibility for deleted listing") {
+			return SendErrorResponse(c, 400, err.Error(), err)
+		}
+		if strings.EqualFold(err.Error(), "Listing cannot be shadow banned from current status") {
+			return SendErrorResponse(c, 400, err.Error(), err)
+		}
 		return SendErrorResponse(c, 500, err.Error(), err)
 	}
 
-	return SendSuccessResponse(c, 200, "Listing visibility updated successfully", map[string]any{
+	return SendSuccessResponse(c, 200, "Listing shadow-ban status updated successfully", map[string]any{
 		"listingId": targetListingId,
 		"status":    nextStatus,
 	})
@@ -273,6 +318,13 @@ func GetAdminReports(c *fiber.Ctx) error {
 	reports, err := repository.GetAdminReports()
 	if err != nil {
 		return SendErrorResponse(c, 500, err.Error(), err)
+	}
+
+	baseURL := c.BaseURL()
+	for i := range reports {
+		reports[i].ReporterImage = adminToAbsoluteAssetURL(baseURL, reports[i].ReporterImage)
+		reports[i].OwnerImage = adminToAbsoluteAssetURL(baseURL, reports[i].OwnerImage)
+		reports[i].ListingImageURL = adminToAbsoluteAssetURL(baseURL, reports[i].ListingImageURL)
 	}
 
 	return SendSuccessResponse(c, 200, "Reports fetched successfully", map[string]any{
@@ -294,6 +346,29 @@ func SetAdminReportStatus(c *fiber.Ctx) error {
 	var body model.AdminSetReportStatusBody
 	if err := c.BodyParser(&body); err != nil {
 		return SendErrorResponse(c, 400, "Invalid request body", err)
+	}
+
+	normalizedAction := strings.ToUpper(strings.TrimSpace(body.Action))
+	if normalizedAction != "" {
+		reason := strings.TrimSpace(body.Reason)
+		if reason == "" {
+			return SendErrorResponse(c, 400, "Reason is required", nil)
+		}
+
+		if err := repository.SetAdminReportAction(reportId, adminUserId, normalizedAction, reason); err != nil {
+			if strings.EqualFold(err.Error(), "Report not found") {
+				return SendErrorResponse(c, 404, err.Error(), err)
+			}
+			if strings.Contains(strings.ToLower(err.Error()), "invalid") || strings.Contains(strings.ToLower(err.Error()), "required") || strings.Contains(strings.ToLower(err.Error()), "already") {
+				return SendErrorResponse(c, 400, err.Error(), err)
+			}
+			return SendErrorResponse(c, 500, err.Error(), err)
+		}
+
+		return SendSuccessResponse(c, 200, "Report action applied successfully", map[string]any{
+			"reportId": reportId,
+			"action":   normalizedAction,
+		})
 	}
 
 	normalizedStatus := strings.ToUpper(strings.TrimSpace(body.Status))
@@ -437,9 +512,9 @@ func DeleteAdminAccount(c *fiber.Ctx) error {
 		return SendErrorResponse(c, 400, "You cannot remove your own account", nil)
 	}
 
-	if err := repository.DeleteAdminAccount(targetUserId); err != nil {
+	if err := repository.DeleteAdminUser(targetUserId, adminUserId); err != nil {
 		message := strings.TrimSpace(err.Error())
-		if strings.EqualFold(message, "Admin account not found") {
+		if strings.EqualFold(message, "User not found") {
 			return SendErrorResponse(c, 404, message, err)
 		}
 		if strings.Contains(strings.ToLower(message), "last super admin") {
@@ -475,9 +550,9 @@ func SetAdminAccountActive(c *fiber.Ctx) error {
 		return SendErrorResponse(c, 400, "isActive is required", nil)
 	}
 
-	if err := repository.SetAdminAccountActive(targetUserId, *body.IsActive); err != nil {
+	if err := repository.SetAdminUserActive(targetUserId, *body.IsActive, adminUserId); err != nil {
 		message := strings.TrimSpace(err.Error())
-		if strings.EqualFold(message, "Admin account not found") {
+		if strings.EqualFold(message, "User not found") {
 			return SendErrorResponse(c, 404, message, err)
 		}
 		if strings.Contains(strings.ToLower(message), "last super admin") {
