@@ -869,23 +869,19 @@ export default function BecomeSellerPage() {
                 </div>
 
                 {/* Resend with live countdown */}
-                <div className="flex items-center justify-between pt-1">
-                  <p className="text-xs text-stone-400 dark:text-stone-500">
-                    Didn&apos;t receive a code?
-                  </p>
+                <div className="text-center text-sm mt-2">
+                  <span className="text-muted-foreground">
+                    Didn't receive the code?{" "}
+                  </span>
                   <button
                     type="button"
                     onClick={handleResend}
                     disabled={!canResend}
-                    className={cn(
-                      "flex items-center gap-1.5 text-xs font-semibold transition-colors",
-                      canResend
-                        ? "text-stone-700 dark:text-stone-200 hover:text-stone-900 dark:hover:text-white cursor-pointer"
-                        : "text-stone-400 dark:text-stone-500 cursor-not-allowed",
-                    )}
+                    className="underline disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
                   >
-                    <RefreshCw className={cn("w-3 h-3", canResend && "text-teal-600 dark:text-teal-400")} />
-                    {canResend ? "Resend code" : `Resend in ${formatCountdown(resendSeconds)}`}
+                    {resendSeconds > 0
+                      ? `Resend in ${formatCountdown(resendSeconds)}s`
+                      : "Resend"}
                   </button>
                 </div>
 
@@ -893,7 +889,8 @@ export default function BecomeSellerPage() {
                 <button
                   type="button"
                   onClick={() => { setShowOtp(false); setOtpValue(""); }}
-                  className="w-full text-xs text-stone-400 dark:text-stone-500 hover:text-stone-600 dark:hover:text-stone-300 transition-colors underline underline-offset-2"
+                  disabled={!canResend}
+                  className="w-full text-xs text-stone-400 dark:text-stone-500 hover:text-stone-600 dark:hover:text-stone-300 transition-colors underline underline-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Change phone number
                 </button>
@@ -911,9 +908,10 @@ export default function BecomeSellerPage() {
                   <Button
                     variant="outline"
                     onClick={prev}
-                    className="rounded-full text-sm dark:border-[#2a2d3e] dark:text-stone-300 dark:hover:bg-[#252837]"
+                    className="rounded-full text-sm dark:border-[#2a2d3e] dark:text-stone-300 dark:hover:bg-[#252837] disabled:opacity-50"
+                    disabled={!canResend}
                   >
-                    ← Back
+                    Back
                   </Button>
                 )}
                 <Button
@@ -926,7 +924,7 @@ export default function BecomeSellerPage() {
                       : undefined
                   }
                 >
-                  {step === TOTAL ? (submitting ? "Submitting..." : "Submit Application") : "Continue →"}
+                  {step === TOTAL ? (submitting ? "Submitting..." : "Submit Application") : "Continue"}
                 </Button>
               </div>
             </div>
