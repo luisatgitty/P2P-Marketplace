@@ -192,8 +192,11 @@ func GetAdminUsers() ([]model.AdminUserListItemFromDb, error) {
 			u.created_at AS joined,
 			u.updated_at,
 			u.deleted_at,
+			COALESCE(NULLIF(TRIM(CONCAT_WS(' ', NULLIF(TRIM(du.first_name), ''), NULLIF(TRIM(du.last_name), ''))), ''), '') AS deleted_by_name,
+			COALESCE(du.email, '') AS deleted_by_email,
 			TRIM(BOTH ', ' FROM CONCAT_WS(', ', NULLIF(TRIM(u.location_barangay), ''), NULLIF(TRIM(u.location_city), ''), NULLIF(TRIM(u.location_province), ''))) AS location
 		FROM public.users u
+		LEFT JOIN public.users du ON du.id = u.deleted_by_id
 		LEFT JOIN (
 			SELECT user_id, COUNT(*)::int AS listings
 			FROM public.listings
@@ -366,8 +369,11 @@ func GetAdminAccounts() ([]model.AdminAccountListItemFromDb, error) {
 			u.created_at,
 			u.last_login_at AS last_login,
 			u.updated_at,
-			u.deleted_at
+			u.deleted_at,
+			COALESCE(NULLIF(TRIM(CONCAT_WS(' ', NULLIF(TRIM(du.first_name), ''), NULLIF(TRIM(du.last_name), ''))), ''), '') AS deleted_by_name,
+			COALESCE(du.email, '') AS deleted_by_email
 		FROM public.users u
+		LEFT JOIN public.users du ON du.id = u.deleted_by_id
 		WHERE u.role IN ('ADMIN', 'SUPER_ADMIN')
 		ORDER BY
 			CASE WHEN u.deleted_at IS NULL THEN 0 ELSE 1 END ASC,
@@ -442,7 +448,9 @@ func CreateAdminAccount(body model.AdminCreateAdminBody) (model.AdminAccountList
 			created_at,
 			last_login_at AS last_login,
 			updated_at,
-			deleted_at
+			deleted_at,
+			''::text AS deleted_by_name,
+			''::text AS deleted_by_email
 	`
 
 	if err := db.Raw(insertQuery, userInput.FirstName, userInput.LastName, userInput.Email, strings.TrimSpace(body.Phone), hashedPassword, role).Scan(&created).Error; err != nil {

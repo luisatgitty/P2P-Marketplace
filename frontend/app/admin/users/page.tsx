@@ -72,7 +72,34 @@ interface AdminUser {
   joined:            string;
   updated_at:        string;
   deleted_at:        string | null;
+  deleted_by_name:   string;
+  deleted_by_email:  string;
   location:          string;
+}
+
+function getCurrentAdminSnapshot(): { fullName: string; email: string } | null {
+  if (typeof window === "undefined") return null;
+
+  try {
+    const rawUser = localStorage.getItem("auth_user");
+    if (!rawUser) return null;
+
+    const parsed = JSON.parse(rawUser) as {
+      firstName?: string;
+      lastName?: string;
+      email?: string;
+    };
+
+    const firstName = (parsed?.firstName ?? "").trim();
+    const lastName = (parsed?.lastName ?? "").trim();
+    const email = (parsed?.email ?? "").trim();
+    const fullName = `${firstName} ${lastName}`.trim();
+
+    if (!fullName && !email) return null;
+    return { fullName, email };
+  } catch {
+    return null;
+  }
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -240,6 +267,14 @@ export default function UsersPage() {
   const rejectedCount    = users.filter(u => u.verification === "REJECTED").length;
 
   // ── Actions ───────────────────────────────────────────────────────────────────
+
+  function formatDate(value?: string | null): string {
+    if (!value) return "Never";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "Never";
+    return date.toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" });
+  }
+
   async function handleToggleActive(id: string) {
     const target = users.find(u => u.id === id);
     if (!target) return;
@@ -272,6 +307,7 @@ export default function UsersPage() {
     try {
       await deleteAdminUser(id);
       const nowIso = new Date().toISOString();
+      const actor = getCurrentAdminSnapshot();
       setUsers((prev) =>
         prev.map((user) =>
           user.id === id
@@ -280,6 +316,8 @@ export default function UsersPage() {
                 is_active: false,
                 deleted_at: nowIso,
                 updated_at: nowIso,
+                deleted_by_name: actor?.fullName || user.deleted_by_name || "",
+                deleted_by_email: actor?.email || user.deleted_by_email || "",
               }
             : user
         )
@@ -457,13 +495,13 @@ export default function UsersPage() {
               <TableBody>
                 {loadingUsers ? (
                   <TableRow>
-                    <TableCell colSpan={13} className="py-16 text-center text-sm text-stone-400 dark:text-stone-500">
+                    <TableCell colSpan={14} className="py-16 text-center text-sm text-stone-400 dark:text-stone-500">
                       Loading users…
                     </TableCell>
                   </TableRow>
                 ) : paged.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={13} className="py-16 text-center text-sm text-stone-400 dark:text-stone-500">
+                    <TableCell colSpan={14} className="py-16 text-center text-sm text-stone-400 dark:text-stone-500">
                       No users match the current filters.
                     </TableCell>
                   </TableRow>
@@ -474,8 +512,8 @@ export default function UsersPage() {
                       className="border-stone-100 dark:border-[#2a2d3e] hover:bg-stone-50 dark:hover:bg-[#252837] transition-colors"
                     >
                       {/* Name */}
-                      <TableCell className="py-2">
-                        <div className="flex items-center gap-3 min-w-0">
+                      <TableCell className="py-2 whitespace-nowrap">
+                        <div className="flex items-center gap-3 w-max">
                           <Link
                             href={`/profile?userId=${user.id}`}
                             target="_blank"
@@ -492,11 +530,11 @@ export default function UsersPage() {
                               className="w-10 h-10 rounded-full object-cover border border-stone-200 dark:border-[#2a2d3e]"
                             />
                           </Link>
-                          <div className="min-w-0">
-                            <p className="text-sm font-bold text-stone-800 dark:text-stone-100 truncate max-w-40">
+                          <div className="w-max">
+                            <p className="text-sm font-bold text-stone-800 dark:text-stone-100 whitespace-nowrap">
                               {user.first_name}
                             </p>
-                            <p className="text-sm font-bold text-stone-800 dark:text-stone-100 truncate max-w-40">
+                            <p className="text-sm font-bold text-stone-800 dark:text-stone-100 whitespace-nowrap">
                               {user.last_name}
                             </p>
                           </div>
@@ -597,8 +635,17 @@ export default function UsersPage() {
 
                       {/* Deleted */}
                       <TableCell className="py-3.5 text-sm text-stone-500 dark:text-stone-400 whitespace-nowrap">
-                        {user.deleted_at
-                          ? formatDateTime(user.deleted_at)
+                        {(user.deleted_at)
+                          ? (
+                            <div className="leading-tight">
+                              <p className="text-sm font-medium text-stone-700 dark:text-stone-200">
+                                {user.deleted_by_name || "—"}
+                              </p>
+                              <p className="text-xs">
+                                {user.deleted_at ? formatDate(user.deleted_at) : <span className="text-stone-300 dark:text-stone-600">—</span>}
+                              </p>
+                            </div>
+                          )
                           : <span className="text-stone-300 dark:text-stone-600">—</span>
                         }
                       </TableCell>

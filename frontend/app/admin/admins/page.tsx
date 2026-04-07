@@ -54,7 +54,34 @@ interface AdminAccount {
   last_login: string | null;
   updated_at: string;
   deleted_at: string | null;
+  deleted_by_name: string;
+  deleted_by_email: string;
   added_by:   string;
+}
+
+function getCurrentAdminSnapshot(): { fullName: string; email: string } | null {
+  if (typeof window === "undefined") return null;
+
+  try {
+    const rawUser = localStorage.getItem("auth_user");
+    if (!rawUser) return null;
+
+    const parsed = JSON.parse(rawUser) as {
+      firstName?: string;
+      lastName?: string;
+      email?: string;
+    };
+
+    const firstName = (parsed?.firstName ?? "").trim();
+    const lastName = (parsed?.lastName ?? "").trim();
+    const email = (parsed?.email ?? "").trim();
+    const fullName = `${firstName} ${lastName}`.trim();
+
+    if (!fullName && !email) return null;
+    return { fullName, email };
+  } catch {
+    return null;
+  }
 }
 
 const ADMINS: AdminAccount[] = [];
@@ -350,6 +377,8 @@ export default function AdminsPage() {
       last_login: record.last_login,
       updated_at: record.updated_at,
       deleted_at: record.deleted_at,
+      deleted_by_name: record.deleted_by_name,
+      deleted_by_email: record.deleted_by_email,
       added_by:   "System",
     };
   }
@@ -480,6 +509,7 @@ export default function AdminsPage() {
     try {
       await deleteAdminUser(id);
       const nowIso = new Date().toISOString();
+      const actor = getCurrentAdminSnapshot();
       setAdmins((as) => as.map((admin) => (
         admin.id === id
           ? {
@@ -487,6 +517,8 @@ export default function AdminsPage() {
               is_active: false,
               updated_at: nowIso,
               deleted_at: nowIso,
+              deleted_by_name: actor?.fullName || admin.deleted_by_name || "",
+              deleted_by_email: actor?.email || admin.deleted_by_email || "",
             }
           : admin
       )));
@@ -712,7 +744,7 @@ export default function AdminsPage() {
                 {loadingAdmins ? (
                   <TableRow>
                     <TableCell
-                      colSpan={9}
+                      colSpan={10}
                       className="py-16 text-center text-sm text-stone-400 dark:text-stone-500"
                     >
                       Loading admin accounts…
@@ -721,7 +753,7 @@ export default function AdminsPage() {
                 ) : paged.length === 0 ? (
                   <TableRow>
                     <TableCell
-                      colSpan={9}
+                      colSpan={10}
                       className="py-16 text-center text-sm text-stone-400 dark:text-stone-500"
                     >
                       No admin accounts found.
@@ -734,8 +766,8 @@ export default function AdminsPage() {
                       className="border-stone-100 dark:border-[#2a2d3e] hover:bg-stone-50 dark:hover:bg-[#252837] transition-colors"
                     >
                       {/* Name */}
-                      <TableCell className="py-2">
-                        <div className="flex items-center gap-3">
+                      <TableCell className="py-2 whitespace-nowrap">
+                        <div className="flex items-center gap-3 w-max">
                           <Image
                             src={validateImageURL(admin.profile_image_url) || "/profile-icon.png"}
                             alt="Profile"
@@ -743,11 +775,11 @@ export default function AdminsPage() {
                             height={32}
                             className="w-10 h-10 rounded-full object-cover border border-stone-200 dark:border-[#2a2d3e] shrink-0"
                           />
-                          <div className="min-w-0">
-                            <p className="text-sm font-bold text-stone-800 dark:text-stone-100 truncate">
+                          <div className="w-max">
+                            <p className="text-sm font-bold text-stone-800 dark:text-stone-100 whitespace-nowrap">
                               {admin.first_name}
                             </p>
-                            <p className="text-sm font-bold text-stone-800 dark:text-stone-100 truncate">
+                            <p className="text-sm font-bold text-stone-800 dark:text-stone-100 whitespace-nowrap">
                               {admin.last_name}
                             </p>
                           </div>
@@ -826,7 +858,16 @@ export default function AdminsPage() {
 
                       {/* Deleted */}
                       <TableCell className="py-3.5 text-sm text-stone-500 dark:text-stone-400 whitespace-nowrap">
-                        {admin.deleted_at ? formatDate(admin.deleted_at) : <span className="text-stone-300 dark:text-stone-600">—</span>}
+                        {(admin.deleted_at) ? (
+                          <div className="leading-tight">
+                            <p className="text-sm font-medium text-stone-700 dark:text-stone-200">
+                              {admin.deleted_by_name || "—"}
+                            </p>
+                            <p className="text-xs">
+                              {admin.deleted_at ? formatDate(admin.deleted_at) : <span className="text-stone-300 dark:text-stone-600">—</span>}
+                            </p>
+                          </div>
+                        ) : <span className="text-stone-300 dark:text-stone-600">—</span>}
                       </TableCell>
 
                       {/* Actions */}

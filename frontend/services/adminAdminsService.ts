@@ -11,6 +11,8 @@ export type AdminAccountRecord = {
   last_login: string | null;
   updated_at: string;
   deleted_at: string | null;
+  deleted_by_name: string;
+  deleted_by_email: string;
 };
 
 export type CreateAdminPayload = {
