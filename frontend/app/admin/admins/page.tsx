@@ -13,11 +13,13 @@ import { toast } from "sonner";
 import { validateImageURL } from "@/utils/validation";
 import {
   createAdminAccount,
-  deleteAdminAccount,
   getAdminAccounts,
-  setAdminAccountActive,
   type AdminAccountRecord,
 } from "@/services/adminAdminsService";
+import {
+  deleteAdminUser,
+  setAdminUserActive,
+} from "@/services/adminUsersService";
 
 // ── shadcn components ──────────────────────────────────────────────────────────
 import { Button }            from "@/components/ui/button";
@@ -476,7 +478,7 @@ export default function AdminsPage() {
     if (!window.confirm(`Remove admin account for ${name}? They will lose all admin access immediately.`)) return;
     setRemovingId(id);
     try {
-      await deleteAdminAccount(id);
+      await deleteAdminUser(id);
       const nowIso = new Date().toISOString();
       setAdmins((as) => as.map((admin) => (
         admin.id === id
@@ -504,9 +506,10 @@ export default function AdminsPage() {
     const nextActive = !target.is_active;
     setActionLoadingUserId(id);
     try {
-      await setAdminAccountActive(id, nextActive);
+      await setAdminUserActive(id, nextActive);
+      const nowIso = new Date().toISOString();
       setAdmins((as) => as.map((admin) => (
-        admin.id === id ? { ...admin, is_active: nextActive } : admin
+        admin.id === id ? { ...admin, is_active: nextActive, updated_at: nowIso } : admin
       )));
       toast.success(`Admin account ${nextActive ? "activated" : "deactivated"} successfully`, { position: "top-center" });
     } catch (err) {
