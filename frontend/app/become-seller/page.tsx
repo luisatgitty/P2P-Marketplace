@@ -32,7 +32,13 @@ import {
   Smartphone,
 } from "lucide-react";
 import { getDeviceInfo } from "@/utils/device";
-import { submitVerification, type VerificationImagePayload } from "@/services/verificationService";
+import {
+  submitVerification,
+  type VerificationImagePayload,
+  // ── NEW: import the two OTP functions added to verificationService.ts ──
+  sendPhoneOTP,
+  verifyPhoneOTP,
+} from "@/services/verificationService";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 type VerifyStep = 1 | 2 | 3;
@@ -62,9 +68,9 @@ const VERIFICATION_IMAGE_MAX_DIMENSION = 1400;
 const VERIFICATION_IMAGE_QUALITY = 0.8;
 
 const device = getDeviceInfo();
-// NOTE: Temporary override to bypass device check during development
-// Remove this line in production
-device.isMobile = true; 
+// NOTE: Temporary override to bypass device check during development.
+// Remove this line in production.
+device.isMobile = true;
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 function formatCountdown(s: number): string {
@@ -75,56 +81,31 @@ function formatCountdown(s: number): string {
 function normalizeToLocalPhoneDigits(value?: string | null): string {
   const digitsOnly = (value ?? "").replace(/\D/g, "");
   if (!digitsOnly) return "";
-
-  // Supports 09XXXXXXXXX, 9XXXXXXXXX, 639XXXXXXXXX, and +639XXXXXXXXX.
-  if (digitsOnly.length === 11 && digitsOnly.startsWith("0")) {
-    return digitsOnly.slice(1);
-  }
-  if (digitsOnly.length === 10 && digitsOnly.startsWith("9")) {
-    return digitsOnly;
-  }
-  if (digitsOnly.length === 12 && digitsOnly.startsWith("63")) {
-    return digitsOnly.slice(2);
-  }
-
+  if (digitsOnly.length === 11 && digitsOnly.startsWith("0")) return digitsOnly.slice(1);
+  if (digitsOnly.length === 10 && digitsOnly.startsWith("9")) return digitsOnly;
+  if (digitsOnly.length === 12 && digitsOnly.startsWith("63")) return digitsOnly.slice(2);
   return "";
 }
 
 async function compressVerificationImage(file: File): Promise<Blob> {
   const objectUrl = URL.createObjectURL(file);
-
   try {
     const bitmap = await createImageBitmap(file);
-    const scale = Math.min(
-      1,
-      VERIFICATION_IMAGE_MAX_DIMENSION / Math.max(bitmap.width, bitmap.height),
-    );
-
-    const width = Math.max(1, Math.round(bitmap.width * scale));
+    const scale = Math.min(1, VERIFICATION_IMAGE_MAX_DIMENSION / Math.max(bitmap.width, bitmap.height));
+    const width  = Math.max(1, Math.round(bitmap.width  * scale));
     const height = Math.max(1, Math.round(bitmap.height * scale));
-
-    const canvas = document.createElement("canvas");
-    canvas.width = width;
+    const canvas  = document.createElement("canvas");
+    canvas.width  = width;
     canvas.height = height;
-
     const context = canvas.getContext("2d");
-    if (!context) {
-      throw new Error("Failed to initialize image compression canvas.");
-    }
-
+    if (!context) throw new Error("Failed to initialize image compression canvas.");
     context.drawImage(bitmap, 0, 0, width, height);
-
-    const compressedBlob = await new Promise<Blob | null>((resolve) => {
-      canvas.toBlob((output) => resolve(output), "image/webp", VERIFICATION_IMAGE_QUALITY);
+    const compressed = await new Promise<Blob | null>(resolve => {
+      canvas.toBlob(output => resolve(output), "image/webp", VERIFICATION_IMAGE_QUALITY);
     });
-
-    if (!compressedBlob) {
-      throw new Error("Failed to compress image.");
-    }
-
-    return compressedBlob;
+    if (!compressed) throw new Error("Failed to compress image.");
+    return compressed;
   } catch {
-    // Fall back to the original file when compression is unavailable.
     return file;
   } finally {
     URL.revokeObjectURL(objectUrl);
@@ -132,15 +113,12 @@ async function compressVerificationImage(file: File): Promise<Blob> {
 }
 
 async function blobToBase64(blob: Blob): Promise<string> {
-  return await new Promise((resolve, reject) => {
+  return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => {
       const result = typeof reader.result === "string" ? reader.result : "";
-      const data = result.split(",")[1] ?? "";
-      if (!data) {
-        reject(new Error("Failed to encode image."));
-        return;
-      }
+      const data   = result.split(",")[1] ?? "";
+      if (!data) { reject(new Error("Failed to encode image.")); return; }
       resolve(data);
     };
     reader.onerror = () => reject(new Error("Failed to read image data."));
@@ -150,16 +128,11 @@ async function blobToBase64(blob: Blob): Promise<string> {
 
 async function fileToVerificationImagePayload(file: File, fieldName: string): Promise<VerificationImagePayload> {
   const compressed = await compressVerificationImage(file);
-  const data = await blobToBase64(compressed);
-
-  return {
-    name: `${fieldName}.webp`,
-    mimeType: "image/webp",
-    data,
-  };
+  const data       = await blobToBase64(compressed);
+  return { name: `${fieldName}.webp`, mimeType: "image/webp", data };
 }
 
-// ── Camera capture input ───────────────────────────────────────────────────────
+// ── CameraInput ────────────────────────────────────────────────────────────────
 interface CameraInputProps {
   label:    string;
   capture:  "environment" | "user";
@@ -202,7 +175,6 @@ function CameraInput({ label, capture, file, inputRef, onChange }: CameraInputPr
           </>
         )}
       </div>
-      {/* capture attribute directs the browser to open camera directly */}
       <input
         ref={inputRef}
         type="file"
@@ -223,12 +195,22 @@ export default function BecomeSellerPage() {
   const [isMobile,  setIsMobile]  = useState(false);
 
   // Flow
-  const [step,      setStep]      = useState<VerifyStep>(1);
-  const [agreed,    setAgreed]    = useState(false);
-  const [submitted, setSubmitted] = useState(false);
-  const [showOtp,   setShowOtp]   = useState(false);
+  const [step,       setStep]      = useState<VerifyStep>(1);
+  const [agreed,     setAgreed]    = useState(false);
+  const [submitted,  setSubmitted] = useState(false);
+  const [showOtp,    setShowOtp]   = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // ── NEW: OTP loading states ────────────────────────────────────────────────
+  // Tracks the "Send OTP Code" and "Resend" button loading states separately
+  // so the user gets visual feedback while the Twilio API call is in-flight.
+  const [sendingOtp,    setSendingOtp]    = useState(false);
+  // Tracks whether the OTP has been cryptographically verified by the backend.
+  // The Submit button only becomes active after this is true.
+  const [otpVerified,   setOtpVerified]   = useState(false);
+  // Tracks the "verifying…" state while the verify API call is in-flight.
+  const [verifyingOtp,  setVerifyingOtp]  = useState(false);
 
   // Step 2 form fields
   const [idType,    setIdType]    = useState<IdType>("");
@@ -242,11 +224,11 @@ export default function BecomeSellerPage() {
   const [step2Err,  setStep2Err]  = useState("");
 
   // Step 3 — phone + OTP
-  const [phoneNumber,    setPhoneNumber]    = useState("");
-  const [otpValue,       setOtpValue]       = useState("");
-  const [resendSeconds,  setResendSeconds]  = useState(RESEND_SECONDS);
-  const [canResend,      setCanResend]      = useState(false);
-  const [resendKey,      setResendKey]      = useState(0); // increment to restart countdown
+  const [phoneNumber,   setPhoneNumber]   = useState("");
+  const [otpValue,      setOtpValue]      = useState("");
+  const [resendSeconds, setResendSeconds] = useState(RESEND_SECONDS);
+  const [canResend,     setCanResend]     = useState(false);
+  const [resendKey,     setResendKey]     = useState(0);
   const hasPrefilledPhone = useRef(false);
 
   const frontRef  = useRef<HTMLInputElement>(null);
@@ -258,52 +240,81 @@ export default function BecomeSellerPage() {
     [user?.status],
   );
 
-  const hasPhoneNumber = Boolean((user?.phoneNumber ?? "").trim());
-  const hasFullLocation = [user?.locationBrgy, user?.locationCity, user?.locationProv]
-    .every((value) => Boolean((value ?? "").trim()));
+  const hasPhoneNumber         = Boolean((user?.phoneNumber ?? "").trim());
+  const hasFullLocation        = [user?.locationBrgy, user?.locationCity, user?.locationProv]
+    .every(v => Boolean((v ?? "").trim()));
   const hasProfileSetupRequirement = hasPhoneNumber && hasFullLocation;
 
   // ── Derived booleans ────────────────────────────────────────────────────────
   const phoneComplete = phoneNumber.replace(/\D/g, "").length === PHONE_DIGITS;
   const otpComplete   = otpValue.length === OTP_LENGTH;
 
+  // ── CHANGED: isNextDisabled now also requires otpVerified ──────────────────
+  // Previously the form only checked otpComplete (the user just filled all 6 slots).
+  // Now we require the backend to have confirmed the code is correct.
   const isNextDisabled =
-    !isMobile                                    ||
+    !isMobile                                         ||
     (step === 1 && (!agreed || !hasProfileSetupRequirement)) ||
-    (step === 3 && !showOtp)                     || // must verify phone first
-    (step === 3 && showOtp && !otpComplete)      || // OTP must be fully entered
+    (step === 3 && !showOtp)                          ||
+    (step === 3 && showOtp && !otpVerified)           || // ← changed from !otpComplete
     submitting;
 
   // ── Effects ─────────────────────────────────────────────────────────────────
-  // Detect device on mount (avoids hydration mismatch)
   useEffect(() => { setIsMobile(device.isMobile); }, []);
 
-  // Resend countdown — starts/restarts whenever showOtp or resendKey changes
+  // Resend countdown
   useEffect(() => {
     if (!showOtp) return;
     setResendSeconds(RESEND_SECONDS);
     setCanResend(false);
-
     const id = setInterval(() => {
       setResendSeconds(prev => {
-        if (prev <= 1) {
-          clearInterval(id);
-          setCanResend(true);
-          return 0;
-        }
+        if (prev <= 1) { clearInterval(id); setCanResend(true); return 0; }
         return prev - 1;
       });
     }, 1000);
-
     return () => clearInterval(id);
   }, [showOtp, resendKey]);
 
+  // ── ADDED: Auto-verify as soon as all 6 digits are typed ──────────────────
+  // When the InputOTP component fires onChange with a complete 6-char value we
+  // immediately call the verify endpoint.  This removes the need for a separate
+  // "Verify" button — the UX is seamless.
+  useEffect(() => {
+    if (!showOtp || otpComplete === false || verifyingOtp || otpVerified) return;
+
+    const digits = phoneNumber.replace(/\D/g, "");
+    if (digits.length !== PHONE_DIGITS) return;
+
+    void (async () => {
+      setVerifyingOtp(true);
+      try {
+        await verifyPhoneOTP(digits, otpValue);
+        // Code is correct — unlock the Submit button
+        setOtpVerified(true);
+        showToastMsg("Phone number verified ✓");
+      } catch (err) {
+        const message =
+          err instanceof Error ? err.message : "Incorrect code. Please try again.";
+        // Wrong code, expired, or too many attempts
+        toast.error(message, { position: "top-center" });
+        // Clear the OTP field so the user can retype
+        setOtpValue("");
+        setOtpVerified(false);
+      } finally {
+        setVerifyingOtp(false);
+      }
+    })();
+  // otpComplete is a derived boolean from otpValue, so including otpValue here
+  // would cause a double-fire.  We intentionally only react to the completed state.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [otpComplete, showOtp]);
+
+  // Pre-fill phone from user profile
   useEffect(() => {
     if (hasPrefilledPhone.current) return;
-
     const normalized = normalizeToLocalPhoneDigits(user?.phoneNumber);
     if (!normalized) return;
-
     setPhoneNumber(normalized);
     hasPrefilledPhone.current = true;
   }, [user?.phoneNumber]);
@@ -326,23 +337,71 @@ export default function BecomeSellerPage() {
     return null;
   }
 
-  function handleSendOtp() {
-    // Re-derive at click time — blocks console-patched phoneComplete
+  // ── CHANGED: handleSendOtp now calls the real API ─────────────────────────
+  async function handleSendOtp() {
     const digits = phoneNumber.replace(/\D/g, "");
     if (digits.length !== PHONE_DIGITS) return;
-    setOtpValue("");
-    setShowOtp(true);
+
+    setSendingOtp(true);
+    try {
+      // Collect session metadata the same way the rest of the form does
+      const sessionRes = await fetch("/api/session", { credentials: "include" });
+      const sessionMeta = sessionRes.ok
+        ? (await sessionRes.json() as { ipAddress?: string; userAgent?: string })
+        : {};
+
+      await sendPhoneOTP(
+        digits,
+        (sessionMeta.ipAddress ?? "unknown").trim() || "unknown",
+        (sessionMeta.userAgent ?? "unknown").trim() || "unknown",
+      );
+
+      // Only flip to OTP input AFTER the API confirms SMS was dispatched
+      setOtpValue("");
+      setOtpVerified(false);
+      setShowOtp(true);
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Failed to send OTP. Please try again.";
+      toast.error(message, { position: "top-center" });
+    } finally {
+      setSendingOtp(false);
+    }
   }
 
-  function handleResend() {
+  // ── CHANGED: handleResend now also calls the real API ────────────────────
+  async function handleResend() {
     if (!canResend) return;
-    setOtpValue("");
-    setResendKey(k => k + 1); // triggers countdown restart via useEffect
-    showToastMsg("OTP resent to your number.");
+
+    setSendingOtp(true);
+    try {
+      const sessionRes  = await fetch("/api/session", { credentials: "include" });
+      const sessionMeta = sessionRes.ok
+        ? (await sessionRes.json() as { ipAddress?: string; userAgent?: string })
+        : {};
+
+      const digits = phoneNumber.replace(/\D/g, "");
+
+      await sendPhoneOTP(
+        digits,
+        (sessionMeta.ipAddress ?? "unknown").trim() || "unknown",
+        (sessionMeta.userAgent ?? "unknown").trim() || "unknown",
+      );
+
+      setOtpValue("");
+      setOtpVerified(false);
+      setResendKey(k => k + 1); // restarts countdown via useEffect
+      showToastMsg("New OTP sent to your number.");
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Failed to resend OTP. Please try again.";
+      toast.error(message, { position: "top-center" });
+    } finally {
+      setSendingOtp(false);
+    }
   }
 
   async function next() {
-    // Re-derive at call time — blocks console-injected state manipulation
     if (!device.isMobile) return;
 
     if (step === 1) {
@@ -357,8 +416,9 @@ export default function BecomeSellerPage() {
       setStep(3);
       return;
     }
-    // Step 3 — final guard before submission
-    if (!showOtp || !otpComplete) return;
+
+    // ── CHANGED: Step 3 guard now checks otpVerified instead of just otpComplete
+    if (!showOtp || !otpVerified) return;
 
     const digits = phoneNumber.replace(/\D/g, "");
     if (digits.length !== PHONE_DIGITS) return;
@@ -370,11 +430,7 @@ export default function BecomeSellerPage() {
         method: "GET",
         credentials: "include",
       });
-
-      if (!sessionMetaResponse.ok) {
-        throw new Error("Failed to collect session metadata.");
-      }
-
+      if (!sessionMetaResponse.ok) throw new Error("Failed to collect session metadata.");
       const sessionMeta = (await sessionMetaResponse.json()) as {
         ipAddress?: string;
         userAgent?: string;
@@ -382,19 +438,19 @@ export default function BecomeSellerPage() {
 
       const [idImageFront, idImageBack, selfieImage] = await Promise.all([
         fileToVerificationImagePayload(idFront, "id_front"),
-        fileToVerificationImagePayload(idBack, "id_back"),
-        fileToVerificationImagePayload(selfie, "selfie"),
+        fileToVerificationImagePayload(idBack,  "id_back"),
+        fileToVerificationImagePayload(selfie,  "selfie"),
       ]);
 
       await submitVerification({
-        idType: idType.trim(),
-        idNumber: idNumber.trim(),
+        idType:      idType.trim(),
+        idNumber:    idNumber.trim(),
         idFirstName: firstName.trim(),
-        idLastName: lastName.trim(),
+        idLastName:  lastName.trim(),
         idBirthdate: dob,
         mobileNumber: "0" + digits,
-        ipAddress: (sessionMeta.ipAddress ?? "unknown").trim() || "unknown",
-        userAgent: (sessionMeta.userAgent ?? "unknown").trim() || "unknown",
+        ipAddress:   (sessionMeta.ipAddress ?? "unknown").trim() || "unknown",
+        userAgent:   (sessionMeta.userAgent ?? "unknown").trim() || "unknown",
         hardwareInfo: String(getDeviceInfo({ asJson: true })),
         idImageFront,
         idImageBack,
@@ -405,9 +461,10 @@ export default function BecomeSellerPage() {
       if (user) saveUserData({ ...user, status: "PENDING" });
       showToastMsg("Application submitted! Under review.");
     } catch (error) {
-      const message = error instanceof Error && error.message
-        ? error.message
-        : "Failed to submit seller verification.";
+      const message =
+        error instanceof Error && error.message
+          ? error.message
+          : "Failed to submit seller verification.";
       toast.error(message, { position: "top-center" });
     } finally {
       setSubmitting(false);
@@ -417,13 +474,16 @@ export default function BecomeSellerPage() {
   function prev() {
     if (step > 1) {
       setStep2Err("");
-      // Reset OTP state when going back from step 3
-      if (step === 3) { setShowOtp(false); setOtpValue(""); }
+      if (step === 3) {
+        setShowOtp(false);
+        setOtpValue("");
+        setOtpVerified(false); // ← reset verified flag when going back
+      }
       setStep(s => (s - 1) as VerifyStep);
     }
   }
 
-  // ── Terminal states ───────────────────────────────────────────────────────────
+  // ── Terminal states ────────────────────────────────────────────────────────
   if (verificationState === "verified") {
     return (
       <div className="min-h-screen bg-stone-100 dark:bg-[#0f1117] py-8 px-4 sm:px-6 flex items-center justify-center">
@@ -466,13 +526,13 @@ export default function BecomeSellerPage() {
     );
   }
 
-  // ── Multi-step form ────────────────────────────────────────────────────────────
+  // ── Multi-step form ────────────────────────────────────────────────────────
   return (
     <div className="bg-stone-100 dark:bg-[#0f1117] py-8 px-4 sm:px-6">
       <div className="max-w-2xl mx-auto">
         <Card className="overflow-hidden dark:bg-[#1c1f2e] dark:border-[#2a2d3e] shadow-sm py-0">
 
-          {/* ── Progress header ── */}
+          {/* Progress header */}
           <div className="bg-[#1e2433] px-7 py-5">
             <h1 className="text-white font-bold text-xl">Become a Seller</h1>
             <p className="text-slate-400 text-sm mt-1">
@@ -495,9 +555,7 @@ export default function BecomeSellerPage() {
 
           <CardContent>
 
-            {/* ══════════════════════════════════════════════
-                STEP 1 — Requirements + device check
-            ══════════════════════════════════════════════ */}
+            {/* ══ STEP 1 — Requirements + device check (unchanged) ══ */}
             {step === 1 && (
               <div className="space-y-5">
                 <div>
@@ -509,7 +567,6 @@ export default function BecomeSellerPage() {
                   </p>
                 </div>
 
-                {/* Device compatibility banner */}
                 <div className={cn(
                   "flex items-start gap-3 p-4 rounded-xl border",
                   isMobile
@@ -539,7 +596,6 @@ export default function BecomeSellerPage() {
                   </div>
                 </div>
 
-                {/* User phone number and location setup requirements */}
                 <div className={cn(
                   "flex items-start gap-3 p-4 rounded-xl border",
                   hasProfileSetupRequirement
@@ -554,17 +610,13 @@ export default function BecomeSellerPage() {
                   <div>
                     <p className={cn(
                       "text-sm font-semibold",
-                      hasProfileSetupRequirement
-                        ? "text-teal-700 dark:text-teal-300"
-                        : "text-amber-700 dark:text-amber-300",
+                      hasProfileSetupRequirement ? "text-teal-700 dark:text-teal-300" : "text-amber-700 dark:text-amber-300",
                     )}>
                       Profile phone and address required
                     </p>
                     <p className={cn(
                       "text-xs mt-0.5 leading-relaxed",
-                      hasProfileSetupRequirement
-                        ? "text-teal-600 dark:text-teal-400"
-                        : "text-amber-600 dark:text-amber-400",
+                      hasProfileSetupRequirement ? "text-teal-600 dark:text-teal-400" : "text-amber-600 dark:text-amber-400",
                     )}>
                       {hasProfileSetupRequirement
                         ? "Your profile already has a mobile number and full location details."
@@ -582,32 +634,13 @@ export default function BecomeSellerPage() {
                   </div>
                 </div>
 
-                {/* Requirements list */}
                 <div className="space-y-3">
                   {[
-                    {
-                      Icon: IdCard,
-                      iconCls: "text-stone-500 dark:text-stone-400",
-                      title: "Government-Issued ID",
-                      desc: "National ID, Passport, Driver's License, PRC, Postal ID, and other government-issued IDs",
-                    },
-                    {
-                      Icon: Camera,
-                      iconCls: "text-stone-500 dark:text-stone-400",
-                      title: "Selfie with your ID",
-                      desc: "A live photo of you holding your ID, captured using your smartphone camera",
-                    },
-                    {
-                      Icon: Phone,
-                      iconCls: "text-stone-500 dark:text-stone-400",
-                      title: "Verified Phone Number",
-                      desc: "A valid PH mobile number for OTP verification and buyer contact",
-                    },
+                    { Icon: IdCard,  iconCls: "text-stone-500 dark:text-stone-400", title: "Government-Issued ID",   desc: "National ID, Passport, Driver's License, PRC, Postal ID, and other government-issued IDs" },
+                    { Icon: Camera,  iconCls: "text-stone-500 dark:text-stone-400", title: "Selfie with your ID",    desc: "A live photo of you holding your ID, captured using your smartphone camera" },
+                    { Icon: Phone,   iconCls: "text-stone-500 dark:text-stone-400", title: "Verified Phone Number",  desc: "A valid PH mobile number for OTP verification and buyer contact" },
                   ].map(({ Icon, iconCls, title, desc }) => (
-                    <div
-                      key={title}
-                      className="flex items-start gap-3 p-4 border border-stone-200 dark:border-[#2a2d3e] rounded-xl bg-stone-50 dark:bg-[#13151f]"
-                    >
+                    <div key={title} className="flex items-start gap-3 p-4 border border-stone-200 dark:border-[#2a2d3e] rounded-xl bg-stone-50 dark:bg-[#13151f]">
                       <Icon className={cn("w-5 h-5 shrink-0 mt-0.5", iconCls)} />
                       <div>
                         <p className="font-semibold text-sm text-stone-800 dark:text-stone-200">{title}</p>
@@ -617,7 +650,6 @@ export default function BecomeSellerPage() {
                   ))}
                 </div>
 
-                {/* Agreement — fully disabled on desktop */}
                 <label className={cn(
                   "flex items-start gap-2.5",
                   isMobile ? "cursor-pointer" : "cursor-not-allowed opacity-40 select-none",
@@ -631,18 +663,14 @@ export default function BecomeSellerPage() {
                   />
                   <span className="text-sm text-stone-500 dark:text-stone-400 leading-relaxed">
                     I agree to the{" "}
-                    <Link href="/terms-seller" className="underline hover:no-underline">
-                      Seller Terms of Service
-                    </Link>{" "}
-                    and confirm I am at least 18 years old and a resident of the Philippines.
+                    <Link href="/terms-seller" className="underline hover:no-underline">Seller Terms of Service</Link>
+                    {" "}and confirm I am at least 18 years old and a resident of the Philippines.
                   </span>
                 </label>
               </div>
             )}
 
-            {/* ══════════════════════════════════════════════
-                STEP 2 — ID details + camera captures
-            ══════════════════════════════════════════════ */}
+            {/* ══ STEP 2 — ID details + camera captures (unchanged) ══ */}
             {step === 2 && (
               <div className="space-y-4">
                 <div>
@@ -655,7 +683,6 @@ export default function BecomeSellerPage() {
                   </p>
                 </div>
 
-                {/* ID type dropdown */}
                 <div className="space-y-1.5">
                   <Label htmlFor="idType" className="text-[11px] font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest">
                     ID Type <span className="text-red-500">*</span>
@@ -669,9 +696,7 @@ export default function BecomeSellerPage() {
                       className="w-full pl-9 pr-8 py-2.5 rounded-xl text-sm border bg-stone-50 dark:bg-[#13151f] border-stone-200 dark:border-[#2a2d3e] text-stone-800 dark:text-stone-100 outline-none focus:border-stone-400 dark:focus:border-stone-500 transition-colors appearance-none cursor-pointer"
                     >
                       {ID_OPTIONS.map(opt => (
-                        <option key={opt.value} value={opt.value} disabled={opt.value === ""}>
-                          {opt.label}
-                        </option>
+                        <option key={opt.value} value={opt.value} disabled={opt.value === ""}>{opt.label}</option>
                       ))}
                     </select>
                     <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2">
@@ -682,101 +707,42 @@ export default function BecomeSellerPage() {
                   </div>
                 </div>
 
-                {/* Name row */}
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
-                    <Label htmlFor="firstName" className="text-[11px] font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest">
-                      First Name <span className="text-red-500">*</span>
-                    </Label>
-                    <Input
-                      id="firstName"
-                      name="given-name"
-                      autoComplete="given-name"
-                      value={firstName}
-                      onChange={e => setFirstName(e.target.value)}
-                      placeholder="First name"
-                      className="dark:bg-[#13151f] dark:border-[#2a2d3e]"
-                    />
+                    <Label htmlFor="firstName" className="text-[11px] font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest">First Name <span className="text-red-500">*</span></Label>
+                    <Input id="firstName" name="given-name" autoComplete="given-name" value={firstName} onChange={e => setFirstName(e.target.value)} placeholder="First name" className="dark:bg-[#13151f] dark:border-[#2a2d3e]" />
                   </div>
                   <div className="space-y-1.5">
-                    <Label htmlFor="lastName" className="text-[11px] font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest">
-                      Last Name <span className="text-red-500">*</span>
-                    </Label>
-                    <Input
-                      id="lastName"
-                      name="family-name"
-                      autoComplete="family-name"
-                      value={lastName}
-                      onChange={e => setLastName(e.target.value)}
-                      placeholder="Last name"
-                      className="dark:bg-[#13151f] dark:border-[#2a2d3e]"
-                    />
+                    <Label htmlFor="lastName" className="text-[11px] font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest">Last Name <span className="text-red-500">*</span></Label>
+                    <Input id="lastName" name="family-name" autoComplete="family-name" value={lastName} onChange={e => setLastName(e.target.value)} placeholder="Last name" className="dark:bg-[#13151f] dark:border-[#2a2d3e]" />
                   </div>
                 </div>
 
-                {/* DOB + ID number */}
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
-                    <Label htmlFor="dob" className="text-[11px] font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest">
-                      Date of Birth <span className="text-red-500">*</span>
-                    </Label>
-                    <Input
-                      id="dob"
-                      type="date"
-                      value={dob}
-                      onChange={e => setDob(e.target.value)}
-                      max={new Date().toISOString().split("T")[0]}
-                      className="dark:bg-[#13151f] dark:border-[#2a2d3e]"
-                    />
+                    <Label htmlFor="dob" className="text-[11px] font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest">Date of Birth <span className="text-red-500">*</span></Label>
+                    <Input id="dob" type="date" value={dob} onChange={e => setDob(e.target.value)} max={new Date().toISOString().split("T")[0]} className="dark:bg-[#13151f] dark:border-[#2a2d3e]" />
                   </div>
                   <div className="space-y-1.5">
-                    <Label htmlFor="idNumber" className="text-[11px] font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest">
-                      ID Number <span className="text-red-500">*</span>
-                    </Label>
-                    <Input
-                      id="idNumber"
-                      value={idNumber}
-                      onChange={e => setIdNumber(e.target.value)}
-                      placeholder="1234-5678-9012"
-                      className="dark:bg-[#13151f] dark:border-[#2a2d3e] font-mono"
-                    />
+                    <Label htmlFor="idNumber" className="text-[11px] font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest">ID Number <span className="text-red-500">*</span></Label>
+                    <Input id="idNumber" value={idNumber} onChange={e => setIdNumber(e.target.value)} placeholder="1234-5678-9012" className="dark:bg-[#13151f] dark:border-[#2a2d3e] font-mono" />
                   </div>
                 </div>
 
                 <Separator className="dark:bg-[#2a2d3e]" />
-
                 <p className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest">
                   Photo Captures <span className="text-red-500">*</span>
                 </p>
 
-                <CameraInput
-                  label="ID Front"
-                  capture="environment"
-                  file={idFront}
-                  inputRef={frontRef}
-                  onChange={setIdFront}
-                />
-                <CameraInput
-                  label="ID Back"
-                  capture="environment"
-                  file={idBack}
-                  inputRef={backRef}
-                  onChange={setIdBack}
-                />
-                <CameraInput
-                  label="Selfie while holding your ID"
-                  capture="user"
-                  file={selfie}
-                  inputRef={selfieRef}
-                  onChange={setSelfie}
-                />
+                <CameraInput label="ID Front"                        capture="environment" file={idFront} inputRef={frontRef}  onChange={setIdFront} />
+                <CameraInput label="ID Back"                         capture="environment" file={idBack}  inputRef={backRef}   onChange={setIdBack}  />
+                <CameraInput label="Selfie while holding your ID"    capture="user"        file={selfie}  inputRef={selfieRef} onChange={setSelfie}  />
 
                 <p className="text-[10px] text-stone-400 dark:text-stone-500 leading-relaxed">
                   All photos are captured directly from your smartphone camera and stored securely.
                   Ensure images are clear, well-lit, and unedited.
                 </p>
 
-                {/* Validation error */}
                 {step2Err && (
                   <div className="flex items-center gap-2 px-3 py-2.5 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-xl text-xs text-red-600 dark:text-red-400">
                     <AlertTriangle className="w-3.5 h-3.5 shrink-0" /> {step2Err}
@@ -785,9 +751,7 @@ export default function BecomeSellerPage() {
               </div>
             )}
 
-            {/* ══════════════════════════════════════════════
-                STEP 3a — Phone number entry
-            ══════════════════════════════════════════════ */}
+            {/* ══ STEP 3a — Phone number entry ══ */}
             {step === 3 && !showOtp && (
               <div className="space-y-5">
                 <div>
@@ -814,24 +778,25 @@ export default function BecomeSellerPage() {
                       placeholder="9XX XXX XXXX"
                       maxLength={PHONE_DIGITS}
                     />
-
-                    {/* Send OTP — disabled until phone is 10 digits */}
+                    {/* ── CHANGED: button now shows loading state and calls real API ── */}
                     <Button
                       className="rounded-full bg-stone-900 hover:bg-stone-800 text-white font-bold gap-2 disabled:opacity-50"
-                      onClick={handleSendOtp}
-                      disabled={!phoneComplete}
+                      onClick={() => void handleSendOtp()}
+                      disabled={!phoneComplete || sendingOtp}
                     >
-                      <Send className="w-4 h-4" />
-                      Send OTP Code
+                      {sendingOtp ? (
+                        <RefreshCw className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Send className="w-4 h-4" />
+                      )}
+                      {sendingOtp ? "Sending…" : "Send OTP Code"}
                     </Button>
                   </div>
                 </div>
               </div>
             )}
 
-            {/* ══════════════════════════════════════════════
-                STEP 3b — OTP entry
-            ══════════════════════════════════════════════ */}
+            {/* ══ STEP 3b — OTP entry ══ */}
             {step === 3 && showOtp && (
               <div className="space-y-5">
                 <div>
@@ -847,49 +812,68 @@ export default function BecomeSellerPage() {
                   </p>
                 </div>
 
-                {/* shadcn InputOTP — handles focus, backspace, paste natively */}
+                {/* ── CHANGED: OTP slots reflect verification state ── */}
                 <div className="flex justify-center">
-                  <InputOTP
-                    maxLength={OTP_LENGTH}
-                    value={otpValue}
-                    onChange={setOtpValue}
-                  >
-                    <InputOTPGroup>
-                      <InputOTPSlot index={0} />
-                      <InputOTPSlot index={1} />
-                      <InputOTPSlot index={2} />
-                    </InputOTPGroup>
-                    <InputOTPSeparator />
-                    <InputOTPGroup>
-                      <InputOTPSlot index={3} />
-                      <InputOTPSlot index={4} />
-                      <InputOTPSlot index={5} />
-                    </InputOTPGroup>
-                  </InputOTP>
+                  <div className="relative">
+                    <InputOTP
+                      maxLength={OTP_LENGTH}
+                      value={otpValue}
+                      onChange={setOtpValue}
+                      // Disable while verifying or already verified
+                      disabled={verifyingOtp || otpVerified}
+                    >
+                      <InputOTPGroup>
+                        <InputOTPSlot index={0} />
+                        <InputOTPSlot index={1} />
+                        <InputOTPSlot index={2} />
+                      </InputOTPGroup>
+                      <InputOTPSeparator />
+                      <InputOTPGroup>
+                        <InputOTPSlot index={3} />
+                        <InputOTPSlot index={4} />
+                        <InputOTPSlot index={5} />
+                      </InputOTPGroup>
+                    </InputOTP>
+
+                    {/* Overlay shown while the verify API call is in-flight */}
+                    {verifyingOtp && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-white/60 dark:bg-[#1c1f2e]/60 rounded-lg">
+                        <RefreshCw className="w-5 h-5 animate-spin text-stone-500 dark:text-stone-400" />
+                      </div>
+                    )}
+                  </div>
                 </div>
 
-                {/* Resend with live countdown */}
-                <div className="text-center text-sm mt-2">
-                  <span className="text-muted-foreground">
-                    Didn't receive the code?{" "}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={handleResend}
-                    disabled={!canResend}
-                    className="underline disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
-                  >
-                    {resendSeconds > 0
-                      ? `Resend in ${formatCountdown(resendSeconds)}s`
-                      : "Resend"}
-                  </button>
-                </div>
+                {/* ── CHANGED: show verified badge once the backend confirms ── */}
+                {otpVerified ? (
+                  <div className="flex items-center justify-center gap-2 text-teal-600 dark:text-teal-400 text-sm font-semibold">
+                    <CheckCircle2 className="w-4 h-4" />
+                    Phone number verified
+                  </div>
+                ) : (
+                  <div className="text-center text-sm mt-2">
+                    <span className="text-muted-foreground">Didn&apos;t receive the code?{" "}</span>
+                    {/* ── CHANGED: Resend also calls the real API ── */}
+                    <button
+                      type="button"
+                      onClick={() => void handleResend()}
+                      disabled={!canResend || sendingOtp}
+                      className="underline disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
+                    >
+                      {sendingOtp
+                        ? "Sending…"
+                        : resendSeconds > 0
+                          ? `Resend in ${formatCountdown(resendSeconds)}s`
+                          : "Resend"
+                      }
+                    </button>
+                  </div>
+                )}
 
-                {/* Change number */}
                 <button
                   type="button"
-                  onClick={() => { setShowOtp(false); setOtpValue(""); }}
-                  disabled={!canResend}
+                  onClick={() => { setShowOtp(false); setOtpValue(""); setOtpVerified(false); }}
+                  disabled={!canResend || sendingOtp}
                   className="w-full text-xs text-stone-400 dark:text-stone-500 hover:text-stone-600 dark:hover:text-stone-300 transition-colors underline underline-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Change phone number
@@ -897,7 +881,7 @@ export default function BecomeSellerPage() {
               </div>
             )}
 
-            {/* ── Footer navigation ── */}
+            {/* Footer navigation */}
             <Separator className="mt-6 dark:bg-[#2a2d3e]" />
             <div className="flex items-center justify-between my-4">
               <span className="text-xs text-stone-400 dark:text-stone-500">
@@ -909,7 +893,7 @@ export default function BecomeSellerPage() {
                     variant="outline"
                     onClick={prev}
                     className="rounded-full text-sm dark:border-[#2a2d3e] dark:text-stone-300 dark:hover:bg-[#252837] disabled:opacity-50"
-                    disabled={!canResend}
+                    disabled={!canResend || sendingOtp}
                   >
                     Back
                   </Button>
@@ -918,13 +902,9 @@ export default function BecomeSellerPage() {
                   className="rounded-full bg-stone-900 hover:bg-stone-800 text-white text-sm font-bold disabled:opacity-50"
                   onClick={() => void next()}
                   disabled={isNextDisabled}
-                  title={
-                    !isMobile
-                      ? "Please open this page on a smartphone with a camera to continue"
-                      : undefined
-                  }
+                  title={!isMobile ? "Please open this page on a smartphone with a camera to continue" : undefined}
                 >
-                  {step === TOTAL ? (submitting ? "Submitting..." : "Submit Application") : "Continue"}
+                  {step === TOTAL ? (submitting ? "Submitting…" : "Submit Application") : "Continue"}
                 </Button>
               </div>
             </div>
@@ -933,7 +913,6 @@ export default function BecomeSellerPage() {
         </Card>
       </div>
 
-      {/* ── Toast ── */}
       {toastMessage && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-stone-900 text-white text-sm font-medium px-5 py-3 rounded-full shadow-xl animate-in fade-in slide-in-from-bottom-2 duration-300">
           {toastMessage}

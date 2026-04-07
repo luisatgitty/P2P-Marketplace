@@ -519,3 +519,14 @@ type ListingEditFromDb struct {
 	Arrangement     string     `gorm:"column:arrangements"`
 	Status          string     `gorm:"column:status"`
 }
+
+type SendOTPRequest struct {
+	PhoneNumber string `json:"phoneNumber"`
+	IPAddress   string `json:"ipAddress"`
+	UserAgent   string `json:"userAgent"`
+}
+
+type VerifyOTPRequest struct {
+	PhoneNumber string `json:"phoneNumber"`
+	OTPCode     string `json:"otpCode"`
+}
