@@ -102,10 +102,10 @@ function RelatedCard({ listing }: { listing: PostCardProps }) {
           <p className="text-stone-800 dark:text-stone-200 font-bold text-sm mt-1">
             {fmt.format(listing.price)}
             {listing.priceUnit && (
-              <span className="text-[11px] font-normal text-stone-400 dark:text-stone-500"> {listing.priceUnit}</span>
+              <span className="text-[11px] font-normal text-black dark:text-white"> {listing.priceUnit}</span>
             )}  
           </p>
-          <p className="text-stone-400 dark:text-stone-500 text-[11px] mt-0.5 truncate">{listing.location}</p>
+          <p className="text-black dark:text-white text-[11px] mt-0.5 truncate">{listing.location}</p>
         </div>
       </div>
     </Link>
@@ -670,7 +670,7 @@ export default function ListingDetailPage() {
               ].map((row) => (
                 <div key={row.label} className="flex items-center gap-3 px-5 py-3.5">
                   <div className="shrink-0">{row.icon}</div>
-                  <span className="text-xs text-stone-400 dark:text-stone-500 w-36 shrink-0">{row.label}</span>
+                  <span className="text-xs text-black dark:text-white w-36 shrink-0">{row.label}</span>
                   <span className="text-sm text-stone-700 dark:text-stone-200">{row.value}</span>
                 </div>
               ))}
@@ -718,11 +718,11 @@ export default function ListingDetailPage() {
                 {/* Price */}
                 <div className="flex items-baseline gap-1.5 mb-1">
                   <span className="text-2xl font-extrabold text-stone-900 dark:text-stone-50">{fmt.format(listing.price)}</span>
-                  {listing.priceUnit && <span className="text-stone-400 dark:text-stone-500 text-sm">{listing.priceUnit}</span>}
+                  {listing.priceUnit && <span className="text-black dark:text-white text-sm">{listing.priceUnit}</span>}
                 </div>
 
                 {/* Location + posted */}
-                <div className="flex flex-wrap items-center gap-3 text-sm text-stone-400 dark:text-stone-500 mb-4">
+                <div className="flex flex-wrap items-center gap-3 text-sm text-black dark:text-white mb-4">
                   <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{listing.location}</span>
                   <span className="flex items-center gap-1"><Clock className="w-3 h-3" />Posted {listing.postedAt}</span>
                 </div>
