@@ -65,7 +65,7 @@ export default function PostCard(props: PostCardProps) {
           {priceUnit && <span className="text-[11px] font-normal text-stone-400 dark:text-stone-500 ml-1">{priceUnit}</span>}
         </p>
         <div className="flex-1" />
-        <div className="flex items-center justify-between gap-1 text-[10px] sm:text-[11px] text-stone-400 dark:text-stone-500">
+        <div className="flex items-center justify-between gap-1 text-[10px] sm:text-[11px] text-black dark:text-white">
           <div className="flex items-center gap-0.5 min-w-0">
             <MapPin size={11} className="shrink-0" />
             <span className="truncate">{location}</span>
