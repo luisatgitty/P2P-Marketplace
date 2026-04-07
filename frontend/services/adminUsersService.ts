@@ -18,6 +18,8 @@ export type AdminUserRecord = {
   joined: string;
   updated_at: string;
   deleted_at: string | null;
+  deleted_by_name: string;
+  deleted_by_email: string;
   location: string;
 };
 

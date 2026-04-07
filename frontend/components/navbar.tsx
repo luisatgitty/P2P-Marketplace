@@ -11,7 +11,7 @@ import { LogoutModal } from "@/components/auth/logout-modal";
 import {
   Sun, Moon, MessageCircle, LogOut, User, Home,
   ChevronDown, Tag, Store, Wrench, LayoutGrid, UserPlus, ShieldCheck,
-  Bell,
+  Bell, LayoutDashboard,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -83,6 +83,9 @@ export default function Navbar() {
   const [mounted, setMounted] = useState(false);
   const [hasUnreadMessages, setHasUnreadMessages] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // If the user role is ADMIN or SUPER_ADMIN, show a banner at the top linking to the admin dashboard
+  const isAdmin = user && (user.role === "ADMIN" || user.role === "SUPER_ADMIN");
 
   const handleLogOut = () => {
     setLogoutModalOpen(true);
@@ -216,73 +219,100 @@ export default function Navbar() {
                       </div>
 
                       <div className="py-1">
-                        <Link
-                          href="/"
-                          onClick={() => setDropdownOpen(false)}
-                          className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-200 hover:bg-white/10 hover:text-white transition-colors"
-                        >
-                          <Home size={15} className="text-stone-400" />
-                          Home
-                        </Link>
-                        <Link
-                          href="/profile"
-                          onClick={() => setDropdownOpen(false)}
-                          className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-200 hover:bg-white/10 hover:text-white transition-colors"
-                        >
-                          <User size={15} className="text-stone-400" />
-                          Profile
-                        </Link>
-                        <Link
-                          href="/messages"
-                          onClick={() => setDropdownOpen(false)}
-                          className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-200 hover:bg-white/10 hover:text-white transition-colors"
-                        >
-                          <span className="relative inline-flex">
-                            <MessageCircle size={15} className="text-stone-400" />
-                            {hasUnreadMessages && (
-                              <span className="absolute -right-1 -bottom-1 w-2 h-2 rounded-full bg-amber-500 border border-[#1e2b3c]" />
+                        {isAdmin ? (
+                          <>
+                            <Link
+                              href="/admin"
+                              onClick={() => setDropdownOpen(false)}
+                              className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-200 hover:bg-white/10 hover:text-white transition-colors"
+                            >
+                              <LayoutDashboard size={15} className="text-stone-400" />
+                              Admin Dashboard
+                            </Link>
+                            {mounted && (
+                              <button
+                                onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                                className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-stone-200 hover:bg-white/10 hover:text-white transition-colors"
+                              >
+                                {theme === "dark"
+                                  ? <Sun size={15} className="text-amber-400" />
+                                  : <Moon size={15} className="text-stone-300" />
+                                }
+                                {theme === "dark" ? "Light Mode" : "Dark Mode"}
+                              </button>
                             )}
-                          </span>
-                          Messages
-                        </Link>
-                        <Link
-                          href="/notifications"
-                          onClick={() => setDropdownOpen(false)}
-                          className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-200 hover:bg-white/10 hover:text-white transition-colors"
-                        >
-                          <Bell size={15} className="text-stone-400" />
-                          Notifications
-                        </Link>
-                        {isVerifiedSeller ? (
-                          <Link
-                            href="/create"
-                            onClick={() => setDropdownOpen(false)}
-                            className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-200 hover:bg-white/10 hover:text-white transition-colors"
-                          >
-                            <Tag size={15} className="text-stone-400" />
-                            Post a Listing
-                          </Link>
+                          </>
                         ) : (
-                          <Link
-                            href="/become-seller"
-                            onClick={() => setDropdownOpen(false)}
-                            className="flex items-center gap-3 px-4 py-2.5 text-sm text-amber-300 hover:bg-amber-500/10 hover:text-amber-200 transition-colors"
-                          >
-                            <UserPlus size={15} />
-                            Become a Seller
-                          </Link>
-                        )}
-                        {mounted && (
-                          <button
-                            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-                            className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-stone-200 hover:bg-white/10 hover:text-white transition-colors"
-                          >
-                            {theme === "dark"
-                              ? <Sun size={15} className="text-amber-400" />
-                              : <Moon size={15} className="text-stone-300" />
-                            }
-                            {theme === "dark" ? "Light Mode" : "Dark Mode"}
-                          </button>
+                          <>
+                            <Link
+                              href="/"
+                              onClick={() => setDropdownOpen(false)}
+                              className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-200 hover:bg-white/10 hover:text-white transition-colors"
+                            >
+                              <Home size={15} className="text-stone-400" />
+                              Home
+                            </Link>
+                            <Link
+                              href="/profile"
+                              onClick={() => setDropdownOpen(false)}
+                              className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-200 hover:bg-white/10 hover:text-white transition-colors"
+                            >
+                              <User size={15} className="text-stone-400" />
+                              Profile
+                            </Link>
+                            <Link
+                              href="/messages"
+                              onClick={() => setDropdownOpen(false)}
+                              className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-200 hover:bg-white/10 hover:text-white transition-colors"
+                            >
+                              <span className="relative inline-flex">
+                                <MessageCircle size={15} className="text-stone-400" />
+                                {hasUnreadMessages && (
+                                  <span className="absolute -right-1 -bottom-1 w-2 h-2 rounded-full bg-amber-500 border border-[#1e2b3c]" />
+                                )}
+                              </span>
+                              Messages
+                            </Link>
+                            <Link
+                              href="/notifications"
+                              onClick={() => setDropdownOpen(false)}
+                              className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-200 hover:bg-white/10 hover:text-white transition-colors"
+                            >
+                              <Bell size={15} className="text-stone-400" />
+                              Notifications
+                            </Link>
+                            {isVerifiedSeller ? (
+                              <Link
+                                href="/create"
+                                onClick={() => setDropdownOpen(false)}
+                                className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-200 hover:bg-white/10 hover:text-white transition-colors"
+                              >
+                                <Tag size={15} className="text-stone-400" />
+                                Post a Listing
+                              </Link>
+                            ) : (
+                              <Link
+                                href="/become-seller"
+                                onClick={() => setDropdownOpen(false)}
+                                className="flex items-center gap-3 px-4 py-2.5 text-sm text-amber-300 hover:bg-amber-500/10 hover:text-amber-200 transition-colors"
+                              >
+                                <UserPlus size={15} />
+                                Become a Seller
+                              </Link>
+                            )}
+                            {mounted && (
+                              <button
+                                onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                                className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-stone-200 hover:bg-white/10 hover:text-white transition-colors"
+                              >
+                                {theme === "dark"
+                                  ? <Sun size={15} className="text-amber-400" />
+                                  : <Moon size={15} className="text-stone-300" />
+                                }
+                                {theme === "dark" ? "Light Mode" : "Dark Mode"}
+                              </button>
+                            )}
+                          </>
                         )}
                       </div>
 

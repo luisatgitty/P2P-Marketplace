@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import Link from "next/link";
 import {
   Search,
@@ -13,6 +13,7 @@ import {
   CheckCircle2,
   XCircle,
   Handshake,
+  RotateCw,
   X,
   ShoppingBag,
   Home,
@@ -42,7 +43,7 @@ import {
 // ── Types ──────────────────────────────────────────────────────────────────────
 type ListingType = "SELL" | "RENT" | "SERVICE";
 type TransactionStatus = "PENDING" | "CONFIRMED" | "COMPLETED" | "CANCELLED";
-type SortField = "totalPrice" | "completedAt" | "createdAt";
+type SortField = "client" | "owner" | "listing" | "scheduleEnd" | "totalPrice" | "completedAt" | "createdAt";
 type SortDir       = "asc" | "desc";
 
 interface AdminTransaction extends AdminTransactionRecord {}
@@ -164,28 +165,27 @@ export default function TransactionsPage() {
   const [page, setPage] = useState(1);
   const [transactions, setTransactions] = useState<AdminTransaction[]>([]);
   const [loadingTransactions, setLoadingTransactions] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const PER_PAGE = 8;
 
   // ── Load ──────────────────────────────────────────────────────────────────────
-  useEffect(() => {
-    let mounted = true;
-    const loadTransactions = async () => {
-      setLoadingTransactions(true);
-      try {
-        const data = await getAdminTransactions();
-        if (!mounted) return;
-        setTransactions((data ?? []) as AdminTransaction[]);
-      } catch (err) {
-        if (!mounted) return;
-        const message = typeof err === "string" ? err : "Failed to load transactions";
-        toast.error(message, { position: "top-center" });
-      } finally {
-        if (mounted) setLoadingTransactions(false);
-      }
-    };
-    void loadTransactions();
-    return () => { mounted = false; };
+  const loadTransactions = useCallback(async () => {
+    setLoadingTransactions(true);
+    try {
+      const data = await getAdminTransactions();
+      setTransactions((data ?? []) as AdminTransaction[]);
+    } catch (err) {
+      const message = typeof err === "string" ? err : "Failed to load transactions";
+      toast.error(message, { position: "top-center" });
+    } finally {
+      setLoadingTransactions(false);
+      setIsRefreshing(false);
+    }
   }, []);
+
+  useEffect(() => {
+    void loadTransactions();
+  }, [loadTransactions]);
 
   // ── Sort ──────────────────────────────────────────────────────────────────────
   function toggleSort(field: SortField) {
@@ -206,9 +206,21 @@ export default function TransactionsPage() {
     if (typeFilter !== "ALL") data = data.filter(tx => tx.listing_type === typeFilter);
     if (statusFilter !== "ALL") data = data.filter(tx => tx.status === statusFilter);
     data.sort((a, b) => {
-      let va = 0;
-      let vb = 0;
-      if (sort.field === "totalPrice") {
+      let va: string | number = 0;
+      let vb: string | number = 0;
+      if (sort.field === "client") {
+        va = (a.client_full_name || "").toLowerCase();
+        vb = (b.client_full_name || "").toLowerCase();
+      } else if (sort.field === "owner") {
+        va = (a.owner_full_name || "").toLowerCase();
+        vb = (b.owner_full_name || "").toLowerCase();
+      } else if (sort.field === "listing") {
+        va = (a.listing_title || "").toLowerCase();
+        vb = (b.listing_title || "").toLowerCase();
+      } else if (sort.field === "scheduleEnd") {
+        va = a.end_date ? new Date(a.end_date).getTime() : 0;
+        vb = b.end_date ? new Date(b.end_date).getTime() : 0;
+      } else if (sort.field === "totalPrice") {
         va = Number(a.total_price) || 0;
         vb = Number(b.total_price) || 0;
       } else if (sort.field === "completedAt") {
@@ -218,7 +230,12 @@ export default function TransactionsPage() {
         va = new Date(a.created_at).getTime();
         vb = new Date(b.created_at).getTime();
       }
-      return sort.dir === "asc" ? va - vb : vb - va;
+      if (typeof va === "string" && typeof vb === "string") {
+        return sort.dir === "asc" ? va.localeCompare(vb) : vb.localeCompare(va);
+      }
+      return sort.dir === "asc"
+        ? Number(va) - Number(vb)
+        : Number(vb) - Number(va);
     });
     return data;
   }, [transactions, search, typeFilter, statusFilter, sort]);
@@ -336,18 +353,31 @@ export default function TransactionsPage() {
           {hasActiveFilters && (
             <Button
               variant="outline"
-              size="sm"
               onClick={() => {
                 setSearch(""); setTypeFilter("ALL");
                 setStatusFilter("ALL");
                 setPage(1);
               }}
-              className="gap-1.5 border-red-200 dark:border-red-800 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 hover:text-red-600 hover:border-red-300"
+              className="hover:bg-destructive/10! text-destructive! border-destructive! focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40"
             >
               <X className="w-3 h-3" /> Clear
             </Button>
           )}
         </div>
+
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => {
+            setIsRefreshing(true);
+            setPage(1);
+            void loadTransactions();
+          }}
+          disabled={loadingTransactions}
+          className="border-sky-600 text-sky-600! hover:bg-sky-600/10 focus-visible:border-sky-600 focus-visible:ring-sky-600/20 dark:border-sky-400 dark:text-sky-400! dark:hover:bg-sky-400/10 dark:focus-visible:border-sky-400 dark:focus-visible:ring-sky-400/40"
+        >
+          <RotateCw className={cn("w-3.5 h-3.5", loadingTransactions && isRefreshing && "animate-spin")} /> Refresh
+        </Button>
       </div>
 
       {/* ── Table ── */}
@@ -357,18 +387,10 @@ export default function TransactionsPage() {
             <Table>
               <TableHeader>
                 <TableRow className="border-stone-200 dark:border-[#2a2d3e] bg-stone-50 dark:bg-[#13151f] hover:bg-stone-50 dark:hover:bg-[#13151f]">
-                  <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest whitespace-nowrap">
-                    Client
-                  </TableHead>
-                  <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest whitespace-nowrap">
-                    Listing Owner
-                  </TableHead>
-                  <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest whitespace-nowrap">
-                    Listing
-                  </TableHead>
-                  <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest whitespace-nowrap">
-                    Schedule
-                  </TableHead>
+                  <SortableTH label="Client" field="client" />
+                  <SortableTH label="Listing Owner" field="owner" />
+                  <SortableTH label="Listing" field="listing" />
+                  <SortableTH label="Schedule" field="scheduleEnd" />
                   <SortableTH label="Total" field="totalPrice" />
                   <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest whitespace-nowrap">
                     Agreement

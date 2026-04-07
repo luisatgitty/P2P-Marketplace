@@ -7,7 +7,7 @@ import {
   Search, X, CheckCircle2, XCircle, ShieldCheck, Clock,
   Eye, AlertTriangle, IdCard, ChevronLeft, ChevronRight,
   User, Phone, Calendar, Hash, Monitor, Globe,
-  Cpu, CreditCard, ChevronDown, ChevronUp,
+  Cpu, CreditCard, ChevronDown, ChevronUp, ChevronsUpDown, RotateCw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -32,6 +32,23 @@ import {
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 type VerifStatus = "PENDING" | "VERIFIED" | "REJECTED";
+type IdType = "ALL" | "philsys" | "postal" | "drivers" | "prc" | "passport" | "sss" | "gsis" | "hdmf" | "voters" | "acr";
+type SortField = "applicant" | "dateOfBirth" | "submitted" | "reviewedBy";
+type SortDir = "asc" | "desc";
+
+const ID_TYPE_OPTIONS: [IdType, string][] = [
+  ["ALL", "All ID Types"],
+  ["philsys", "National ID"],
+  ["postal", "Postal ID"],
+  ["drivers", "Driver's License"],
+  ["prc", "PRC ID"],
+  ["passport", "Passport"],
+  ["sss", "UMID / SSS ID"],
+  ["gsis", "GSIS ID"],
+  ["hdmf", "HDMF ID"],
+  ["voters", "Voter's ID"],
+  ["acr", "ACR (Foreigners)"],
+];
 
 interface AdminVerification {
   id:                string;
@@ -44,6 +61,7 @@ interface AdminVerification {
   id_first_name:     string;
   id_last_name:      string;
   id_birthdate:      string;
+  id_birthdate_raw:  string;
   mobile_number:     string;
   // ID document
   id_type:           string;
@@ -60,6 +78,8 @@ interface AdminVerification {
   reason:  string | null;
   reviewed_by:       string | null;
   reviewed_at:       string | null;
+  reviewed_at_raw:   string | null;
+  submitted_at_raw:  string;
   submitted_date:      string;
   submitted_time:    string;
 }
@@ -453,12 +473,20 @@ function DetailModal({ verif, onClose, onApprove, onReject, actionLoading = fals
 export default function VerificationsPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
+  const [idTypeFilter, setIdTypeFilter] = useState<IdType>("ALL");
+  const [sort, setSort] = useState<{ field: SortField; dir: SortDir }>({ field: "submitted", dir: "desc" });
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<AdminVerification | null>(null);
   const [records, setRecords] = useState<AdminVerification[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const PER_PAGE = 8;
+
+  function toggleSort(field: SortField) {
+    setSort(s => s.field === field ? { field, dir: s.dir === "asc" ? "desc" : "asc" } : { field, dir: "asc" });
+    setPage(1);
+  }
 
   const mapRecord = useCallback((record: AdminVerificationRecord): AdminVerification => {
     const submitted = new Date(record.submitted_at);
@@ -473,6 +501,7 @@ export default function VerificationsPage() {
       id_first_name: record.id_first_name,
       id_last_name: record.id_last_name,
       id_birthdate: record.id_birthdate ? new Date(record.id_birthdate).toLocaleDateString("en-PH", { month: "long", day: "numeric", year: "numeric" }) : "",
+      id_birthdate_raw: record.id_birthdate,
       mobile_number: record.mobile_number,
       id_type: record.id_type,
       id_number: record.id_number,
@@ -485,9 +514,11 @@ export default function VerificationsPage() {
       status: record.status,
       reason: record.rejection_reason,
       reviewed_by: record.reviewed_by,
+      reviewed_at_raw: record.reviewed_at,
       reviewed_at: reviewed && !Number.isNaN(reviewed.getTime())
         ? reviewed.toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" })
         : null,
+      submitted_at_raw: record.submitted_at,
       submitted_date: !Number.isNaN(submitted.getTime())
         ? submitted.toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" })
         : record.submitted_at,
@@ -507,6 +538,7 @@ export default function VerificationsPage() {
       toast.error(message, { position: "top-center" });
     } finally {
       setLoading(false);
+      setIsRefreshing(false);
     }
   }, [mapRecord]);
 
@@ -522,8 +554,37 @@ export default function VerificationsPage() {
         v.user_email.toLowerCase().includes(search.toLowerCase()),
       );
     if (statusFilter !== "ALL") data = data.filter(v => v.status === statusFilter);
+    if (idTypeFilter !== "ALL") data = data.filter(v => v.id_type.toLowerCase() === idTypeFilter);
+
+    data.sort((a, b) => {
+      let va: string | number = "";
+      let vb: string | number = "";
+
+      if (sort.field === "applicant") {
+        va = a.user_name.toLowerCase();
+        vb = b.user_name.toLowerCase();
+      } else if (sort.field === "dateOfBirth") {
+        va = a.id_birthdate_raw ? new Date(a.id_birthdate_raw).getTime() : 0;
+        vb = b.id_birthdate_raw ? new Date(b.id_birthdate_raw).getTime() : 0;
+      } else if (sort.field === "submitted") {
+        va = a.submitted_at_raw ? new Date(a.submitted_at_raw).getTime() : 0;
+        vb = b.submitted_at_raw ? new Date(b.submitted_at_raw).getTime() : 0;
+      } else {
+        va = a.reviewed_at_raw ? new Date(a.reviewed_at_raw).getTime() : 0;
+        vb = b.reviewed_at_raw ? new Date(b.reviewed_at_raw).getTime() : 0;
+      }
+
+      if (typeof va === "string" && typeof vb === "string") {
+        return sort.dir === "asc" ? va.localeCompare(vb) : vb.localeCompare(va);
+      }
+
+      return sort.dir === "asc"
+        ? Number(va) - Number(vb)
+        : Number(vb) - Number(va);
+    });
+
     return data;
-  }, [records, search, statusFilter]);
+  }, [records, search, statusFilter, idTypeFilter, sort]);
 
   const totalPages    = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
   const paged         = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
@@ -531,7 +592,27 @@ export default function VerificationsPage() {
   const pendingCount  = records.filter(r => r.status === "PENDING").length;
   const verifiedCount = records.filter(r => r.status === "VERIFIED").length;
   const rejectedCount = records.filter(r => r.status === "REJECTED").length;
-  const hasActiveFilters = search || statusFilter !== "ALL";
+  const hasActiveFilters = search || statusFilter !== "ALL" || idTypeFilter !== "ALL";
+
+  const SortIcon = ({ field }: { field: SortField }) => {
+    if (sort.field !== field)
+      return <ChevronsUpDown className="w-3 h-3 text-stone-300 dark:text-stone-600 ml-1" />;
+    return sort.dir === "asc"
+      ? <ChevronUp className="w-3 h-3 ml-1" />
+      : <ChevronDown className="w-3 h-3 ml-1" />;
+  };
+
+  const SortableTH = ({ label, field }: { label: string; field: SortField }) => (
+    <TableHead
+      className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest cursor-pointer select-none hover:text-stone-700 dark:hover:text-stone-200 whitespace-nowrap"
+      onClick={() => toggleSort(field)}
+    >
+      <span className="inline-flex items-center">
+        {label}
+        <SortIcon field={field} />
+      </span>
+    </TableHead>
+  );
 
   async function handleApprove(id: string, reason: string) {
     if (!window.confirm("Approve this verification request? This action cannot be changed from this table.")) return;
@@ -539,7 +620,22 @@ export default function VerificationsPage() {
     setActionLoading(true);
     try {
       await setAdminVerificationStatus(id, { status: "VERIFIED", reason });
-      await loadVerifications();
+      const nowIso = new Date().toISOString();
+      const nowDisplay = new Date(nowIso).toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" });
+      setRecords(prev =>
+        prev.map(v =>
+          v.id === id
+            ? {
+                ...v,
+                status: "VERIFIED",
+                reason,
+                reviewed_by: v.reviewed_by ?? "Admin",
+                reviewed_at_raw: nowIso,
+                reviewed_at: nowDisplay,
+              }
+            : v,
+        ),
+      );
       setSelected(null);
       toast.success("Verification approved successfully", { position: "top-center" });
     } catch (error) {
@@ -556,7 +652,22 @@ export default function VerificationsPage() {
     setActionLoading(true);
     try {
       await setAdminVerificationStatus(id, { status: "REJECTED", reason });
-      await loadVerifications();
+      const nowIso = new Date().toISOString();
+      const nowDisplay = new Date(nowIso).toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" });
+      setRecords(prev =>
+        prev.map(v =>
+          v.id === id
+            ? {
+                ...v,
+                status: "REJECTED",
+                reason,
+                reviewed_by: v.reviewed_by ?? "Admin",
+                reviewed_at_raw: nowIso,
+                reviewed_at: nowDisplay,
+              }
+            : v,
+        ),
+      );
       setSelected(null);
       toast.success("Verification rejected successfully", { position: "top-center" });
     } catch (error) {
@@ -625,6 +736,11 @@ export default function VerificationsPage() {
         </div>
         <div className="flex gap-2">
           <FilterSelect
+            value={idTypeFilter}
+            onChange={v => { setIdTypeFilter(v as IdType); setPage(1); }}
+            options={ID_TYPE_OPTIONS}
+          />
+          <FilterSelect
             value={statusFilter}
             onChange={v => { setStatusFilter(v); setPage(1); }}
             options={[
@@ -634,14 +750,27 @@ export default function VerificationsPage() {
           />
           {hasActiveFilters && (
             <Button
-              variant="outline" size="sm"
-              onClick={() => { setSearch(""); setStatusFilter("ALL"); setPage(1); }}
-              className="gap-1.5 border-red-200 dark:border-red-800 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 hover:text-red-600 hover:border-red-300"
+              variant="outline"
+              onClick={() => { setSearch(""); setIdTypeFilter("ALL"); setStatusFilter("ALL"); setPage(1); }}
+              className="hover:bg-destructive/10! text-destructive! border-destructive! focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40"
             >
               <X className="w-3 h-3" /> Clear
             </Button>
           )}
         </div>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => {
+            setIsRefreshing(true);
+            setPage(1);
+            void loadVerifications();
+          }}
+          disabled={loading}
+          className="border-sky-600 text-sky-600! hover:bg-sky-600/10 focus-visible:border-sky-600 focus-visible:ring-sky-600/20 dark:border-sky-400 dark:text-sky-400! dark:hover:bg-sky-400/10 dark:focus-visible:border-sky-400 dark:focus-visible:ring-sky-400/40"
+        >
+          <RotateCw className={cn("w-3.5 h-3.5", loading && isRefreshing && "animate-spin")} /> Refresh
+        </Button>
       </div>
 
       {/* Table */}
@@ -651,25 +780,27 @@ export default function VerificationsPage() {
             <Table>
               <TableHeader>
                 <TableRow className="border-stone-200 dark:border-[#2a2d3e] bg-stone-50 dark:bg-[#13151f] hover:bg-stone-50 dark:hover:bg-[#13151f]">
-                  <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest">Applicant</TableHead>
-                  <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest">Submitted Name</TableHead>
+                  <SortableTH label="Applicant" field="applicant" />
+                  <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest">Name</TableHead>
+                  <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest whitespace-nowrap">Mobile Number</TableHead>
+                  <SortableTH label="Date of Birth" field="dateOfBirth" />
                   <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest whitespace-nowrap">ID Type</TableHead>
                   <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest">Status</TableHead>
-                  <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest whitespace-nowrap">Submitted</TableHead>
-                  <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest whitespace-nowrap">Reviewed By</TableHead>
+                  <SortableTH label="Submitted" field="submitted" />
+                  <SortableTH label="Reviewed By" field="reviewedBy" />
                   <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="py-16 text-center text-sm text-stone-400 dark:text-stone-500">
+                    <TableCell colSpan={9} className="py-16 text-center text-sm text-stone-400 dark:text-stone-500">
                       Loading verification requests...
                     </TableCell>
                   </TableRow>
                 ) : paged.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="py-16 text-center text-sm text-stone-400 dark:text-stone-500">
+                    <TableCell colSpan={9} className="py-16 text-center text-sm text-stone-400 dark:text-stone-500">
                       No verification requests found.
                     </TableCell>
                   </TableRow>
@@ -699,15 +830,25 @@ export default function VerificationsPage() {
                                 className="w-9 h-9 rounded-full object-cover border border-stone-200 dark:border-[#2a2d3e] shrink-0"
                               />
                             </Link>
-                            <div>
-                              <p className="text-sm font-bold text-stone-800 dark:text-stone-100">{verif.user_name}</p>
-                              <p className="text-xs text-stone-400 dark:text-stone-500">{verif.user_email}</p>
+                            <div className="min-w-0">
+                              <p className="text-sm font-bold text-stone-800 dark:text-stone-100 truncate">{verif.user_name}</p>
+                              <p className="text-xs text-stone-400 dark:text-stone-500 truncate">{verif.user_email}</p>
                             </div>
                           </div>
                         </TableCell>
 
                         <TableCell className="py-3.5 text-sm text-stone-500 dark:text-stone-400 whitespace-nowrap">
                             <p className="text-stone-800 dark:text-stone-100">{`${verif.id_first_name} ${verif.id_last_name}`}</p>
+                        </TableCell>
+
+                        {/* Mobile Number */}
+                        <TableCell className="py-3.5 text-sm text-stone-500 dark:text-stone-400 whitespace-nowrap">
+                          {verif.mobile_number}
+                        </TableCell>
+
+                        {/* Date of Birth */}
+                        <TableCell className="py-3.5 text-sm text-stone-500 dark:text-stone-400 whitespace-nowrap">
+                          {verif.id_birthdate || "—"}
                         </TableCell>
 
                         {/* ID Type */}

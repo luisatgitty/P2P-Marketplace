@@ -304,6 +304,8 @@ type AdminUserListItemFromDb struct {
 	Joined             time.Time  `gorm:"column:joined" json:"joined"`
 	UpdatedAt          time.Time  `gorm:"column:updated_at" json:"updated_at"`
 	DeletedAt          *time.Time `gorm:"column:deleted_at" json:"deleted_at"`
+	DeletedByName      string     `gorm:"column:deleted_by_name" json:"deleted_by_name"`
+	DeletedByEmail     string     `gorm:"column:deleted_by_email" json:"deleted_by_email"`
 	Location           string     `gorm:"column:location" json:"location"`
 }
 
@@ -322,6 +324,10 @@ type AdminAccountListItemFromDb struct {
 	IsActive        bool       `gorm:"column:is_active" json:"is_active"`
 	CreatedAt       time.Time  `gorm:"column:created_at" json:"created_at"`
 	LastLogin       *time.Time `gorm:"column:last_login" json:"last_login"`
+	UpdatedAt       time.Time  `gorm:"column:updated_at" json:"updated_at"`
+	DeletedAt       *time.Time `gorm:"column:deleted_at" json:"deleted_at"`
+	DeletedByName   string     `gorm:"column:deleted_by_name" json:"deleted_by_name"`
+	DeletedByEmail  string     `gorm:"column:deleted_by_email" json:"deleted_by_email"`
 }
 
 type AdminCreateAdminBody struct {

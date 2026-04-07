@@ -192,8 +192,11 @@ func GetAdminUsers() ([]model.AdminUserListItemFromDb, error) {
 			u.created_at AS joined,
 			u.updated_at,
 			u.deleted_at,
+			COALESCE(NULLIF(TRIM(CONCAT_WS(' ', NULLIF(TRIM(du.first_name), ''), NULLIF(TRIM(du.last_name), ''))), ''), '') AS deleted_by_name,
+			COALESCE(du.email, '') AS deleted_by_email,
 			TRIM(BOTH ', ' FROM CONCAT_WS(', ', NULLIF(TRIM(u.location_barangay), ''), NULLIF(TRIM(u.location_city), ''), NULLIF(TRIM(u.location_province), ''))) AS location
 		FROM public.users u
+		LEFT JOIN public.users du ON du.id = u.deleted_by_id
 		LEFT JOIN (
 			SELECT user_id, COUNT(*)::int AS listings
 			FROM public.listings
@@ -221,8 +224,40 @@ func GetAdminUsers() ([]model.AdminUserListItemFromDb, error) {
 	return users, nil
 }
 
-func SetAdminUserActive(userId string, isActive bool) error {
+func SetAdminUserActive(userId string, isActive bool, actorUserId string) error {
 	db := middleware.DBConn
+
+	var targetRole string
+	roleResult := db.Raw(`
+		SELECT role::text
+		FROM public.users
+		WHERE id = $1
+			AND deleted_at IS NULL
+			AND role IN ('USER', 'ADMIN', 'SUPER_ADMIN')
+		LIMIT 1
+	`, userId).Scan(&targetRole)
+	if roleResult.Error != nil {
+		return fmt.Errorf("Failed to validate user")
+	}
+	if roleResult.RowsAffected == 0 {
+		return fmt.Errorf("User not found")
+	}
+
+	if strings.EqualFold(strings.TrimSpace(targetRole), "SUPER_ADMIN") && !isActive {
+		var activeSuperAdminCount int
+		if err := db.Raw(`
+			SELECT COUNT(*)::int
+			FROM public.users
+			WHERE deleted_at IS NULL
+				AND role = 'SUPER_ADMIN'
+				AND is_active = TRUE
+		`).Scan(&activeSuperAdminCount).Error; err != nil {
+			return fmt.Errorf("Failed to validate super admin count")
+		}
+		if activeSuperAdminCount <= 1 {
+			return fmt.Errorf("Cannot deactivate the last active super admin")
+		}
+	}
 
 	updateQuery := `
 		UPDATE public.users
@@ -233,7 +268,7 @@ func SetAdminUserActive(userId string, isActive bool) error {
 			account_locked_until = CASE WHEN $1 THEN NULL ELSE account_locked_until END
 		WHERE id = $2
 			AND deleted_at IS NULL
-			AND role = 'USER'
+			AND role IN ('USER', 'ADMIN', 'SUPER_ADMIN')
 	`
 
 	result := db.Exec(updateQuery, isActive, userId)
@@ -250,25 +285,59 @@ func SetAdminUserActive(userId string, isActive bool) error {
 		}
 	}
 
+	_ = actorUserId
+
 	return nil
 }
 
-func DeleteAdminUser(userId string) error {
+func DeleteAdminUser(userId string, actorUserId string) error {
 	db := middleware.DBConn
+
+	var targetRole string
+	roleResult := db.Raw(`
+		SELECT role::text
+		FROM public.users
+		WHERE id = $1
+			AND deleted_at IS NULL
+			AND role IN ('USER', 'ADMIN', 'SUPER_ADMIN')
+		LIMIT 1
+	`, userId).Scan(&targetRole)
+	if roleResult.Error != nil {
+		return fmt.Errorf("Failed to validate user")
+	}
+	if roleResult.RowsAffected == 0 {
+		return fmt.Errorf("User not found")
+	}
+
+	if strings.EqualFold(strings.TrimSpace(targetRole), "SUPER_ADMIN") {
+		var superAdminCount int
+		if err := db.Raw(`
+			SELECT COUNT(*)::int
+			FROM public.users
+			WHERE deleted_at IS NULL
+				AND role = 'SUPER_ADMIN'
+		`).Scan(&superAdminCount).Error; err != nil {
+			return fmt.Errorf("Failed to validate super admin count")
+		}
+		if superAdminCount <= 1 {
+			return fmt.Errorf("Cannot delete the last super admin")
+		}
+	}
 
 	updateQuery := `
 		UPDATE public.users
 		SET
 			is_active = FALSE,
 			deleted_at = $1,
-			updated_at = $1
-		WHERE id = $2
+			updated_at = $1,
+			deleted_by_id = $2
+		WHERE id = $3
 			AND deleted_at IS NULL
-			AND role = 'USER'
+			AND role IN ('USER', 'ADMIN', 'SUPER_ADMIN')
 	`
 
 	now := time.Now()
-	result := db.Exec(updateQuery, now, userId)
+	result := db.Exec(updateQuery, now, actorUserId, userId)
 	if result.Error != nil {
 		return fmt.Errorf("Failed to delete user")
 	}
@@ -298,11 +367,16 @@ func GetAdminAccounts() ([]model.AdminAccountListItemFromDb, error) {
 			u.role::text AS role,
 			u.is_active,
 			u.created_at,
-			u.last_login_at AS last_login
+			u.last_login_at AS last_login,
+			u.updated_at,
+			u.deleted_at,
+			COALESCE(NULLIF(TRIM(CONCAT_WS(' ', NULLIF(TRIM(du.first_name), ''), NULLIF(TRIM(du.last_name), ''))), ''), '') AS deleted_by_name,
+			COALESCE(du.email, '') AS deleted_by_email
 		FROM public.users u
-		WHERE u.deleted_at IS NULL
-			AND u.role IN ('ADMIN', 'SUPER_ADMIN')
+		LEFT JOIN public.users du ON du.id = u.deleted_by_id
+		WHERE u.role IN ('ADMIN', 'SUPER_ADMIN')
 		ORDER BY
+			CASE WHEN u.deleted_at IS NULL THEN 0 ELSE 1 END ASC,
 			CASE WHEN u.role = 'SUPER_ADMIN' THEN 0 ELSE 1 END ASC,
 			u.created_at ASC
 	`
@@ -372,7 +446,11 @@ func CreateAdminAccount(body model.AdminCreateAdminBody) (model.AdminAccountList
 			role::text AS role,
 			is_active,
 			created_at,
-			last_login_at AS last_login
+			last_login_at AS last_login,
+			updated_at,
+			deleted_at,
+			''::text AS deleted_by_name,
+			''::text AS deleted_by_email
 	`
 
 	if err := db.Raw(insertQuery, userInput.FirstName, userInput.LastName, userInput.Email, strings.TrimSpace(body.Phone), hashedPassword, role).Scan(&created).Error; err != nil {

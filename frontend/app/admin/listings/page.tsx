@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import {
@@ -16,6 +16,7 @@ import {
   Trash2,
   Ban,
   CircleDashed,
+  RotateCw,
   X,
   ShoppingBag,
   Home,
@@ -154,29 +155,28 @@ export default function ListingsPage() {
   const [page,           setPage]           = useState(1);
   const [listings,       setListings]       = useState<AdminListing[]>([]);
   const [loadingListings,setLoadingListings]= useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [actionLoadingListingId, setActionLoadingListingId] = useState<string | null>(null);
   const PER_PAGE = 8;
 
   // ── Load ──────────────────────────────────────────────────────────────────────
-  useEffect(() => {
-    let mounted = true;
-    const loadListings = async () => {
-      setLoadingListings(true);
-      try {
-        const data = await getAdminListings();
-        if (!mounted) return;
-        setListings((data ?? []) as AdminListingRecord[]);
-      } catch (err) {
-        if (!mounted) return;
-        const message = typeof err === "string" ? err : "Failed to load listings";
-        toast.error(message, { position: "top-center" });
-      } finally {
-        if (mounted) setLoadingListings(false);
-      }
-    };
-    void loadListings();
-    return () => { mounted = false; };
+  const loadListings = useCallback(async () => {
+    setLoadingListings(true);
+    try {
+      const data = await getAdminListings();
+      setListings((data ?? []) as AdminListingRecord[]);
+    } catch (err) {
+      const message = typeof err === "string" ? err : "Failed to load listings";
+      toast.error(message, { position: "top-center" });
+    } finally {
+      setLoadingListings(false);
+      setIsRefreshing(false);
+    }
   }, []);
+
+  useEffect(() => {
+    void loadListings();
+  }, [loadListings]);
 
   // ── Dynamic category options ──────────────────────────────────────────────────
   const categoryOptions = useMemo(() => {
@@ -393,6 +393,14 @@ export default function ListingsPage() {
             ]}
           />
           <FilterSelect
+            value={categoryFilter}
+            onChange={v => { setCategoryFilter(v); setPage(1); }}
+            options={[
+              ["ALL", "All Categories"],
+              ...categoryOptions.map(c => [c, c] as [string, string]),
+            ]}
+          />
+          <FilterSelect
             value={statusFilter}
             onChange={v => { setStatusFilter(v); setPage(1); }}
             options={[
@@ -404,31 +412,36 @@ export default function ListingsPage() {
               ["DELETED",   "Deleted"    ],
             ]}
           />
-          <FilterSelect
-            value={categoryFilter}
-            onChange={v => { setCategoryFilter(v); setPage(1); }}
-            options={[
-              ["ALL", "All Categories"],
-              ...categoryOptions.map(c => [c, c] as [string, string]),
-            ]}
-          />
 
           {/* Clear filters */}
           {hasActiveFilters && (
             <Button
               variant="outline"
-              size="sm"
               onClick={() => {
                 setSearch(""); setTypeFilter("ALL");
                 setStatusFilter("ALL"); setCategoryFilter("ALL");
                 setPage(1);
               }}
-              className="gap-1.5 border-red-200 dark:border-red-800 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 hover:text-red-600 hover:border-red-300"
+              className="hover:bg-destructive/10! text-destructive! border-destructive! focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40"
             >
               <X className="w-3 h-3" /> Clear
             </Button>
           )}
         </div>
+
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => {
+            setIsRefreshing(true);
+            setPage(1);
+            void loadListings();
+          }}
+          disabled={loadingListings}
+          className="border-sky-600 text-sky-600! hover:bg-sky-600/10 focus-visible:border-sky-600 focus-visible:ring-sky-600/20 dark:border-sky-400 dark:text-sky-400! dark:hover:bg-sky-400/10 dark:focus-visible:border-sky-400 dark:focus-visible:ring-sky-400/40"
+        >
+          <RotateCw className={cn("w-3.5 h-3.5", loadingListings && isRefreshing && "animate-spin")} /> Refresh
+        </Button>
       </div>
 
       {/* ── Table ── */}
