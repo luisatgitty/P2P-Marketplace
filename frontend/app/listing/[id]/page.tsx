@@ -782,8 +782,7 @@ export default function ListingDetailPage() {
                         {isSell && (
                           <button
                             onClick={handleBuy}
-                            className="flex items-center justify-center gap-2 w-full py-3 rounded-full text-sm font-bold text-white transition-all hover:opacity-90 active:scale-[0.98]"
-                            style={{ background: "linear-gradient(135deg, #1e2433 0%, #3a4a6a 100%)" }}>
+                            className="flex items-center justify-center gap-2 w-full py-3 rounded-full border-2 border-stone-200 dark:border-[#2a2d3e] text-stone-700 dark:text-stone-200 bg-white dark:bg-transparent text-sm font-bold hover:border-stone-400 dark:hover:border-stone-500 hover:bg-stone-50 dark:hover:bg-[#252837] transition-all active:scale-[0.98]">
                             <Zap className="w-4 h-4" /> Make an Offer
                           </button>
                         )}
@@ -857,8 +856,7 @@ export default function ListingDetailPage() {
                 {/* View Profile Button */}
                 <Link
                   href={sellerProfileHref}
-                  className="flex items-center justify-center w-full py-2.5 rounded-full border border-stone-200 dark:border-[#2a2d3e] text-stone-600 dark:text-stone-300 text-sm font-semibold hover:border-stone-400 dark:hover:border-stone-500 hover:bg-stone-50 dark:hover:bg-[#252837] transition-all"
-                  style={{ background: "linear-gradient(135deg, #1e2433 0%, #3a4a6a 100%)" }}>
+                  className="flex items-center justify-center w-full py-2.5 rounded-full border-2 border-stone-200 dark:border-[#2a2d3e] text-stone-700 dark:text-stone-200 bg-white dark:bg-transparent text-sm font-semibold hover:border-stone-400 dark:hover:border-stone-500 hover:bg-stone-50 dark:hover:bg-[#252837] transition-all">
                   {isOwnListing ? "View My Profile" : "View Seller Profile"}
                 </Link>
 
@@ -866,7 +864,7 @@ export default function ListingDetailPage() {
                 <button
                   onClick={handleShowContactNumber}
                   disabled={isFetchingContact}
-                  className="flex items-center justify-center gap-2 w-full py-3 rounded-full border border-stone-200 dark:border-[#2a2d3e] text-sm font-bold text-white transition-all hover:opacity-90 active:scale-[0.98]">
+                  className="flex items-center justify-center gap-2 w-full py-3 rounded-full border-2 border-stone-200 dark:border-[#2a2d3e] text-stone-700 dark:text-stone-200 bg-white dark:bg-transparent text-sm font-bold hover:border-stone-400 dark:hover:border-stone-500 hover:bg-stone-50 dark:hover:bg-[#252837] transition-all active:scale-[0.98]">
                   <Phone className="w-3.5 h-3.5" /> {shownContactNumber ?? (isFetchingContact ? "Loading Number..." : "Show Contact Number")}
                 </button>
               </div>
