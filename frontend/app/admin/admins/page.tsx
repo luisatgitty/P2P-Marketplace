@@ -587,7 +587,7 @@ export default function AdminsPage() {
         {[
           {
             label: "Total Admins",
-            value: admins.filter(a => !a.deleted_at).length,
+            value: admins.length,
             role: "ALL",
             color: "text-stone-700 dark:text-stone-200",
             bg: "bg-stone-100 dark:bg-[#13151f]",
