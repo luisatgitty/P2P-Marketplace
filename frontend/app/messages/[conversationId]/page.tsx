@@ -543,6 +543,9 @@ export default function ConversationPage() {
 
   const handleSend = useCallback(async (content: string, attachments: Array<{ name: string; mimeType: string; data: string }>) => {
     if (sending) return;
+    if (conversation?.canSendMessage === false) {
+      throw new Error("Recipient is unavailable.");
+    }
     setSending(true);
     try {
       let targetConversationId = conversationId;
@@ -569,7 +572,7 @@ export default function ConversationPage() {
     } finally {
       setSending(false);
     }
-  }, [sending, conversationId, isDraftConversation, draftListingId, replyTo, router]);
+  }, [sending, conversation, conversationId, isDraftConversation, draftListingId, replyTo, router]);
 
   const handleReply = (msg: Message) => {
     const senderName =
@@ -696,7 +699,7 @@ export default function ConversationPage() {
       onMarkedComplete: handleMarkedComplete,
       onOfferUpdated: handleOfferUpdated,
       onSend: handleSend,
-      inputDisabled: loading || sending || !conversation,
+      inputDisabled: loading || sending || !conversation || conversation.canSendMessage === false,
       replyTo,
       onCancelReply: handleCancelReply,
     }));

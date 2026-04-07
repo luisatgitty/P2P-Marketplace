@@ -23,6 +23,7 @@ export interface PostCardProps {
     profileImageUrl?: string;
     rating: number;
     isPro?: boolean;
+    isActive?: boolean;
   };
 }
 

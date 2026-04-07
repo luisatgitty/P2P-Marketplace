@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import {
@@ -8,21 +8,22 @@ import {
   X,
   CheckCircle2,
   XCircle,
-  Eye,
-  EyeOff,
-  ExternalLink,
   Flag,
   AlertTriangle,
+  ChevronUp,
+  ChevronDown,
+  ChevronsUpDown,
   ChevronLeft,
   ChevronRight,
+  Eye,
+  RotateCw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { validateImageURL } from "@/utils/validation";
 import {
   getAdminReports,
-  setAdminReportStatus,
-  type AdminReportRecord,
+  setAdminReportAction,
 } from "@/services/adminReportsService";
 
 // ── shadcn components ──────────────────────────────────────────────────────────
@@ -38,29 +39,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { AdminReport, ReportStatus } from "@/types/admin";
+import ReportActionsModal from "@/components/admin/report-actions-modal";
 
-// ── Types ──────────────────────────────────────────────────────────────────────
-type ReportStatus = "PENDING" | "RESOLVED" | "DISMISSED";
-type ReportTarget = "LISTING" | "USER";
-
-interface AdminReport {
-  id:            string;
-  reporter_id:   string;
-  reporter:      string;
-  reporter_profile_image_url: string;
-  target_type:   ReportTarget;
-  target_name:   string;
-  target_id:     string;
-  listing_owner_id: string;
-  listing_owner: string;
-  listing_owner_profile_image_url: string;
-  reason:        string;
-  description:   string | null;
-  status:        ReportStatus;
-  reviewed_by:   string | null;
-  reviewed_at:   string | null;
-  created_at:    string;
-}
+type SortField = "reporter" | "listingOwner" | "reportedListing" | "submitted" | "reviewedAt";
+type SortDir = "asc" | "desc";
 
 const REPORTS: AdminReport[] = [];
 
@@ -69,6 +52,12 @@ const STATUS_CONFIG: Record<ReportStatus, { cls: string; label: string }> = {
   RESOLVED:  { cls: "bg-teal-100 dark:bg-teal-900/40 text-teal-700 dark:text-teal-300",      label: "Resolved"  },
   DISMISSED: { cls: "bg-stone-100 dark:bg-stone-800 text-stone-500 dark:text-stone-400",     label: "Dismissed" },
 };
+
+const phpFmt = new Intl.NumberFormat("en-PH", {
+  style: "currency",
+  currency: "PHP",
+  minimumFractionDigits: 0,
+});
 
 // ── Shared filter select ───────────────────────────────────────────────────────
 function FilterSelect({
@@ -104,33 +93,39 @@ function FilterSelect({
 export default function ReportsPage() {
   const [search,         setSearch]         = useState("");
   const [statusFilter,   setStatusFilter]   = useState("ALL");
+  const [reasonFilter,   setReasonFilter]   = useState("ALL");
+  const [sort,           setSort]           = useState<{ field: SortField; dir: SortDir }>({ field: "submitted", dir: "desc" });
   const [page,           setPage]           = useState(1);
   const [reports,        setReports]        = useState<AdminReport[]>(REPORTS);
-  const [expandedRow,    setExpandedRow]    = useState<string | null>(null);
   const [loadingReports, setLoadingReports] = useState(true);
+  const [isRefreshing,   setIsRefreshing]   = useState(false);
   const [actionLoadingId,setActionLoadingId]= useState<string | null>(null);
+  const [resolving,      setResolving]      = useState<AdminReport | null>(null);
   const PER_PAGE = 8;
 
+  function toggleSort(field: SortField) {
+    setSort(s => s.field === field ? { field, dir: s.dir === "asc" ? "desc" : "asc" } : { field, dir: "asc" });
+    setPage(1);
+  }
+
   // ── Load ──────────────────────────────────────────────────────────────────────
-  useEffect(() => {
-    let mounted = true;
-    const loadReports = async () => {
-      setLoadingReports(true);
-      try {
-        const data = await getAdminReports();
-        if (!mounted) return;
-        setReports((data ?? []) as AdminReportRecord[]);
-      } catch (err) {
-        if (!mounted) return;
-        const message = typeof err === "string" ? err : "Failed to load reports";
-        toast.error(message, { position: "top-center" });
-      } finally {
-        if (mounted) setLoadingReports(false);
-      }
-    };
-    void loadReports();
-    return () => { mounted = false; };
+  const loadReports = useCallback(async () => {
+    setLoadingReports(true);
+    try {
+      const data = await getAdminReports();
+      setReports((data ?? []) as AdminReport[]);
+    } catch (err) {
+      const message = typeof err === "string" ? err : "Failed to load reports";
+      toast.error(message, { position: "top-center" });
+    } finally {
+      setLoadingReports(false);
+      setIsRefreshing(false);
+    }
   }, []);
+
+  useEffect(() => {
+    void loadReports();
+  }, [loadReports]);
 
   // ── Filter + paginate ─────────────────────────────────────────────────────────
   const filtered = useMemo(() => {
@@ -142,12 +137,51 @@ export default function ReportsPage() {
         r.reason.toLowerCase().includes(search.toLowerCase()),
       );
     if (statusFilter !== "ALL") data = data.filter(r => r.status === statusFilter);
+    if (reasonFilter !== "ALL") data = data.filter(r => r.reason === reasonFilter);
+
+    data.sort((a, b) => {
+      let va: string | number = "";
+      let vb: string | number = "";
+
+      if (sort.field === "reporter") {
+        va = (a.reporter || "").toLowerCase();
+        vb = (b.reporter || "").toLowerCase();
+      } else if (sort.field === "listingOwner") {
+        va = (a.listing_owner || "").toLowerCase();
+        vb = (b.listing_owner || "").toLowerCase();
+      } else if (sort.field === "reportedListing") {
+        va = (a.target_name || "").toLowerCase();
+        vb = (b.target_name || "").toLowerCase();
+      } else if (sort.field === "reviewedAt") {
+        va = a.reviewed_at ? new Date(a.reviewed_at).getTime() : 0;
+        vb = b.reviewed_at ? new Date(b.reviewed_at).getTime() : 0;
+      } else {
+        va = a.created_at ? new Date(a.created_at).getTime() : 0;
+        vb = b.created_at ? new Date(b.created_at).getTime() : 0;
+      }
+
+      if (typeof va === "string" && typeof vb === "string") {
+        return sort.dir === "asc" ? va.localeCompare(vb) : vb.localeCompare(va);
+      }
+
+      return sort.dir === "asc"
+        ? Number(va) - Number(vb)
+        : Number(vb) - Number(va);
+    });
+
     return data;
-  }, [reports, search, statusFilter]);
+  }, [reports, search, statusFilter, reasonFilter, sort]);
+
+  const reasonOptions = useMemo(() => {
+    const uniqueReasons = Array.from(new Set(reports.map(r => r.reason).filter(Boolean)));
+    uniqueReasons.sort((a, b) => a.localeCompare(b));
+    return uniqueReasons;
+  }, [reports]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
   const paged      = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
 
+  const totalCount     = reports.length;
   const pendingCount   = reports.filter(r => r.status === "PENDING").length;
   const resolvedCount  = reports.filter(r => r.status === "RESOLVED").length;
   const dismissedCount = reports.filter(r => r.status === "DISMISSED").length;
@@ -161,30 +195,62 @@ export default function ReportsPage() {
   }
 
   // ── Actions ───────────────────────────────────────────────────────────────────
-  async function handleAction(id: string, action: "RESOLVED" | "DISMISSED") {
+  async function handleModalSubmit(id: string, action: "DISMISS" | "BAN_LISTING" | "LOCK_3" | "LOCK_7" | "LOCK_30" | "DELETE_LISTING" | "PERMANENT_BAN", reason: string) {
     setActionLoadingId(id);
     try {
-      await setAdminReportStatus(id, action);
+      await setAdminReportAction(id, { action, reason });
+      const nowIso = new Date().toISOString();
+      const nextStatus = action === "DISMISS" ? "DISMISSED" : "RESOLVED";
       setReports(rs =>
         rs.map(r =>
           r.id === id
-            ? { ...r, status: action, reviewed_at: new Date().toISOString(), reviewed_by: r.reviewed_by ?? "Admin" }
+            ? {
+                ...r,
+                status: nextStatus,
+                action_taken: action,
+                action_reason: reason,
+                resolved_at: nowIso,
+                reviewed_at: nowIso,
+                resolved_by: r.resolved_by ?? "Admin",
+                reviewed_by: r.reviewed_by ?? "Admin",
+              }
             : r,
         ),
       );
       toast.success(
-        `Report ${action === "RESOLVED" ? "resolved" : "dismissed"} successfully`,
+        "Report action submitted successfully",
         { position: "top-center" },
       );
+      setResolving(null);
     } catch (err) {
-      const message = typeof err === "string" ? err : "Failed to update report status";
+      const message = typeof err === "string" ? err : "Failed to submit report action";
       toast.error(message, { position: "top-center" });
     } finally {
       setActionLoadingId(null);
     }
   }
 
-  const hasActiveFilters = search || statusFilter !== "ALL";
+  const hasActiveFilters = search || statusFilter !== "ALL" || reasonFilter !== "ALL";
+
+  const SortIcon = ({ field }: { field: SortField }) => {
+    if (sort.field !== field)
+      return <ChevronsUpDown className="w-3 h-3 text-stone-300 dark:text-stone-600 ml-1" />;
+    return sort.dir === "asc"
+      ? <ChevronUp className="w-3 h-3 ml-1" />
+      : <ChevronDown className="w-3 h-3 ml-1" />;
+  };
+
+  const SortableTH = ({ label, field }: { label: string; field: SortField }) => (
+    <TableHead
+      className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest cursor-pointer select-none hover:text-stone-700 dark:hover:text-stone-200 whitespace-nowrap"
+      onClick={() => toggleSort(field)}
+    >
+      <span className="inline-flex items-center">
+        {label}
+        <SortIcon field={field} />
+      </span>
+    </TableHead>
+  );
 
   // ── Render ────────────────────────────────────────────────────────────────────
   return (
@@ -201,21 +267,25 @@ export default function ReportsPage() {
       </div>
 
       {/* ── Summary cards — clickable to filter by status ── */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {[
-          { label: "Pending",   count: pendingCount,   color: "text-amber-600 dark:text-amber-400", bg: "bg-amber-50 dark:bg-amber-950/20",  border: "border-amber-200 dark:border-amber-800",  Icon: AlertTriangle },
-          { label: "Resolved",  count: resolvedCount,  color: "text-teal-600 dark:text-teal-400",   bg: "bg-teal-50 dark:bg-teal-950/20",    border: "border-teal-200 dark:border-teal-800",    Icon: CheckCircle2  },
-          { label: "Dismissed", count: dismissedCount, color: "text-stone-500 dark:text-stone-400", bg: "bg-stone-50 dark:bg-[#13151f]",     border: "border-stone-200 dark:border-[#2a2d3e]", Icon: XCircle       },
-        ].map(({ label, count, color, bg, border, Icon }) => (
+          { label: "Total Reports", count: totalCount,     status: "ALL",       color: "text-stone-700 dark:text-stone-200", bg: "bg-stone-100 dark:bg-[#13151f]",     border: "border-stone-200 dark:border-[#2a2d3e]", Icon: Flag         },
+          { label: "Pending",       count: pendingCount,   status: "PENDING",   color: "text-amber-600 dark:text-amber-400", bg: "bg-amber-50 dark:bg-amber-950/20",  border: "border-amber-200 dark:border-amber-800",  Icon: AlertTriangle },
+          { label: "Resolved",      count: resolvedCount,  status: "RESOLVED",  color: "text-teal-600 dark:text-teal-400",   bg: "bg-teal-50 dark:bg-teal-950/20",    border: "border-teal-200 dark:border-teal-800",    Icon: CheckCircle2  },
+          { label: "Dismissed",     count: dismissedCount, status: "DISMISSED", color: "text-stone-500 dark:text-stone-400", bg: "bg-stone-50 dark:bg-[#13151f]",     border: "border-stone-200 dark:border-[#2a2d3e]", Icon: XCircle       },
+        ].map(({ label, count, status, color, bg, border, Icon }) => (
           <Card
             key={label}
             className={cn(
               "rounded-lg cursor-pointer hover:shadow-sm transition-all border",
               bg, border,
-              statusFilter === label.toUpperCase() && "ring-2 ring-offset-1 ring-current",
+              statusFilter === status && "ring-2 ring-offset-1 ring-current",
             )}
             onClick={() => {
-              setStatusFilter(prev => prev === label.toUpperCase() ? "ALL" : label.toUpperCase());
+              setStatusFilter(prev => {
+                if (status === "ALL") return "ALL";
+                return prev === status ? "ALL" : status;
+              });
               setPage(1);
             }}
           >
@@ -243,6 +313,16 @@ export default function ReportsPage() {
         </div>
 
         <div className="flex gap-2">
+          {/* Reason filter */}
+          <FilterSelect
+            value={reasonFilter}
+            onChange={v => { setReasonFilter(v); setPage(1); }}
+            options={[
+              ["ALL", "All Reasons"],
+              ...reasonOptions.map(reason => [reason, reason] as [string, string]),
+            ]}
+          />
+
           {/* Status filter */}
           <FilterSelect
             value={statusFilter}
@@ -259,14 +339,27 @@ export default function ReportsPage() {
           {hasActiveFilters && (
             <Button
               variant="outline"
-              size="sm"
-              onClick={() => { setSearch(""); setStatusFilter("ALL"); setPage(1); }}
-              className="gap-1.5 border-red-200 dark:border-red-800 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 hover:text-red-600 hover:border-red-300"
+              onClick={() => { setSearch(""); setReasonFilter("ALL"); setStatusFilter("ALL"); setPage(1); }}
+              className="hover:bg-destructive/10! text-destructive! border-destructive! focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40"
             >
               <X className="w-3 h-3" /> Clear
             </Button>
           )}
         </div>
+
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => {
+            setIsRefreshing(true);
+            setPage(1);
+            void loadReports();
+          }}
+          disabled={loadingReports}
+          className="border-sky-600 text-sky-600! hover:bg-sky-600/10 focus-visible:border-sky-600 focus-visible:ring-sky-600/20 dark:border-sky-400 dark:text-sky-400! dark:hover:bg-sky-400/10 dark:focus-visible:border-sky-400 dark:focus-visible:ring-sky-400/40"
+        >
+          <RotateCw className={cn("w-3.5 h-3.5", loadingReports && isRefreshing && "animate-spin")} /> Refresh
+        </Button>
       </div>
 
       {/* ── Table ── */}
@@ -277,23 +370,19 @@ export default function ReportsPage() {
               <Table>
                 <TableHeader>
                   <TableRow className="border-stone-200 dark:border-[#2a2d3e] bg-stone-50 dark:bg-[#13151f] hover:bg-stone-50 dark:hover:bg-[#13151f]">
-                    <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest">
-                      Reporter
-                    </TableHead>
-                    <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest">
-                      Reported Listing
-                    </TableHead>
-                    <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest">
-                      Listing Owner
-                    </TableHead>
+                      <SortableTH label="Reporter" field="reporter" />
+                      <SortableTH label="Listing Owner" field="listingOwner" />
+                      <SortableTH label="Reported Listing" field="reportedListing" />
                     <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest">
                       Reason
                     </TableHead>
                     <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest">
                       Status
                     </TableHead>
+                      <SortableTH label="Submitted" field="submitted" />
+                    <SortableTH label="Reviewer" field="reviewedAt" />
                     <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest whitespace-nowrap">
-                      Submitted
+                      Action Taken
                     </TableHead>
                     <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest text-right">
                       Actions
@@ -304,13 +393,13 @@ export default function ReportsPage() {
                 <TableBody>
                   {loadingReports ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="py-16 text-center text-sm text-stone-400 dark:text-stone-500">
+                      <TableCell colSpan={9} className="py-16 text-center text-sm text-stone-400 dark:text-stone-500">
                         Loading reports…
                       </TableCell>
                     </TableRow>
                   ) : paged.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="py-16 text-center text-sm text-stone-400 dark:text-stone-500">
+                      <TableCell colSpan={9} className="py-16 text-center text-sm text-stone-400 dark:text-stone-500">
                         No reports match the current filters.
                       </TableCell>
                     </TableRow>
@@ -323,84 +412,97 @@ export default function ReportsPage() {
                           {/* Reporter */}
                           <TableCell className="py-3.5">
                             <div className="flex items-center gap-2.5">
-                              {report.reporter_id ? (
-                                <Link
-                                  href={`/profile?userId=${report.reporter_id}`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  title="Open reporter profile"
-                                  aria-label="Open reporter profile"
-                                  className="shrink-0"
-                                >
-                                  <Image
-                                    src={validateImageURL(report.reporter_profile_image_url) || "/profile-icon.png"}
-                                    alt="Profile"
-                                    width={32}
-                                    height={32}
-                                    className="w-8 h-8 rounded-full object-cover border border-stone-200 dark:border-[#2a2d3e] shrink-0"
-                                  />
-                                </Link>
-                              ) : (
+                              <Link
+                                href={`/profile?userId=${report.reporter_id}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                title="Open reporter profile"
+                                aria-label="Open reporter profile"
+                                className="shrink-0"
+                              >
                                 <Image
                                   src={validateImageURL(report.reporter_profile_image_url) || "/profile-icon.png"}
                                   alt="Profile"
                                   width={32}
                                   height={32}
-                                  className="w-8 h-8 rounded-full object-cover border border-stone-200 dark:border-[#2a2d3e] shrink-0"
+                                  className="w-9 h-9 rounded-full object-cover border border-stone-200 dark:border-[#2a2d3e] shrink-0"
                                 />
-                              )}
-                              <span className="text-sm font-semibold text-stone-800 dark:text-stone-100 whitespace-nowrap">
-                                {report.reporter}
-                              </span>
+                              </Link>
+                              <div className="min-w-0">
+                                <p className="text-sm font-semibold text-stone-800 dark:text-stone-100 whitespace-nowrap truncate">
+                                  {report.reporter}
+                                </p>
+                                <p className="text-xs text-stone-500 dark:text-stone-400 whitespace-nowrap truncate">
+                                  {report.reporter_location || "-"}
+                                </p>
+                              </div>
                             </div>
-                          </TableCell>
-
-                          {/* Reported listing */}
-                          <TableCell className="py-3.5 max-w-65">
-                            {report.target_type === "LISTING" ? (
-                              <p className="text-xs text-stone-600 dark:text-stone-300 line-clamp-2">
-                                {report.target_name}
-                              </p>
-                            ) : (
-                              <span className="text-xs text-stone-400">—</span>
-                            )}
                           </TableCell>
 
                           {/* Listing owner */}
                           <TableCell className="py-3.5 text-sm text-stone-600 dark:text-stone-300 whitespace-nowrap">
                             {report.target_type === "LISTING" ? (
                               <div className="flex items-center gap-2.5">
-                                {report.listing_owner_id ? (
-                                  <Link
-                                    href={`/profile?userId=${report.listing_owner_id}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    title="Open listing owner profile"
-                                    aria-label="Open listing owner profile"
-                                    className="shrink-0"
-                                  >
-                                    <Image
-                                      src={validateImageURL(report.listing_owner_profile_image_url) || "/profile-icon.png"}
-                                      alt="Profile"
-                                      width={32}
-                                      height={32}
-                                      className="w-8 h-8 rounded-full object-cover border border-stone-200 dark:border-[#2a2d3e] shrink-0"
-                                    />
-                                  </Link>
-                                ) : (
+                                <Link
+                                  href={`/profile?userId=${report.listing_owner_id}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  title="Open listing owner profile"
+                                  aria-label="Open listing owner profile"
+                                  className="shrink-0"
+                                >
                                   <Image
                                     src={validateImageURL(report.listing_owner_profile_image_url) || "/profile-icon.png"}
                                     alt="Profile"
                                     width={32}
                                     height={32}
-                                    className="w-8 h-8 rounded-full object-cover border border-stone-200 dark:border-[#2a2d3e] shrink-0"
+                                    className="w-9 h-9 rounded-full object-cover border border-stone-200 dark:border-[#2a2d3e] shrink-0"
                                   />
-                                )}
-                                <span className="text-sm font-semibold text-stone-800 dark:text-stone-100 whitespace-nowrap">
-                                  {report.listing_owner}
-                                </span>
+                                </Link>
+                                <div className="min-w-0">
+                                  <p className="text-sm font-semibold text-stone-800 dark:text-stone-100 whitespace-nowrap truncate">
+                                    {report.listing_owner}
+                                  </p>
+                                  <p className="text-xs text-stone-500 dark:text-stone-400 whitespace-nowrap truncate">
+                                    {report.listing_owner_location || "-"}
+                                  </p>
+                                </div>
                               </div>
                             ) : "—"}
+                          </TableCell>
+
+                          {/* Reported listing */}
+                          <TableCell className="py-3.5 max-w-65">
+                            {report.target_type === "LISTING" ? (
+                              <div className="flex items-center gap-2.5 min-w-0">
+                                <Link
+                                  href={`/listing/${report.target_id}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  title="Open listing"
+                                  aria-label="Open listing"
+                                  className="shrink-0"
+                                >
+                                  <Image
+                                    src={validateImageURL(report.listing_image_url) || "/logo.png"}
+                                    alt={report.target_name}
+                                    width={40}
+                                    height={40}
+                                    className="w-10 h-10 rounded-md object-cover border border-stone-200 dark:border-[#2a2d3e] shrink-0"
+                                  />
+                                </Link>
+                                <div className="min-w-0">
+                                  <p className="text-sm font-semibold text-stone-700 dark:text-stone-200 truncate">
+                                    {report.target_name}
+                                  </p>
+                                  <p className="text-xs text-stone-500 dark:text-stone-400 truncate">
+                                    {phpFmt.format(report.listing_price ?? 0)} / {report.listing_price_unit || "unit"}
+                                  </p>
+                                </div>
+                              </div>
+                            ) : (
+                              <span className="text-xs text-stone-400">—</span>
+                            )}
                           </TableCell>
 
                           {/* Reason */}
@@ -426,97 +528,42 @@ export default function ReportsPage() {
                             {formatDateTime(report.created_at)}
                           </TableCell>
 
+                          {/* Reviewer */}
+                          <TableCell className="py-3.5 text-sm text-stone-500 dark:text-stone-400 whitespace-nowrap">
+                            {report.reviewed_by
+                              ? (
+                                <div>
+                                  <p className="text-sm font-bold text-stone-800 dark:text-stone-100">{report.reviewed_by}</p>
+                                  <p className="text-xs text-stone-400 dark:text-stone-500">{formatDateTime(report.reviewed_at)}</p>
+                                </div>
+                              ) : <span className="text-stone-300 dark:text-stone-600">—</span>
+                            }
+                          </TableCell>
+
+                          {/* Action Taken */}
+                          <TableCell className="py-3.5 text-sm text-stone-500 dark:text-stone-400 whitespace-nowrap">
+                            {report.action_taken
+                              ? report.action_taken.replaceAll("_", " ")
+                              : <span className="text-stone-300 dark:text-stone-600">—</span>
+                            }
+                          </TableCell>
+
                           {/* Actions */}
                           <TableCell className="py-3.5">
                             <div className="flex items-center justify-end gap-1">
-
-                              {/* Open listing (only for listing reports) */}
-                              {report.target_type === "LISTING" && (
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  asChild
-                                  className="w-7 h-7 text-teal-600 dark:text-teal-400 hover:bg-teal-50 dark:hover:bg-teal-950/30 hover:text-teal-700"
-                                >
-                                  <Link
-                                    href={`/listing/${report.target_id}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    title="Open listing"
-                                    aria-label="Open listing"
-                                  >
-                                    <ExternalLink className="w-4 h-4" />
-                                  </Link>
-                                </Button>
-                              )}
-
-                              {/* Toggle description row */}
                               <Button
                                 variant="ghost"
-                                size="icon"
                                 type="button"
-                                title={expandedRow === report.id ? "Hide Details" : "View Details"}
-                                aria-label={expandedRow === report.id ? "Hide Details" : "View Details"}
-                                onClick={() => setExpandedRow(prev => prev === report.id ? null : report.id)}
+                                size="icon"
+                                onClick={() => setResolving(report)}
                                 disabled={actionLoadingId === report.id}
-                                className="w-7 h-7 text-stone-500 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-[#252837]"
-                              >
-                                {expandedRow === report.id
-                                  ? <EyeOff className="w-4 h-4" />
-                                  : <Eye    className="w-4 h-4" />
-                                }
+                                className="w-7 h-7 text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-100 hover:bg-stone-100 dark:hover:bg-[#252837]"
+                            >
+                              <Eye className="w-4 h-4" />
                               </Button>
-
-                              {/* Resolve + dismiss (pending only) */}
-                              {report.status === "PENDING" && (
-                                <>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    type="button"
-                                    title="Take Action"
-                                    aria-label="Take Action"
-                                    onClick={() => void handleAction(report.id, "RESOLVED")}
-                                    disabled={actionLoadingId === report.id}
-                                    className="w-7 h-7 text-teal-600 dark:text-teal-400 hover:bg-teal-50 dark:hover:bg-teal-950/30 hover:text-teal-700 disabled:opacity-50"
-                                  >
-                                    <CheckCircle2 className="w-4 h-4" />
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    type="button"
-                                    title="Dismiss"
-                                    aria-label="Dismiss"
-                                    onClick={() => void handleAction(report.id, "DISMISSED")}
-                                    disabled={actionLoadingId === report.id}
-                                    className="w-7 h-7 text-stone-500 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-[#252837] disabled:opacity-50"
-                                  >
-                                    <XCircle className="w-4 h-4" />
-                                  </Button>
-                                </>
-                              )}
                             </div>
                           </TableCell>
                         </TableRow>
-
-                        {/* ── Expanded description row ── */}
-                        {expandedRow === report.id && (
-                          <TableRow className="bg-stone-50 dark:bg-[#13151f] border-stone-100 dark:border-[#2a2d3e]">
-                            <TableCell colSpan={7} className="px-4 py-4">
-                              <p className="text-xs font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest mb-1">
-                                Report Description
-                              </p>
-                              <p className="text-sm text-stone-600 dark:text-stone-300 leading-relaxed">
-                                {report.description ?? (
-                                  <span className="italic text-stone-400">
-                                    No additional description provided.
-                                  </span>
-                                )}
-                              </p>
-                            </TableCell>
-                          </TableRow>
-                        )}
                       </Fragment>
                     ))
                   )}
@@ -572,6 +619,14 @@ export default function ReportsPage() {
           </CardContent>
         </Card>
       </div>
+
+      {resolving && (
+        <ReportActionsModal
+          report={resolving}
+          onClose={() => setResolving(null)}
+          onSubmit={handleModalSubmit}
+        />
+      )}
     </div>
   );
 }

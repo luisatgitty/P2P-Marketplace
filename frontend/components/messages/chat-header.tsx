@@ -29,6 +29,11 @@ export default function ChatHeader({ conversation, onDelete, onMarkedComplete }:
   const [markingComplete, setMarkingComplete] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const profileHref = otherParticipant.id ? `/profile?userId=${otherParticipant.id}` : "/profile";
+  const normalizedListingStatus = String(listing.status ?? "").trim().toUpperCase();
+  const isBlockedListingStatus = normalizedListingStatus === "BANNED" || normalizedListingStatus === "DELETED";
+  const isParticipantUnavailable = otherParticipant.isActive === false || otherParticipant.isLocked === true;
+  const hideParticipantMenuItems = isBlockedListingStatus || isParticipantUnavailable;
+  const hideReportUserMenuItem = hideParticipantMenuItems || conversation.hasPendingReport === true;
   const isTransactionConfirmed = String(listing.transactionStatus ?? "").trim().toUpperCase() === "CONFIRMED";
   const canMarkAsComplete = conversation.isSeller && isTransactionConfirmed && (listing.listingType !== "SELL" || listing.status !== "SOLD");
 
@@ -67,10 +72,10 @@ export default function ChatHeader({ conversation, onDelete, onMarkedComplete }:
   };
 
   const menuItems = [
-    { icon: User,         label: "View Profile",   action: () => { router.push(profileHref); setMenuOpen(false); } },
+    ...(!hideParticipantMenuItems ? [{ icon: User, label: "View Profile", action: () => { router.push(profileHref); setMenuOpen(false); } }] : []),
     { icon: ExternalLink, label: "View Listing",   action: () => { router.push(`/listing/${listing.id}`); setMenuOpen(false); } },
     ...(canMarkAsComplete ? [{ icon: CheckCircle, label: listing.listingType === "SELL" ? "Mark as Sold" : "Mark as Complete", action: () => { setMenuOpen(false); setMarkCompleteOpen(true); }, danger: false }] : []),
-    { icon: Flag,         label: "Report User",    action: () => { setMenuOpen(false); setReportOpen(true); }, danger: false },
+    ...(!hideReportUserMenuItem ? [{ icon: Flag, label: "Report User", action: () => { setMenuOpen(false); setReportOpen(true); }, danger: false }] : []),
     { icon: Trash2,       label: "Delete Chat",    action: () => { onDelete?.(); setMenuOpen(false); }, danger: true },
   ];
 

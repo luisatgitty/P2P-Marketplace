@@ -29,6 +29,9 @@ export interface ConversationParticipant {
   lastName: string;
   profileImageUrl?: string | null;
   isOnline?: boolean;
+  isActive?: boolean;
+  isLocked?: boolean;
+  accountLockedUntil?: string;
 }
 
 export interface ConversationListing {
@@ -62,6 +65,8 @@ export interface Conversation {
   otherLastReadMessageId?: string;
   unreadCount: number;
   isSeller: boolean;
+  hasPendingReport?: boolean;
+  canSendMessage?: boolean;
 }
 
 export interface MessageAttachment {

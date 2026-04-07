@@ -6,14 +6,18 @@ export type AdminListingRecord = {
   price: number;
   unit: string;
   location: string;
-  status: "AVAILABLE" | "UNAVAILABLE" | "SOLD" | "HIDDEN";
+  status: "AVAILABLE" | "UNAVAILABLE" | "SOLD" | "BANNED" | "DELETED";
   listing_image_url: string;
   seller_id: string;
   seller: string;
   seller_location: string;
   seller_profile_image_url: string;
-  views: number;
+  transaction_count: number;
+  review_count: number;
   created: string;
+  updated_at: string;
+  banned_until: string | null;
+  deleted_at: string | null;
 };
 
 export async function getAdminListings(): Promise<AdminListingRecord[]> {
@@ -34,7 +38,7 @@ export async function getAdminListings(): Promise<AdminListingRecord[]> {
   }
 }
 
-export async function deleteAdminListing(listingId: string): Promise<void> {
+export async function deleteAdminListing(listingId: string): Promise<{ listingId: string; status: "DELETED" }> {
   try {
     const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/listings/${encodeURIComponent(listingId)}`, {
       method: "DELETE",
@@ -45,12 +49,17 @@ export async function deleteAdminListing(listingId: string): Promise<void> {
     if (!res.ok) {
       throw parsedJson?.data?.message || "Failed to remove listing.";
     }
+
+    return {
+      listingId: parsedJson?.data?.listingId,
+      status: parsedJson?.data?.status,
+    };
   } catch (error: any) {
     throw error?.message || "An unexpected error occurred. Please try again later.";
   }
 }
 
-export async function toggleAdminListingVisibility(listingId: string): Promise<{ listingId: string; status: "HIDDEN" | "UNAVAILABLE" }> {
+export async function toggleAdminListingVisibility(listingId: string): Promise<{ listingId: string; status: "BANNED" | "UNAVAILABLE" }> {
   try {
     const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/listings/${encodeURIComponent(listingId)}/toggle-visibility`, {
       method: "PATCH",

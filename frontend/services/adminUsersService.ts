@@ -11,8 +11,15 @@ export type AdminUserRecord = {
   is_email_verified: boolean;
   failed_login: number;
   listings: number;
+  client_transactions: number;
+  owner_transactions: number;
+  account_locked_until: string | null;
   last_login: string | null;
   joined: string;
+  updated_at: string;
+  deleted_at: string | null;
+  deleted_by_name: string;
+  deleted_by_email: string;
   location: string;
 };
 
