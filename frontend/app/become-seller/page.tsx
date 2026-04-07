@@ -72,6 +72,24 @@ function formatCountdown(s: number): string {
   return `${m}:${(s % 60).toString().padStart(2, "0")}`;
 }
 
+function normalizeToLocalPhoneDigits(value?: string | null): string {
+  const digitsOnly = (value ?? "").replace(/\D/g, "");
+  if (!digitsOnly) return "";
+
+  // Supports 09XXXXXXXXX, 9XXXXXXXXX, 639XXXXXXXXX, and +639XXXXXXXXX.
+  if (digitsOnly.length === 11 && digitsOnly.startsWith("0")) {
+    return digitsOnly.slice(1);
+  }
+  if (digitsOnly.length === 10 && digitsOnly.startsWith("9")) {
+    return digitsOnly;
+  }
+  if (digitsOnly.length === 12 && digitsOnly.startsWith("63")) {
+    return digitsOnly.slice(2);
+  }
+
+  return "";
+}
+
 async function compressVerificationImage(file: File): Promise<Blob> {
   const objectUrl = URL.createObjectURL(file);
 
@@ -229,6 +247,7 @@ export default function BecomeSellerPage() {
   const [resendSeconds,  setResendSeconds]  = useState(RESEND_SECONDS);
   const [canResend,      setCanResend]      = useState(false);
   const [resendKey,      setResendKey]      = useState(0); // increment to restart countdown
+  const hasPrefilledPhone = useRef(false);
 
   const frontRef  = useRef<HTMLInputElement>(null);
   const backRef   = useRef<HTMLInputElement>(null);
@@ -239,13 +258,18 @@ export default function BecomeSellerPage() {
     [user?.status],
   );
 
+  const hasPhoneNumber = Boolean((user?.phoneNumber ?? "").trim());
+  const hasFullLocation = [user?.locationBrgy, user?.locationCity, user?.locationProv]
+    .every((value) => Boolean((value ?? "").trim()));
+  const hasProfileSetupRequirement = hasPhoneNumber && hasFullLocation;
+
   // ── Derived booleans ────────────────────────────────────────────────────────
   const phoneComplete = phoneNumber.replace(/\D/g, "").length === PHONE_DIGITS;
   const otpComplete   = otpValue.length === OTP_LENGTH;
 
   const isNextDisabled =
     !isMobile                                    ||
-    (step === 1 && !agreed)                      ||
+    (step === 1 && (!agreed || !hasProfileSetupRequirement)) ||
     (step === 3 && !showOtp)                     || // must verify phone first
     (step === 3 && showOtp && !otpComplete)      || // OTP must be fully entered
     submitting;
@@ -273,6 +297,16 @@ export default function BecomeSellerPage() {
 
     return () => clearInterval(id);
   }, [showOtp, resendKey]);
+
+  useEffect(() => {
+    if (hasPrefilledPhone.current) return;
+
+    const normalized = normalizeToLocalPhoneDigits(user?.phoneNumber);
+    if (!normalized) return;
+
+    setPhoneNumber(normalized);
+    hasPrefilledPhone.current = true;
+  }, [user?.phoneNumber]);
 
   // ── Helpers ──────────────────────────────────────────────────────────────────
   function showToastMsg(msg: string) {
@@ -312,7 +346,7 @@ export default function BecomeSellerPage() {
     if (!device.isMobile) return;
 
     if (step === 1) {
-      if (!agreed) return;
+      if (!agreed || !hasProfileSetupRequirement) return;
       setStep(2);
       return;
     }
@@ -502,6 +536,49 @@ export default function BecomeSellerPage() {
                         : "This process requires a smartphone with a working camera to capture your government ID and selfie. Please open this page on your mobile device to continue."
                       }
                     </p>
+                  </div>
+                </div>
+
+                {/* User phone number and location setup requirements */}
+                <div className={cn(
+                  "flex items-start gap-3 p-4 rounded-xl border",
+                  hasProfileSetupRequirement
+                    ? "border-teal-200 dark:border-teal-800 bg-teal-50 dark:bg-teal-950/20"
+                    : "border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/20",
+                )}>
+                  {hasProfileSetupRequirement ? (
+                    <CheckCircle2 className="w-5 h-5 text-teal-600 dark:text-teal-400 shrink-0 mt-0.5" />
+                  ) : (
+                    <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                  )}
+                  <div>
+                    <p className={cn(
+                      "text-sm font-semibold",
+                      hasProfileSetupRequirement
+                        ? "text-teal-700 dark:text-teal-300"
+                        : "text-amber-700 dark:text-amber-300",
+                    )}>
+                      Profile phone and address required
+                    </p>
+                    <p className={cn(
+                      "text-xs mt-0.5 leading-relaxed",
+                      hasProfileSetupRequirement
+                        ? "text-teal-600 dark:text-teal-400"
+                        : "text-amber-600 dark:text-amber-400",
+                    )}>
+                      {hasProfileSetupRequirement
+                        ? "Your profile already has a mobile number and full location details."
+                        : "Add your mobile number and complete location in your profile to proceed."
+                      }
+                    </p>
+                    {!hasProfileSetupRequirement && (
+                      <Link
+                        href="/profile"
+                        className="inline-flex mt-2 text-xs font-semibold text-amber-700 dark:text-amber-300 underline underline-offset-2 hover:no-underline"
+                      >
+                        Update profile now
+                      </Link>
+                    )}
                   </div>
                 </div>
 
@@ -737,18 +814,18 @@ export default function BecomeSellerPage() {
                       placeholder="9XX XXX XXXX"
                       maxLength={PHONE_DIGITS}
                     />
+
+                    {/* Send OTP — disabled until phone is 10 digits */}
+                    <Button
+                      className="rounded-full bg-stone-900 hover:bg-stone-800 text-white font-bold gap-2 disabled:opacity-50"
+                      onClick={handleSendOtp}
+                      disabled={!phoneComplete}
+                    >
+                      <Send className="w-4 h-4" />
+                      Send OTP Code
+                    </Button>
                   </div>
                 </div>
-
-                {/* Send OTP — disabled until phone is 10 digits */}
-                <Button
-                  className="w-full rounded-full bg-stone-900 hover:bg-stone-800 text-white font-bold gap-2 disabled:opacity-50"
-                  onClick={handleSendOtp}
-                  disabled={!phoneComplete}
-                >
-                  <Send className="w-4 h-4" />
-                  Send OTP Code
-                </Button>
               </div>
             )}
 
