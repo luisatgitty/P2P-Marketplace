@@ -1,5 +1,5 @@
 import { Input } from "@/components/ui/input";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 interface NumberInputProps {
   value: string;
@@ -27,6 +27,12 @@ export function NumberInput({
     onChange(limitedValue);
     setCharacterCount(limitedValue.length);
   };
+
+  // Update character count on initial render
+  useEffect(() => {
+    setCharacterCount(value.length);
+  });
+
 
   return (
     <div className="relative w-full">

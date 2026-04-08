@@ -209,7 +209,7 @@ func SendOTPEmail(toEmail, firstName, otp string) error {
     <table cellpadding="0" cellspacing="0" border="0" style="margin-bottom:32px;">
       <tr>
         <td style="padding-right:6px;vertical-align:middle;">
-          <div style="width:6px;height:6px;background-color:#f59e0b;border-radius:50%;"></div>
+          <div style="width:6px;height:6px;background-color:#f59e0b;border-radius:50%%;"></div>
         </td>
         <td style="vertical-align:middle;">
           <span style="font-size:13px;color:#6b7280;">This code expires in <strong style="color:#374151;">10 minutes</strong></span>
@@ -286,7 +286,7 @@ func SendPasswordResetEmail(toEmail, firstName, resetLink string) error {
           <table cellpadding="0" cellspacing="0" border="0">
             <tr>
               <td style="padding-right:6px;vertical-align:middle;">
-                <div style="width:6px;height:6px;background-color:#f59e0b;border-radius:50%;"></div>
+                <div style="width:6px;height:6px;background-color:#f59e0b;border-radius:50%%;"></div>
               </td>
               <td>
                 <span style="font-size:13px;color:#6b7280;">
