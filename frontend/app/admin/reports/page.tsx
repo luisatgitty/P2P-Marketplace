@@ -2,7 +2,6 @@
 
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import {
   Search,
   X,
@@ -20,7 +19,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { validateImageURL } from "@/utils/validation";
+import { SafeImage } from "@/components/ui/safe-image";
 import {
   getAdminReports,
   setAdminReportAction,
@@ -420,8 +419,9 @@ export default function ReportsPage() {
                                 aria-label="Open reporter profile"
                                 className="shrink-0"
                               >
-                                <Image
-                                  src={validateImageURL(report.reporter_profile_image_url) || "/profile-icon.png"}
+                                <SafeImage
+                                  src={report.reporter_profile_image_url}
+                                  fallbackSrc="/profile-icon.png"
                                   alt="Profile"
                                   width={32}
                                   height={32}
@@ -451,8 +451,9 @@ export default function ReportsPage() {
                                   aria-label="Open listing owner profile"
                                   className="shrink-0"
                                 >
-                                  <Image
-                                    src={validateImageURL(report.listing_owner_profile_image_url) || "/profile-icon.png"}
+                                  <SafeImage
+                                    src={report.listing_owner_profile_image_url}
+                                    fallbackSrc="/profile-icon.png"
                                     alt="Profile"
                                     width={32}
                                     height={32}
@@ -483,8 +484,9 @@ export default function ReportsPage() {
                                   aria-label="Open listing"
                                   className="shrink-0"
                                 >
-                                  <Image
-                                    src={validateImageURL(report.listing_image_url) || "/logo.png"}
+                                  <SafeImage
+                                    src={report.listing_image_url}
+                                    fallbackSrc="/logo.png"
                                     alt={report.target_name}
                                     width={40}
                                     height={40}

@@ -2,7 +2,6 @@
 
 import { useState, useMemo, useEffect, useCallback } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import {
   Search,
   AlertTriangle,
@@ -44,7 +43,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { validateImageURL } from "@/utils/validation";
+import { SafeImage } from "@/components/ui/safe-image";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 type ListingType   = "SELL" | "RENT" | "SERVICE";
@@ -542,8 +541,9 @@ export default function ListingsPage() {
                               aria-label="View seller profile"
                               className="shrink-0"
                             >
-                              <Image
-                                src={validateImageURL(listing.seller_profile_image_url) || "/profile-icon.png"}
+                              <SafeImage
+                                src={listing.seller_profile_image_url}
+                                fallbackSrc="/profile-icon.png"
                                 alt={listing.seller}
                                 width={32}
                                 height={32}

@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import Image from "next/image";
 import {
   Search, Plus, Trash2, Eye, EyeOff, X, UserCog,
   Shield, ShieldCheck, CheckCircle2, AlertTriangle,
@@ -10,7 +9,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { validateImageURL } from "@/utils/validation";
+import { SafeImage } from "@/components/ui/safe-image";
 import {
   createAdminAccount,
   getAdminAccounts,
@@ -768,8 +767,9 @@ export default function AdminsPage() {
                       {/* Name */}
                       <TableCell className="py-2 whitespace-nowrap">
                         <div className="flex items-center gap-3 w-max">
-                          <Image
-                            src={validateImageURL(admin.profile_image_url) || "/profile-icon.png"}
+                          <SafeImage
+                            src={admin.profile_image_url}
+                            fallbackSrc="/profile-icon.png"
                             alt="Profile"
                             width={32}
                             height={32}
