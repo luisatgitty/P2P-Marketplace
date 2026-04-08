@@ -24,7 +24,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { validateImageURL } from "@/utils/validation";
+import { SafeImage } from "@/components/ui/safe-image";
 import {
   getAdminUsers,
   setAdminUserActive,
@@ -522,8 +522,9 @@ export default function UsersPage() {
                             aria-label="Open profile"
                             className="shrink-0"
                           >
-                            <Image
-                              src={validateImageURL(user.profile_image_url) || "/profile-icon.png"}
+                            <SafeImage
+                              src={user.profile_image_url}
+                              fallbackSrc="/profile-icon.png"
                               alt="Profile"
                               width={32}
                               height={32}

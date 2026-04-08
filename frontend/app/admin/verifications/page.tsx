@@ -2,7 +2,6 @@
 
 import { useState, useMemo, useEffect, useCallback } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import {
   Search, X, CheckCircle2, XCircle, ShieldCheck, Clock,
   Eye, AlertTriangle, IdCard, ChevronLeft, ChevronRight,
@@ -12,6 +11,7 @@ import {
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { validateImageURL } from "@/utils/validation";
+import { SafeImage } from "@/components/ui/safe-image";
 import {
   getAdminVerifications,
   setAdminVerificationStatus,
@@ -261,8 +261,9 @@ function DetailModal({ verif, onClose, onApprove, onReject, actionLoading = fals
                         Profile
                       </p>
                       <div className="flex items-center gap-2.5">
-                        <Image
-                          src={validateImageURL(verif.profile_image_url) || "/profile-icon.png"}
+                        <SafeImage
+                          src={verif.profile_image_url}
+                          fallbackSrc="/profile-icon.png"
                           alt={verif.user_name}
                           width={32}
                           height={32}
@@ -822,8 +823,9 @@ export default function VerificationsPage() {
                               aria-label="View reporter profile"
                               className="shrink-0"
                             >
-                              <Image
-                                src={validateImageURL(verif.profile_image_url) || "/profile-icon.png"}
+                              <SafeImage
+                                src={verif.profile_image_url}
+                                fallbackSrc="/profile-icon.png"
                                 alt={verif.user_name}
                                 width={32}
                                 height={32}
