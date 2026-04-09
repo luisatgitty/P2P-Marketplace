@@ -125,31 +125,43 @@ function InfoRow({ icon: Icon, label, value, mono = false }: {
   );
 }
 
-function IdImageCard({ label, imageUrl }: { label: string; imageUrl?: string | null }) {
-  const resolvedUrl = imageUrl ? validateImageURL(imageUrl) : "";
+function IdImageCard({
+  label,
+  imageUrl,
+}: {
+  label: string;
+  imageUrl?: string | null;
+}) {
+  const resolvedUrl = imageUrl ? validateImageURL(imageUrl) : '';
 
   return (
-    <div className="space-y-1.5">
-      <p className="text-xs font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest">
+    <div className='space-y-1.5'>
+      <p className='text-xs font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest'>
         {label}
       </p>
       {resolvedUrl ? (
         <button
-          type="button"
-          onClick={() => window.open(resolvedUrl, "_blank", "noopener,noreferrer")}
-          className="w-full rounded-xl overflow-hidden border border-stone-200 dark:border-[#2a2d3e] bg-stone-100 dark:bg-[#13151f] hover:opacity-95 transition-opacity"
-          title="View full image"
+          type='button'
+          onClick={() =>
+            window.open(resolvedUrl, '_blank', 'noopener,noreferrer')
+          }
+          className='w-full rounded-xl overflow-hidden border border-stone-200 dark:border-[#2a2d3e] bg-stone-100 dark:bg-[#13151f] hover:opacity-95 transition-opacity'
+          title='View full image'
         >
-          <img
+          <SafeImage
             src={resolvedUrl}
-            alt={label}
-            className="w-full h-auto object-contain max-h-[70vh]"
+            type='id'
+            alt={`Image for ${label}`}
+            width={40}
+            height={40}
           />
         </button>
       ) : (
-        <div className="aspect-4/3 rounded-xl bg-stone-100 dark:bg-[#13151f] border-2 border-dashed border-stone-200 dark:border-[#2a2d3e] flex flex-col items-center justify-center gap-2">
-          <IdCard className="w-9 h-9 text-stone-300 dark:text-stone-600" />
-          <span className="text-xs font-medium text-stone-400 dark:text-stone-500">No image</span>
+        <div className='aspect-4/3 rounded-xl bg-stone-100 dark:bg-[#13151f] border-2 border-dashed border-stone-200 dark:border-[#2a2d3e] flex flex-col items-center justify-center gap-2'>
+          <IdCard className='w-9 h-9 text-stone-300 dark:text-stone-600' />
+          <span className='text-xs font-medium text-stone-400 dark:text-stone-500'>
+            No image
+          </span>
         </div>
       )}
     </div>
@@ -406,8 +418,8 @@ function DetailModal({ verif, onClose, onApprove, onReject, actionLoading = fals
             <div>
               <SectionLabel>Uploaded Photos</SectionLabel>
               <div className="space-y-4">
-                <IdImageCard label="ID — Front" imageUrl={verif.id_image_front_url} />
-                <IdImageCard label="ID — Back" imageUrl={verif.id_image_back_url} />
+                <IdImageCard label="Front of ID" imageUrl={verif.id_image_front_url} />
+                <IdImageCard label="Back of ID" imageUrl={verif.id_image_back_url} />
                 <IdImageCard label="Selfie while holding ID" imageUrl={verif.selfie_url} />
               </div>
             </div>

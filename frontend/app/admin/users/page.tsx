@@ -2,7 +2,6 @@
 
 import { useState, useMemo, useEffect, useCallback } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import {
   Search,
   ShieldCheck,
@@ -18,7 +17,6 @@ import {
   UserCheck,
   UserX,
   Trash2,
-  ExternalLink,
   RotateCw,
   X,
 } from "lucide-react";

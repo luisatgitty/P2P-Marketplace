@@ -21,6 +21,7 @@ import { Input }                from "@/components/ui/input";
 import { Separator }            from "@/components/ui/separator";
 import { updateProfileData, updateProfileImages } from "@/services/profileService";
 import { toast } from "sonner";
+import { SafeImage } from "@/components/ui/safe-image";
 
 // ── Mock current admin ─────────────────────────────────────────────────────────
 const CURRENT_ADMIN = {
@@ -397,12 +398,13 @@ export default function SettingsPage() {
               className="relative group shrink-0 cursor-pointer"
               onClick={() => !updatingProfileImage && setShowProfileImageMenu((v) => !v)}
             >
-              <Image
-                src={profilePreview || user?.profileImageUrl || "/profile-icon.png"}
-                alt="Profile"
+              <SafeImage
+                src={profilePreview || user?.profileImageUrl}
+                type="profile"
+                alt={`${user?.firstName ?? "User"}'s profile picture`}
                 width={56}
                 height={56}
-                className="w-14 h-14 rounded-full object-cover ring-2 ring-white/10"
+                className="w-14 h-14 ring-2 ring-black/30 dark:ring-white/10"
               />
               <div className="absolute inset-0 rounded-full bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
                 <Camera className="w-4 h-4 text-white opacity-0 group-hover:opacity-100 transition-opacity" />

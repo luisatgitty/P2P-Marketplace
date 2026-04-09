@@ -5,10 +5,10 @@ import Image, { type ImageProps } from 'next/image';
 import { validateImageURL } from '@/utils/validation';
 import { cn } from '@/lib/utils';
 
-type ImageType = 'profile' | 'thumbnail' | 'full';
+type ImageType = 'profile' | 'thumbnail' | 'id' | 'full';
 
-type SafeImageProps = Omit<ImageProps, 'alt'> & {
-  src: string;
+type SafeImageProps = Omit<ImageProps, 'src' | 'alt'> & {
+  src?: string;
   type: ImageType;
   alt?: string;
 };
@@ -28,6 +28,11 @@ const IMAGE_CONFIG: Record<
     alt: 'Listing thumbnail',
     class: 'w-10 h-10 rounded-md object-cover border border-stone-200 dark:border-[#2a2d3e] shrink-0',
   },
+  id: {
+    fallback: '/logo.png',
+    alt: 'ID document',
+    class: 'w-full h-auto object-contain max-h-[70vh]',
+  },
   full: {
     fallback: '/images/image-not-found.png',
     alt: 'Full resolution preview',
@@ -44,7 +49,7 @@ export function SafeImage({
 }: SafeImageProps) {
   const config = IMAGE_CONFIG[type];
   const [imgSrc, setImgSrc] = useState<string>(
-    validateImageURL(src) || config.fallback,
+    src ? validateImageURL(src) : config.fallback,
   );
 
   return (
