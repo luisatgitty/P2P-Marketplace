@@ -18,23 +18,23 @@ const IMAGE_CONFIG: Record<
   { fallback: string; alt: string; class: string }
 > = {
   profile: {
-    fallback: '/profile-icon.png',
+    fallback: '/profile-placeholder-sm.png',
     alt: 'User profile picture',
     class:
       'w-10 h-10 rounded-full object-cover border border-stone-200 dark:border-[#2a2d3e] shrink-0',
   },
   thumbnail: {
-    fallback: '/logo.png',
+    fallback: '/broken-image-sm.png',
     alt: 'Listing thumbnail',
     class: 'w-10 h-10 rounded-md object-cover border border-stone-200 dark:border-[#2a2d3e] shrink-0',
   },
   id: {
-    fallback: '/logo.png',
+    fallback: '/broken-image-lg.png',
     alt: 'ID document',
     class: 'w-full h-auto object-contain max-h-[70vh]',
   },
   full: {
-    fallback: '/images/image-not-found.png',
+    fallback: '/broken-image-lg.png',
     alt: 'Full resolution preview',
     class: 'w-full h-full object-contain',
   },
