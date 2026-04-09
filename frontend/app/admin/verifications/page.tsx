@@ -114,7 +114,7 @@ function InfoRow({ icon: Icon, label, value, mono = false }: {
           {label}
         </p>
         <p className={cn(
-          "text-sm break-words",
+          "text-sm wrap-break-word",
           mono ? "font-mono text-stone-700 dark:text-stone-200" : "text-stone-700 dark:text-stone-200",
           !value && "text-stone-400 dark:text-stone-600 italic font-normal",
         )}>
@@ -261,14 +261,22 @@ function DetailModal({ verif, onClose, onApprove, onReject, actionLoading = fals
                         Profile
                       </p>
                       <div className="flex items-center gap-2.5">
-                        <SafeImage
-                          src={verif.profile_image_url}
-                          fallbackSrc="/profile-icon.png"
-                          alt={verif.user_name}
-                          width={32}
-                          height={32}
-                          className="w-9 h-9 rounded-full object-cover border border-stone-200 dark:border-[#2a2d3e] shrink-0"
-                        />
+                        <Link
+                          href={`/profile?userId=${verif.user_id}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title={`View ${verif.user_name}'s profile`}
+                          aria-label={`View ${verif.user_name}'s profile`}
+                          className="shrink-0"
+                        >
+                          <SafeImage
+                            src={verif.profile_image_url}
+                            type="profile"
+                            alt={`${verif.user_name}'s profile picture`}
+                            width={40}
+                            height={40}
+                          />
+                        </Link>
                         <div className="min-w-0">
                           <p className="text-sm font-bold text-stone-800 dark:text-stone-100 truncate">
                             {verif.user_name}
@@ -819,17 +827,16 @@ export default function VerificationsPage() {
                               href={`/profile?userId=${verif.user_id}`}
                               target="_blank"
                               rel="noopener noreferrer"
-                              title="View reporter profile"
-                              aria-label="View reporter profile"
+                              title={`View ${verif.user_name}'s profile`}
+                              aria-label={`View ${verif.user_name}'s profile`}
                               className="shrink-0"
                             >
                               <SafeImage
                                 src={verif.profile_image_url}
-                                fallbackSrc="/profile-icon.png"
-                                alt={verif.user_name}
-                                width={32}
-                                height={32}
-                                className="w-9 h-9 rounded-full object-cover border border-stone-200 dark:border-[#2a2d3e] shrink-0"
+                                type="profile"
+                                alt={`${verif.user_name}'s profile picture`}
+                                width={40}
+                                height={40}
                               />
                             </Link>
                             <div className="min-w-0">

@@ -518,17 +518,16 @@ export default function UsersPage() {
                             href={`/profile?userId=${user.id}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            title="Open profile"
-                            aria-label="Open profile"
+                            title={`View ${user.first_name} ${user.last_name}'s profile`}
+                            aria-label={`View ${user.first_name} ${user.last_name}'s profile`}
                             className="shrink-0"
                           >
                             <SafeImage
                               src={user.profile_image_url}
-                              fallbackSrc="/profile-icon.png"
-                              alt="Profile"
-                              width={32}
-                              height={32}
-                              className="w-10 h-10 rounded-full object-cover border border-stone-200 dark:border-[#2a2d3e]"
+                              type="profile"
+                              alt={`${user.first_name} ${user.last_name}'s profile picture`}
+                              width={40}
+                              height={40}
                             />
                           </Link>
                           <div className="w-max">

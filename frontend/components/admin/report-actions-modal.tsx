@@ -272,17 +272,16 @@ export default function ReportActionsModal({ report, onClose, onSubmit }: Report
                           href={`/profile?userId=${report.reporter_id}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          title="Open reporter profile"
-                          aria-label="Open reporter profile"
+                          title={`View ${report.reporter}'s profile`}
+                          aria-label={`View ${report.reporter}'s profile`}
                           className="shrink-0"
                         >
                           <SafeImage
                             src={report.reporter_profile_image_url}
-                            fallbackSrc="/profile-icon.png"
-                            alt="Profile"
-                            width={32}
-                            height={32}
-                            className="w-9 h-9 rounded-full object-cover border border-stone-200 dark:border-[#2a2d3e] shrink-0"
+                            type="profile"
+                            alt={`${report.reporter}'s profile picture`}
+                            width={40}
+                            height={40}
                           />
                         </Link>
 
@@ -309,17 +308,17 @@ export default function ReportActionsModal({ report, onClose, onSubmit }: Report
                           href={`/profile?userId=${report.listing_owner_id}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          title="Open listing owner profile"
-                          aria-label="Open listing owner profile"
+                          title={`View ${report.listing_owner}'s profile`}
+                          aria-label={`View ${report.listing_owner}'s profile`}
                           className="shrink-0"
                         >
                           <SafeImage
                             src={report.listing_owner_profile_image_url}
-                            fallbackSrc="/profile-icon.png"
-                            alt="Profile"
-                            width={32}
-                            height={32}
-                            className="w-9 h-9 rounded-full object-cover border border-stone-200 dark:border-[#2a2d3e] shrink-0"
+                            type="profile"
+                            alt={`${report.listing_owner}'s profile picture`}
+                            width={40}
+                            height={40}
+                            className="w-10 h-10 rounded-full object-cover border border-stone-200 dark:border-[#2a2d3e] shrink-0"
                           />
                         </Link>
                         <div>
@@ -346,17 +345,16 @@ export default function ReportActionsModal({ report, onClose, onSubmit }: Report
                             href={`/listing/${report.target_id}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            title="Open listing"
-                            aria-label="Open listing"
+                            title={`View listing: ${report.target_name}`}
+                            aria-label={`View listing: ${report.target_name}`}
                             className="shrink-0"
                           >
                             <SafeImage
                               src={report.listing_image_url}
-                              fallbackSrc="/logo.png"
-                              alt={report.target_name}
+                              type="thumbnail"
+                              alt={`Image of ${report.target_name}`}
                               width={40}
                               height={40}
-                              className="w-10 h-10 rounded-md object-cover border border-stone-200 dark:border-[#2a2d3e] shrink-0"
                             />
                           </Link>
                           <div className="min-w-0">

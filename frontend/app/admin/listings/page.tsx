@@ -503,21 +503,17 @@ export default function ListingsPage() {
                               href={`/listing/${listing.id}`}
                               target="_blank"
                               rel="noopener noreferrer"
-                              title="View listing"
-                              aria-label="View listing"
+                              title={`View listing: ${listing.title}`}
+                              aria-label={`View listing: ${listing.title}`}
                               className="shrink-0"
                             >
-                              {listing.listing_image_url ? (
-                                <img
-                                  src={listing.listing_image_url}
-                                  alt={listing.title}
-                                  className="w-10 h-10 rounded-md object-cover border border-stone-200 dark:border-[#2a2d3e] shrink-0"
-                                />
-                              ) : (
-                                <div className="w-10 h-10 rounded-md bg-stone-100 dark:bg-[#13151f] border border-stone-200 dark:border-[#2a2d3e] flex items-center justify-center shrink-0">
-                                  📦
-                                </div>
-                              )}
+                              <SafeImage
+                                src={listing.listing_image_url}
+                                type="thumbnail"
+                                alt={`Image of ${listing.title}`}
+                                width={40}
+                                height={40}
+                              />
                             </Link>
                             <div className="min-w-0">
                               <p className="text-sm font-bold text-stone-800 dark:text-stone-100 truncate">
@@ -537,17 +533,16 @@ export default function ListingsPage() {
                               href={`/profile?userId=${listing.seller_id}`}
                               target="_blank"
                               rel="noopener noreferrer"
-                              title="View seller profile"
-                              aria-label="View seller profile"
+                              title={`View ${listing.seller}'s profile`}
+                              aria-label={`View ${listing.seller}'s profile`}
                               className="shrink-0"
                             >
                               <SafeImage
                                 src={listing.seller_profile_image_url}
-                                fallbackSrc="/profile-icon.png"
-                                alt={listing.seller}
-                                width={32}
-                                height={32}
-                                className="w-9 h-9 rounded-full object-cover border border-stone-200 dark:border-[#2a2d3e] shrink-0"
+                                type="profile"
+                                alt={`${listing.seller}'s profile picture`}
+                                width={40}
+                                height={40}
                               />
                             </Link>
                             <div className="min-w-0">
