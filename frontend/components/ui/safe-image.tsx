@@ -1,30 +1,61 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import Image, { type ImageProps } from "next/image";
-import { validateImageURL } from "@/utils/validation";
+import { useState } from 'react';
+import Image, { type ImageProps } from 'next/image';
+import { validateImageURL } from '@/utils/validation';
+import { cn } from '@/lib/utils';
 
-type SafeImageProps = Omit<ImageProps, "src"> & {
+type ImageType = 'profile' | 'thumbnail' | 'full';
+
+type SafeImageProps = Omit<ImageProps, 'alt'> & {
   src: string;
-  fallbackSrc: string;
+  type: ImageType;
+  alt?: string;
+};
+
+const IMAGE_CONFIG: Record<
+  ImageType,
+  { fallback: string; alt: string; class: string }
+> = {
+  profile: {
+    fallback: '/profile-icon.png',
+    alt: 'User profile picture',
+    class:
+      'w-10 h-10 rounded-full object-cover border border-stone-200 dark:border-[#2a2d3e] shrink-0',
+  },
+  thumbnail: {
+    fallback: '/logo.png',
+    alt: 'Listing thumbnail',
+    class: 'w-10 h-10 rounded-md object-cover border border-stone-200 dark:border-[#2a2d3e] shrink-0',
+  },
+  full: {
+    fallback: '/images/image-not-found.png',
+    alt: 'Full resolution preview',
+    class: 'w-full h-full object-contain',
+  },
 };
 
 export function SafeImage({
   src,
-  fallbackSrc,
+  type,
+  alt,
+  className,
   ...props
 }: SafeImageProps) {
-  const [imgSrc, setImgSrc] = useState(validateImageURL(src));
-  if (!imgSrc) setImgSrc(fallbackSrc);
+  const config = IMAGE_CONFIG[type];
+  const [imgSrc, setImgSrc] = useState<string>(
+    validateImageURL(src) || config.fallback,
+  );
 
   return (
     <Image
       {...props}
       src={imgSrc}
-      alt={fallbackSrc}
-      // If the link is dead, this fires
+      alt={alt || config.alt}
+      className={cn(config.class, className)}
+      // If the src fails to load, fallback to the placeholder image
       onError={() => {
-        setImgSrc(fallbackSrc);
+        setImgSrc(config.fallback);
       }}
     />
   );
