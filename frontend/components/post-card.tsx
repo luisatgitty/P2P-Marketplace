@@ -44,6 +44,7 @@ export default function PostCard(props: PostCardProps) {
           src={imageUrl}
           type="card"
           label={title}
+          className="w-full h-full"
         />
         <div className="absolute top-2 left-2">
           <ListingTypeBadge

@@ -146,6 +146,7 @@ function IdImageCard({
             src={resolvedUrl}
             type="id"
             label={label}
+            className="w-full h-auto"
           />
         </div>
       ) : (
