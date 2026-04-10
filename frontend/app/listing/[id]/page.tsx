@@ -23,6 +23,7 @@ import { openOrCreateConversationFromListing } from "@/services/messagingService
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { SafeImage } from "@/components/ui/safe-image";
+import { ImageLink } from "@/components/image-link";
 
 // ── ExtraDetail — mirrors every field the listing form collects ────────────────
 interface ExtraDetail {
@@ -820,22 +821,17 @@ export default function ListingDetailPage() {
               {/* ── Seller card ── */}
               <div className="flex flex-col gap-4 bg-white dark:bg-[#1c1f2e] rounded-2xl border border-stone-200 dark:border-[#2a2d3e] shadow-sm p-5 mb-4">
                 <div className="flex items-center gap-3">
-                  <Link href={sellerProfileHref} className="block">
-                    <div className="relative">
-                      <div className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg flex-shrink-0 overflow-hidden hover:opacity-90 transition-opacity">
-                        <SafeImage
-                          src={listing.seller.profileImageUrl}
-                          type="profile"
-                          alt={`${listing.seller.name}'s profile picture`}
-                          width={36}
-                          height={36}
-                        />
-                      </div>
-                      {sellerOnline && (
-                        <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-emerald-500 border-2 border-white dark:border-[#1c1f2e]" />
-                      )}
-                    </div>
-                  </Link>
+                  <ImageLink
+                    href={sellerProfileHref}
+                    src={listing.seller.profileImageUrl}
+                    type="profile"
+                    label={listing.seller.name}
+                    className="w-10 h-10"
+                  >
+                    {sellerOnline && (
+                      <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-emerald-500 border-2 border-white dark:border-[#1c1f2e]" />
+                    )}
+                  </ImageLink>
                   <div className="min-w-0">
                     <p className="font-bold text-stone-900 dark:text-stone-50 text-md">{listing.seller.name}</p>
                     <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">

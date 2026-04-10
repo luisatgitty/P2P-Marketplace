@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { type ReactNode } from 'react';
 import { SafeImage } from './ui/safe-image';
 import { ImageType } from '@/types/image';
 import { cn } from '@/lib/utils';
@@ -10,9 +11,10 @@ interface ImageLinkProps {
   type: ImageType;
   label: string;
   className?: string;
+  children?: ReactNode;
 }
 
-export function ImageLink({ href, newTab, src, type, label, className }: ImageLinkProps) {
+export function ImageLink({ href, newTab, src, type, label, className, children }: ImageLinkProps) {
   let title = '';
   if (type === 'profile') {
     title = `View ${label} Profile`;
@@ -28,7 +30,7 @@ export function ImageLink({ href, newTab, src, type, label, className }: ImageLi
       rel='noopener noreferrer'
       title={title}
       aria-label={title}
-      className={cn('w-9 h-9 shrink-0', className)}
+      className={cn('w-9 h-9 shrink-0 relative block', className)}
     >
       <SafeImage
         src={src}
@@ -37,6 +39,7 @@ export function ImageLink({ href, newTab, src, type, label, className }: ImageLi
         width={36}
         height={36}
       />
+      {children}
     </Link>
   );
 }

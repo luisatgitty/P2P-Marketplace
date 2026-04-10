@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import type { Message, MessageAttachment, ReactionType, ReplyPreview } from "@/types/messaging";
 import { REACTIONS } from "@/types/messaging";
+import { SafeImage } from "../ui/safe-image";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -119,10 +120,12 @@ function AttachmentGrid({
           </div>
         </>
       ) : (
-        <img
+        <SafeImage
           src={att.fileUrl}
-          alt={att.fileName ?? "attachment"}
-          className="w-full h-full object-cover"
+          type="thumbnail"
+          alt={`Attachment ${att.fileName}`}
+          width={36}
+          height={36}
           loading="lazy"
         />
       )}

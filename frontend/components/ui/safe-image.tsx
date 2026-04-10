@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Image, { type ImageProps } from 'next/image';
 import { validateImageURL } from '@/utils/validation';
 import { cn } from '@/lib/utils';
@@ -52,6 +52,13 @@ const IMAGE_CONFIG: Record<
   },
 };
 
+const failedImageUrlCache = new Set<string>();
+
+function getResolvedSrc(src: string, fallback: string) {
+  if (!src || failedImageUrlCache.has(src)) return fallback;
+  return src;
+}
+
 export function SafeImage({
   src,
   type,
@@ -61,17 +68,19 @@ export function SafeImage({
   ...props
 }: SafeImageProps) {
   const config = IMAGE_CONFIG[type];
-  const [errorCount, setErrorCount] = useState(0);
-  const [imgSrc, setImgSrc] = useState<string>(
-    src ? validateImageURL(src) : config.fallback,
+  const normalizedSrc = useMemo(
+    () => (src ? validateImageURL(src) : ''),
+    [src],
+  );
+
+  const [imgSrc, setImgSrc] = useState<string>(() =>
+    getResolvedSrc(normalizedSrc, config.fallback),
   );
 
   // Update internal state if the 'src' prop changes externally
   useEffect(() => {
-    setImgSrc(src ? validateImageURL(src) : config.fallback);
-    // Reset error count when src changes to allow fallback to work again if needed
-    setErrorCount(0);
-  }, [src, config.fallback]);
+    setImgSrc(getResolvedSrc(normalizedSrc, config.fallback));
+  }, [normalizedSrc, config.fallback]);
 
   return (
     <Image
@@ -80,12 +89,13 @@ export function SafeImage({
       alt={alt || config.alt}
       className={cn(config.class, className)}
       // If the src fails to load, fallback to the placeholder image
-      onError={() => {
-        // Stop an infinite loop if the fallback image itself is missing
-        if (errorCount < 1) {
-          setErrorCount(prev => prev + 1);
+      // NOTE: Broken image can cause flickering if the URL is valid but the server is down
+      onError={(event) => {
+        if (imgSrc !== config.fallback && normalizedSrc) {
+          failedImageUrlCache.add(normalizedSrc);
           setImgSrc(config.fallback);
         }
+        onError?.(event);
       }}
     />
   );

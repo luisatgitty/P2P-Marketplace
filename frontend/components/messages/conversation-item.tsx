@@ -3,38 +3,7 @@
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import type { Conversation } from "@/types/messaging";
-import ListingTypeBadge from "./listing-type-badge";
-
-// ─── Avatar helper ────────────────────────────────────────────────────────────
-
-function ParticipantAvatar({
-  firstName,
-  lastName,
-  profileImageUrl,
-  isOnline,
-}: {
-  firstName: string;
-  lastName: string;
-  profileImageUrl?: string | null;
-  isOnline?: boolean;
-}) {
-  const initials = `${firstName[0]}${lastName[0]}`.toUpperCase();
-
-  return (
-    <div className="relative shrink-0">
-      <div className="w-11 h-11 rounded-full bg-stone-200 dark:bg-stone-700 overflow-hidden flex items-center justify-center select-none">
-        {profileImageUrl ? (
-          <img src={profileImageUrl} alt={`${firstName} ${lastName}`} className="w-full h-full object-cover" />
-        ) : (
-          <span className="text-sm font-bold text-stone-600 dark:text-stone-300">{initials}</span>
-        )}
-      </div>
-      {isOnline && (
-        <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-emerald-500 border-2 border-white dark:border-[#1c1f2e]" />
-      )}
-    </div>
-  );
-}
+import { SafeImage } from "../ui/safe-image";
 
 // ─── Relative time helper ─────────────────────────────────────────────────────
 
@@ -79,12 +48,19 @@ export default function ConversationItem({
           : "border-l-transparent hover:bg-stone-50 dark:hover:bg-white/5"
       )}
     >
-      <ParticipantAvatar
-        firstName={otherParticipant.firstName}
-        lastName={otherParticipant.lastName}
-        profileImageUrl={otherParticipant.profileImageUrl}
-        isOnline={otherParticipant.isOnline}
-      />
+      {/* Profile Image */}
+      <div className="relative w-10 h-10 shrink-0">
+        <SafeImage
+          src={otherParticipant.profileImageUrl || undefined}
+          type="profile"
+          alt={`${otherParticipant.firstName} ${otherParticipant.lastName} profile picture`}
+          width={36}
+          height={36}
+        />
+        {otherParticipant.isOnline && (
+          <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-emerald-500 border-2 border-white dark:border-[#1c1f2e]" />
+        )}
+      </div>
 
       <div className="flex-1 min-w-0">
         {/* Row 1: Name + time */}

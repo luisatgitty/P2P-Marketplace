@@ -859,15 +859,14 @@ export default function ProfilePage() {
                   className={cn("relative group w-20 h-20", !isViewingExternalProfile && "cursor-pointer")}
                   onClick={() => !isViewingExternalProfile && setShowAvatarMenu((v) => !v)}
                 >
-                  <div className="w-20 h-20 rounded-full border-4 border-white dark:border-[#1c1f2e] overflow-hidden shadow-md bg-[#1e2a40] flex items-center justify-center">
-                    <SafeImage
-                      src={avatar.src ?? undefined}
-                      type="profile"
-                      alt={`${fullName}'s profile photo`}
-                      width={80}
-                      height={80}
-                    />
-                  </div>
+                  <SafeImage
+                    src={avatar.src ?? undefined}
+                    type="profile"
+                    alt={`${fullName}'s profile photo`}
+                    width={80}
+                    height={80}
+                    className="w-20 h-20 border-4 border-white dark:border-[#1c1f2e] overflow-hidden shadow-md bg-[#1e2a40] flex items-center justify-center"
+                  />
                   {isProfileOnline && (
                     <span className="absolute bottom-1.5 right-1.5 w-4 h-4 rounded-full bg-emerald-500 border-3 border-white dark:border-[#1c1f2e]" />
                   )}

@@ -11,7 +11,7 @@ import { markListingAsComplete, submitUserListingReport } from "@/services/listi
 import { ReportModal } from "@/components/report-modal";
 import { ConfirmActionModal } from "@/components/confirm-action-modal";
 import ListingTypeBadge from "@/components/listing-type-badge";
-import { SafeImage } from "../ui/safe-image";
+import { ImageLink } from "../image-link";
 
 interface ChatHeaderProps {
   conversation: Conversation;
@@ -111,24 +111,17 @@ export default function ChatHeader({ conversation, onDelete, onMarkedComplete }:
       </button>
 
       {/* Avatar */}
-      <button
-        onClick={() => router.push(profileHref)}
+      <ImageLink
+        href={profileHref}
+        src={otherParticipant.profileImageUrl || undefined}
+        type="profile"
+        label={`${otherParticipant.firstName} ${otherParticipant.lastName}`}
         className="relative shrink-0 rounded-full"
-        aria-label="View user profile"
       >
-        <div className="w-9 h-9">
-          <SafeImage
-            src={otherParticipant?.profileImageUrl || undefined}
-            type="profile"
-            alt={`Profile picture of ${otherParticipant.firstName} ${otherParticipant.lastName}`}
-            width={36}
-            height={36}
-          />
-        </div>
         {otherParticipant.isOnline && (
-          <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-white dark:border-[#1c1f2e]" />
+          <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-emerald-500 border-2 border-white dark:border-[#1c1f2e]" />
         )}
-      </button>
+      </ImageLink>
 
       {/* Info */}
       <div className="flex-1 min-w-0 text-left">
