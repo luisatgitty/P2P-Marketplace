@@ -1,7 +1,6 @@
 "use client";
 
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
-import Link from "next/link";
 import {
   Search,
   X,
@@ -19,7 +18,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { SafeImage } from "@/components/ui/safe-image";
+import { ImageLink } from "@/components/image-link";
 import {
   getAdminReports,
   setAdminReportAction,
@@ -411,22 +410,12 @@ export default function ReportsPage() {
                           {/* Reporter */}
                           <TableCell className="py-3.5">
                             <div className="flex items-center gap-2.5">
-                              <Link
+                              <ImageLink
                                 href={`/profile?userId=${report.reporter_id}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                title={`View ${report.reporter}'s profile`}
-                                aria-label={`View ${report.reporter}'s profile`}
-                                className='w-9 h-9 shrink-0'
-                              >
-                                <SafeImage
-                                  src={report.reporter_profile_image_url}
-                                  type="profile"
-                                  alt={`${report.reporter}'s profile picture`}
-                                  width={36}
-                                  height={36}
-                                />
-                              </Link>
+                                src={report.reporter_profile_image_url}
+                                type="profile"
+                                label={report.reporter}
+                              />
                               <div className="min-w-0">
                                 <p className="text-sm font-semibold text-stone-800 dark:text-stone-100 whitespace-nowrap truncate">
                                   {report.reporter}
@@ -442,22 +431,12 @@ export default function ReportsPage() {
                           <TableCell className="py-3.5 text-sm text-stone-600 dark:text-stone-300 whitespace-nowrap">
                             {report.target_type === "LISTING" ? (
                               <div className="flex items-center gap-2.5">
-                                <Link
+                                <ImageLink
                                   href={`/profile?userId=${report.listing_owner_id}`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  title={`View ${report.listing_owner}'s profile`}
-                                  aria-label={`View ${report.listing_owner}'s profile`}
-                                  className='w-9 h-9 shrink-0'
-                                >
-                                  <SafeImage
-                                    src={report.listing_owner_profile_image_url}
-                                    type="profile"
-                                    alt={`${report.listing_owner}'s profile picture`}
-                                    width={36}
-                                    height={36}
-                                  />
-                                </Link>
+                                  src={report.listing_owner_profile_image_url}
+                                  type="profile"
+                                  label={report.listing_owner}
+                                />
                                 <div className="min-w-0">
                                   <p className="text-sm font-semibold text-stone-800 dark:text-stone-100 whitespace-nowrap truncate">
                                     {report.listing_owner}
@@ -474,22 +453,12 @@ export default function ReportsPage() {
                           <TableCell className="py-3.5 max-w-65">
                             {report.target_type === "LISTING" ? (
                               <div className="flex items-center gap-2.5 min-w-0">
-                                <Link
+                                <ImageLink
                                   href={`/listing/${report.target_id}`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  title={`View listing: ${report.target_name}`}
-                                  aria-label={`View listing: ${report.target_name}`}
-                                  className='w-9 h-9 shrink-0'
-                                >
-                                  <SafeImage
-                                    src={report.listing_image_url}
-                                    type="thumbnail"
-                                    alt={`Image of ${report.target_name}`}
-                                    width={36}
-                                    height={36}
-                                  />
-                                </Link>
+                                  src={report.listing_image_url}
+                                  type="thumbnail"
+                                  label={report.target_name}
+                                />
                                 <div className="min-w-0">
                                   <p className="text-sm font-semibold text-stone-700 dark:text-stone-200 truncate">
                                     {report.target_name}

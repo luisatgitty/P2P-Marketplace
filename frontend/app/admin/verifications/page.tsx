@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useMemo, useEffect, useCallback } from "react";
-import Link from "next/link";
 import {
   Search, X, CheckCircle2, XCircle, ShieldCheck, Clock,
   Eye, AlertTriangle, IdCard, ChevronLeft, ChevronRight,
@@ -11,6 +10,7 @@ import {
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { validateImageURL } from "@/utils/validation";
+import { ImageLink } from "@/components/image-link";
 import { SafeImage } from "@/components/ui/safe-image";
 import {
   getAdminVerifications,
@@ -274,22 +274,12 @@ function DetailModal({ verif, onClose, onApprove, onReject, actionLoading = fals
                         Profile
                       </p>
                       <div className="flex items-center gap-2.5">
-                        <Link
+                        <ImageLink
                           href={`/profile?userId=${verif.user_id}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          title={`View ${verif.user_name}'s profile`}
-                          aria-label={`View ${verif.user_name}'s profile`}
-                          className='w-9 h-9 shrink-0'
-                        >
-                          <SafeImage
-                            src={verif.profile_image_url}
-                            type="profile"
-                            alt={`${verif.user_name}'s profile picture`}
-                            width={36}
-                            height={36}
-                          />
-                        </Link>
+                          src={verif.profile_image_url}
+                          type="profile"
+                          label={verif.user_name}
+                        />
                         <div className="min-w-0">
                           <p className="text-sm font-bold text-stone-800 dark:text-stone-100 truncate">
                             {verif.user_name}
@@ -836,22 +826,12 @@ export default function VerificationsPage() {
                         {/* Applicant */}
                         <TableCell className="py-2">
                           <div className="flex items-center gap-3">
-                            <Link
+                            <ImageLink
                               href={`/profile?userId=${verif.user_id}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              title={`View ${verif.user_name}'s profile`}
-                              aria-label={`View ${verif.user_name}'s profile`}
-                              className='w-9 h-9 shrink-0'
-                            >
-                              <SafeImage
-                                src={verif.profile_image_url}
-                                type="profile"
-                                alt={`${verif.user_name}'s profile picture`}
-                                width={36}
-                                height={36}
-                              />
-                            </Link>
+                              src={verif.profile_image_url}
+                              type="profile"
+                              label={verif.user_name}
+                            />
                             <div className="min-w-0">
                               <p className="text-sm font-bold text-stone-800 dark:text-stone-100 truncate">{verif.user_name}</p>
                               <p className="text-xs text-stone-400 dark:text-stone-500 truncate">{verif.user_email}</p>

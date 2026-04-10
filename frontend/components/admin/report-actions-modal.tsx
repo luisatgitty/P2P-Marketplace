@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import {
   X, Flag, User, FileText, AlertTriangle, Trash2, Clock,
   ShieldX, ChevronDown, CheckCircle2, Gavel,
@@ -9,10 +8,10 @@ import {
 import { cn } from "@/lib/utils";
 import { Button }            from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { ImageLink } from "@/components/image-link";
 import { Label }             from "@/components/ui/label";
 import { Separator }         from "@/components/ui/separator";
 import { Textarea }          from "@/components/ui/textarea";
-import { SafeImage } from "@/components/ui/safe-image";
 import { AdminReport, ReportActionType } from "@/types/admin";
 
 interface ReportActionsModalProps {
@@ -268,22 +267,12 @@ export default function ReportActionsModal({ report, onClose, onSubmit }: Report
                   <Card className="p-0 dark:bg-[#13151f] dark:border-[#2a2d3e]">
                     <CardContent className="p-3.5">
                       <div className="flex items-center gap-2.5 mb-1">
-                        <Link
+                        <ImageLink
                           href={`/profile?userId=${report.reporter_id}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          title={`View ${report.reporter}'s profile`}
-                          aria-label={`View ${report.reporter}'s profile`}
-                          className="w-9 h-9 shrink-0"
-                        >
-                          <SafeImage
-                            src={report.reporter_profile_image_url}
-                            type="profile"
-                            alt={`${report.reporter}'s profile picture`}
-                            width={36}
-                            height={36}
-                          />
-                        </Link>
+                          src={report.reporter_profile_image_url}
+                          type="profile"
+                          label={report.reporter}
+                        />
 
                         <div>
                           <p className="text-sm font-bold text-stone-800 dark:text-stone-100">
@@ -304,22 +293,12 @@ export default function ReportActionsModal({ report, onClose, onSubmit }: Report
                   <Card className="p-0 dark:bg-[#13151f] border-red-100 dark:border-red-900/40">
                     <CardContent className="p-3.5">
                       <div className="flex items-center gap-2.5 mb-1">
-                        <Link
+                        <ImageLink
                           href={`/profile?userId=${report.listing_owner_id}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          title={`View ${report.listing_owner}'s profile`}
-                          aria-label={`View ${report.listing_owner}'s profile`}
-                          className="w-9 h-9 shrink-0"
-                        >
-                          <SafeImage
-                            src={report.listing_owner_profile_image_url}
-                            type="profile"
-                            alt={`${report.listing_owner}'s profile picture`}
-                            width={36}
-                            height={36}
-                          />
-                        </Link>
+                          src={report.listing_owner_profile_image_url}
+                          type="profile"
+                          label={report.listing_owner}
+                        />
                         <div>
                           <p className="text-sm font-bold text-stone-800 dark:text-stone-100">
                             {report.reported_name}
@@ -340,22 +319,12 @@ export default function ReportActionsModal({ report, onClose, onSubmit }: Report
                     <Card className="p-0 dark:bg-[#13151f] dark:border-[#2a2d3e]">
                       <CardContent className="p-3.5">
                         <div className="flex items-center gap-2.5 min-w-0">
-                          <Link
+                          <ImageLink
                             href={`/listing/${report.target_id}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            title={`View listing: ${report.target_name}`}
-                            aria-label={`View listing: ${report.target_name}`}
-                            className="w-9 h-9 shrink-0"
-                          >
-                            <SafeImage
-                              src={report.listing_image_url}
-                              type="thumbnail"
-                              alt={`Image of ${report.target_name}`}
-                              width={36}
-                              height={36}
-                            />
-                          </Link>
+                            src={report.listing_image_url}
+                            type="thumbnail"
+                            label={report.target_name}
+                          />
                           <div className="min-w-0">
                             <p className="text-sm font-semibold text-stone-700 dark:text-stone-200 line-clamp-2">
                               {report.target_name}

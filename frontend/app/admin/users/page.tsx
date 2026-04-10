@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useMemo, useEffect, useCallback } from "react";
-import Link from "next/link";
 import {
   Search,
   ShieldCheck,
@@ -22,7 +21,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { SafeImage } from "@/components/ui/safe-image";
+import { ImageLink } from "@/components/image-link";
 import {
   getAdminUsers,
   setAdminUserActive,
@@ -512,22 +511,12 @@ export default function UsersPage() {
                       {/* Name */}
                       <TableCell className="py-2 whitespace-nowrap">
                         <div className="flex items-center gap-3 w-max">
-                          <Link
+                          <ImageLink
                             href={`/profile?userId=${user.id}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            title={`View ${user.first_name} ${user.last_name}'s profile`}
-                            aria-label={`View ${user.first_name} ${user.last_name}'s profile`}
-                            className="h-9 shrink-0"
-                          >
-                            <SafeImage
-                              src={user.profile_image_url}
-                              type="profile"
-                              alt={`${user.first_name} ${user.last_name}'s profile picture`}
-                              width={36}
-                              height={36}
-                            />
-                          </Link>
+                            src={user.profile_image_url}
+                            type="profile"
+                            label={`${user.first_name} ${user.last_name}`}
+                          />
                           <div className="w-max">
                             <p className="text-sm font-bold text-stone-800 dark:text-stone-100 whitespace-nowrap">
                               {user.first_name}
