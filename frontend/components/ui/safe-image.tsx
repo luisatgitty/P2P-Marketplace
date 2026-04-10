@@ -28,6 +28,12 @@ const IMAGE_CONFIG: Record<
     class:
       'w-full h-full rounded-md object-cover border border-stone-200 dark:border-[#2a2d3e]',
   },
+  preview: {
+    fallback: '/broken-image-sm.png',
+    alt: 'Listing thumbnail',
+    class:
+      'w-full h-full object-cover group-hover:scale-105 transition-transform duration-300',
+  },
   id: {
     fallback: '/broken-image-lg.png',
     alt: 'ID document',
