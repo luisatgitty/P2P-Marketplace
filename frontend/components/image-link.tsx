@@ -16,7 +16,7 @@ export function ImageLink({ href, newTab, src, type, label, className }: ImageLi
   let title = '';
   if (type === 'profile') {
     title = `View ${label} Profile`;
-  } else if (type === 'thumbnail' || type === 'preview') {
+  } else if (type === 'thumbnail' || type === 'card') {
     title = `View listing of ${label}`;
   } else if (type === 'id') {
     title = `View ${label}`;

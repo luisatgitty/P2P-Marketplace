@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Image, { type ImageProps } from 'next/image';
 import { validateImageURL } from '@/utils/validation';
 import { cn } from '@/lib/utils';
@@ -28,11 +28,17 @@ const IMAGE_CONFIG: Record<
     class:
       'w-full h-full rounded-md object-cover border border-stone-200 dark:border-[#2a2d3e]',
   },
-  preview: {
+  card: {
     fallback: '/broken-image-sm.png',
-    alt: 'Listing thumbnail',
+    alt: 'Listing post card image',
     class:
       'w-full h-full object-cover group-hover:scale-105 transition-transform duration-300',
+  },
+  cover: {
+    fallback: '/broken-image-sm.png',
+    alt: 'Listing image',
+    class:
+      'w-full h-full object-cover',
   },
   id: {
     fallback: '/broken-image-lg.png',
@@ -55,9 +61,17 @@ export function SafeImage({
   ...props
 }: SafeImageProps) {
   const config = IMAGE_CONFIG[type];
+  const [errorCount, setErrorCount] = useState(0);
   const [imgSrc, setImgSrc] = useState<string>(
     src ? validateImageURL(src) : config.fallback,
   );
+
+  // Update internal state if the 'src' prop changes externally
+  useEffect(() => {
+    setImgSrc(src ? validateImageURL(src) : config.fallback);
+    // Reset error count when src changes to allow fallback to work again if needed
+    setErrorCount(0);
+  }, [src, config.fallback]);
 
   return (
     <Image
@@ -67,7 +81,11 @@ export function SafeImage({
       className={cn(config.class, className)}
       // If the src fails to load, fallback to the placeholder image
       onError={() => {
-        setImgSrc(config.fallback);
+        // Stop an infinite loop if the fallback image itself is missing
+        if (errorCount < 1) {
+          setErrorCount(prev => prev + 1);
+          setImgSrc(config.fallback);
+        }
       }}
     />
   );
