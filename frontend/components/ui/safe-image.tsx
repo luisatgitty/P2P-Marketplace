@@ -4,8 +4,7 @@ import { useState } from 'react';
 import Image, { type ImageProps } from 'next/image';
 import { validateImageURL } from '@/utils/validation';
 import { cn } from '@/lib/utils';
-
-type ImageType = 'profile' | 'thumbnail' | 'id' | 'full';
+import { ImageType } from '@/types/image';
 
 type SafeImageProps = Omit<ImageProps, 'src' | 'alt'> & {
   src?: string;
