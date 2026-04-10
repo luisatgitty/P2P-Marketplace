@@ -729,7 +729,7 @@ func mapAssetURLs(baseURL string, raw []string) []string {
 func mapPrimaryImage(baseURL string, raw []string) string {
 	images := mapAssetURLs(baseURL, raw)
 	if len(images) == 0 {
-		return "https://images.unsplash.com/photo-1484154218962-a197022b5858?w=800&q=80"
+		return ""
 	}
 	return images[0]
 }
@@ -739,7 +739,7 @@ func mapRelatedListings(baseURL string, listings []model.ProfileListingFromDb) [
 	for _, l := range listings {
 		img := l.ImageUrl
 		if img == "" {
-			img = "https://images.unsplash.com/photo-1484154218962-a197022b5858?w=800&q=80"
+			img = ""
 		} else if !strings.HasPrefix(img, "http://") && !strings.HasPrefix(img, "https://") {
 			img = strings.TrimRight(baseURL, "/") + "/" + strings.TrimLeft(img, "/")
 		}
