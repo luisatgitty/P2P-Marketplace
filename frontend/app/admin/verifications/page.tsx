@@ -11,7 +11,6 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { validateImageURL } from "@/utils/validation";
 import { ImageLink } from "@/components/image-link";
-import { SafeImage } from "@/components/ui/safe-image";
 import {
   getAdminVerifications,
   setAdminVerificationStatus,
@@ -140,23 +139,15 @@ function IdImageCard({
         {label}
       </p>
       {resolvedUrl ? (
-        // Use button instead of link to use better design
-        <button
-          type='button'
-          onClick={() =>
-            window.open(resolvedUrl, '_blank', 'noopener,noreferrer')
-          }
-          className='w-full rounded-xl overflow-hidden border border-stone-200 dark:border-[#2a2d3e] bg-stone-100 dark:bg-[#13151f] hover:opacity-95 transition-opacity'
-          title='View full image'
-        >
-          <SafeImage
+        <div className="w-full rounded-xl overflow-hidden border border-stone-200 dark:border-[#2a2d3e] bg-stone-100 dark:bg-[#13151f] hover:opacity-95 transition-opacity">
+          <ImageLink
+            href={resolvedUrl}
+            newTab
             src={resolvedUrl}
-            type='id'
-            alt={`Image for ${label}`}
-            width={36}
-            height={36}
+            type="id"
+            label={label}
           />
-        </button>
+        </div>
       ) : (
         <div className='aspect-4/3 rounded-xl bg-stone-100 dark:bg-[#13151f] border-2 border-dashed border-stone-200 dark:border-[#2a2d3e] flex flex-col items-center justify-center gap-2'>
           <IdCard className='w-9 h-9 text-stone-300 dark:text-stone-600' />
@@ -276,6 +267,7 @@ function DetailModal({ verif, onClose, onApprove, onReject, actionLoading = fals
                       <div className="flex items-center gap-2.5">
                         <ImageLink
                           href={`/profile?userId=${verif.user_id}`}
+                          newTab
                           src={verif.profile_image_url}
                           type="profile"
                           label={verif.user_name}
@@ -828,6 +820,7 @@ export default function VerificationsPage() {
                           <div className="flex items-center gap-3">
                             <ImageLink
                               href={`/profile?userId=${verif.user_id}`}
+                              newTab
                               src={verif.profile_image_url}
                               type="profile"
                               label={verif.user_name}

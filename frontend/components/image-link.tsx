@@ -4,15 +4,15 @@ import { ImageType } from '@/types/image';
 import { cn } from '@/lib/utils';
 
 interface ImageLinkProps {
-  type: ImageType;
   href: string;
   newTab?: boolean;
   src?: string;
+  type: ImageType;
   label: string;
   className?: string;
 }
 
-export function ImageLink({ type, href, newTab, src, label, className }: ImageLinkProps) {
+export function ImageLink({ href, newTab, src, type, label, className }: ImageLinkProps) {
   let title = '';
   if (type === 'profile') {
     title = `View ${label} Profile`;
