@@ -500,6 +500,7 @@ export default function ListingsPage() {
                           <div className="flex items-center gap-2.5 min-w-0">
                             <ImageLink
                               href={`/listing/${listing.id}`}
+                              newTab
                               src={listing.listing_image_url}
                               type="thumbnail"
                               label={listing.title}
@@ -520,6 +521,7 @@ export default function ListingsPage() {
                           <div className="flex items-center gap-2.5 min-w-0">
                             <ImageLink
                               href={`/profile?userId=${listing.seller_id}`}
+                              newTab
                               src={listing.seller_profile_image_url}
                               type="profile"
                               label={listing.seller}

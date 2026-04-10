@@ -422,6 +422,7 @@ export default function TransactionsPage() {
                           <div className='flex items-center gap-2.5'>
                             <ImageLink
                               href={`/profile?userId=${transaction.client_user_id}`}
+                              newTab
                               src={transaction.client_profile_image_url}
                               type='profile'
                               label={transaction.client_full_name}
@@ -442,6 +443,7 @@ export default function TransactionsPage() {
                           <div className='flex items-center gap-2.5'>
                             <ImageLink
                               href={`/profile?userId=${transaction.owner_user_id}`}
+                              newTab
                               src={transaction.owner_profile_image_url}
                               type='profile'
                               label={transaction.owner_full_name}
@@ -462,6 +464,7 @@ export default function TransactionsPage() {
                           <div className='flex items-center gap-2.5'>
                             <ImageLink
                               href={`/listing/${transaction.listing_id}`}
+                              newTab
                               src={transaction.listing_image_url}
                               type='thumbnail'
                               label={transaction.listing_title}

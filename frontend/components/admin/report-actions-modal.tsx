@@ -269,6 +269,7 @@ export default function ReportActionsModal({ report, onClose, onSubmit }: Report
                       <div className="flex items-center gap-2.5 mb-1">
                         <ImageLink
                           href={`/profile?userId=${report.reporter_id}`}
+                          newTab
                           src={report.reporter_profile_image_url}
                           type="profile"
                           label={report.reporter}
@@ -295,6 +296,7 @@ export default function ReportActionsModal({ report, onClose, onSubmit }: Report
                       <div className="flex items-center gap-2.5 mb-1">
                         <ImageLink
                           href={`/profile?userId=${report.listing_owner_id}`}
+                          newTab
                           src={report.listing_owner_profile_image_url}
                           type="profile"
                           label={report.listing_owner}
@@ -321,6 +323,7 @@ export default function ReportActionsModal({ report, onClose, onSubmit }: Report
                         <div className="flex items-center gap-2.5 min-w-0">
                           <ImageLink
                             href={`/listing/${report.target_id}`}
+                            newTab
                             src={report.listing_image_url}
                             type="thumbnail"
                             label={report.target_name}

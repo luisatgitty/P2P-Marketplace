@@ -6,22 +6,25 @@ import { cn } from '@/lib/utils';
 interface ImageLinkProps {
   type: ImageType;
   href: string;
+  newTab?: boolean;
   src?: string;
   label: string;
   className?: string;
 }
 
-export function ImageLink({ type, href, src, label, className }: ImageLinkProps) {
+export function ImageLink({ type, href, newTab, src, label, className }: ImageLinkProps) {
   let title = '';
   if (type === 'profile') {
     title = `View ${label} Profile`;
-  } else if (type === 'thumbnail') {
+  } else if (type === 'thumbnail' || type === 'preview') {
     title = `View listing of ${label}`;
+  } else if (type === 'id') {
+    title = `View ${label}`;
   }
   return (
     <Link
       href={href}
-      target='_blank'
+      target={newTab ? '_blank' : '_self'}
       rel='noopener noreferrer'
       title={title}
       aria-label={title}

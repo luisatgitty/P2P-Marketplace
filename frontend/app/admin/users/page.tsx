@@ -513,6 +513,7 @@ export default function UsersPage() {
                         <div className="flex items-center gap-3 w-max">
                           <ImageLink
                             href={`/profile?userId=${user.id}`}
+                            newTab
                             src={user.profile_image_url}
                             type="profile"
                             label={`${user.first_name} ${user.last_name}`}
