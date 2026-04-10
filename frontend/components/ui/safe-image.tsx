@@ -21,12 +21,13 @@ const IMAGE_CONFIG: Record<
     fallback: '/profile-placeholder-sm.png',
     alt: 'User profile picture',
     class:
-      'w-10 h-10 rounded-full object-cover border border-stone-200 dark:border-[#2a2d3e] shrink-0',
+      'w-full h-full rounded-full object-cover border border-stone-200 dark:border-[#2a2d3e]',
   },
   thumbnail: {
     fallback: '/broken-image-sm.png',
     alt: 'Listing thumbnail',
-    class: 'w-10 h-10 rounded-md object-cover border border-stone-200 dark:border-[#2a2d3e] shrink-0',
+    class:
+      'w-full h-full rounded-md object-cover border border-stone-200 dark:border-[#2a2d3e]',
   },
   id: {
     fallback: '/broken-image-lg.png',
@@ -45,6 +46,7 @@ export function SafeImage({
   type,
   alt,
   className,
+  onError,
   ...props
 }: SafeImageProps) {
   const config = IMAGE_CONFIG[type];
