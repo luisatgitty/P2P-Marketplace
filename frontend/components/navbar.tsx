@@ -14,6 +14,7 @@ import {
   Bell, LayoutDashboard,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { SafeImage } from "@/components/ui/safe-image";
 
 // ─── Tab config ────────────────────────────────────────────────────────────────
 const TABS = [
@@ -162,7 +163,7 @@ export default function Navbar() {
               alt="P2P Marketplace"
               width={32}
               height={32}
-              className="rounded-md shrink-0"
+              className="shrink-0"
             />
             <span className="font-bold text-base sm:text-lg leading-tight hidden sm:block whitespace-nowrap tracking-tight">
               P2P Marketplace
@@ -186,12 +187,12 @@ export default function Navbar() {
               >
                 <div className="relative w-7 h-7">
                   <div className="w-7 h-7 rounded-full bg-stone-600 overflow-hidden border border-white/20">
-                  <Image
-                    src={user?.profileImageUrl || "/profile-icon.png"}
-                    alt="Profile"
+                  <SafeImage
+                    src={user?.profileImageUrl}
+                    type="profile"
+                    alt={`${user?.firstName}'s profile picture`}
                     width={28}
                     height={28}
-                    className="w-full h-full object-cover"
                   />
                   </div>
                   {isAuth && hasUnreadMessages && (

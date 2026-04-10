@@ -417,14 +417,14 @@ export default function ReportsPage() {
                                 rel="noopener noreferrer"
                                 title={`View ${report.reporter}'s profile`}
                                 aria-label={`View ${report.reporter}'s profile`}
-                                className="shrink-0"
+                                className='w-9 h-9 shrink-0'
                               >
                                 <SafeImage
                                   src={report.reporter_profile_image_url}
                                   type="profile"
                                   alt={`${report.reporter}'s profile picture`}
-                                  width={40}
-                                  height={40}
+                                  width={36}
+                                  height={36}
                                 />
                               </Link>
                               <div className="min-w-0">
@@ -448,14 +448,14 @@ export default function ReportsPage() {
                                   rel="noopener noreferrer"
                                   title={`View ${report.listing_owner}'s profile`}
                                   aria-label={`View ${report.listing_owner}'s profile`}
-                                  className="shrink-0"
+                                  className='w-9 h-9 shrink-0'
                                 >
                                   <SafeImage
                                     src={report.listing_owner_profile_image_url}
                                     type="profile"
                                     alt={`${report.listing_owner}'s profile picture`}
-                                    width={40}
-                                    height={40}
+                                    width={36}
+                                    height={36}
                                   />
                                 </Link>
                                 <div className="min-w-0">
@@ -480,14 +480,14 @@ export default function ReportsPage() {
                                   rel="noopener noreferrer"
                                   title={`View listing: ${report.target_name}`}
                                   aria-label={`View listing: ${report.target_name}`}
-                                  className="shrink-0"
+                                  className='w-9 h-9 shrink-0'
                                 >
                                   <SafeImage
                                     src={report.listing_image_url}
                                     type="thumbnail"
                                     alt={`Image of ${report.target_name}`}
-                                    width={40}
-                                    height={40}
+                                    width={36}
+                                    height={36}
                                   />
                                 </Link>
                                 <div className="min-w-0">

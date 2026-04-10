@@ -518,14 +518,14 @@ export default function UsersPage() {
                             rel="noopener noreferrer"
                             title={`View ${user.first_name} ${user.last_name}'s profile`}
                             aria-label={`View ${user.first_name} ${user.last_name}'s profile`}
-                            className="shrink-0"
+                            className="h-9 shrink-0"
                           >
                             <SafeImage
                               src={user.profile_image_url}
                               type="profile"
                               alt={`${user.first_name} ${user.last_name}'s profile picture`}
-                              width={40}
-                              height={40}
+                              width={36}
+                              height={36}
                             />
                           </Link>
                           <div className="w-max">

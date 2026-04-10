@@ -427,14 +427,14 @@ export default function TransactionsPage() {
                               rel='noopener noreferrer'
                               title={`View ${transaction.client_full_name}'s profile`}
                               aria-label={`View ${transaction.client_full_name}'s profile`}
-                              className='shrink-0'
+                              className='w-9 h-9 shrink-0'
                             >
                               <SafeImage
                                 src={transaction.client_profile_image_url}
                                 type='profile'
                                 alt={`${transaction.client_full_name}'s profile picture`}
-                                width={40}
-                                height={40}
+                                width={36}
+                                height={36}
                               />
                             </Link>
                             <div className='min-w-0'>
@@ -457,14 +457,14 @@ export default function TransactionsPage() {
                               rel='noopener noreferrer'
                               title={`View ${transaction.owner_full_name}'s profile`}
                               aria-label={`View ${transaction.owner_full_name}'s profile`}
-                              className='shrink-0'
+                              className='w-9 h-9 shrink-0'
                             >
                               <SafeImage
                                 src={transaction.owner_profile_image_url}
                                 type='profile'
                                 alt={`${transaction.owner_full_name}'s profile picture`}
-                                width={40}
-                                height={40}
+                                width={36}
+                                height={36}
                               />
                             </Link>
                             <div className='min-w-0'>
@@ -487,14 +487,14 @@ export default function TransactionsPage() {
                               rel='noopener noreferrer'
                               title={`View listing: ${transaction.listing_title}`}
                               aria-label={`View listing: ${transaction.listing_title}`}
-                              className='shrink-0'
+                              className='w-9 h-9 shrink-0'
                             >
                               <SafeImage
                                 src={transaction.listing_image_url}
                                 type='thumbnail'
                                 alt={transaction.listing_title}
-                                width={40}
-                                height={40}
+                                width={36}
+                                height={36}
                               />
                             </Link>
                             <div className='min-w-0'>

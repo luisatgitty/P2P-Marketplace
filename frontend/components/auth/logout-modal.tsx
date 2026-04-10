@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
 import { LogOut } from "lucide-react";
 import { useUser } from "@/utils/UserContext";
 import { cn } from "@/lib/utils";
+import { SafeImage } from "@/components/ui/safe-image";
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 export interface LogoutModalProps {
@@ -82,19 +82,14 @@ export function LogoutModal({ open, onClose }: LogoutModalProps) {
               {/* Session info chip */}
               <div className="flex items-center gap-3 bg-stone-50 dark:bg-[#13151f] border border-stone-200 dark:border-[#2a2d3e] rounded-xl px-3.5 py-2.5">
                 {/* Avatar */}
-                <div className="w-8 h-8 rounded-full overflow-hidden border border-stone-200 dark:border-[#2a2d3e] bg-stone-200 dark:bg-stone-700 shrink-0 relative">
-                  <Image
-                    src={user?.profileImageUrl || "/profile-icon.png"}
-                    alt={userName}
+                <div className="w-9 h-9 rounded-full overflow-hidden border border-stone-200 dark:border-[#2a2d3e] bg-stone-200 dark:bg-stone-700 shrink-0 relative">
+                  <SafeImage
+                    src={user?.profileImageUrl}
+                    type="profile"
+                    alt={`${userName}'s profile picture`}
                     width={32}
                     height={32}
-                    className="w-full h-full object-cover"
                   />
-                  {(user?.profileImageUrl === "/profile-icon.png") && (
-                    <span className="absolute inset-0 flex items-center justify-center text-[11px] font-bold text-stone-700 dark:text-stone-100">
-                      {initials}
-                    </span>
-                  )}
                 </div>
                 {/* Name + email */}
                 <div className="flex-1 min-w-0">

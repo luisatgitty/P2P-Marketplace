@@ -505,14 +505,14 @@ export default function ListingsPage() {
                               rel="noopener noreferrer"
                               title={`View listing: ${listing.title}`}
                               aria-label={`View listing: ${listing.title}`}
-                              className="shrink-0"
+                              className='w-9 h-9 shrink-0'
                             >
                               <SafeImage
                                 src={listing.listing_image_url}
                                 type="thumbnail"
                                 alt={`Image of ${listing.title}`}
-                                width={40}
-                                height={40}
+                                width={36}
+                                height={36}
                               />
                             </Link>
                             <div className="min-w-0">
@@ -535,14 +535,14 @@ export default function ListingsPage() {
                               rel="noopener noreferrer"
                               title={`View ${listing.seller}'s profile`}
                               aria-label={`View ${listing.seller}'s profile`}
-                              className="shrink-0"
+                              className='w-9 h-9 shrink-0'
                             >
                               <SafeImage
                                 src={listing.seller_profile_image_url}
                                 type="profile"
                                 alt={`${listing.seller}'s profile picture`}
-                                width={40}
-                                height={40}
+                                width={36}
+                                height={36}
                               />
                             </Link>
                             <div className="min-w-0">

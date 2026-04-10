@@ -320,14 +320,13 @@ function SidebarContent({
           )}
         >
           {/* Avatar */}
-          <div className="w-8 h-8 rounded-full overflow-hidden shrink-0 ring-2 ring-white/10">
+          <div className="w-9 h-9 rounded-full overflow-hidden shrink-0 ring-2 ring-white/10">
             <SafeImage
               src={user?.profileImageUrl}
               type="profile"
               alt={`${user?.firstName}'s profile picture`}
               width={32}
               height={32}
-              className="w-full h-full"
             />
           </div>
 

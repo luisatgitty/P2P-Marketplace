@@ -140,6 +140,7 @@ function IdImageCard({
         {label}
       </p>
       {resolvedUrl ? (
+        // Use button instead of link to use better design
         <button
           type='button'
           onClick={() =>
@@ -152,8 +153,8 @@ function IdImageCard({
             src={resolvedUrl}
             type='id'
             alt={`Image for ${label}`}
-            width={40}
-            height={40}
+            width={36}
+            height={36}
           />
         </button>
       ) : (
@@ -279,14 +280,14 @@ function DetailModal({ verif, onClose, onApprove, onReject, actionLoading = fals
                           rel="noopener noreferrer"
                           title={`View ${verif.user_name}'s profile`}
                           aria-label={`View ${verif.user_name}'s profile`}
-                          className="shrink-0"
+                          className='w-9 h-9 shrink-0'
                         >
                           <SafeImage
                             src={verif.profile_image_url}
                             type="profile"
                             alt={`${verif.user_name}'s profile picture`}
-                            width={40}
-                            height={40}
+                            width={36}
+                            height={36}
                           />
                         </Link>
                         <div className="min-w-0">
@@ -841,14 +842,14 @@ export default function VerificationsPage() {
                               rel="noopener noreferrer"
                               title={`View ${verif.user_name}'s profile`}
                               aria-label={`View ${verif.user_name}'s profile`}
-                              className="shrink-0"
+                              className='w-9 h-9 shrink-0'
                             >
                               <SafeImage
                                 src={verif.profile_image_url}
                                 type="profile"
                                 alt={`${verif.user_name}'s profile picture`}
-                                width={40}
-                                height={40}
+                                width={36}
+                                height={36}
                               />
                             </Link>
                             <div className="min-w-0">
