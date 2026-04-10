@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
-import Image from "next/image";
 import Link from "next/link";
 import {
   MapPin, Star, MessageCircle, Bookmark, Share2,
@@ -23,6 +22,7 @@ import OfferModal from "@/components/offer-modal";
 import { openOrCreateConversationFromListing } from "@/services/messagingService";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { SafeImage } from "@/components/ui/safe-image";
 
 // ── ExtraDetail — mirrors every field the listing form collects ────────────────
 interface ExtraDetail {
@@ -81,10 +81,11 @@ function RelatedCard({ listing }: { listing: PostCardProps }) {
     <Link href={`/listing/${listing.id}`} className="group block w-full">
       <div className="bg-white dark:bg-[#1c1f2e] rounded-xl overflow-hidden border border-stone-200 dark:border-[#2a2d3e] hover:-translate-y-1 hover:shadow-md transition-all duration-200">
         <div className="relative aspect-[4/3] overflow-hidden bg-stone-100 dark:bg-[#13151f]">
-          <Image
-            src={listing.imageUrl} alt={listing.title} fill
-            className="object-cover group-hover:scale-105 transition-transform duration-300"
-            sizes="160px"
+          <SafeImage
+            src={listing.imageUrl}
+            type="card"
+            alt={`Image of ${listing.title}`}
+            fill
           />
           <div className="absolute top-1.5 left-1.5">
             <ListingTypeBadge
@@ -92,8 +93,8 @@ function RelatedCard({ listing }: { listing: PostCardProps }) {
               status={listing.status}
               sellStatus={listing.sellStatus}
               variant="solid"
-              className="text-[11px] font-bold"
-              soldClassName="text-[11px] font-bold"
+              className="text-[10px] font-bold"
+              soldClassName="text-[10px] font-bold"
             />
           </div>
         </div>
@@ -545,12 +546,11 @@ export default function ListingDetailPage() {
             {/* ── Image gallery ── */}
             <div className="bg-white dark:bg-[#1c1f2e] rounded-2xl border border-stone-200 dark:border-[#2a2d3e] overflow-hidden shadow-sm">
               <div className="relative aspect-[16/10] bg-stone-100 dark:bg-[#13151f] overflow-hidden group">
-                <Image
+                <SafeImage
                   src={images[imgIdx] ?? listing.imageUrl}
-                  alt={listing.title}
-                  fill className="object-cover"
-                  sizes="(max-width: 1024px) 100vw, 60vw"
-                  priority
+                  type="cover"
+                  alt={`Photo ${imgIdx + 1} of ${images.length}`}
+                  fill
                 />
 
                 {/* Type badge */}
@@ -608,10 +608,15 @@ export default function ListingDetailPage() {
                   {images.map((img, i) => (
                     <button key={i} onClick={() => setImgIdx(i)}
                       className={cn(
-                        "relative flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 transition-all",
+                        "relative shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 transition-all",
                         i === imgIdx ? "border-stone-800 dark:border-stone-300" : "border-transparent opacity-60 hover:opacity-100"
                       )}>
-                      <Image src={img} alt={`Photo ${i + 1}`} fill className="object-cover" sizes="64px" />
+                      <SafeImage
+                        src={img}
+                        type="thumbnail"
+                        alt={`Photo ${i + 1}`}
+                        fill
+                      />
                     </button>
                   ))}
                 </div>
@@ -817,18 +822,14 @@ export default function ListingDetailPage() {
                 <div className="flex items-center gap-3">
                   <Link href={sellerProfileHref} className="block">
                     <div className="relative">
-                      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#3a4a6a] to-[#1e2a40] flex items-center justify-center text-white font-bold text-lg flex-shrink-0 overflow-hidden hover:opacity-90 transition-opacity">
-                        {listing.seller.profileImageUrl ? (
-                          <Image
-                            src={listing.seller.profileImageUrl}
-                            alt={listing.seller.name}
-                            width={48}
-                            height={48}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          listing.seller.name[0].toUpperCase()
-                        )}
+                      <div className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg flex-shrink-0 overflow-hidden hover:opacity-90 transition-opacity">
+                        <SafeImage
+                          src={listing.seller.profileImageUrl}
+                          type="profile"
+                          alt={`${listing.seller.name}'s profile picture`}
+                          width={36}
+                          height={36}
+                        />
                       </div>
                       {sellerOnline && (
                         <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-emerald-500 border-2 border-white dark:border-[#1c1f2e]" />

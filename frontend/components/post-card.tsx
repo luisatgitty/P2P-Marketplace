@@ -42,7 +42,7 @@ export default function PostCard(props: PostCardProps) {
         <ImageLink
           href={`/listing/${id}`}
           src={imageUrl}
-          type="preview"
+          type="card"
           label={title}
         />
         <div className="absolute top-2 left-2">

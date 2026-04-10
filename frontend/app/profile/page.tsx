@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useSearchParams } from "next/navigation";
 import {
@@ -33,6 +32,8 @@ import {
   type LocationOption,
 } from "@/services/locationService";
 import { cn } from "@/lib/utils";
+import { SafeImage } from "@/components/ui/safe-image";
+import { ImageLink } from "@/components/image-link";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type VerificationState = "unverified" | "pending" | "verified" | "rejected";
@@ -136,13 +137,20 @@ function formatOverallRating(rating?: number, reviewCount?: number): string {
 }
 
 // ─── Profile listing card ─────────────────────────────────────────────────────
-function ProfileListingCard({ listing, showMeta = false, tab }: { listing: ProfileListingItem; showMeta?: boolean; tab?: ListingTab }) {
+function ProfileListingCard({ listing }: { listing: ProfileListingItem; }) {
   const fmt = new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP", minimumFractionDigits: 0 });
   return (
     <Link href={`/listing/${listing.id}`} className="block group">
       <div className="bg-white dark:bg-[#1c1f2e] rounded-2xl overflow-hidden border border-stone-200 dark:border-[#2a2d3e] hover:-translate-y-1 hover:shadow-md transition-all duration-200">
         <div className="relative aspect-4/3 bg-stone-100 dark:bg-[#13151f] overflow-hidden">
-          <img src={listing.imageUrl} alt={listing.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+          <SafeImage
+            src={listing.imageUrl}
+            type="card"
+            alt={`Image of ${listing.title}`}
+            width={400}
+            height={300}
+            // className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+          />
           <div className="absolute top-2 left-2">
             <ListingTypeBadge
               type={listing.type}
@@ -154,22 +162,13 @@ function ProfileListingCard({ listing, showMeta = false, tab }: { listing: Profi
             />
           </div>
         </div>
-        <div className="p-3">
-          <p className="text-stone-800 dark:text-stone-100 font-semibold text-sm leading-tight line-clamp-2">{listing.title}</p>
+        <div className="flex flex-col gap-1 p-2.5 sm:p-3 flex-1">
+          <p className="text-xs sm:text-sm font-semibold text-stone-800 dark:text-stone-100 line-clamp-2 leading-snug">{listing.title}</p>
           <div className="flex items-baseline gap-1 mt-0.5">
             <p className="text-stone-800 dark:text-stone-100 font-bold text-sm">{fmt.format(listing.price)}</p>
             {listing.priceUnit && <span className="text-xs text-stone-400 dark:text-stone-500">{listing.priceUnit}</span>}
           </div>
-          {showMeta ? (
-            <div className="flex items-center gap-3 mt-2 text-[11px] text-stone-400 dark:text-stone-500">
-              <span className="flex items-center gap-1"><Eye className="w-3 h-3" /> 142 views</span>
-            </div>
-          ) : (
-            <div className="flex items-center justify-between mt-1.5">
-              <span className="text-xs text-stone-400 dark:text-stone-500 truncate max-w-[65%]">{listing.location}</span>
-              <span className="text-xs text-stone-400 dark:text-stone-500">{listing.postedAt}</span>
-            </div>
-          )}
+          <span className="mt-1.5 text-xs text-stone-400 dark:text-stone-500 truncate max-w-[65%]">{listing.location}</span>
         </div>
       </div>
     </Link>
@@ -208,20 +207,18 @@ function ProfileReviewCard({ review }: { review: ProfileReviewItem }) {
     <div className="bg-white dark:bg-[#1c1f2e] rounded-2xl border border-stone-200 dark:border-[#2a2d3e] shadow-sm p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
-          {review.reviewer.profileImageUrl ? (
-            <img
-              src={review.reviewer.profileImageUrl}
-              alt={reviewerName}
-              className="w-10 h-10 rounded-full object-cover border border-stone-200 dark:border-[#2a2d3e] shrink-0"
-            />
-          ) : (
-            <div className="w-10 h-10 rounded-full bg-stone-200 dark:bg-stone-700 text-stone-700 dark:text-stone-100 font-bold text-xs flex items-center justify-center shrink-0">
-              {initials}
-            </div>
-          )}
+          {/* Use ImageLink */}
+          <SafeImage
+            src={review.reviewer.profileImageUrl}
+            type="profile"
+            alt={`Profile image of ${reviewerName}`}
+            width={40}
+            height={40}
+            className="w-9 h-9 shrink-0"
+          />
           <div className="min-w-0">
             <p className="text-sm font-bold text-stone-900 dark:text-stone-100 truncate">{reviewerName}</p>
-            <p className="text-[11px] text-stone-400 dark:text-stone-500">{review.reviewDate}</p>
+            <p className="text-xs text-stone-400 dark:text-stone-500">{review.reviewDate}</p>
           </div>
         </div>
 
@@ -244,25 +241,26 @@ function ProfileReviewCard({ review }: { review: ProfileReviewItem }) {
         <p className="mt-3 text-sm leading-relaxed text-stone-700 dark:text-stone-200">{review.comment}</p>
       )}
 
-      <Link
-        href={`/listing/${review.listing.id}`}
-        className="mt-3 flex items-center gap-3 rounded-xl border border-stone-200 dark:border-[#2a2d3e] bg-stone-50 dark:bg-[#13151f] p-2.5 hover:border-stone-300 dark:hover:border-[#3a3e52] transition-colors"
-      >
-        <img
+      <div className="mt-3 flex items-center gap-3 rounded-xl border border-stone-200 dark:border-[#2a2d3e] bg-stone-50 dark:bg-[#13151f] p-2.5 hover:border-stone-300 dark:hover:border-[#3a3e52] transition-colors">
+        <ImageLink
+          href={`/listing/${review.listing.id}`}
           src={review.listing.imageUrl}
-          alt={review.listing.title}
-          className="w-14 h-14 rounded-lg object-cover border border-stone-200 dark:border-[#2a2d3e] shrink-0"
+          type="thumbnail"
+          label={review.listing.title}
+          className="w-14 h-14"
         />
         <div className="min-w-0 flex-1">
-          <p className="text-xs font-semibold text-stone-800 dark:text-stone-100 line-clamp-2">{review.listing.title}</p>
+          <p className="text-sm font-semibold text-stone-800 dark:text-stone-100 line-clamp-1">{review.listing.title}</p>
           <p className="text-sm font-bold text-amber-700 dark:text-amber-500 mt-0.5">
             {fmt.format(review.listing.price)}
             {review.listing.priceUnit && (
               <span className="text-[11px] font-normal text-stone-400 dark:text-stone-500 ml-1">{review.listing.priceUnit}</span>
             )}
           </p>
+          {/* Listing Location */}
+          {/* <p className="text-xs text-stone-400 dark:text-stone-500 mt-0.5 truncate">{review.listing.location}</p> */}
         </div>
-      </Link>
+      </div>
     </div>
   );
 }
@@ -812,8 +810,19 @@ export default function ProfilePage() {
           {/* Cover photo */}
           <div className={cn("relative h-32 bg-linear-to-r from-[#1e2433] via-[#2a3650] to-[#1a2a3a] overflow-hidden group", !isViewingExternalProfile && "cursor-pointer")} onClick={() => !isViewingExternalProfile && cover.trigger()}>
             {cover.src
-              ? <Image src={cover.src} alt="Cover" fill className="object-cover" />
-              : <div className="absolute inset-0 opacity-10" style={{ backgroundImage: "radial-gradient(circle, #fff 1px, transparent 1px)", backgroundSize: "28px 28px" }} />}
+              ? <SafeImage
+                src={cover.src}
+                type="cover"
+                alt={`${fullName}'s cover photo`}
+                fill
+              />
+              : <div
+                className="absolute inset-0 opacity-10"
+                style={{
+                  backgroundImage: "radial-gradient(circle, #fff 1px, transparent 1px)",
+                  backgroundSize: "28px 28px"
+                }}
+              />}
             {!isViewingExternalProfile && (
               <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
                 <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-2 text-white text-sm font-medium bg-black/40 px-4 py-2 rounded-full">
@@ -850,10 +859,14 @@ export default function ProfilePage() {
                   className={cn("relative group w-20 h-20", !isViewingExternalProfile && "cursor-pointer")}
                   onClick={() => !isViewingExternalProfile && setShowAvatarMenu((v) => !v)}
                 >
-                  <div className="w-20 h-20 rounded-full border-4 border-white dark:border-[#1c1f2e] overflow-hidden shadow-md bg-linear-to-br from-[#3a4a6a] to-[#1e2a40] flex items-center justify-center">
-                    {avatar.src
-                      ? <Image src={avatar.src} alt="Avatar" width={80} height={80} className="object-cover w-full h-full" />
-                      : <span className="text-2xl font-bold text-slate-200">{initials}</span>}
+                  <div className="w-20 h-20 rounded-full border-4 border-white dark:border-[#1c1f2e] overflow-hidden shadow-md bg-[#1e2a40] flex items-center justify-center">
+                    <SafeImage
+                      src={avatar.src ?? undefined}
+                      type="profile"
+                      alt={`${fullName}'s profile photo`}
+                      width={80}
+                      height={80}
+                    />
                   </div>
                   {isProfileOnline && (
                     <span className="absolute bottom-1.5 right-1.5 w-4 h-4 rounded-full bg-emerald-500 border-3 border-white dark:border-[#1c1f2e]" />
@@ -1134,7 +1147,7 @@ export default function ProfilePage() {
               </div>
             ) : (allListings.length > 0) ? (
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 p-4">
-                {allListings.map((l) => <ProfileListingCard key={l.id} listing={l} showMeta tab={listingTab} />)}{isVerifiedSeller && <AddListingCard />}
+                {allListings.map((l) => <ProfileListingCard key={l.id} listing={l} />)}{isVerifiedSeller && <AddListingCard />}
               </div>
             ) : (
               <div className="text-center py-14 px-6">

@@ -3,8 +3,7 @@
 
 "use client";
 
-import Link from "next/link";
-import { ExternalLink, Star } from "lucide-react";
+import { Star } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import type { ConversationListing } from "@/types/messaging";
@@ -25,6 +24,7 @@ import { ConfirmActionModal } from "@/components/confirm-action-modal";
 import OfferModal from "@/components/offer-modal";
 import { ScheduleModal } from "@/components/schedule-modal";
 import { Separator } from "@/components/ui/separator";
+import { ImageLink } from "../image-link";
 
 interface ListingContextCardProps {
   conversationId?: string;
@@ -291,23 +291,13 @@ export default function ListingContextCard({
         className="h-16 mx-3 my-2 flex items-center gap-3 px-2 py-2 rounded-xl bg-stone-50 dark:bg-[#13151f] border border-border shrink-0"
       >
         {/* Listing primary image */}
-        <Link
+        <ImageLink
           href={`/listing/${listing.id}`}
-          className="w-11 h-11 rounded-lg overflow-hidden shrink-0 border border-border bg-stone-100 dark:bg-[#0f1117]"
-          title="View listing"
-        >
-          {listing.imageUrl ? (
-            <img
-              src={listing.imageUrl}
-              alt={listing.title}
-              className="w-full h-full object-cover"
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center text-base">
-              📦
-            </div>
-          )}
-        </Link>
+          src={listing.imageUrl || undefined}
+          type="thumbnail"
+          label={listing.title}
+          className="w-11 h-11"
+        />
 
         {/* Details */}
         <div className="flex-1 min-w-0">
