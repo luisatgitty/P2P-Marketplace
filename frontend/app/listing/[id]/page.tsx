@@ -9,7 +9,7 @@ import {
   CheckCircle, Phone, Zap, ArrowLeft, Truck, AlertTriangle
 } from "lucide-react";
 import { useUser } from "@/utils/UserContext";
-import { addListingBookmark, deleteListing, getListingDetailById, removeListingBookmark, submitListingReport } from "@/services/listingDetailService";
+import { addListingBookmark, deleteListing, getListingDetailById, removeListingBookmark, submitListingReport, toggleListingVisibility } from "@/services/listingDetailService";
 import { getUserProfileData } from "@/services/profileService";
 import PostCard, { type PostCardProps } from "@/components/post-card";
 import ListingTypeBadge from "@/components/listing-type-badge";
@@ -188,6 +188,7 @@ export default function ListingDetailPage() {
   const [submittingReport, setSubmittingReport] = useState(false);
   const [shownContactNumber, setShownContactNumber] = useState<string | null>(null);
   const [deleting,    setDeleting]   = useState(false);
+  const [toggling,    setToggling]   = useState(false);
   const [messaging,   setMessaging]  = useState(false);
   const [isBookmarking, setIsBookmarking] = useState(false);
   const [isFetchingContact, setIsFetchingContact] = useState(false);
@@ -250,9 +251,9 @@ export default function ListingDetailPage() {
   const isBannedState = listingStatus === "banned";
   const isDeletedState = listingStatus === "deleted";
   const isSellerInactiveState = listing.seller.isActive === false;
-  const ownerUnavailableState = isUnavailableState || isDeletedState;
   const visitorUnavailableState = isUnavailableState || isBannedState || isDeletedState || isSellerInactiveState;
   const isSold = isSell && (listingStatus === "sold" || listingSellStatus === "sold");
+  const isListingAvailable = listingStatus === "available";
   const images       = extra.images.filter(Boolean);
   const sellerRating = Number.isFinite(listing.seller.rating) ? Number(listing.seller.rating) : 0;
   const hasSellerRating = sellerRating > 0;
@@ -464,6 +465,38 @@ export default function ListingDetailPage() {
     } finally {
       setDeleting(false);
     }
+  }
+
+  async function handleListingVisibility() {
+  if (!isAuth) {
+    router.push("/login");
+    return;
+  }
+  if (!isOwnListing || toggling) return;
+
+  const confirmed = window.confirm(`Are you sure you want to ${isListingAvailable ? "hide" : "show"} this listing?`);
+  if (!confirmed) return;
+
+  setToggling(true);
+  try {
+    const response = await toggleListingVisibility(id);
+    const nextStatus = response.status.toLowerCase();
+
+    setListing((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        status: nextStatus,
+      };
+    });
+
+    toast.success(nextStatus === "available" ? "Listing is now visible." : "Listing is now hidden.", { position: "top-center" });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Failed to update listing visibility.";
+    toast.error(message, { position: "top-center" });
+  } finally {
+    setToggling(false);
+  }
   }
 
   return (
@@ -687,27 +720,32 @@ export default function ListingDetailPage() {
                 {/* ── CTA buttons ── */}
                 {isOwnListing ? (
                   <div className="flex flex-col gap-2">
-                    {ownerUnavailableState ? (
+                    {isDeletedState || isBannedState || isSold ? (
                       <button
                         disabled
                         className="flex items-center justify-center gap-2 w-full py-3 rounded-full bg-stone-400/80 text-white text-sm font-bold cursor-not-allowed opacity-95"
                       >
                         <AlertTriangle className="w-4 h-4" /> Unavailable
                       </button>
-                    ) : isSold ? (
-                      <button
-                        disabled
-                        className="flex items-center justify-center gap-2 w-full py-3 rounded-full bg-emerald-600/90 text-white text-sm font-bold cursor-not-allowed opacity-95"
-                      >
-                        <CheckCircle className="w-4 h-4" /> Sold
-                      </button>
                     ) : (
                       <>
+                        {/* Edit Listing Button */}
                         <Link
                           href={`/listing/${id}/edit`}
                           className="flex items-center justify-center gap-2 w-full py-3 rounded-full bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 text-sm font-bold hover:opacity-90 transition-opacity">
                           Edit Listing
                         </Link>
+
+                        {/* Hide Listing Button */}
+                        <button
+                          onClick={handleListingVisibility}
+                          disabled={toggling}
+                          className="flex items-center justify-center w-full py-2.5 rounded-full border-2 border-stone-200 dark:border-[#2a2d3e] text-stone-700 dark:text-stone-200 bg-white dark:bg-transparent text-sm font-semibold hover:border-stone-400 dark:hover:border-stone-500 hover:bg-stone-50 dark:hover:bg-[#252837] transition-all"
+                        >
+                          {isListingAvailable ? "Hide Listing" : "Show Listing"}
+                        </button>
+
+                        {/* Remove Listing Button */}
                         <button
                           onClick={handleRemoveListing}
                           disabled={deleting}

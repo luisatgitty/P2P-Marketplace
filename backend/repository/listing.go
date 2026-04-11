@@ -786,6 +786,46 @@ func DeleteListing(userId, listingId string) error {
 	return DeleteAdminListing(listingId)
 }
 
+func ToggleListingVisibility(userId, listingId string) (string, error) {
+	db := middleware.DBConn
+
+	var currentStatus string
+	result := db.Raw(`
+		SELECT status::text AS status
+		FROM public.listings
+		WHERE id = $1 AND user_id = $2
+		LIMIT 1
+	`, listingId, userId).Scan(&currentStatus)
+	if result.Error != nil {
+		return "", fmt.Errorf("Failed to validate listing")
+	}
+	if result.RowsAffected == 0 {
+		return "", fmt.Errorf("Listing not found or unauthorized")
+	}
+
+	normalized := strings.ToUpper(strings.TrimSpace(currentStatus))
+	if normalized == "DELETED" {
+		return "", fmt.Errorf("Cannot update visibility for deleted listing")
+	}
+	if normalized == "SOLD" {
+		return "", fmt.Errorf("Cannot update visibility for sold listing")
+	}
+	if normalized != "AVAILABLE" && normalized != "UNAVAILABLE" {
+		return "", fmt.Errorf("Listing visibility cannot be toggled from current status")
+	}
+
+	nextStatus := "UNAVAILABLE"
+	if normalized == "UNAVAILABLE" {
+		nextStatus = "AVAILABLE"
+	}
+
+	if err := applyListingVisibilityStatus(listingId, nextStatus); err != nil {
+		return "", err
+	}
+
+	return nextStatus, nil
+}
+
 func MarkListingAsComplete(userId, listingId string) ([]string, bool, error) {
 	db := middleware.DBConn
 	tx := db.Begin()

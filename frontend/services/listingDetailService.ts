@@ -183,6 +183,27 @@ export async function deleteListing(id: string): Promise<{ listingId: string; st
   }
 }
 
+export async function toggleListingVisibility(id: string): Promise<{ listingId: string; status: "AVAILABLE" | "UNAVAILABLE" }> {
+  try {
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/listing/${encodeURIComponent(id)}/toggle-visibility`, {
+      method: "PATCH",
+      credentials: "include",
+    });
+
+    const parsedJson = await res.json();
+    if (!res.ok) {
+      throw parsedJson?.data?.message || "Failed to update listing visibility.";
+    }
+
+    return {
+      listingId: parsedJson?.data?.listingId,
+      status: parsedJson?.data?.status,
+    };
+  } catch (error: any) {
+    throw error?.message || "An unexpected error occurred. Please try again later.";
+  }
+}
+
 export async function getMyListingReview(id: string): Promise<ListingReviewPayload | null> {
   try {
     const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/listing/${id}/review`, {

@@ -182,6 +182,35 @@ func DeleteListing(c *fiber.Ctx) error {
 	})
 }
 
+func ToggleListingVisibility(c *fiber.Ctx) error {
+	listingId := strings.TrimSpace(c.Params("id"))
+	if listingId == "" {
+		return SendErrorResponse(c, 400, "Listing ID is required", nil)
+	}
+
+	userId := fmt.Sprintf("%v", c.Locals("userId"))
+	if strings.TrimSpace(userId) == "" || userId == "%!v(<nil>)" {
+		return SendErrorResponse(c, 401, "User is not authenticated", nil)
+	}
+
+	nextStatus, err := repository.ToggleListingVisibility(userId, listingId)
+	if err != nil {
+		message := err.Error()
+		if strings.EqualFold(message, "Listing not found or unauthorized") {
+			return SendErrorResponse(c, 404, message, err)
+		}
+		if strings.EqualFold(message, "Cannot update visibility for deleted listing") || strings.EqualFold(message, "Cannot update visibility for sold listing") || strings.EqualFold(message, "Listing visibility cannot be toggled from current status") {
+			return SendErrorResponse(c, 400, message, err)
+		}
+		return SendErrorResponse(c, 500, message, err)
+	}
+
+	return SendSuccessResponse(c, 200, "Listing visibility updated successfully", map[string]any{
+		"listingId": listingId,
+		"status":    nextStatus,
+	})
+}
+
 func GetListingById(c *fiber.Ctx) error {
 	listingId := strings.TrimSpace(c.Params("id"))
 	if listingId == "" {
