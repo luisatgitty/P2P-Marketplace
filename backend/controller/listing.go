@@ -266,7 +266,7 @@ func GetListingById(c *fiber.Ctx) error {
 		"sellStatus": strings.ToLower(strings.TrimSpace(listing.SellStatus)),
 		"category":   listing.Category,
 		"location":   strings.TrimSpace(fmt.Sprintf("%s, %s", listing.LocationCity, listing.LocationProv)),
-		"postedAt":   timeAgo(listing.CreatedAt),
+		"postedAt":   listing.CreatedAt.UTC().Format(time.RFC3339),
 		"imageUrl":   mapPrimaryImage(baseURL, images),
 		"seller": map[string]any{
 			"id":              listing.SellerId,
@@ -603,7 +603,7 @@ func GetListings(c *fiber.Ctx) error {
 			"category":  l.Category,
 			"condition": mapConditionDisplay(l.Condition),
 			"location":  location,
-			"postedAt":  timeAgo(l.CreatedAt),
+			"postedAt":  l.CreatedAt.UTC().Format(time.RFC3339),
 			"createdAt": l.CreatedAt.UnixMilli(),
 			"imageUrl":  mapPrimaryImage(baseURL, []string{l.ImageUrl}),
 			"seller": map[string]any{
@@ -729,7 +729,7 @@ func mapAssetURLs(baseURL string, raw []string) []string {
 func mapPrimaryImage(baseURL string, raw []string) string {
 	images := mapAssetURLs(baseURL, raw)
 	if len(images) == 0 {
-		return "https://images.unsplash.com/photo-1484154218962-a197022b5858?w=800&q=80"
+		return ""
 	}
 	return images[0]
 }
@@ -739,7 +739,7 @@ func mapRelatedListings(baseURL string, listings []model.ProfileListingFromDb) [
 	for _, l := range listings {
 		img := l.ImageUrl
 		if img == "" {
-			img = "https://images.unsplash.com/photo-1484154218962-a197022b5858?w=800&q=80"
+			img = ""
 		} else if !strings.HasPrefix(img, "http://") && !strings.HasPrefix(img, "https://") {
 			img = strings.TrimRight(baseURL, "/") + "/" + strings.TrimLeft(img, "/")
 		}

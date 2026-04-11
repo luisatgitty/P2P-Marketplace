@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useMemo, useEffect, useCallback } from "react";
-import Link from "next/link";
 import {
   Search, X, CheckCircle2, XCircle, ShieldCheck, Clock,
   Eye, AlertTriangle, IdCard, ChevronLeft, ChevronRight,
@@ -11,7 +10,7 @@ import {
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { validateImageURL } from "@/utils/validation";
-import { SafeImage } from "@/components/ui/safe-image";
+import { ImageLink } from "@/components/image-link";
 import {
   getAdminVerifications,
   setAdminVerificationStatus,
@@ -114,7 +113,7 @@ function InfoRow({ icon: Icon, label, value, mono = false }: {
           {label}
         </p>
         <p className={cn(
-          "text-sm break-words",
+          "text-sm wrap-break-word",
           mono ? "font-mono text-stone-700 dark:text-stone-200" : "text-stone-700 dark:text-stone-200",
           !value && "text-stone-400 dark:text-stone-600 italic font-normal",
         )}>
@@ -125,31 +124,37 @@ function InfoRow({ icon: Icon, label, value, mono = false }: {
   );
 }
 
-function IdImageCard({ label, imageUrl }: { label: string; imageUrl?: string | null }) {
-  const resolvedUrl = imageUrl ? validateImageURL(imageUrl) : "";
+function IdImageCard({
+  label,
+  imageUrl,
+}: {
+  label: string;
+  imageUrl?: string | null;
+}) {
+  const resolvedUrl = imageUrl ? validateImageURL(imageUrl) : '';
 
   return (
-    <div className="space-y-1.5">
-      <p className="text-xs font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest">
+    <div className='space-y-1.5'>
+      <p className='text-xs font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest'>
         {label}
       </p>
       {resolvedUrl ? (
-        <button
-          type="button"
-          onClick={() => window.open(resolvedUrl, "_blank", "noopener,noreferrer")}
-          className="w-full rounded-xl overflow-hidden border border-stone-200 dark:border-[#2a2d3e] bg-stone-100 dark:bg-[#13151f] hover:opacity-95 transition-opacity"
-          title="View full image"
-        >
-          <img
+        <div className="w-full rounded-xl overflow-hidden border border-stone-200 dark:border-[#2a2d3e] bg-stone-100 dark:bg-[#13151f] hover:opacity-95 transition-opacity">
+          <ImageLink
+            href={resolvedUrl}
+            newTab
             src={resolvedUrl}
-            alt={label}
-            className="w-full h-auto object-contain max-h-[70vh]"
+            type="id"
+            label={label}
+            className="w-full h-auto"
           />
-        </button>
+        </div>
       ) : (
-        <div className="aspect-4/3 rounded-xl bg-stone-100 dark:bg-[#13151f] border-2 border-dashed border-stone-200 dark:border-[#2a2d3e] flex flex-col items-center justify-center gap-2">
-          <IdCard className="w-9 h-9 text-stone-300 dark:text-stone-600" />
-          <span className="text-xs font-medium text-stone-400 dark:text-stone-500">No image</span>
+        <div className='aspect-4/3 rounded-xl bg-stone-100 dark:bg-[#13151f] border-2 border-dashed border-stone-200 dark:border-[#2a2d3e] flex flex-col items-center justify-center gap-2'>
+          <IdCard className='w-9 h-9 text-stone-300 dark:text-stone-600' />
+          <span className='text-xs font-medium text-stone-400 dark:text-stone-500'>
+            No image
+          </span>
         </div>
       )}
     </div>
@@ -261,13 +266,12 @@ function DetailModal({ verif, onClose, onApprove, onReject, actionLoading = fals
                         Profile
                       </p>
                       <div className="flex items-center gap-2.5">
-                        <SafeImage
+                        <ImageLink
+                          href={`/profile?userId=${verif.user_id}`}
+                          newTab
                           src={verif.profile_image_url}
-                          fallbackSrc="/profile-icon.png"
-                          alt={verif.user_name}
-                          width={32}
-                          height={32}
-                          className="w-9 h-9 rounded-full object-cover border border-stone-200 dark:border-[#2a2d3e] shrink-0"
+                          type="profile"
+                          label={verif.user_name}
                         />
                         <div className="min-w-0">
                           <p className="text-sm font-bold text-stone-800 dark:text-stone-100 truncate">
@@ -398,8 +402,8 @@ function DetailModal({ verif, onClose, onApprove, onReject, actionLoading = fals
             <div>
               <SectionLabel>Uploaded Photos</SectionLabel>
               <div className="space-y-4">
-                <IdImageCard label="ID — Front" imageUrl={verif.id_image_front_url} />
-                <IdImageCard label="ID — Back" imageUrl={verif.id_image_back_url} />
+                <IdImageCard label="Front of ID" imageUrl={verif.id_image_front_url} />
+                <IdImageCard label="Back of ID" imageUrl={verif.id_image_back_url} />
                 <IdImageCard label="Selfie while holding ID" imageUrl={verif.selfie_url} />
               </div>
             </div>
@@ -815,23 +819,13 @@ export default function VerificationsPage() {
                         {/* Applicant */}
                         <TableCell className="py-2">
                           <div className="flex items-center gap-3">
-                            <Link
+                            <ImageLink
                               href={`/profile?userId=${verif.user_id}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              title="View reporter profile"
-                              aria-label="View reporter profile"
-                              className="shrink-0"
-                            >
-                              <SafeImage
-                                src={verif.profile_image_url}
-                                fallbackSrc="/profile-icon.png"
-                                alt={verif.user_name}
-                                width={32}
-                                height={32}
-                                className="w-9 h-9 rounded-full object-cover border border-stone-200 dark:border-[#2a2d3e] shrink-0"
-                              />
-                            </Link>
+                              newTab
+                              src={verif.profile_image_url}
+                              type="profile"
+                              label={verif.user_name}
+                            />
                             <div className="min-w-0">
                               <p className="text-sm font-bold text-stone-800 dark:text-stone-100 truncate">{verif.user_name}</p>
                               <p className="text-xs text-stone-400 dark:text-stone-500 truncate">{verif.user_email}</p>

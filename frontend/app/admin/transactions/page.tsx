@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useMemo, useEffect, useCallback } from "react";
-import Link from "next/link";
 import {
   Search,
   Clock,
@@ -39,6 +38,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { ImageLink } from "@/components/image-link";
+import { formatPrice } from "@/utils/string-builder";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 type ListingType = "SELL" | "RENT" | "SERVICE";
@@ -73,12 +74,6 @@ const STATUS_CONFIG: Record<TransactionStatus, string> = {
   CANCELLED: "bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-300",
 };
 
-const phpFmt = new Intl.NumberFormat("en-PH", {
-  style:                 "currency",
-  currency:              "PHP",
-  minimumFractionDigits: 0,
-});
-
 function formatDateRange(start?: string | null, end?: string | null): string {
   if (!start || !end) return "N/A";
   const s = new Date(start);
@@ -93,14 +88,6 @@ function buildScheduleUnitsLabel(tx: AdminTransaction): string {
     return `${units} ${units === 1 ? "unit" : "units"}`;
   }
   return `${units} ${units === 1 ? "day" : "days"}`;
-}
-
-function Avatar({ src, alt }: { src?: string; alt: string }) {
-  return <img
-    src={src || "/profile-icon.png"}
-    alt={alt}
-    className="w-9 h-9 rounded-full object-cover border border-border shrink-0"
-  />;
 }
 
 function DealStateRow({ label, agreed }: { label: string; agreed: boolean }) {
@@ -423,95 +410,137 @@ export default function TransactionsPage() {
                     return (
                       <TableRow
                         key={transaction.id}
-                        className="border-stone-100 dark:border-[#2a2d3e] hover:bg-stone-50 dark:hover:bg-[#252837] transition-colors"
+                        className='border-stone-100 dark:border-[#2a2d3e] hover:bg-stone-50 dark:hover:bg-[#252837] transition-colors'
                       >
-
                         {/* Client */}
-                        <TableCell className="py-3.5 min-w-55">
-                          <div className="flex items-center gap-2.5">
-                            <Link href={`/profile?userId=${transaction.client_user_id}`} target="_blank" rel="noopener noreferrer" title="Open client profile" className="shrink-0">
-                              <Avatar
-                                src={transaction.client_profile_image_url}
-                                alt={transaction.client_full_name}
-                              />
-                            </Link>
-                            <div className="min-w-0">
-                              <p className="text-sm font-bold text-stone-800 dark:text-stone-100 truncate">{transaction.client_full_name}</p>
-                              <p className="text-xs text-stone-500 dark:text-stone-400 truncate">{transaction.client_location || "-"}</p>
+                        <TableCell className='py-3.5 min-w-55'>
+                          <div className='flex items-center gap-2.5'>
+                            <ImageLink
+                              href={`/profile?userId=${transaction.client_user_id}`}
+                              newTab
+                              src={transaction.client_profile_image_url}
+                              type='profile'
+                              label={transaction.client_full_name}
+                            />
+                            <div className='min-w-0'>
+                              <p className='text-sm font-bold text-stone-800 dark:text-stone-100 truncate'>
+                                {transaction.client_full_name}
+                              </p>
+                              <p className='text-xs text-stone-500 dark:text-stone-400 truncate'>
+                                {transaction.client_location || '-'}
+                              </p>
                             </div>
                           </div>
                         </TableCell>
 
                         {/* Owner */}
-                        <TableCell className="py-3.5 min-w-55">
-                          <div className="flex items-center gap-2.5">
-                            <Link href={`/profile?userId=${transaction.owner_user_id}`} target="_blank" rel="noopener noreferrer" title="Open owner profile" className="shrink-0">
-                              <Avatar
-                                src={transaction.owner_profile_image_url}
-                                alt={transaction.owner_full_name}
-                              />
-                            </Link>
-                            <div className="min-w-0">
-                              <p className="text-sm font-bold text-stone-800 dark:text-stone-100 truncate">{transaction.owner_full_name}</p>
-                              <p className="text-xs text-stone-500 dark:text-stone-400 truncate">{transaction.owner_location || "-"}</p>
+                        <TableCell className='py-3.5 min-w-55'>
+                          <div className='flex items-center gap-2.5'>
+                            <ImageLink
+                              href={`/profile?userId=${transaction.owner_user_id}`}
+                              newTab
+                              src={transaction.owner_profile_image_url}
+                              type='profile'
+                              label={transaction.owner_full_name}
+                            />
+                            <div className='min-w-0'>
+                              <p className='text-sm font-bold text-stone-800 dark:text-stone-100 truncate'>
+                                {transaction.owner_full_name}
+                              </p>
+                              <p className='text-xs text-stone-500 dark:text-stone-400 truncate'>
+                                {transaction.owner_location || '-'}
+                              </p>
                             </div>
                           </div>
                         </TableCell>
 
                         {/* Listing */}
-                        <TableCell className="py-3.5 min-w-65">
-                          <div className="flex items-center gap-2.5">
-                            <Link href={`/listing/${transaction.listing_id}`} target="_blank" rel="noopener noreferrer" title="Open listing" className="shrink-0">
-                              {transaction.listing_image_url ? (
-                                <img src={transaction.listing_image_url} alt={transaction.listing_title} className="w-10 h-10 rounded-md object-cover border border-border shrink-0" />
-                              ) : (
-                                <div className="w-12 h-12 rounded-md bg-stone-200 dark:bg-[#2a2d3e] border border-border flex items-center justify-center shrink-0">📦</div>
-                              )}
-                            </Link>
-                            <div className="min-w-0">
-                              <p className="text-sm font-bold text-stone-800 dark:text-stone-100 truncate">{transaction.listing_title}</p>
-                              <div className="flex items-center gap-2 mt-0.5">
-                                <span className={cn("inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full", typeConfig.cls)}>
-                                  <TypeIcon className="w-2.5 h-2.5" /> {typeConfig.label}
+                        <TableCell className='py-3.5 min-w-65'>
+                          <div className='flex items-center gap-2.5'>
+                            <ImageLink
+                              href={`/listing/${transaction.listing_id}`}
+                              newTab
+                              src={transaction.listing_image_url}
+                              type='thumbnail'
+                              label={transaction.listing_title}
+                            />
+                            <div className='min-w-0'>
+                              <p className='text-sm font-bold text-stone-800 dark:text-stone-100 truncate'>
+                                {transaction.listing_title}
+                              </p>
+                              <div className='flex items-center gap-2 mt-0.5'>
+                                <span
+                                  className={cn(
+                                    'inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full',
+                                    typeConfig.cls,
+                                  )}
+                                >
+                                  <TypeIcon className='w-2.5 h-2.5' />{' '}
+                                  {typeConfig.label}
                                 </span>
-                                <p className="text-xs text-stone-500 dark:text-stone-400 truncate">{phpFmt.format(transaction.total_price)} / {transaction.listing_price_unit || "unit"}</p>
+                                <p className='text-xs text-stone-500 dark:text-stone-400 truncate'>
+                                  {formatPrice(transaction.total_price)} {transaction.listing_price_unit}
+                                </p>
                               </div>
                             </div>
                           </div>
                         </TableCell>
 
                         {/* Schedule */}
-                        <TableCell className="py-3.5 min-w-57.5 whitespace-nowrap">
-                          <p className="text-sm text-stone-800 dark:text-stone-100">{formatDateRange(transaction.start_date, transaction.end_date)}</p>
-                          <p className="text-xs text-stone-500 dark:text-stone-400">{transaction.selected_time_window || "N/A"}</p>
+                        <TableCell className='py-3.5 min-w-57.5 whitespace-nowrap'>
+                          <p className='text-sm text-stone-800 dark:text-stone-100'>
+                            {formatDateRange(
+                              transaction.start_date,
+                              transaction.end_date,
+                            )}
+                          </p>
+                          <p className='text-xs text-stone-500 dark:text-stone-400'>
+                            {transaction.selected_time_window || 'N/A'}
+                          </p>
                         </TableCell>
 
                         {/* Total Price */}
-                        <TableCell className="py-3.5 min-w-37.5 whitespace-nowrap">
-                          <p className="text-sm font-bold text-stone-800 dark:text-stone-100">{phpFmt.format(transaction.total_price)}</p>
-                          <p className="text-xs text-stone-500 dark:text-stone-400">{buildScheduleUnitsLabel(transaction)}</p>
+                        <TableCell className='py-3.5 min-w-37.5 whitespace-nowrap'>
+                          <p className='text-sm font-bold text-stone-800 dark:text-stone-100'>
+                            {formatPrice(transaction.total_price)}
+                          </p>
+                          <p className='text-xs text-stone-500 dark:text-stone-400'>
+                            {buildScheduleUnitsLabel(transaction)}
+                          </p>
                         </TableCell>
 
                         {/* Agreement */}
-                        <TableCell className="py-3.5 min-w-45 space-y-1.5">
-                          <DealStateRow label="Owner" agreed={Boolean(transaction.provider_agreed)} />
-                          <DealStateRow label="Client" agreed={Boolean(transaction.client_agreed)} />
+                        <TableCell className='py-3.5 min-w-45 space-y-1.5'>
+                          <DealStateRow
+                            label='Owner'
+                            agreed={Boolean(transaction.provider_agreed)}
+                          />
+                          <DealStateRow
+                            label='Client'
+                            agreed={Boolean(transaction.client_agreed)}
+                          />
                         </TableCell>
 
                         {/* Status */}
-                        <TableCell className="py-3.5 whitespace-nowrap">
-                          <span className={cn("text-xs font-bold px-2 py-0.5 rounded-full", STATUS_CONFIG[transaction.status])}>
-                            {transaction.status.charAt(0) + transaction.status.slice(1).toLowerCase()}
+                        <TableCell className='py-3.5 whitespace-nowrap'>
+                          <span
+                            className={cn(
+                              'text-xs font-bold px-2 py-0.5 rounded-full',
+                              STATUS_CONFIG[transaction.status],
+                            )}
+                          >
+                            {transaction.status.charAt(0) +
+                              transaction.status.slice(1).toLowerCase()}
                           </span>
                         </TableCell>
 
                         {/* Completed At */}
-                        <TableCell className="py-3.5 text-sm text-stone-500 dark:text-stone-400 whitespace-nowrap">
+                        <TableCell className='py-3.5 text-sm text-stone-500 dark:text-stone-400 whitespace-nowrap'>
                           {formatDateTime(transaction.completed_at)}
                         </TableCell>
 
                         {/* Created At */}
-                        <TableCell className="py-3.5 text-sm text-stone-500 dark:text-stone-400 whitespace-nowrap">
+                        <TableCell className='py-3.5 text-sm text-stone-500 dark:text-stone-400 whitespace-nowrap'>
                           {formatDateTime(transaction.created_at)}
                         </TableCell>
                       </TableRow>

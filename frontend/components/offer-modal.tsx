@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import { formatPrice } from "@/utils/string-builder";
 
 interface OfferModalProps {
   open: boolean;
@@ -20,12 +21,6 @@ interface OfferModalProps {
   onClose: () => void;
   presets?: number[];
 }
-
-const fmt = new Intl.NumberFormat("en-PH", {
-  style: "currency",
-  currency: "PHP",
-  minimumFractionDigits: 0,
-});
 
 export default function OfferModal({
   open,
@@ -67,7 +62,7 @@ export default function OfferModal({
           <div className="mb-4">
             <div className="flex justify-between text-xs text-stone-500 dark:text-stone-400 mb-2">
               <span>Your offer</span>
-              <span>Listed at {fmt.format(listedPrice)}</span>
+              <span>Listed at {formatPrice(listedPrice)}</span>
             </div>
 
             <div className="flex items-center border-2 border-stone-200 dark:border-[#2a2d3e] rounded-xl overflow-hidden focus-within:border-stone-400 dark:focus-within:border-stone-500 transition-colors">

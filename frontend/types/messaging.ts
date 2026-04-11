@@ -28,6 +28,13 @@ export interface ConversationParticipant {
   firstName: string;
   lastName: string;
   profileImageUrl?: string | null;
+  status?: string;
+  location?: string;
+  city?: string;
+  municipality?: string;
+  cityMunicipality?: string;
+  city_municipality?: string;
+  province?: string;
   isOnline?: boolean;
   isActive?: boolean;
   isLocked?: boolean;

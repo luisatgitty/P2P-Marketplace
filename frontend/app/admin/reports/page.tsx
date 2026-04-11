@@ -1,7 +1,6 @@
 "use client";
 
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
-import Link from "next/link";
 import {
   Search,
   X,
@@ -19,7 +18,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { SafeImage } from "@/components/ui/safe-image";
+import { ImageLink } from "@/components/image-link";
 import {
   getAdminReports,
   setAdminReportAction,
@@ -40,6 +39,7 @@ import {
 } from "@/components/ui/table";
 import { AdminReport, ReportStatus } from "@/types/admin";
 import ReportActionsModal from "@/components/admin/report-actions-modal";
+import { formatPrice } from "@/utils/string-builder";
 
 type SortField = "reporter" | "listingOwner" | "reportedListing" | "submitted" | "reviewedAt";
 type SortDir = "asc" | "desc";
@@ -51,12 +51,6 @@ const STATUS_CONFIG: Record<ReportStatus, { cls: string; label: string }> = {
   RESOLVED:  { cls: "bg-teal-100 dark:bg-teal-900/40 text-teal-700 dark:text-teal-300",      label: "Resolved"  },
   DISMISSED: { cls: "bg-stone-100 dark:bg-stone-800 text-stone-500 dark:text-stone-400",     label: "Dismissed" },
 };
-
-const phpFmt = new Intl.NumberFormat("en-PH", {
-  style: "currency",
-  currency: "PHP",
-  minimumFractionDigits: 0,
-});
 
 // ── Shared filter select ───────────────────────────────────────────────────────
 function FilterSelect({
@@ -411,23 +405,13 @@ export default function ReportsPage() {
                           {/* Reporter */}
                           <TableCell className="py-3.5">
                             <div className="flex items-center gap-2.5">
-                              <Link
+                              <ImageLink
                                 href={`/profile?userId=${report.reporter_id}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                title="Open reporter profile"
-                                aria-label="Open reporter profile"
-                                className="shrink-0"
-                              >
-                                <SafeImage
-                                  src={report.reporter_profile_image_url}
-                                  fallbackSrc="/profile-icon.png"
-                                  alt="Profile"
-                                  width={32}
-                                  height={32}
-                                  className="w-9 h-9 rounded-full object-cover border border-stone-200 dark:border-[#2a2d3e] shrink-0"
-                                />
-                              </Link>
+                                newTab
+                                src={report.reporter_profile_image_url}
+                                type="profile"
+                                label={report.reporter}
+                              />
                               <div className="min-w-0">
                                 <p className="text-sm font-semibold text-stone-800 dark:text-stone-100 whitespace-nowrap truncate">
                                   {report.reporter}
@@ -443,23 +427,13 @@ export default function ReportsPage() {
                           <TableCell className="py-3.5 text-sm text-stone-600 dark:text-stone-300 whitespace-nowrap">
                             {report.target_type === "LISTING" ? (
                               <div className="flex items-center gap-2.5">
-                                <Link
+                                <ImageLink
                                   href={`/profile?userId=${report.listing_owner_id}`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  title="Open listing owner profile"
-                                  aria-label="Open listing owner profile"
-                                  className="shrink-0"
-                                >
-                                  <SafeImage
-                                    src={report.listing_owner_profile_image_url}
-                                    fallbackSrc="/profile-icon.png"
-                                    alt="Profile"
-                                    width={32}
-                                    height={32}
-                                    className="w-9 h-9 rounded-full object-cover border border-stone-200 dark:border-[#2a2d3e] shrink-0"
-                                  />
-                                </Link>
+                                  newTab
+                                  src={report.listing_owner_profile_image_url}
+                                  type="profile"
+                                  label={report.listing_owner}
+                                />
                                 <div className="min-w-0">
                                   <p className="text-sm font-semibold text-stone-800 dark:text-stone-100 whitespace-nowrap truncate">
                                     {report.listing_owner}
@@ -476,29 +450,19 @@ export default function ReportsPage() {
                           <TableCell className="py-3.5 max-w-65">
                             {report.target_type === "LISTING" ? (
                               <div className="flex items-center gap-2.5 min-w-0">
-                                <Link
+                                <ImageLink
                                   href={`/listing/${report.target_id}`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  title="Open listing"
-                                  aria-label="Open listing"
-                                  className="shrink-0"
-                                >
-                                  <SafeImage
-                                    src={report.listing_image_url}
-                                    fallbackSrc="/logo.png"
-                                    alt={report.target_name}
-                                    width={40}
-                                    height={40}
-                                    className="w-10 h-10 rounded-md object-cover border border-stone-200 dark:border-[#2a2d3e] shrink-0"
-                                  />
-                                </Link>
+                                  newTab
+                                  src={report.listing_image_url}
+                                  type="thumbnail"
+                                  label={report.target_name}
+                                />
                                 <div className="min-w-0">
                                   <p className="text-sm font-semibold text-stone-700 dark:text-stone-200 truncate">
                                     {report.target_name}
                                   </p>
                                   <p className="text-xs text-stone-500 dark:text-stone-400 truncate">
-                                    {phpFmt.format(report.listing_price ?? 0)} / {report.listing_price_unit || "unit"}
+                                    {formatPrice(report.listing_price ?? 0)} {report.listing_price_unit}
                                   </p>
                                 </div>
                               </div>

@@ -1,8 +1,6 @@
 "use client";
 
 import { useState, useMemo, useEffect, useCallback } from "react";
-import Link from "next/link";
-import Image from "next/image";
 import {
   Search,
   ShieldCheck,
@@ -18,13 +16,12 @@ import {
   UserCheck,
   UserX,
   Trash2,
-  ExternalLink,
   RotateCw,
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { SafeImage } from "@/components/ui/safe-image";
+import { ImageLink } from "@/components/image-link";
 import {
   getAdminUsers,
   setAdminUserActive,
@@ -514,23 +511,13 @@ export default function UsersPage() {
                       {/* Name */}
                       <TableCell className="py-2 whitespace-nowrap">
                         <div className="flex items-center gap-3 w-max">
-                          <Link
+                          <ImageLink
                             href={`/profile?userId=${user.id}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            title="Open profile"
-                            aria-label="Open profile"
-                            className="shrink-0"
-                          >
-                            <SafeImage
-                              src={user.profile_image_url}
-                              fallbackSrc="/profile-icon.png"
-                              alt="Profile"
-                              width={32}
-                              height={32}
-                              className="w-10 h-10 rounded-full object-cover border border-stone-200 dark:border-[#2a2d3e]"
-                            />
-                          </Link>
+                            newTab
+                            src={user.profile_image_url}
+                            type="profile"
+                            label={`${user.first_name} ${user.last_name}`}
+                          />
                           <div className="w-max">
                             <p className="text-sm font-bold text-stone-800 dark:text-stone-100 whitespace-nowrap">
                               {user.first_name}

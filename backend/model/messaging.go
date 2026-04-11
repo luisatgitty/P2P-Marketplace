@@ -26,6 +26,9 @@ type ConversationFromDb struct {
 	OtherFirstName     string     `gorm:"column:other_first_name"`
 	OtherLastName      string     `gorm:"column:other_last_name"`
 	OtherProfileImgUrl string     `gorm:"column:other_profile_image_url"`
+	OtherVerifStatus   string     `gorm:"column:other_verification_status"`
+	OtherLocationCity  string     `gorm:"column:other_location_city"`
+	OtherLocationProv  string     `gorm:"column:other_location_province"`
 	OtherIsActive      bool       `gorm:"column:other_is_active"`
 	OtherLockedUntil   *time.Time `gorm:"column:other_account_locked_until"`
 	SelfIsActive       bool       `gorm:"column:self_is_active"`

@@ -72,7 +72,7 @@ func GetUserListings(userId string) ([]model.ProfileListingFromDb, error) {
 			LOWER(l.listing_type::text) AS type,
 			COALESCE(c.name, 'Others') AS category,
 			TRIM(BOTH ', ' FROM CONCAT_WS(', ', NULLIF(l.location_city, ''), NULLIF(l.location_province, ''))) AS location,
-			TO_CHAR(l.created_at, 'Mon DD, YYYY') AS posted_at,
+			TO_CHAR(l.created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS posted_at,
 			COALESCE(li.image_url, '') AS image_url,
 			TRIM(BOTH ' ' FROM CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, ''))) AS seller_name,
 			COALESCE(rv.avg_rating, 5.0) AS seller_rating,
@@ -115,7 +115,7 @@ func GetUserBookmarks(userId string) ([]model.ProfileListingFromDb, error) {
 			LOWER(l.listing_type::text) AS type,
 			COALESCE(c.name, 'Others') AS category,
 			TRIM(BOTH ', ' FROM CONCAT_WS(', ', NULLIF(l.location_city, ''), NULLIF(l.location_province, ''))) AS location,
-			TO_CHAR(l.created_at, 'Mon DD, YYYY') AS posted_at,
+			TO_CHAR(l.created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS posted_at,
 			COALESCE(li.image_url, '') AS image_url,
 			TRIM(BOTH ' ' FROM CONCAT(COALESCE(owner.first_name, ''), ' ', COALESCE(owner.last_name, ''))) AS seller_name,
 			COALESCE(rv.avg_rating, 5.0) AS seller_rating,
@@ -156,6 +156,7 @@ func GetUserReceivedReviews(userId string) ([]model.ProfileReviewFromDb, error) 
 			r.reviewer_id::text AS reviewer_id,
 			TRIM(BOTH ' ' FROM CONCAT(COALESCE(ru.first_name, ''), ' ', COALESCE(ru.last_name, ''))) AS reviewer_name,
 			COALESCE(ru.profile_image_url, '') AS reviewer_image_url,
+			LOWER(COALESCE(ru.verification_status::text, '')) AS reviewer_status,
 			r.rating,
 			COALESCE(r.comment, '') AS comment,
 			TO_CHAR(r.created_at, 'Mon DD, YYYY') AS review_date,
@@ -163,7 +164,9 @@ func GetUserReceivedReviews(userId string) ([]model.ProfileReviewFromDb, error) 
 			COALESCE(l.title, '') AS listing_title,
 			COALESCE(l.price, 0) AS listing_price,
 			COALESCE(l.price_unit, '') AS listing_price_unit,
-			COALESCE(li.image_url, '') AS listing_image_url
+			COALESCE(li.image_url, '') AS listing_image_url,
+			LOWER(COALESCE(l.listing_type::text, '')) AS listing_type,
+			TRIM(BOTH ', ' FROM CONCAT_WS(', ', NULLIF(l.location_city, ''), NULLIF(l.location_province, ''))) AS listing_location
 		FROM public.reviews r
 		INNER JOIN public.users ru
 			ON ru.id = r.reviewer_id
@@ -197,6 +200,7 @@ func GetUserPersonalReviews(userId string) ([]model.ProfileReviewFromDb, error) 
 			r.reviewer_id::text AS reviewer_id,
 			TRIM(BOTH ' ' FROM CONCAT(COALESCE(ru.first_name, ''), ' ', COALESCE(ru.last_name, ''))) AS reviewer_name,
 			COALESCE(ru.profile_image_url, '') AS reviewer_image_url,
+			LOWER(COALESCE(ru.verification_status::text, '')) AS reviewer_status,
 			r.rating,
 			COALESCE(r.comment, '') AS comment,
 			TO_CHAR(r.created_at, 'Mon DD, YYYY') AS review_date,
@@ -204,7 +208,9 @@ func GetUserPersonalReviews(userId string) ([]model.ProfileReviewFromDb, error) 
 			COALESCE(l.title, '') AS listing_title,
 			COALESCE(l.price, 0) AS listing_price,
 			COALESCE(l.price_unit, '') AS listing_price_unit,
-			COALESCE(li.image_url, '') AS listing_image_url
+			COALESCE(li.image_url, '') AS listing_image_url,
+			LOWER(COALESCE(l.listing_type::text, '')) AS listing_type,
+			TRIM(BOTH ', ' FROM CONCAT_WS(', ', NULLIF(l.location_city, ''), NULLIF(l.location_province, ''))) AS listing_location
 		FROM public.reviews r
 		INNER JOIN public.users ru
 			ON ru.id = r.reviewer_id

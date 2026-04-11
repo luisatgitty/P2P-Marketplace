@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
-import Image from "next/image";
 import Link from "next/link";
 import {
   MapPin, Star, MessageCircle, Bookmark, Share2,
@@ -12,7 +11,7 @@ import {
 import { useUser } from "@/utils/UserContext";
 import { addListingBookmark, getListingDetailById, removeListingBookmark, submitListingReport } from "@/services/listingDetailService";
 import { getUserProfileData } from "@/services/profileService";
-import { type PostCardProps } from "@/components/post-card";
+import PostCard, { type PostCardProps } from "@/components/post-card";
 import ListingTypeBadge from "@/components/listing-type-badge";
 import ListingConditionBadge from "@/components/listing-condition-badge";
 import VerificationBadge from "@/components/verification-badge";
@@ -23,6 +22,9 @@ import OfferModal from "@/components/offer-modal";
 import { openOrCreateConversationFromListing } from "@/services/messagingService";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { SafeImage } from "@/components/ui/safe-image";
+import { ImageLink } from "@/components/image-link";
+import { formatPrice, formatTimeAgo } from "@/utils/string-builder";
 
 // ── ExtraDetail — mirrors every field the listing form collects ────────────────
 interface ExtraDetail {
@@ -64,9 +66,6 @@ function getDefaultExtra(listing: PostCardProps): ExtraDetail {
   };
 }
 
-// ── Formatting ─────────────────────────────────────────────────────────────────
-const fmt = new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP", minimumFractionDigits: 0 });
-
 // ── Type badge — keys match PostCardProps.type ("sell" | "rent" | "service") ───
 // FIX: was keyed as "sale" which never matched the actual type value "sell"
 const TYPE_LABEL: Record<string, string> = {
@@ -74,43 +73,6 @@ const TYPE_LABEL: Record<string, string> = {
   rent:    "For Rent",
   service: "Service",
 };
-
-// ── Small related card ────────────────────────────────────────────────────────
-function RelatedCard({ listing }: { listing: PostCardProps }) {
-  return (
-    <Link href={`/listing/${listing.id}`} className="group block w-full">
-      <div className="bg-white dark:bg-[#1c1f2e] rounded-xl overflow-hidden border border-stone-200 dark:border-[#2a2d3e] hover:-translate-y-1 hover:shadow-md transition-all duration-200">
-        <div className="relative aspect-[4/3] overflow-hidden bg-stone-100 dark:bg-[#13151f]">
-          <Image
-            src={listing.imageUrl} alt={listing.title} fill
-            className="object-cover group-hover:scale-105 transition-transform duration-300"
-            sizes="160px"
-          />
-          <div className="absolute top-1.5 left-1.5">
-            <ListingTypeBadge
-              type={listing.type}
-              status={listing.status}
-              sellStatus={listing.sellStatus}
-              variant="solid"
-              className="text-[11px] font-bold"
-              soldClassName="text-[11px] font-bold"
-            />
-          </div>
-        </div>
-        <div className="p-2.5">
-          <p className="text-stone-800 dark:text-stone-100 font-semibold text-sm leading-tight line-clamp-2">{listing.title}</p>
-          <p className="text-stone-800 dark:text-stone-200 font-bold text-sm mt-1">
-            {fmt.format(listing.price)}
-            {listing.priceUnit && (
-              <span className="text-[11px] font-normal text-black dark:text-white"> {listing.priceUnit}</span>
-            )}  
-          </p>
-          <p className="text-black dark:text-white text-[11px] mt-0.5 truncate">{listing.location}</p>
-        </div>
-      </div>
-    </Link>
-  );
-}
 
 // ── Rent info card — shows data from form's "Rental Terms" step ───────────────
 function RentInfoCard({ extra }: { extra: ExtraDetail }) {
@@ -517,7 +479,7 @@ export default function ListingDetailPage() {
     <div className="min-h-screen bg-stone-100 dark:bg-[#0f1117]">
 
       {/* ── Breadcrumb ── */}
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-5 pb-3">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-5 pb-3">
         <div className="flex items-center gap-2 text-xs text-stone-400 dark:text-stone-500">
           <Link href="/" className="hover:text-stone-600 dark:hover:text-stone-300 transition-colors flex items-center gap-1">
             <ArrowLeft className="w-3 h-3" /> Home
@@ -536,7 +498,7 @@ export default function ListingDetailPage() {
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 pb-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 pb-8">
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6">
 
           {/* ══ LEFT COLUMN ══════════════════════════════════════════════════ */}
@@ -545,12 +507,11 @@ export default function ListingDetailPage() {
             {/* ── Image gallery ── */}
             <div className="bg-white dark:bg-[#1c1f2e] rounded-2xl border border-stone-200 dark:border-[#2a2d3e] overflow-hidden shadow-sm">
               <div className="relative aspect-[16/10] bg-stone-100 dark:bg-[#13151f] overflow-hidden group">
-                <Image
+                <SafeImage
                   src={images[imgIdx] ?? listing.imageUrl}
-                  alt={listing.title}
-                  fill className="object-cover"
-                  sizes="(max-width: 1024px) 100vw, 60vw"
-                  priority
+                  type="cover"
+                  alt={`Photo ${imgIdx + 1} of ${images.length}`}
+                  fill
                 />
 
                 {/* Type badge */}
@@ -608,10 +569,15 @@ export default function ListingDetailPage() {
                   {images.map((img, i) => (
                     <button key={i} onClick={() => setImgIdx(i)}
                       className={cn(
-                        "relative flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 transition-all",
+                        "relative shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 transition-all",
                         i === imgIdx ? "border-stone-800 dark:border-stone-300" : "border-transparent opacity-60 hover:opacity-100"
                       )}>
-                      <Image src={img} alt={`Photo ${i + 1}`} fill className="object-cover" sizes="64px" />
+                      <SafeImage
+                        src={img}
+                        type="thumbnail"
+                        alt={`Photo ${i + 1}`}
+                        fill
+                      />
                     </button>
                   ))}
                 </div>
@@ -681,7 +647,7 @@ export default function ListingDetailPage() {
               <div>
                 <h2 className="font-bold text-stone-900 dark:text-stone-50 text-base mb-3">You might also like</h2>
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                  {related.map((l) => <RelatedCard key={l.id} listing={l} />)}
+                  {related.map((l) => <PostCard key={l.id} {...l} />)}
                 </div>
               </div>
             )}
@@ -717,14 +683,14 @@ export default function ListingDetailPage() {
 
                 {/* Price */}
                 <div className="flex items-baseline gap-1.5 mb-1">
-                  <span className="text-2xl font-extrabold text-stone-900 dark:text-stone-50">{fmt.format(listing.price)}</span>
+                  <span className="text-2xl font-extrabold text-amber-700 dark:text-amber-500">{formatPrice(listing.price)}</span>
                   {listing.priceUnit && <span className="text-black dark:text-white text-sm">{listing.priceUnit}</span>}
                 </div>
 
                 {/* Location + posted */}
                 <div className="flex flex-wrap items-center gap-3 text-sm text-black dark:text-white mb-4">
                   <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{listing.location}</span>
-                  <span className="flex items-center gap-1"><Clock className="w-3 h-3" />Posted {listing.postedAt}</span>
+                  <span className="flex items-center gap-1"><Clock className="w-3 h-3" />Posted {formatTimeAgo(listing.postedAt)}</span>
                 </div>
 
                 {/* ── CTA buttons ── */}
@@ -815,29 +781,22 @@ export default function ListingDetailPage() {
               {/* ── Seller card ── */}
               <div className="flex flex-col gap-4 bg-white dark:bg-[#1c1f2e] rounded-2xl border border-stone-200 dark:border-[#2a2d3e] shadow-sm p-5 mb-4">
                 <div className="flex items-center gap-3">
-                  <Link href={sellerProfileHref} className="block">
-                    <div className="relative">
-                      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#3a4a6a] to-[#1e2a40] flex items-center justify-center text-white font-bold text-lg flex-shrink-0 overflow-hidden hover:opacity-90 transition-opacity">
-                        {listing.seller.profileImageUrl ? (
-                          <Image
-                            src={listing.seller.profileImageUrl}
-                            alt={listing.seller.name}
-                            width={48}
-                            height={48}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          listing.seller.name[0].toUpperCase()
-                        )}
-                      </div>
-                      {sellerOnline && (
-                        <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-emerald-500 border-2 border-white dark:border-[#1c1f2e]" />
-                      )}
-                    </div>
-                  </Link>
+                  <ImageLink
+                    href={sellerProfileHref}
+                    src={listing.seller.profileImageUrl}
+                    type="profile"
+                    label={listing.seller.name}
+                    className="w-10 h-10"
+                  >
+                    {sellerOnline && (
+                      <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-emerald-500 border-2 border-white dark:border-[#1c1f2e]" />
+                    )}
+                  </ImageLink>
                   <div className="min-w-0">
-                    <p className="font-bold text-stone-900 dark:text-stone-50 text-md">{listing.seller.name}</p>
-                    <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                    <div className="flex items-center gap-1.5">
+                    <p className="font-bold text-stone-900 dark:text-stone-50 text-sm">{listing.seller.name}</p>
+                    <VerificationBadge verified={Boolean(listing.seller.isPro)} />
+                    </div>
                       {hasSellerRating ? (
                         <span className="flex items-center gap-0.5 text-xs text-amber-500 font-semibold">
                           <Star className="w-3 h-3 fill-amber-400" /> {sellerRating.toFixed(1)}
@@ -845,11 +804,6 @@ export default function ListingDetailPage() {
                       ) : (
                         <span className="text-xs text-stone-400 dark:text-stone-500 font-medium">No ratings yet</span>
                       )}
-                      <VerificationBadge
-                        verified={Boolean(listing.seller.isPro)}
-                        className="text-[10px] px-2 py-0.5"
-                      />
-                    </div>
                   </div>
                 </div>
 

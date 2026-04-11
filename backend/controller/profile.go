@@ -341,6 +341,7 @@ func mapProfileReviews(reviews []model.ProfileReviewFromDb, apiURL string) []map
 				"id":              review.ReviewerId,
 				"name":            review.ReviewerName,
 				"profileImageUrl": resolveAssetURL(apiURL, review.ReviewerImageUrl),
+				"status":          strings.ToLower(strings.TrimSpace(review.ReviewerStatus)),
 			},
 			"listing": map[string]any{
 				"id":        review.ListingId,
@@ -348,6 +349,8 @@ func mapProfileReviews(reviews []model.ProfileReviewFromDb, apiURL string) []map
 				"price":     review.ListingPrice,
 				"priceUnit": review.ListingPriceUnit,
 				"imageUrl":  resolveAssetURL(apiURL, review.ListingImageUrl),
+				"type":      review.ListingType,
+				"location":  review.ListingLocation,
 			},
 		})
 	}
@@ -357,7 +360,7 @@ func mapProfileReviews(reviews []model.ProfileReviewFromDb, apiURL string) []map
 func resolveAssetURL(apiURL, raw string) string {
 	trimmed := strings.TrimSpace(raw)
 	if trimmed == "" {
-		return "https://images.unsplash.com/photo-1484154218962-a197022b5858?w=800&q=80"
+		return ""
 	}
 	if strings.HasPrefix(trimmed, "http://") || strings.HasPrefix(trimmed, "https://") {
 		return trimmed

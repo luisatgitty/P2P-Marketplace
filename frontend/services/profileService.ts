@@ -13,6 +13,7 @@ export interface ProfileReviewItem {
     id: string;
     name: string;
     profileImageUrl?: string;
+    status?: string;
   };
   listing: {
     id: string;
@@ -20,6 +21,8 @@ export interface ProfileReviewItem {
     price: number;
     priceUnit?: string;
     imageUrl: string;
+    type?: string;
+    location?: string;
   };
 }
 

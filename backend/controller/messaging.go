@@ -91,6 +91,13 @@ func mapConversationPayload(baseURL string, row model.ConversationFromDb) map[st
 		selfLockedUntil = row.SelfLockedUntil.UTC().Format(time.RFC3339)
 	}
 
+	otherCity := strings.TrimSpace(row.OtherLocationCity)
+	otherProvince := strings.TrimSpace(row.OtherLocationProv)
+	otherLocation := strings.TrimSpace(strings.Join([]string{otherCity, otherProvince}, ", "))
+	if otherCity == "" || otherProvince == "" {
+		otherLocation = strings.TrimSpace(strings.Trim(strings.Join([]string{otherCity, otherProvince}, ", "), ", "))
+	}
+
 	now := time.Now().UTC()
 	isOtherLocked := row.OtherLockedUntil != nil && row.OtherLockedUntil.After(now)
 	isSelfLocked := row.SelfLockedUntil != nil && row.SelfLockedUntil.After(now)
@@ -129,6 +136,10 @@ func mapConversationPayload(baseURL string, row model.ConversationFromDb) map[st
 			"firstName":          row.OtherFirstName,
 			"lastName":           row.OtherLastName,
 			"profileImageUrl":    toAbsoluteAssetURL(baseURL, row.OtherProfileImgUrl),
+			"status":             strings.ToLower(strings.TrimSpace(row.OtherVerifStatus)),
+			"cityMunicipality":   otherCity,
+			"province":           otherProvince,
+			"location":           otherLocation,
 			"isOnline":           middleware.RealtimeHub.IsOnline(row.OtherUserId),
 			"isActive":           row.OtherIsActive,
 			"isLocked":           isOtherLocked,

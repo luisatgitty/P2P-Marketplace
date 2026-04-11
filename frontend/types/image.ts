@@ -1,0 +1,1 @@
+export type ImageType = 'profile' | 'thumbnail' | 'card' | 'id' | 'cover' | 'full';

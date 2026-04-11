@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import {
   X, Flag, User, FileText, AlertTriangle, Trash2, Clock,
   ShieldX, ChevronDown, CheckCircle2, Gavel,
@@ -9,11 +8,12 @@ import {
 import { cn } from "@/lib/utils";
 import { Button }            from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { ImageLink } from "@/components/image-link";
 import { Label }             from "@/components/ui/label";
 import { Separator }         from "@/components/ui/separator";
 import { Textarea }          from "@/components/ui/textarea";
-import { SafeImage } from "@/components/ui/safe-image";
 import { AdminReport, ReportActionType } from "@/types/admin";
+import { formatPrice } from "@/utils/string-builder";
 
 interface ReportActionsModalProps {
   report:    AdminReport;
@@ -119,12 +119,6 @@ const SEVERITY_STYLES: Record<ActionOption["severity"], {
 };
 
 const ACTION_GROUPS = ["Minor Actions", "Account Lockout", "Permanent Actions"];
-
-const phpFmt = new Intl.NumberFormat("en-PH", {
-  style: "currency",
-  currency: "PHP",
-  minimumFractionDigits: 0,
-});
 
 // ── Info pair ──────────────────────────────────────────────────────────────────
 
@@ -268,23 +262,13 @@ export default function ReportActionsModal({ report, onClose, onSubmit }: Report
                   <Card className="p-0 dark:bg-[#13151f] dark:border-[#2a2d3e]">
                     <CardContent className="p-3.5">
                       <div className="flex items-center gap-2.5 mb-1">
-                        <Link
+                        <ImageLink
                           href={`/profile?userId=${report.reporter_id}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          title="Open reporter profile"
-                          aria-label="Open reporter profile"
-                          className="shrink-0"
-                        >
-                          <SafeImage
-                            src={report.reporter_profile_image_url}
-                            fallbackSrc="/profile-icon.png"
-                            alt="Profile"
-                            width={32}
-                            height={32}
-                            className="w-9 h-9 rounded-full object-cover border border-stone-200 dark:border-[#2a2d3e] shrink-0"
-                          />
-                        </Link>
+                          newTab
+                          src={report.reporter_profile_image_url}
+                          type="profile"
+                          label={report.reporter}
+                        />
 
                         <div>
                           <p className="text-sm font-bold text-stone-800 dark:text-stone-100">
@@ -305,23 +289,13 @@ export default function ReportActionsModal({ report, onClose, onSubmit }: Report
                   <Card className="p-0 dark:bg-[#13151f] border-red-100 dark:border-red-900/40">
                     <CardContent className="p-3.5">
                       <div className="flex items-center gap-2.5 mb-1">
-                        <Link
+                        <ImageLink
                           href={`/profile?userId=${report.listing_owner_id}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          title="Open listing owner profile"
-                          aria-label="Open listing owner profile"
-                          className="shrink-0"
-                        >
-                          <SafeImage
-                            src={report.listing_owner_profile_image_url}
-                            fallbackSrc="/profile-icon.png"
-                            alt="Profile"
-                            width={32}
-                            height={32}
-                            className="w-9 h-9 rounded-full object-cover border border-stone-200 dark:border-[#2a2d3e] shrink-0"
-                          />
-                        </Link>
+                          newTab
+                          src={report.listing_owner_profile_image_url}
+                          type="profile"
+                          label={report.listing_owner}
+                        />
                         <div>
                           <p className="text-sm font-bold text-stone-800 dark:text-stone-100">
                             {report.reported_name}
@@ -342,29 +316,19 @@ export default function ReportActionsModal({ report, onClose, onSubmit }: Report
                     <Card className="p-0 dark:bg-[#13151f] dark:border-[#2a2d3e]">
                       <CardContent className="p-3.5">
                         <div className="flex items-center gap-2.5 min-w-0">
-                          <Link
+                          <ImageLink
                             href={`/listing/${report.target_id}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            title="Open listing"
-                            aria-label="Open listing"
-                            className="shrink-0"
-                          >
-                            <SafeImage
-                              src={report.listing_image_url}
-                              fallbackSrc="/logo.png"
-                              alt={report.target_name}
-                              width={40}
-                              height={40}
-                              className="w-10 h-10 rounded-md object-cover border border-stone-200 dark:border-[#2a2d3e] shrink-0"
-                            />
-                          </Link>
+                            newTab
+                            src={report.listing_image_url}
+                            type="thumbnail"
+                            label={report.target_name}
+                          />
                           <div className="min-w-0">
                             <p className="text-sm font-semibold text-stone-700 dark:text-stone-200 line-clamp-2">
                               {report.target_name}
                             </p>
                             <p className="text-xs text-stone-500 dark:text-stone-400 truncate">
-                              {phpFmt.format(report.listing_price ?? 0)} / {report.listing_price_unit || "unit"}
+                              {formatPrice(report.listing_price ?? 0)} {report.listing_price_unit}
                             </p>
                           </div>
                         </div>

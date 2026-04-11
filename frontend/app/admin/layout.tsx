@@ -27,6 +27,7 @@ import {
 import { cn } from "@/lib/utils";
 import { getAdminReports } from "@/services/adminReportsService";
 import { getAdminVerifications } from "@/services/adminVerificationsService";
+import { SafeImage } from "@/components/ui/safe-image";
 
 const BADGE_KEYS = {
   reports: "/admin/reports",
@@ -140,7 +141,7 @@ function SidebarContent({
       {/* ── Logo + collapse toggle ─────────────────────────────────────── */}
       <div
         className={cn(
-          "flex-shrink-0 border-b border-white/10",
+          "shrink-0 border-b border-white/10",
           collapsed
             ? "flex flex-col items-center gap-2 py-3.5"
             : "flex items-center gap-2.5 px-5 py-5",
@@ -151,7 +152,7 @@ function SidebarContent({
           alt="P2P Marketplace"
           width={32}
           height={32}
-          className="rounded-md flex-shrink-0"
+          className="rounded-md shrink-0"
         />
 
         {/* Text — only shown when expanded */}
@@ -170,7 +171,7 @@ function SidebarContent({
             type="button"
             onClick={onToggleCollapse}
             title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-            className="flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:bg-white/10 hover:text-white transition-colors"
+            className="shrink-0 w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:bg-white/10 hover:text-white transition-colors"
           >
             {collapsed ? (
               <PanelLeftOpen className="w-4 h-4" />
@@ -210,7 +211,7 @@ function SidebarContent({
                   : "text-slate-400 hover:bg-white/5 hover:text-white",
               )}
             >
-              <Icon className="w-4 h-4 flex-shrink-0" />
+              <Icon className="w-4 h-4 shrink-0" />
 
               {/* Label (expanded only) */}
               {!collapsed && <span className="flex-1">{label}</span>}
@@ -220,12 +221,12 @@ function SidebarContent({
                 collapsed ? (
                   <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-red-500" />
                 ) : (
-                  <span className="w-5 h-5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center flex-shrink-0">
+                  <span className="w-5 h-5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center shrink-0">
                     {badge > 9 ? "9+" : badge}
                   </span>
                 )
               ) : active && !collapsed ? (
-                <ChevronRight className="w-3.5 h-3.5 text-slate-500 flex-shrink-0" />
+                <ChevronRight className="w-3.5 h-3.5 text-slate-500 shrink-0" />
               ) : null}
             </Link>
           );
@@ -235,7 +236,7 @@ function SidebarContent({
       {/* ── Bottom: user button + dropdown ──────────────────────────────── */}
       <div
         className={cn(
-          "relative flex-shrink-0 border-t border-white/10",
+          "relative shrink-0 border-t border-white/10",
           collapsed ? "p-2" : "p-4",
         )}
       >
@@ -272,7 +273,7 @@ function SidebarContent({
                   }}
                   className="flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-slate-300 hover:bg-white/5 hover:text-white transition-colors"
                 >
-                  <Icon className="w-3.5 h-3.5 flex-shrink-0 text-slate-400" />
+                  <Icon className="w-3.5 h-3.5 shrink-0 text-slate-400" />
                   {label}
                 </Link>
               ))}
@@ -301,7 +302,7 @@ function SidebarContent({
                 }}
                 className="flex items-center gap-3 w-full px-4 py-2.5 text-sm font-medium text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors"
               >
-                <LogOut className="w-3.5 h-3.5 flex-shrink-0" />
+                <LogOut className="w-3.5 h-3.5 shrink-0" />
                 Log Out
               </button>
             </div>
@@ -319,13 +320,13 @@ function SidebarContent({
           )}
         >
           {/* Avatar */}
-          <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 ring-2 ring-white/10">
-            <Image
-              src={user?.profileImageUrl || "/profile-icon.png"}
-              alt="Profile"
+          <div className="w-9 h-9 rounded-full overflow-hidden shrink-0 ring-2 ring-white/10">
+            <SafeImage
+              src={user?.profileImageUrl}
+              type="profile"
+              alt={`${user?.firstName}'s profile picture`}
               width={32}
               height={32}
-              className="w-full h-full object-cover"
             />
           </div>
 
@@ -344,7 +345,7 @@ function SidebarContent({
               {/* Animated chevron */}
               <ChevronUp
                 className={cn(
-                  "w-3.5 h-3.5 flex-shrink-0 text-slate-500 transition-transform duration-200",
+                  "w-3.5 h-3.5 shrink-0 text-slate-500 transition-transform duration-200",
                   dropdownOpen ? "rotate-0" : "rotate-180",
                 )}
               />
@@ -387,11 +388,11 @@ export default function AdminLayout({
         onClose={() => setLogoutModalOpen(false)}
       />
 
-      <div className="fixed inset-0 z-[100] flex bg-stone-100 dark:bg-[#0f1117] overflow-hidden">
+      <div className="fixed inset-0 z-100 flex bg-stone-100 dark:bg-[#0f1117] overflow-hidden">
         {/* ── Sidebar ─────────────────────────────────────────────────────── */}
         <div
           className={cn(
-            "flex flex-col flex-shrink-0 bg-[#1e2433] h-full",
+            "flex flex-col shrink-0 bg-[#1e2433] h-full",
             "transition-all duration-300 ease-in-out",
             effectiveCollapsed ? "w-16" : "w-60",
           )}

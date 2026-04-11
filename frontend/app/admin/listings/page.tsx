@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useMemo, useEffect, useCallback } from "react";
-import Link from "next/link";
 import {
   Search,
   AlertTriangle,
@@ -43,7 +42,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { SafeImage } from "@/components/ui/safe-image";
+import { ImageLink } from "@/components/image-link";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 type ListingType   = "SELL" | "RENT" | "SERVICE";
@@ -499,26 +498,13 @@ export default function ListingsPage() {
                         {/* Listing */}
                         <TableCell className="py-3.5 max-w-50">
                           <div className="flex items-center gap-2.5 min-w-0">
-                            <Link
+                            <ImageLink
                               href={`/listing/${listing.id}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              title="View listing"
-                              aria-label="View listing"
-                              className="shrink-0"
-                            >
-                              {listing.listing_image_url ? (
-                                <img
-                                  src={listing.listing_image_url}
-                                  alt={listing.title}
-                                  className="w-10 h-10 rounded-md object-cover border border-stone-200 dark:border-[#2a2d3e] shrink-0"
-                                />
-                              ) : (
-                                <div className="w-10 h-10 rounded-md bg-stone-100 dark:bg-[#13151f] border border-stone-200 dark:border-[#2a2d3e] flex items-center justify-center shrink-0">
-                                  📦
-                                </div>
-                              )}
-                            </Link>
+                              newTab
+                              src={listing.listing_image_url}
+                              type="thumbnail"
+                              label={listing.title}
+                            />
                             <div className="min-w-0">
                               <p className="text-sm font-bold text-stone-800 dark:text-stone-100 truncate">
                                 {listing.title}
@@ -533,23 +519,13 @@ export default function ListingsPage() {
                         {/* Listing Owner */}
                         <TableCell className="py-3.5 text-sm text-stone-600 dark:text-stone-300 whitespace-nowrap">
                           <div className="flex items-center gap-2.5 min-w-0">
-                            <Link
+                            <ImageLink
                               href={`/profile?userId=${listing.seller_id}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              title="View seller profile"
-                              aria-label="View seller profile"
-                              className="shrink-0"
-                            >
-                              <SafeImage
-                                src={listing.seller_profile_image_url}
-                                fallbackSrc="/profile-icon.png"
-                                alt={listing.seller}
-                                width={32}
-                                height={32}
-                                className="w-9 h-9 rounded-full object-cover border border-stone-200 dark:border-[#2a2d3e] shrink-0"
-                              />
-                            </Link>
+                              newTab
+                              src={listing.seller_profile_image_url}
+                              type="profile"
+                              label={listing.seller}
+                            />
                             <div className="min-w-0">
                               <p className="text-sm font-bold text-stone-800 dark:text-stone-100 truncate">
                                 {listing.seller}

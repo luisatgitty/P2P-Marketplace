@@ -10,10 +10,12 @@ import { getConversations } from "@/services/messagingService";
 import { LogoutModal } from "@/components/auth/logout-modal";
 import {
   Sun, Moon, MessageCircle, LogOut, User, Home,
-  ChevronDown, Tag, Store, Wrench, LayoutGrid, UserPlus, ShieldCheck,
+  ChevronDown, Tag, Store, Wrench, LayoutGrid, UserPlus,
   Bell, LayoutDashboard,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { SafeImage } from "@/components/ui/safe-image";
+import VerificationBadge from "@/components/verification-badge";
 
 // ─── Tab config ────────────────────────────────────────────────────────────────
 const TABS = [
@@ -162,7 +164,7 @@ export default function Navbar() {
               alt="P2P Marketplace"
               width={32}
               height={32}
-              className="rounded-md shrink-0"
+              className="shrink-0"
             />
             <span className="font-bold text-base sm:text-lg leading-tight hidden sm:block whitespace-nowrap tracking-tight">
               P2P Marketplace
@@ -186,12 +188,12 @@ export default function Navbar() {
               >
                 <div className="relative w-7 h-7">
                   <div className="w-7 h-7 rounded-full bg-stone-600 overflow-hidden border border-white/20">
-                  <Image
-                    src={user?.profileImageUrl || "/profile-icon.png"}
-                    alt="Profile"
+                  <SafeImage
+                    src={user?.profileImageUrl}
+                    type="profile"
+                    alt={`${user?.firstName}'s profile picture`}
                     width={28}
                     height={28}
-                    className="w-full h-full object-cover"
                   />
                   </div>
                   {isAuth && hasUnreadMessages && (
@@ -213,7 +215,7 @@ export default function Navbar() {
                       <div className="px-4 py-3 border-b border-white/10 bg-white/5">
                         <p className="text-sm font-semibold text-white leading-tight flex items-center gap-1.5">
                           {user?.firstName} {user?.lastName}
-                          {isVerifiedSeller && <ShieldCheck size={14} className="text-amber-400" />}
+                          {<VerificationBadge verified={isVerifiedSeller} />}
                         </p>
                         <p className="text-xs text-stone-400 truncate mt-0.5">{user?.email}</p>
                       </div>

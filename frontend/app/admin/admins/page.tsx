@@ -766,14 +766,14 @@ export default function AdminsPage() {
                     >
                       {/* Name */}
                       <TableCell className="py-2 whitespace-nowrap">
-                        <div className="flex items-center gap-3 w-max">
+                        <div className="flex items-center gap-3">
                           <SafeImage
                             src={admin.profile_image_url}
-                            fallbackSrc="/profile-icon.png"
-                            alt="Profile"
-                            width={32}
-                            height={32}
-                            className="w-10 h-10 rounded-full object-cover border border-stone-200 dark:border-[#2a2d3e] shrink-0"
+                            type="profile"
+                            alt={`${admin.first_name} ${admin.last_name}'s profile picture`}
+                            width={36}
+                            height={36}
+                            className="w-9 h-9 shrink-0"
                           />
                           <div className="w-max">
                             <p className="text-sm font-bold text-stone-800 dark:text-stone-100 whitespace-nowrap">
