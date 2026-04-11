@@ -10,11 +10,12 @@ import { getConversations } from "@/services/messagingService";
 import { LogoutModal } from "@/components/auth/logout-modal";
 import {
   Sun, Moon, MessageCircle, LogOut, User, Home,
-  ChevronDown, Tag, Store, Wrench, LayoutGrid, UserPlus, ShieldCheck,
+  ChevronDown, Tag, Store, Wrench, LayoutGrid, UserPlus,
   Bell, LayoutDashboard,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SafeImage } from "@/components/ui/safe-image";
+import VerificationBadge from "@/components/verification-badge";
 
 // ─── Tab config ────────────────────────────────────────────────────────────────
 const TABS = [
@@ -214,7 +215,7 @@ export default function Navbar() {
                       <div className="px-4 py-3 border-b border-white/10 bg-white/5">
                         <p className="text-sm font-semibold text-white leading-tight flex items-center gap-1.5">
                           {user?.firstName} {user?.lastName}
-                          {isVerifiedSeller && <ShieldCheck size={14} className="text-amber-400" />}
+                          {<VerificationBadge verified={isVerifiedSeller} />}
                         </p>
                         <p className="text-xs text-stone-400 truncate mt-0.5">{user?.email}</p>
                       </div>

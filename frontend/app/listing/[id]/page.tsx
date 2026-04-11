@@ -833,8 +833,8 @@ export default function ListingDetailPage() {
                     )}
                   </ImageLink>
                   <div className="min-w-0">
-                    <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                    <p className="font-bold text-stone-900 dark:text-stone-50 text-md">{listing.seller.name}</p>
+                    <div className="flex items-center gap-1.5">
+                    <p className="font-bold text-stone-900 dark:text-stone-50 text-sm">{listing.seller.name}</p>
                     <VerificationBadge verified={Boolean(listing.seller.isPro)} />
                     </div>
                       {hasSellerRating ? (

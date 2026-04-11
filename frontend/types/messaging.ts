@@ -28,6 +28,7 @@ export interface ConversationParticipant {
   firstName: string;
   lastName: string;
   profileImageUrl?: string | null;
+  status?: string;
   location?: string;
   city?: string;
   municipality?: string;

@@ -136,6 +136,7 @@ func mapConversationPayload(baseURL string, row model.ConversationFromDb) map[st
 			"firstName":          row.OtherFirstName,
 			"lastName":           row.OtherLastName,
 			"profileImageUrl":    toAbsoluteAssetURL(baseURL, row.OtherProfileImgUrl),
+			"status":             strings.ToLower(strings.TrimSpace(row.OtherVerifStatus)),
 			"cityMunicipality":   otherCity,
 			"province":           otherProvince,
 			"location":           otherLocation,

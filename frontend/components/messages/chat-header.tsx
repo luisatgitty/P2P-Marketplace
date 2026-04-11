@@ -11,6 +11,7 @@ import { markListingAsComplete, submitUserListingReport } from "@/services/listi
 import { ReportModal } from "@/components/report-modal";
 import { ConfirmActionModal } from "@/components/confirm-action-modal";
 import ListingTypeBadge from "@/components/listing-type-badge";
+import VerificationBadge from "@/components/verification-badge";
 import { ImageLink } from "../image-link";
 
 interface ChatHeaderProps {
@@ -48,6 +49,7 @@ export default function ChatHeader({ conversation, onDelete, onMarkedComplete }:
   const participantAddress = [cityOrMunicipality, province].filter(Boolean).join(", ")
     || (otherParticipant.location ?? "").trim()
     || "Location unavailable";
+  const isParticipantVerified = String(otherParticipant.status ?? "").trim().toLowerCase() === "verified";
 
   // Close menu on outside click
   useEffect(() => {
@@ -140,6 +142,7 @@ export default function ChatHeader({ conversation, onDelete, onMarkedComplete }:
           <span className="text-sm font-bold text-stone-900 dark:text-stone-50 truncate">
             {otherParticipant.firstName} {otherParticipant.lastName}
           </span>
+          <VerificationBadge verified={isParticipantVerified} />
           <ListingTypeBadge type={listing.listingType} status={listing.status} />
         </div>
         <p className={cn(
