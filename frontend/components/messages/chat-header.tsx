@@ -37,6 +37,17 @@ export default function ChatHeader({ conversation, onDelete, onMarkedComplete }:
   const hideReportUserMenuItem = hideParticipantMenuItems || conversation.hasPendingReport === true;
   const isTransactionConfirmed = String(listing.transactionStatus ?? "").trim().toUpperCase() === "CONFIRMED";
   const canMarkAsComplete = conversation.isSeller && isTransactionConfirmed && (listing.listingType !== "SELL" || listing.status !== "SOLD");
+  const cityOrMunicipality = (
+    otherParticipant.cityMunicipality
+    ?? otherParticipant.city_municipality
+    ?? otherParticipant.municipality
+    ?? otherParticipant.city
+    ?? ""
+  ).trim();
+  const province = (otherParticipant.province ?? "").trim();
+  const participantAddress = [cityOrMunicipality, province].filter(Boolean).join(", ")
+    || (otherParticipant.location ?? "").trim()
+    || "Location unavailable";
 
   // Close menu on outside click
   useEffect(() => {
@@ -133,9 +144,9 @@ export default function ChatHeader({ conversation, onDelete, onMarkedComplete }:
         </div>
         <p className={cn(
           "text-[11px] font-medium",
-          otherParticipant.isOnline ? "text-emerald-500" : "text-stone-400 dark:text-stone-500"
+          "text-stone-500 dark:text-stone-400"
         )}>
-          {otherParticipant.isOnline ? "Online" : "Offline"}
+          {participantAddress}
         </p>
       </div>
 
