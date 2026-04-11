@@ -833,8 +833,10 @@ export default function ListingDetailPage() {
                     )}
                   </ImageLink>
                   <div className="min-w-0">
-                    <p className="font-bold text-stone-900 dark:text-stone-50 text-md">{listing.seller.name}</p>
                     <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                    <p className="font-bold text-stone-900 dark:text-stone-50 text-md">{listing.seller.name}</p>
+                    <VerificationBadge verified={Boolean(listing.seller.isPro)} />
+                    </div>
                       {hasSellerRating ? (
                         <span className="flex items-center gap-0.5 text-xs text-amber-500 font-semibold">
                           <Star className="w-3 h-3 fill-amber-400" /> {sellerRating.toFixed(1)}
@@ -842,11 +844,6 @@ export default function ListingDetailPage() {
                       ) : (
                         <span className="text-xs text-stone-400 dark:text-stone-500 font-medium">No ratings yet</span>
                       )}
-                      <VerificationBadge
-                        verified={Boolean(listing.seller.isPro)}
-                        className="text-[10px] px-2 py-0.5"
-                      />
-                    </div>
                   </div>
                 </div>
 
