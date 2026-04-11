@@ -11,7 +11,7 @@ import {
 import { useUser } from "@/utils/UserContext";
 import { addListingBookmark, getListingDetailById, removeListingBookmark, submitListingReport } from "@/services/listingDetailService";
 import { getUserProfileData } from "@/services/profileService";
-import { type PostCardProps } from "@/components/post-card";
+import PostCard, { type PostCardProps } from "@/components/post-card";
 import ListingTypeBadge from "@/components/listing-type-badge";
 import ListingConditionBadge from "@/components/listing-condition-badge";
 import VerificationBadge from "@/components/verification-badge";
@@ -75,44 +75,6 @@ const TYPE_LABEL: Record<string, string> = {
   rent:    "For Rent",
   service: "Service",
 };
-
-// ── Small related card ────────────────────────────────────────────────────────
-function RelatedCard({ listing }: { listing: PostCardProps }) {
-  return (
-    <Link href={`/listing/${listing.id}`} className="group block w-full">
-      <div className="bg-white dark:bg-[#1c1f2e] rounded-xl overflow-hidden border border-stone-200 dark:border-[#2a2d3e] hover:-translate-y-1 hover:shadow-md transition-all duration-200">
-        <div className="relative aspect-[4/3] overflow-hidden bg-stone-100 dark:bg-[#13151f]">
-          <SafeImage
-            src={listing.imageUrl}
-            type="card"
-            alt={`Image of ${listing.title}`}
-            fill
-          />
-          <div className="absolute top-1.5 left-1.5">
-            <ListingTypeBadge
-              type={listing.type}
-              status={listing.status}
-              sellStatus={listing.sellStatus}
-              variant="solid"
-              className="text-[10px] font-bold"
-              soldClassName="text-[10px] font-bold"
-            />
-          </div>
-        </div>
-        <div className="p-2.5">
-          <p className="text-stone-800 dark:text-stone-100 font-semibold text-sm leading-tight line-clamp-2">{listing.title}</p>
-          <p className="text-stone-800 dark:text-stone-200 font-bold text-sm mt-1">
-            {fmt.format(listing.price)}
-            {listing.priceUnit && (
-              <span className="text-[11px] font-normal text-black dark:text-white"> {listing.priceUnit}</span>
-            )}  
-          </p>
-          <p className="text-black dark:text-white text-[11px] mt-0.5 truncate">{listing.location}</p>
-        </div>
-      </div>
-    </Link>
-  );
-}
 
 // ── Rent info card — shows data from form's "Rental Terms" step ───────────────
 function RentInfoCard({ extra }: { extra: ExtraDetail }) {
@@ -687,7 +649,7 @@ export default function ListingDetailPage() {
               <div>
                 <h2 className="font-bold text-stone-900 dark:text-stone-50 text-base mb-3">You might also like</h2>
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                  {related.map((l) => <RelatedCard key={l.id} listing={l} />)}
+                  {related.map((l) => <PostCard key={l.id} {...l} />)}
                 </div>
               </div>
             )}

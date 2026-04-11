@@ -12,8 +12,8 @@ import {
 import { useUser } from "@/utils/UserContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import ListingTypeBadge from "@/components/listing-type-badge";
 import VerificationBadge from "@/components/verification-badge";
+import PostCard from "@/components/post-card";
 import { toast } from "sonner";
 import {
   deactivateProfile,
@@ -134,45 +134,6 @@ function formatOverallRating(rating?: number, reviewCount?: number): string {
 
   const safeRating = Number.isFinite(rating) ? Number(rating) : 0;
   return `${safeRating.toFixed(1)} (${count})`;
-}
-
-// ─── Profile listing card ─────────────────────────────────────────────────────
-function ProfileListingCard({ listing }: { listing: ProfileListingItem; }) {
-  const fmt = new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP", minimumFractionDigits: 0 });
-  return (
-    <Link href={`/listing/${listing.id}`} className="block group">
-      <div className="bg-white dark:bg-[#1c1f2e] rounded-2xl overflow-hidden border border-stone-200 dark:border-[#2a2d3e] hover:-translate-y-1 hover:shadow-md transition-all duration-200">
-        <div className="relative aspect-4/3 bg-stone-100 dark:bg-[#13151f] overflow-hidden">
-          <SafeImage
-            src={listing.imageUrl}
-            type="card"
-            alt={`Image of ${listing.title}`}
-            width={400}
-            height={300}
-            // className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-          />
-          <div className="absolute top-2 left-2">
-            <ListingTypeBadge
-              type={listing.type}
-              status={listing.status}
-              sellStatus={listing.sellStatus}
-              variant="solid"
-              className="text-[10px] font-semibold px-2 rounded-full"
-              soldClassName="text-[10px] font-semibold px-2 rounded-full"
-            />
-          </div>
-        </div>
-        <div className="flex flex-col gap-1 p-2.5 sm:p-3 flex-1">
-          <p className="text-xs sm:text-sm font-semibold text-stone-800 dark:text-stone-100 line-clamp-2 leading-snug">{listing.title}</p>
-          <div className="flex items-baseline gap-1 mt-0.5">
-            <p className="text-stone-800 dark:text-stone-100 font-bold text-sm">{fmt.format(listing.price)}</p>
-            {listing.priceUnit && <span className="text-xs text-stone-400 dark:text-stone-500">{listing.priceUnit}</span>}
-          </div>
-          <span className="mt-1.5 text-xs text-stone-400 dark:text-stone-500 truncate max-w-[65%]">{listing.location}</span>
-        </div>
-      </div>
-    </Link>
-  );
 }
 
 function AddListingCard() {
@@ -1164,7 +1125,7 @@ export default function ProfilePage() {
               </div>
             ) : (allListings.length > 0) ? (
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 p-4">
-                {allListings.map((l) => <ProfileListingCard key={l.id} listing={l} />)}{isVerifiedSeller && <AddListingCard />}
+                {allListings.map((l) => <PostCard key={l.id} {...l} />)}{isVerifiedSeller && <AddListingCard />}
               </div>
             ) : (
               <div className="text-center py-14 px-6">
@@ -1186,7 +1147,7 @@ export default function ProfilePage() {
             loadingProfile
               ? <div className="text-center py-14"><p className="font-semibold text-stone-400 text-sm">Loading bookmarked items...</p></div>
               : visibleBookmarkListings.length > 0
-              ? <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 p-4">{visibleBookmarkListings.map((l) => <ProfileListingCard key={l.id} listing={l} />)}</div>
+              ? <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 p-4">{visibleBookmarkListings.map((l) => <PostCard key={l.id} {...l} />)}</div>
               : <div className="text-center py-14"><Bookmark className="w-10 h-10 text-stone-200 dark:text-stone-700 mx-auto mb-3" /><p className="font-semibold text-stone-400 text-sm">No bookmarked items yet</p></div>
           )}
 
