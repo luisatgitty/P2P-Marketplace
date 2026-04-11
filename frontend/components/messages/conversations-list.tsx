@@ -71,7 +71,7 @@ export default function ConversationsList({ activeTab }: ConversationsListProps)
     : tabFiltered;
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full pb-12">
 
       {/* ── Search bar ──────────────────────────────────────────────── */}
       <div className="px-3 pt-3 pb-2 border-b border-border shrink-0">

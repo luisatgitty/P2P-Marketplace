@@ -33,10 +33,10 @@ export default function ConversationItem({
 }: ConversationItemProps) {
   const { id, otherParticipant, listing, lastMessage, lastMessageAt, unreadCount } = conversation;
   const hasUnread = unreadCount > 0;
-  const fmt = (n: number) => "₱" + n.toLocaleString("en-PH", { minimumFractionDigits: 0 });
-  const displayPrice = listing.listingType === "SELL" && Number(listing.offer ?? 0) > 0
-    ? Number(listing.offer)
-    : listing.price;
+  // const fmt = (n: number) => "₱" + n.toLocaleString("en-PH", { minimumFractionDigits: 0 });
+  // const displayPrice = listing.listingType === "SELL" && Number(listing.offer ?? 0) > 0
+  //   ? Number(listing.offer)
+  //   : listing.price;
 
   return (
     <Link
@@ -54,8 +54,8 @@ export default function ConversationItem({
           src={otherParticipant.profileImageUrl || undefined}
           type="profile"
           alt={`${otherParticipant.firstName} ${otherParticipant.lastName} profile picture`}
-          width={36}
-          height={36}
+          width={40}
+          height={40}
         />
         {otherParticipant.isOnline && (
           <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-emerald-500 border-2 border-white dark:border-[#1c1f2e]" />
@@ -63,7 +63,8 @@ export default function ConversationItem({
       </div>
 
       <div className="flex-1 min-w-0">
-        {/* Row 1: Name + time */}
+        {/* Row 1: Listing title + time */}
+        
         <div className="flex items-center justify-between gap-2 mb-0.5">
           <span
             className={cn(
@@ -73,21 +74,17 @@ export default function ConversationItem({
                 : "font-semibold text-stone-700 dark:text-stone-200"
             )}
           >
-            {otherParticipant.firstName} {otherParticipant.lastName}
+            {listing.title}
           </span>
           <span className="text-[11px] text-stone-400 dark:text-stone-500 shrink-0">
             {relativeTime(lastMessageAt)}
           </span>
         </div>
 
-        {/* Row 2: Listing title + price */}
+        {/* Row 2: Name */}
         <div className="flex items-center gap-1.5 mb-0.5">
-          <span className="text-[12px] text-stone-400 dark:text-stone-500 truncate">
-            {listing.title}
-            {" · "}
-            <span className="text-amber-600 dark:text-amber-500 font-semibold">
-              {fmt(displayPrice)} {listing.priceUnit ?? ""}
-            </span>
+          <span className="font-bold text-[12px] text-stone-400 dark:text-stone-500 truncate">
+            {otherParticipant.firstName} {otherParticipant.lastName}
           </span>
         </div>
 
@@ -104,7 +101,7 @@ export default function ConversationItem({
             {lastMessage ?? "No messages yet"}
           </p>
           {hasUnread && (
-            <span className="shrink-0 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-amber-600 text-white text-[10px] font-bold px-1 leading-none">
+            <span className="shrink-0 min-w-4.5 h-4.5 flex items-center justify-center rounded-full bg-amber-600 text-white text-[10px] font-bold px-1 leading-none">
               {unreadCount > 9 ? "9+" : unreadCount}
             </span>
           )}
