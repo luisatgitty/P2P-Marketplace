@@ -208,6 +208,7 @@ type ProfileReviewFromDb struct {
 	ReviewerId       string `gorm:"column:reviewer_id"`
 	ReviewerName     string `gorm:"column:reviewer_name"`
 	ReviewerImageUrl string `gorm:"column:reviewer_image_url"`
+	ReviewerStatus   string `gorm:"column:reviewer_status"`
 	Rating           int    `gorm:"column:rating"`
 	Comment          string `gorm:"column:comment"`
 	ReviewDate       string `gorm:"column:review_date"`

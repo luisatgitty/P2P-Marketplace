@@ -197,6 +197,7 @@ function ProfileReviewCard({ review }: { review: ProfileReviewItem }) {
   const { user } = useUser();
   const fmt = new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP", minimumFractionDigits: 0 });
   const reviewerName = (review.reviewer.name ?? "").trim() || "Anonymous Reviewer";
+  const isReviewerVerified = (review.reviewer.status ?? "").trim().toLowerCase() === "verified";
   const currentUserId = (user?.userId ?? "").trim();
   const reviewerId = (review.reviewer.id ?? "").trim();
   const reviewerProfileHref = reviewerId !== "" && reviewerId === currentUserId
@@ -222,7 +223,10 @@ function ProfileReviewCard({ review }: { review: ProfileReviewItem }) {
             className="w-9 h-9 shrink-0"
           />
           <div className="min-w-0">
-            <p className="text-sm font-bold text-stone-900 dark:text-stone-100 truncate">{reviewerName}</p>
+            <div className="flex items-center gap-1.5 min-w-0">
+              <p className="text-sm font-bold text-stone-900 dark:text-stone-100 truncate">{reviewerName}</p>
+              <VerificationBadge verified={isReviewerVerified} />
+            </div>
             <p className="text-xs text-stone-400 dark:text-stone-500">{review.reviewDate}</p>
           </div>
         </div>

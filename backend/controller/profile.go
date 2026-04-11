@@ -341,6 +341,7 @@ func mapProfileReviews(reviews []model.ProfileReviewFromDb, apiURL string) []map
 				"id":              review.ReviewerId,
 				"name":            review.ReviewerName,
 				"profileImageUrl": resolveAssetURL(apiURL, review.ReviewerImageUrl),
+				"status":          strings.ToLower(strings.TrimSpace(review.ReviewerStatus)),
 			},
 			"listing": map[string]any{
 				"id":        review.ListingId,

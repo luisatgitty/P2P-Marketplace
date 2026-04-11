@@ -13,6 +13,7 @@ export interface ProfileReviewItem {
     id: string;
     name: string;
     profileImageUrl?: string;
+    status?: string;
   };
   listing: {
     id: string;
