@@ -34,6 +34,7 @@ import {
 import { cn } from "@/lib/utils";
 import { SafeImage } from "@/components/ui/safe-image";
 import { ImageLink } from "@/components/image-link";
+import { formatPrice } from "@/utils/string-builder";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type VerificationState = "unverified" | "pending" | "verified" | "rejected";
@@ -156,7 +157,6 @@ function AddListingCard() {
 
 function ProfileReviewCard({ review }: { review: ProfileReviewItem }) {
   const { user } = useUser();
-  const fmt = new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP", minimumFractionDigits: 0 });
   const reviewerName = (review.reviewer.name ?? "").trim() || "Anonymous Reviewer";
   const isReviewerVerified = (review.reviewer.status ?? "").trim().toLowerCase() === "verified";
   const currentUserId = (user?.userId ?? "").trim();
@@ -229,10 +229,8 @@ function ProfileReviewCard({ review }: { review: ProfileReviewItem }) {
             )}
           </div>
           <p className="text-sm font-bold text-amber-700 dark:text-amber-500 mt-0.5">
-            {fmt.format(review.listing.price)}
-            {review.listing.priceUnit && (
-              <span className="text-[11px] font-normal text-stone-400 dark:text-stone-500 ml-1">{review.listing.priceUnit}</span>
-            )}
+            {formatPrice(review.listing.price)}
+            <span className="text-[11px] font-normal text-stone-400 dark:text-stone-500 ml-1">{review.listing.priceUnit}</span>
           </p>
           {/* Listing Location */}
           <p className="text-xs text-stone-400 dark:text-stone-500 mt-0.5 truncate">{review.listing.location || "Location unavailable"}</p>

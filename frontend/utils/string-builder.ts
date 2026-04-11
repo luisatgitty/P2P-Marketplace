@@ -1,5 +1,11 @@
+const phpFmt = new Intl.NumberFormat('en-PH', {
+  style: 'currency',
+  currency: 'PHP',
+  minimumFractionDigits: 0,
+});
+
 export function formatPrice(value: number, unit?: string): string {
-  const formattedPrice = "₱" + value.toLocaleString("en-PH", { minimumFractionDigits: 0 });
+  const formattedPrice = phpFmt.format(value);
   return unit ? `${formattedPrice} / ${unit}` : formattedPrice;
 }
 

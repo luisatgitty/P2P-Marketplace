@@ -39,6 +39,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { ImageLink } from "@/components/image-link";
+import { formatPrice } from "@/utils/string-builder";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 type ListingType = "SELL" | "RENT" | "SERVICE";
@@ -72,12 +73,6 @@ const STATUS_CONFIG: Record<TransactionStatus, string> = {
   COMPLETED: "bg-teal-100 dark:bg-teal-900/40 text-teal-700 dark:text-teal-300",
   CANCELLED: "bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-300",
 };
-
-const phpFmt = new Intl.NumberFormat("en-PH", {
-  style:                 "currency",
-  currency:              "PHP",
-  minimumFractionDigits: 0,
-});
 
 function formatDateRange(start?: string | null, end?: string | null): string {
   if (!start || !end) return "N/A";
@@ -484,8 +479,7 @@ export default function TransactionsPage() {
                                   {typeConfig.label}
                                 </span>
                                 <p className='text-xs text-stone-500 dark:text-stone-400 truncate'>
-                                  {phpFmt.format(transaction.total_price)} /{' '}
-                                  {transaction.listing_price_unit || 'unit'}
+                                  {formatPrice(transaction.total_price)} {transaction.listing_price_unit}
                                 </p>
                               </div>
                             </div>
@@ -508,7 +502,7 @@ export default function TransactionsPage() {
                         {/* Total Price */}
                         <TableCell className='py-3.5 min-w-37.5 whitespace-nowrap'>
                           <p className='text-sm font-bold text-stone-800 dark:text-stone-100'>
-                            {phpFmt.format(transaction.total_price)}
+                            {formatPrice(transaction.total_price)}
                           </p>
                           <p className='text-xs text-stone-500 dark:text-stone-400'>
                             {buildScheduleUnitsLabel(transaction)}

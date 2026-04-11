@@ -24,7 +24,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { SafeImage } from "@/components/ui/safe-image";
 import { ImageLink } from "@/components/image-link";
-import { formatPrice, formatTimeAgo } from "@/utils/string-builder"; 
+import { formatPrice, formatTimeAgo } from "@/utils/string-builder";
 
 // ── ExtraDetail — mirrors every field the listing form collects ────────────────
 interface ExtraDetail {

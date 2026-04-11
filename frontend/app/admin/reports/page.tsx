@@ -39,6 +39,7 @@ import {
 } from "@/components/ui/table";
 import { AdminReport, ReportStatus } from "@/types/admin";
 import ReportActionsModal from "@/components/admin/report-actions-modal";
+import { formatPrice } from "@/utils/string-builder";
 
 type SortField = "reporter" | "listingOwner" | "reportedListing" | "submitted" | "reviewedAt";
 type SortDir = "asc" | "desc";
@@ -50,12 +51,6 @@ const STATUS_CONFIG: Record<ReportStatus, { cls: string; label: string }> = {
   RESOLVED:  { cls: "bg-teal-100 dark:bg-teal-900/40 text-teal-700 dark:text-teal-300",      label: "Resolved"  },
   DISMISSED: { cls: "bg-stone-100 dark:bg-stone-800 text-stone-500 dark:text-stone-400",     label: "Dismissed" },
 };
-
-const phpFmt = new Intl.NumberFormat("en-PH", {
-  style: "currency",
-  currency: "PHP",
-  minimumFractionDigits: 0,
-});
 
 // ── Shared filter select ───────────────────────────────────────────────────────
 function FilterSelect({
@@ -467,7 +462,7 @@ export default function ReportsPage() {
                                     {report.target_name}
                                   </p>
                                   <p className="text-xs text-stone-500 dark:text-stone-400 truncate">
-                                    {phpFmt.format(report.listing_price ?? 0)} / {report.listing_price_unit || "unit"}
+                                    {formatPrice(report.listing_price ?? 0)} {report.listing_price_unit}
                                   </p>
                                 </div>
                               </div>

@@ -25,6 +25,7 @@ import OfferModal from "@/components/offer-modal";
 import { ScheduleModal } from "@/components/schedule-modal";
 import { Separator } from "@/components/ui/separator";
 import { ImageLink } from "../image-link";
+import { formatPrice } from "@/utils/string-builder";
 
 interface ListingContextCardProps {
   conversationId?: string;
@@ -43,9 +44,6 @@ export default function ListingContextCard({
   onMarkedComplete,
   onOfferUpdated,
 }: ListingContextCardProps) {
-  const fmt = (n: number) =>
-    "₱" + n.toLocaleString("en-PH", { minimumFractionDigits: 0 });
-
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [markingComplete, setMarkingComplete] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(false);
@@ -306,7 +304,7 @@ export default function ListingContextCard({
           </p>
           <div className="flex items-center gap-1.5 mt-0.5">
             <span className="text-xs font-bold text-amber-700 dark:text-amber-500">
-              {fmt(listing.price)} {listing.priceUnit ?? ""}
+              {formatPrice(listing.price)} {listing.priceUnit ?? ""}
             </span>
           </div>
         </div>
@@ -324,7 +322,7 @@ export default function ListingContextCard({
               {
                 listing.listingType === "SELL"
                   ? isSold || hasTransaction && (normalizedTransactionStatus === "PENDING" || normalizedTransactionStatus === "CONFIRMED")
-                    ? fmt(offeredPrice)
+                    ? formatPrice(offeredPrice)
                     : "No offer yet"
                   : (scheduleValue || "No schedule yet")
               }

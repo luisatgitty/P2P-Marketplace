@@ -13,6 +13,7 @@ import { Label }             from "@/components/ui/label";
 import { Separator }         from "@/components/ui/separator";
 import { Textarea }          from "@/components/ui/textarea";
 import { AdminReport, ReportActionType } from "@/types/admin";
+import { formatPrice } from "@/utils/string-builder";
 
 interface ReportActionsModalProps {
   report:    AdminReport;
@@ -118,12 +119,6 @@ const SEVERITY_STYLES: Record<ActionOption["severity"], {
 };
 
 const ACTION_GROUPS = ["Minor Actions", "Account Lockout", "Permanent Actions"];
-
-const phpFmt = new Intl.NumberFormat("en-PH", {
-  style: "currency",
-  currency: "PHP",
-  minimumFractionDigits: 0,
-});
 
 // ── Info pair ──────────────────────────────────────────────────────────────────
 
@@ -333,7 +328,7 @@ export default function ReportActionsModal({ report, onClose, onSubmit }: Report
                               {report.target_name}
                             </p>
                             <p className="text-xs text-stone-500 dark:text-stone-400 truncate">
-                              {phpFmt.format(report.listing_price ?? 0)} / {report.listing_price_unit || "unit"}
+                              {formatPrice(report.listing_price ?? 0)} {report.listing_price_unit}
                             </p>
                           </div>
                         </div>

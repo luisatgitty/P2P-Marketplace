@@ -14,11 +14,7 @@ import {
 import { Label } from "./ui/label";
 import { Input } from "./ui/input";
 import { BookingCalendar, type BookingCalendarColors } from "./ui/booking-calendar";
-
-// ── Formatting ─────────────────────────────────────────────────────────────────
-const phpFmt = new Intl.NumberFormat("en-PH", {
-  style: "currency", currency: "PHP", minimumFractionDigits: 0,
-});
+import { formatPrice } from "@/utils/string-builder";
 
 // ── Date helpers ───────────────────────────────────────────────────────────────
 function sod(d: Date): Date {
@@ -591,11 +587,11 @@ export function ScheduleModal({
                   <div className="border-t border-teal-200 dark:border-teal-800 pt-2 flex items-center justify-between">
                     <span className="text-xs text-stone-500 dark:text-stone-400">
                       {numNights} night{numNights !== 1 ? "s" : ""} ·{" "}
-                      {phpFmt.format(listingPrice)} {priceUnit}
+                      {formatPrice(listingPrice)} {priceUnit}
                     </span>
                     {estimatedTotal !== null && (
                       <span className="text-sm font-bold text-stone-900 dark:text-stone-50">
-                        Est. {phpFmt.format(estimatedTotal)}
+                        Est. {formatPrice(estimatedTotal)}
                       </span>
                     )}
                   </div>
