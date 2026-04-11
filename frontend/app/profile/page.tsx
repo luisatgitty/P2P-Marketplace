@@ -194,8 +194,14 @@ function AddListingCard() {
 }
 
 function ProfileReviewCard({ review }: { review: ProfileReviewItem }) {
+  const { user } = useUser();
   const fmt = new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP", minimumFractionDigits: 0 });
   const reviewerName = (review.reviewer.name ?? "").trim() || "Anonymous Reviewer";
+  const currentUserId = (user?.userId ?? "").trim();
+  const reviewerId = (review.reviewer.id ?? "").trim();
+  const reviewerProfileHref = reviewerId !== "" && reviewerId === currentUserId
+    ? "/profile"
+    : `/profile?userId=${reviewerId}`;
   const listingTypeLabel = (() => {
     const type = (review.listing.type ?? "").trim().toLowerCase();
     if (type === "sell") return "For Sale";
@@ -208,13 +214,11 @@ function ProfileReviewCard({ review }: { review: ProfileReviewItem }) {
     <div className="bg-white dark:bg-[#1c1f2e] rounded-2xl border border-stone-200 dark:border-[#2a2d3e] shadow-sm p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
-          {/* Use ImageLink */}
-          <SafeImage
+          <ImageLink
+            href={reviewerProfileHref}
             src={review.reviewer.profileImageUrl}
             type="profile"
-            alt={`Profile image of ${reviewerName}`}
-            width={40}
-            height={40}
+            label={reviewerName}
             className="w-9 h-9 shrink-0"
           />
           <div className="min-w-0">
@@ -395,7 +399,9 @@ export default function ProfilePage() {
   const searchParams = useSearchParams();
   const { user, isUserOnline, saveUserData, clearUserData } = useUser();
   const externalUserId = (searchParams.get("userId") ?? "").trim();
-  const isViewingExternalProfile = externalUserId !== "";
+  const ownUserId = (user?.userId ?? "").trim();
+  const isSelfProfileRequest = externalUserId !== "" && ownUserId !== "" && externalUserId === ownUserId;
+  const isViewingExternalProfile = externalUserId !== "" && !isSelfProfileRequest;
   const [profileUser, setProfileUser] = useState<ProfilePayload["user"] | null>(null);
   const verificationState: VerificationState = resolveVerificationState(profileUser?.status ?? user?.status ?? "");
 
