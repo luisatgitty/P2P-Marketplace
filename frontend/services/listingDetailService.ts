@@ -162,6 +162,27 @@ export async function markListingAsComplete(id: string): Promise<void> {
   }
 }
 
+export async function deleteListing(id: string): Promise<{ listingId: string; status: "DELETED" }> {
+  try {
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/listing/${encodeURIComponent(id)}`, {
+      method: "DELETE",
+      credentials: "include",
+    });
+
+    const parsedJson = await res.json();
+    if (!res.ok) {
+      throw parsedJson?.data?.message || "Failed to remove listing.";
+    }
+
+    return {
+      listingId: parsedJson?.data?.listingId,
+      status: parsedJson?.data?.status,
+    };
+  } catch (error: any) {
+    throw error?.message || "An unexpected error occurred. Please try again later.";
+  }
+}
+
 export async function getMyListingReview(id: string): Promise<ListingReviewPayload | null> {
   try {
     const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/listing/${id}/review`, {

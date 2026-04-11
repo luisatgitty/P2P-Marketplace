@@ -176,7 +176,10 @@ func DeleteListing(c *fiber.Ctx) error {
 		return SendErrorResponse(c, 400, err.Error(), err)
 	}
 
-	return SendSuccessResponse(c, 200, "Listing removed successfully", map[string]any{"listingId": listingId})
+	return SendSuccessResponse(c, 200, "Listing removed successfully", map[string]any{
+		"listingId": listingId,
+		"status":    "DELETED",
+	})
 }
 
 func GetListingById(c *fiber.Ctx) error {
