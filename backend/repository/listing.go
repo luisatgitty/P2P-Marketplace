@@ -1132,7 +1132,7 @@ func GetRelatedListings(listingId, categoryId, listingType, excludeUserId string
 			LOWER(l.listing_type::text) AS type,
 			COALESCE(c.name, 'Others') AS category,
 			TRIM(BOTH ', ' FROM CONCAT_WS(', ', NULLIF(l.location_city, ''), NULLIF(l.location_province, ''))) AS location,
-			TO_CHAR(l.created_at, 'Mon DD, YYYY') AS posted_at,
+			TO_CHAR(l.created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS posted_at,
 			COALESCE(li.image_url, '') AS image_url,
 			TRIM(BOTH ' ' FROM CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, ''))) AS seller_name,
 			COALESCE(rv.avg_rating, 5.0) AS seller_rating,

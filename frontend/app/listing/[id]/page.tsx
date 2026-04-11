@@ -24,6 +24,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { SafeImage } from "@/components/ui/safe-image";
 import { ImageLink } from "@/components/image-link";
+import { formatPrice, formatTimeAgo } from "@/utils/string-builder"; 
 
 // ── ExtraDetail — mirrors every field the listing form collects ────────────────
 interface ExtraDetail {
@@ -64,9 +65,6 @@ function getDefaultExtra(listing: PostCardProps): ExtraDetail {
     arrangement:    "",
   };
 }
-
-// ── Formatting ─────────────────────────────────────────────────────────────────
-const fmt = new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP", minimumFractionDigits: 0 });
 
 // ── Type badge — keys match PostCardProps.type ("sell" | "rent" | "service") ───
 // FIX: was keyed as "sale" which never matched the actual type value "sell"
@@ -481,7 +479,7 @@ export default function ListingDetailPage() {
     <div className="min-h-screen bg-stone-100 dark:bg-[#0f1117]">
 
       {/* ── Breadcrumb ── */}
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-5 pb-3">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-5 pb-3">
         <div className="flex items-center gap-2 text-xs text-stone-400 dark:text-stone-500">
           <Link href="/" className="hover:text-stone-600 dark:hover:text-stone-300 transition-colors flex items-center gap-1">
             <ArrowLeft className="w-3 h-3" /> Home
@@ -500,7 +498,7 @@ export default function ListingDetailPage() {
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 pb-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 pb-8">
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6">
 
           {/* ══ LEFT COLUMN ══════════════════════════════════════════════════ */}
@@ -685,14 +683,14 @@ export default function ListingDetailPage() {
 
                 {/* Price */}
                 <div className="flex items-baseline gap-1.5 mb-1">
-                  <span className="text-2xl font-extrabold text-stone-900 dark:text-stone-50">{fmt.format(listing.price)}</span>
+                  <span className="text-2xl font-extrabold text-amber-700 dark:text-amber-500">{formatPrice(listing.price)}</span>
                   {listing.priceUnit && <span className="text-black dark:text-white text-sm">{listing.priceUnit}</span>}
                 </div>
 
                 {/* Location + posted */}
                 <div className="flex flex-wrap items-center gap-3 text-sm text-black dark:text-white mb-4">
                   <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{listing.location}</span>
-                  <span className="flex items-center gap-1"><Clock className="w-3 h-3" />Posted {listing.postedAt}</span>
+                  <span className="flex items-center gap-1"><Clock className="w-3 h-3" />Posted {formatTimeAgo(listing.postedAt)}</span>
                 </div>
 
                 {/* ── CTA buttons ── */}

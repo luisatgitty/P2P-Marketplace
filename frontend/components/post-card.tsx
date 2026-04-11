@@ -4,6 +4,7 @@ import Link from "next/link";
 import { MapPin, Clock } from "lucide-react";
 import ListingTypeBadge from "@/components/listing-type-badge";
 import { ImageLink } from "@/components/image-link";
+import { formatPrice, formatTimeAgo } from "@/utils/string-builder"; 
 
 export interface PostCardProps {
   id: string;
@@ -30,10 +31,6 @@ export interface PostCardProps {
 
 export default function PostCard(props: PostCardProps) {
   const { id, title, price, priceUnit, type, status, sellStatus, location, postedAt, imageUrl } = props;
-
-  const formatPrice = (p: number) =>
-    "₱" + p.toLocaleString("en-PH", { minimumFractionDigits: 0 });
-
   return (
     <article className="group relative flex flex-col bg-white dark:bg-[#1e2a3a] rounded-xl border border-stone-200 dark:border-white/10 overflow-hidden shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
 
@@ -75,7 +72,7 @@ export default function PostCard(props: PostCardProps) {
           </div>
           <div className="flex items-center gap-0.5 shrink-0">
             <Clock size={11} />
-            <span>{postedAt}</span>
+            <span>{formatTimeAgo(postedAt)}</span>
           </div>
         </div>
       </Link>

@@ -266,7 +266,7 @@ func GetListingById(c *fiber.Ctx) error {
 		"sellStatus": strings.ToLower(strings.TrimSpace(listing.SellStatus)),
 		"category":   listing.Category,
 		"location":   strings.TrimSpace(fmt.Sprintf("%s, %s", listing.LocationCity, listing.LocationProv)),
-		"postedAt":   timeAgo(listing.CreatedAt),
+		"postedAt":   listing.CreatedAt.UTC().Format(time.RFC3339),
 		"imageUrl":   mapPrimaryImage(baseURL, images),
 		"seller": map[string]any{
 			"id":              listing.SellerId,
@@ -603,7 +603,7 @@ func GetListings(c *fiber.Ctx) error {
 			"category":  l.Category,
 			"condition": mapConditionDisplay(l.Condition),
 			"location":  location,
-			"postedAt":  timeAgo(l.CreatedAt),
+			"postedAt":  l.CreatedAt.UTC().Format(time.RFC3339),
 			"createdAt": l.CreatedAt.UnixMilli(),
 			"imageUrl":  mapPrimaryImage(baseURL, []string{l.ImageUrl}),
 			"seller": map[string]any{
