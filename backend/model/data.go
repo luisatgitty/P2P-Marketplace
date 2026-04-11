@@ -216,6 +216,8 @@ type ProfileReviewFromDb struct {
 	ListingPrice     int    `gorm:"column:listing_price"`
 	ListingPriceUnit string `gorm:"column:listing_price_unit"`
 	ListingImageUrl  string `gorm:"column:listing_image_url"`
+	ListingType      string `gorm:"column:listing_type"`
+	ListingLocation  string `gorm:"column:listing_location"`
 }
 
 type HomeListingFromDb struct {

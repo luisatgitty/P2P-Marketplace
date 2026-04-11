@@ -20,6 +20,8 @@ export interface ProfileReviewItem {
     price: number;
     priceUnit?: string;
     imageUrl: string;
+    type?: string;
+    location?: string;
   };
 }
 

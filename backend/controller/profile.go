@@ -348,6 +348,8 @@ func mapProfileReviews(reviews []model.ProfileReviewFromDb, apiURL string) []map
 				"price":     review.ListingPrice,
 				"priceUnit": review.ListingPriceUnit,
 				"imageUrl":  resolveAssetURL(apiURL, review.ListingImageUrl),
+				"type":      review.ListingType,
+				"location":  review.ListingLocation,
 			},
 		})
 	}

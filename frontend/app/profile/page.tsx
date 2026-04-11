@@ -196,12 +196,13 @@ function AddListingCard() {
 function ProfileReviewCard({ review }: { review: ProfileReviewItem }) {
   const fmt = new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP", minimumFractionDigits: 0 });
   const reviewerName = (review.reviewer.name ?? "").trim() || "Anonymous Reviewer";
-  const initials = reviewerName
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((chunk) => chunk[0]?.toUpperCase() ?? "")
-    .join("") || "?";
+  const listingTypeLabel = (() => {
+    const type = (review.listing.type ?? "").trim().toLowerCase();
+    if (type === "sell") return "For Sale";
+    if (type === "rent") return "For Rent";
+    if (type === "service") return "Service";
+    return "";
+  })();
 
   return (
     <div className="bg-white dark:bg-[#1c1f2e] rounded-2xl border border-stone-200 dark:border-[#2a2d3e] shadow-sm p-4">
@@ -247,10 +248,17 @@ function ProfileReviewCard({ review }: { review: ProfileReviewItem }) {
           src={review.listing.imageUrl}
           type="thumbnail"
           label={review.listing.title}
-          className="w-14 h-14"
+          className="w-15 h-15"
         />
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold text-stone-800 dark:text-stone-100 line-clamp-1">{review.listing.title}</p>
+          <div className="flex items-center gap-1.5">
+            <p className="text-sm font-semibold text-stone-800 dark:text-stone-100 line-clamp-1">{review.listing.title}</p>
+            {listingTypeLabel && (
+              <span className="shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300">
+                {listingTypeLabel}
+              </span>
+            )}
+          </div>
           <p className="text-sm font-bold text-amber-700 dark:text-amber-500 mt-0.5">
             {fmt.format(review.listing.price)}
             {review.listing.priceUnit && (
@@ -258,7 +266,7 @@ function ProfileReviewCard({ review }: { review: ProfileReviewItem }) {
             )}
           </p>
           {/* Listing Location */}
-          {/* <p className="text-xs text-stone-400 dark:text-stone-500 mt-0.5 truncate">{review.listing.location}</p> */}
+          <p className="text-xs text-stone-400 dark:text-stone-500 mt-0.5 truncate">{review.listing.location || "Location unavailable"}</p>
         </div>
       </div>
     </div>
