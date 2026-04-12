@@ -310,16 +310,17 @@ func mapProfileListings(listings []model.ProfileListingFromDb, apiURL string) []
 	mapped := make([]map[string]any, 0, len(listings))
 	for _, listing := range listings {
 		mapped = append(mapped, map[string]any{
-			"id":        listing.Id,
-			"title":     listing.Title,
-			"price":     listing.Price,
-			"priceUnit": listing.PriceUnit,
-			"type":      listing.Type,
-			"category":  listing.Category,
-			"location":  listing.Location,
-			"postedAt":  listing.PostedAt,
-			"imageUrl":  resolveAssetURL(apiURL, listing.ImageUrl),
-			"status":    listing.Status,
+			"id":               listing.Id,
+			"title":            listing.Title,
+			"price":            listing.Price,
+			"priceUnit":        listing.PriceUnit,
+			"type":             listing.Type,
+			"category":         listing.Category,
+			"location":         listing.Location,
+			"postedAt":         listing.PostedAt,
+			"imageUrl":         resolveAssetURL(apiURL, listing.ImageUrl),
+			"status":           listing.Status,
+			"hasActiveBooking": listing.HasActiveBooking,
 			"seller": map[string]any{
 				"name":   listing.SellerName,
 				"rating": listing.SellerRating,

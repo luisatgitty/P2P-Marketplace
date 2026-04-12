@@ -657,6 +657,31 @@ func GetAdminListings() ([]model.AdminListingListItemFromDb, error) {
 }
 
 func ToggleAdminListingVisibility(listingId string) (string, error) {
+	normalized, err := getListingStatusById(listingId)
+	if err != nil {
+		return "", err
+	}
+
+	if normalized == "DELETED" {
+		return "", fmt.Errorf("Cannot update visibility for deleted listing")
+	}
+	if normalized != "AVAILABLE" && normalized != "BANNED" {
+		return "", fmt.Errorf("Listing cannot be shadow banned from current status")
+	}
+
+	nextStatus := "BANNED"
+	if normalized == "BANNED" {
+		nextStatus = "UNAVAILABLE"
+	}
+
+	if err := applyListingVisibilityStatus(listingId, nextStatus); err != nil {
+		return "", err
+	}
+
+	return nextStatus, nil
+}
+
+func getListingStatusById(listingId string) (string, error) {
 	db := middleware.DBConn
 
 	var currentStatus string
@@ -673,18 +698,11 @@ func ToggleAdminListingVisibility(listingId string) (string, error) {
 		return "", fmt.Errorf("Listing not found")
 	}
 
-	normalized := strings.ToUpper(strings.TrimSpace(currentStatus))
-	if normalized == "DELETED" {
-		return "", fmt.Errorf("Cannot update visibility for deleted listing")
-	}
-	if normalized != "AVAILABLE" && normalized != "BANNED" {
-		return "", fmt.Errorf("Listing cannot be shadow banned from current status")
-	}
+	return strings.ToUpper(strings.TrimSpace(currentStatus)), nil
+}
 
-	nextStatus := "BANNED"
-	if normalized == "BANNED" {
-		nextStatus = "UNAVAILABLE"
-	}
+func applyListingVisibilityStatus(listingId, nextStatus string) error {
+	db := middleware.DBConn
 
 	updateResult := db.Exec(`
 		UPDATE public.listings
@@ -695,13 +713,13 @@ func ToggleAdminListingVisibility(listingId string) (string, error) {
 		WHERE id = $2
 	`, nextStatus, listingId)
 	if updateResult.Error != nil {
-		return "", fmt.Errorf("Failed to update listing visibility")
+		return fmt.Errorf("Failed to update listing visibility")
 	}
 	if updateResult.RowsAffected == 0 {
-		return "", fmt.Errorf("Listing not found")
+		return fmt.Errorf("Listing not found")
 	}
 
-	return nextStatus, nil
+	return nil
 }
 
 func GetAdminTransactions() ([]model.AdminTransactionListItemFromDb, error) {

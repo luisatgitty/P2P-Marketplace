@@ -189,18 +189,19 @@ type ProfileUserFromDb struct {
 }
 
 type ProfileListingFromDb struct {
-	Id           string  `gorm:"column:id"            json:"id"`
-	Title        string  `gorm:"column:title"         json:"title"`
-	Price        int     `gorm:"column:price"         json:"price"`
-	PriceUnit    string  `gorm:"column:price_unit"    json:"priceUnit"`
-	Type         string  `gorm:"column:type"          json:"type"`
-	Category     string  `gorm:"column:category"      json:"category"`
-	Location     string  `gorm:"column:location"      json:"location"`
-	PostedAt     string  `gorm:"column:posted_at"     json:"postedAt"`
-	ImageUrl     string  `gorm:"column:image_url"     json:"imageUrl"`
-	SellerName   string  `gorm:"column:seller_name"   json:"sellerName"`
-	SellerRating float64 `gorm:"column:seller_rating" json:"sellerRating"`
-	Status       string  `gorm:"column:status"        json:"status"`
+	Id               string  `gorm:"column:id"            json:"id"`
+	Title            string  `gorm:"column:title"         json:"title"`
+	Price            int     `gorm:"column:price"         json:"price"`
+	PriceUnit        string  `gorm:"column:price_unit"    json:"priceUnit"`
+	Type             string  `gorm:"column:type"          json:"type"`
+	Category         string  `gorm:"column:category"      json:"category"`
+	Location         string  `gorm:"column:location"      json:"location"`
+	PostedAt         string  `gorm:"column:posted_at"     json:"postedAt"`
+	ImageUrl         string  `gorm:"column:image_url"     json:"imageUrl"`
+	SellerName       string  `gorm:"column:seller_name"   json:"sellerName"`
+	SellerRating     float64 `gorm:"column:seller_rating" json:"sellerRating"`
+	Status           string  `gorm:"column:status"        json:"status"`
+	HasActiveBooking bool    `gorm:"column:has_active_booking" json:"hasActiveBooking"`
 }
 
 type ProfileReviewFromDb struct {

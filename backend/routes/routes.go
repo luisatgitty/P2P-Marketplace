@@ -36,6 +36,7 @@ func AppRoutes(app *fiber.App) {
 	app.Delete("/listing/:id/bookmark", controller.AuthenticateUser, controller.RemoveListingBookmark)
 	app.Get("/listing/:id/edit", controller.AuthenticateUser, controller.GetListingEditById)
 	app.Put("/listing/:id", controller.AuthenticateUser, controller.UpdateListing)
+	app.Patch("/listing/:id/toggle-visibility", controller.AuthenticateUser, controller.ToggleListingVisibility)
 	app.Delete("/listing/:id", controller.AuthenticateUser, controller.DeleteListing)
 	app.Get("/profile/me", controller.AuthenticateUser, controller.MeProfile)
 	app.Get("/profile/:id", controller.ProfileById)

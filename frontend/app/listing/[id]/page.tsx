@@ -9,7 +9,7 @@ import {
   CheckCircle, Phone, Zap, ArrowLeft, Truck, AlertTriangle
 } from "lucide-react";
 import { useUser } from "@/utils/UserContext";
-import { addListingBookmark, getListingDetailById, removeListingBookmark, submitListingReport } from "@/services/listingDetailService";
+import { addListingBookmark, deleteListing, getListingDetailById, removeListingBookmark, submitListingReport, toggleListingVisibility } from "@/services/listingDetailService";
 import { getUserProfileData } from "@/services/profileService";
 import PostCard, { type PostCardProps } from "@/components/post-card";
 import ListingTypeBadge from "@/components/listing-type-badge";
@@ -104,7 +104,7 @@ function RentInfoCard({ extra }: { extra: ExtraDetail }) {
             <div className="flex flex-wrap gap-1.5">
               {extra.amenities.map((a) => (
                 <span key={a} className="flex items-center gap-1 text-xs bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800 px-2.5 py-1 rounded-full font-medium">
-                  <CheckCircle className="w-3 h-3 flex-shrink-0" /> {a}
+                  <CheckCircle className="w-3 h-3 shrink-0" /> {a}
                 </span>
               ))}
             </div>
@@ -130,7 +130,7 @@ function ServiceInfoCard({ extra }: { extra: ExtraDetail }) {
               <div className="bg-stone-50 dark:bg-[#13151f] rounded-xl p-3">
                 <p className="text-[10px] font-semibold text-stone-400 dark:text-stone-500 uppercase tracking-widest mb-1">Turnaround</p>
                 <p className="text-sm font-semibold text-stone-800 dark:text-stone-100 flex items-center gap-1.5">
-                  <Clock className="w-3.5 h-3.5 text-violet-500 flex-shrink-0" />
+                  <Clock className="w-3.5 h-3.5 text-violet-500 shrink-0" />
                   {extra.turnaround}
                 </p>
               </div>
@@ -139,7 +139,7 @@ function ServiceInfoCard({ extra }: { extra: ExtraDetail }) {
               <div className="bg-stone-50 dark:bg-[#13151f] rounded-xl p-3">
                 <p className="text-[10px] font-semibold text-stone-400 dark:text-stone-500 uppercase tracking-widest mb-1">Service Area</p>
                 <p className="text-sm font-semibold text-stone-800 dark:text-stone-100 flex items-center gap-1.5">
-                  <MapPin className="w-3.5 h-3.5 text-violet-500 flex-shrink-0" />
+                  <MapPin className="w-3.5 h-3.5 text-violet-500 shrink-0" />
                   {extra.serviceArea}
                 </p>
               </div>
@@ -153,7 +153,7 @@ function ServiceInfoCard({ extra }: { extra: ExtraDetail }) {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-2 gap-x-6">
               {extra.inclusions.filter(Boolean).map((item) => (
                 <div key={item} className="flex items-start gap-2 text-sm text-stone-700 dark:text-stone-200">
-                  <CheckCircle className="w-4 h-4 text-violet-500 flex-shrink-0 mt-0.5" />
+                  <CheckCircle className="w-4 h-4 text-violet-500 shrink-0 mt-0.5" />
                   {item}
                 </div>
               ))}
@@ -188,6 +188,7 @@ export default function ListingDetailPage() {
   const [submittingReport, setSubmittingReport] = useState(false);
   const [shownContactNumber, setShownContactNumber] = useState<string | null>(null);
   const [deleting,    setDeleting]   = useState(false);
+  const [toggling,    setToggling]   = useState(false);
   const [messaging,   setMessaging]  = useState(false);
   const [isBookmarking, setIsBookmarking] = useState(false);
   const [isFetchingContact, setIsFetchingContact] = useState(false);
@@ -250,9 +251,9 @@ export default function ListingDetailPage() {
   const isBannedState = listingStatus === "banned";
   const isDeletedState = listingStatus === "deleted";
   const isSellerInactiveState = listing.seller.isActive === false;
-  const ownerUnavailableState = isUnavailableState || isDeletedState;
   const visitorUnavailableState = isUnavailableState || isBannedState || isDeletedState || isSellerInactiveState;
   const isSold = isSell && (listingStatus === "sold" || listingSellStatus === "sold");
+  const isListingAvailable = listingStatus === "available";
   const images       = extra.images.filter(Boolean);
   const sellerRating = Number.isFinite(listing.seller.rating) ? Number(listing.seller.rating) : 0;
   const hasSellerRating = sellerRating > 0;
@@ -455,16 +456,7 @@ export default function ListingDetailPage() {
 
     setDeleting(true);
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/listing/${id}`, {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-      });
-
-      const parsedJson = await response.json();
-      if (!response.ok) {
-        throw new Error(parsedJson?.data?.message || "Failed to remove listing.");
-      }
+      await deleteListing(id);
 
       router.push("/profile");
     } catch (err) {
@@ -473,6 +465,38 @@ export default function ListingDetailPage() {
     } finally {
       setDeleting(false);
     }
+  }
+
+  async function handleListingVisibility() {
+  if (!isAuth) {
+    router.push("/login");
+    return;
+  }
+  if (!isOwnListing || toggling) return;
+
+  const confirmed = window.confirm(`Are you sure you want to ${isListingAvailable ? "hide" : "show"} this listing?`);
+  if (!confirmed) return;
+
+  setToggling(true);
+  try {
+    const response = await toggleListingVisibility(id);
+    const nextStatus = response.status.toLowerCase();
+
+    setListing((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        status: nextStatus,
+      };
+    });
+
+    toast.success(nextStatus === "available" ? "Listing is now visible." : "Listing is now hidden.", { position: "top-center" });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Failed to update listing visibility.";
+    toast.error(message, { position: "top-center" });
+  } finally {
+    setToggling(false);
+  }
   }
 
   return (
@@ -494,7 +518,7 @@ export default function ListingDetailPage() {
           <span>/</span>
           <span className="capitalize text-stone-500 dark:text-stone-400">{listing.category}</span>
           <span>/</span>
-          <span className="text-stone-700 dark:text-stone-300 truncate max-w-[180px]">{listing.title}</span>
+          <span className="text-stone-700 dark:text-stone-300 truncate max-w-45">{listing.title}</span>
         </div>
       </div>
 
@@ -506,7 +530,7 @@ export default function ListingDetailPage() {
 
             {/* ── Image gallery ── */}
             <div className="bg-white dark:bg-[#1c1f2e] rounded-2xl border border-stone-200 dark:border-[#2a2d3e] overflow-hidden shadow-sm">
-              <div className="relative aspect-[16/10] bg-stone-100 dark:bg-[#13151f] overflow-hidden group">
+              <div className="relative aspect-16/10 bg-stone-100 dark:bg-[#13151f] overflow-hidden group">
                 <SafeImage
                   src={images[imgIdx] ?? listing.imageUrl}
                   type="cover"
@@ -596,7 +620,7 @@ export default function ListingDetailPage() {
                   <div className="grid grid-cols-2 gap-2">
                     {extra.features.map((f) => (
                       <div key={f} className="flex items-center gap-2 text-sm text-stone-700 dark:text-stone-200">
-                        <CheckCircle className="w-4 h-4 text-teal-500 flex-shrink-0" />
+                        <CheckCircle className="w-4 h-4 text-teal-500 shrink-0" />
                         {f}
                       </div>
                     ))}
@@ -696,27 +720,32 @@ export default function ListingDetailPage() {
                 {/* ── CTA buttons ── */}
                 {isOwnListing ? (
                   <div className="flex flex-col gap-2">
-                    {ownerUnavailableState ? (
+                    {isDeletedState || isBannedState || isSold ? (
                       <button
                         disabled
                         className="flex items-center justify-center gap-2 w-full py-3 rounded-full bg-stone-400/80 text-white text-sm font-bold cursor-not-allowed opacity-95"
                       >
                         <AlertTriangle className="w-4 h-4" /> Unavailable
                       </button>
-                    ) : isSold ? (
-                      <button
-                        disabled
-                        className="flex items-center justify-center gap-2 w-full py-3 rounded-full bg-emerald-600/90 text-white text-sm font-bold cursor-not-allowed opacity-95"
-                      >
-                        <CheckCircle className="w-4 h-4" /> Sold
-                      </button>
                     ) : (
                       <>
+                        {/* Edit Listing Button */}
                         <Link
                           href={`/listing/${id}/edit`}
                           className="flex items-center justify-center gap-2 w-full py-3 rounded-full bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 text-sm font-bold hover:opacity-90 transition-opacity">
                           Edit Listing
                         </Link>
+
+                        {/* Hide Listing Button */}
+                        <button
+                          onClick={handleListingVisibility}
+                          disabled={toggling}
+                          className="flex items-center justify-center w-full py-2.5 rounded-full border-2 border-stone-200 dark:border-[#2a2d3e] text-stone-700 dark:text-stone-200 bg-white dark:bg-transparent text-sm font-semibold hover:border-stone-400 dark:hover:border-stone-500 hover:bg-stone-50 dark:hover:bg-[#252837] transition-all"
+                        >
+                          {isListingAvailable ? "Hide Listing" : "Show Listing"}
+                        </button>
+
+                        {/* Remove Listing Button */}
                         <button
                           onClick={handleRemoveListing}
                           disabled={deleting}
