@@ -1,10 +1,12 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Send, Paperclip, Image, MapPin, X, CornerUpLeft } from "lucide-react";
+import { Image, MapPin, X, CornerUpLeft, SendHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { ReplyPreview } from "@/types/messaging";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 
 type OutgoingAttachment = {
   name: string;
@@ -20,11 +22,6 @@ interface MessageInputProps {
   autoFocusKey?: string;
 }
 
-const ATTACH_OPTS = [
-  { icon: Image,  label: "Photo / Video" },
-  { icon: MapPin, label: "Location"      },
-];
-
 export default function MessageInput({
   onSend,
   disabled,
@@ -33,19 +30,24 @@ export default function MessageInput({
   autoFocusKey,
 }: MessageInputProps) {
   const [value,      setValue]      = useState("");
-  const [attachOpen, setAttachOpen] = useState(false);
   const [stagedMedia, setStagedMedia] = useState<Array<{ id: string; file: File; previewUrl: string; isVideo: boolean }>>([]);
   const [preparingSend, setPreparingSend] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const attachRef   = useRef<HTMLDivElement>(null);
   const mediaInputRef = useRef<HTMLInputElement>(null);
 
-  // Auto-grow textarea
+  // Auto-grow textarea until 4 lines, then allow vertical scrolling.
   useEffect(() => {
     const el = textareaRef.current;
     if (!el) return;
+
     el.style.height = "auto";
-    el.style.height = Math.min(el.scrollHeight, 120) + "px";
+
+    const lineHeight = Number.parseFloat(window.getComputedStyle(el).lineHeight || "20");
+    const maxHeight = Math.round(lineHeight * 4);
+    const nextHeight = Math.min(el.scrollHeight, maxHeight);
+
+    el.style.height = `${nextHeight}px`;
+    el.style.overflowY = el.scrollHeight > maxHeight ? "auto" : "hidden";
   }, [value]);
 
   // Focus textarea when a reply is set
@@ -63,16 +65,6 @@ export default function MessageInput({
 
     return () => window.clearTimeout(timer);
   }, [autoFocusKey, disabled]);
-
-  // Close attach menu on outside click
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (attachRef.current && !attachRef.current.contains(e.target as Node))
-        setAttachOpen(false);
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, []);
 
   const toBase64 = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
@@ -109,7 +101,6 @@ export default function MessageInput({
       setValue("");
       stagedMedia.forEach((item) => URL.revokeObjectURL(item.previewUrl));
       setStagedMedia([]);
-      if (textareaRef.current) textareaRef.current.style.height = "auto";
     } catch (error) {
       const errMessage = error instanceof Error ? error.message : "Failed to send message.";
       if (errMessage.toLowerCase().includes("read attachment")) {
@@ -136,7 +127,6 @@ export default function MessageInput({
   };
 
   const handlePickPhotoVideo = () => {
-    setAttachOpen(false);
     mediaInputRef.current?.click();
   };
 
@@ -172,8 +162,6 @@ export default function MessageInput({
   }, [stagedMedia]);
 
   const handleShareLocation = () => {
-    setAttachOpen(false);
-
     if (!navigator.geolocation) {
       toast.error("Location is not supported on this device/browser.", { position: "top-center" });
       return;
@@ -207,7 +195,7 @@ export default function MessageInput({
   };
 
   return (
-    <div className="px-3 pt-3 pb-5 border-t border-border bg-white dark:bg-[#1c1f2e] shrink-0">
+    <div className="px-3 pt-3 pb-5 shrink">
 
       {/* ── Reply banner ───────────────────────────────────────────────── */}
       {replyTo && (
@@ -235,7 +223,7 @@ export default function MessageInput({
       )}
 
       {/* ── Input row ──────────────────────────────────────────────────── */}
-      <div className="bg-white dark:bg-[#1c1f2e] border border-border rounded-2xl px-1 py-1">
+      <div>
 
         {/* ── Attachment staging area ─────────────────────────────────── */}
         {stagedMedia.length > 0 && (
@@ -262,20 +250,33 @@ export default function MessageInput({
           </div>
         )}
 
-        <div className="flex items-end gap-2 pl-2">
+        <div className="flex items-end">
 
-        {/* Attach */}
-        <div className="relative border-stone-300 dark:border-stone-600" ref={attachRef}>
-          <button
-            onClick={() => setAttachOpen((v) => !v)}
-            className="text-stone-400 hover:text-amber-600 dark:hover:text-amber-400 transition-colors shrink-0 cursor-pointer"
-            aria-label="Attach file"
+          {/* Photo / Video */}
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={handlePickPhotoVideo}
+            className="w-8 h-8 inline-flex items-center justify-center text-stone-400 hover:text-amber-600 dark:hover:text-amber-400 transition-colors shrink-0 cursor-pointer"
+            aria-label="Attach photo or video"
+            title="Photo / Video"
           >
-            <Paperclip size={17} />
-          </button>
-          {/* Separator */}
-          
+            <Image size={18} />
+          </Button>
 
+          {/* Location */}
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={handleShareLocation}
+            className="w-8 h-8 inline-flex items-center justify-center text-stone-400 hover:text-amber-600 dark:hover:text-amber-400 transition-colors shrink-0 cursor-pointer"
+            aria-label="Share location"
+            title="Location"
+          >
+            <MapPin size={20} />
+          </Button>
+
+          {/* Hidden media input */}
           <input
             ref={mediaInputRef}
             type="file"
@@ -285,54 +286,42 @@ export default function MessageInput({
             onChange={handleMediaSelected}
           />
 
-          {attachOpen && (
-            <div className="absolute bottom-full mb-2 left-0 bg-white dark:bg-[#1c1f2e] border border-border rounded-xl shadow-xl overflow-hidden animate-in fade-in slide-in-from-bottom-1 duration-100 z-20">
-              {ATTACH_OPTS.map(({ icon: Icon, label }) => (
-                <button
-                  key={label}
-                  onClick={label === "Photo / Video" ? handlePickPhotoVideo : handleShareLocation}
-                  className="flex items-center gap-2.5 w-full px-4 py-2.5 text-xs font-medium text-stone-600 dark:text-stone-300 hover:bg-stone-50 dark:hover:bg-white/5 transition-colors whitespace-nowrap"
-                >
-                  <Icon size={14} className="text-stone-400 dark:text-stone-500" />
-                  {label}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+          {/* Message input */}
+          <div className="flex-1 min-w-0 mx-2">
+            <Textarea
+              ref={textareaRef}
+              id="message-input"
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder={replyTo ? `Reply to ${replyTo.senderName}…` : "Type a message…"}
+              disabled={disabled}
+              rows={1}
+              className={cn(
+                "min-h-9 max-h-32 resize-none",
+                "bg-white dark:bg-[#1c1f2e] border border-border",
+                "text-stone-800 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-600",
+                "disabled:opacity-50"
+              )}
+            />
+          </div>
 
-        <div className="w-0.5 h-7 bg-stone-300 dark:bg-stone-600 self-center" />
-
-        {/* Textarea */}
-        <textarea
-          ref={textareaRef}
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder={replyTo ? `Reply to ${replyTo.senderName}…` : "Type a message…"}
-          rows={1}
-          disabled={disabled}
-          className={cn(
-            "flex-1 bg-transparent resize-none outline-none text-sm leading-relaxed py-0.5",
-            "text-stone-800 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-600",
-            "max-h-28 disabled:opacity-50",
-          )}
-        />
-
-        {/* Send */}
-        <button
-          onClick={() => void handleSend()}
-          disabled={!canSend}
-          aria-label="Send message"
-          className={cn(
-            "p-2 rounded-xl transition-all duration-150",
-            canSend
-              ? "bg-amber-700 text-white hover:bg-amber-600 shadow-sm"
-              : "bg-transparent text-stone-300 dark:text-stone-600 cursor-not-allowed"
-          )}
-        >
-          <Send size={15} className={canSend ? "-translate-x-px" : ""} />
-        </button>
+          <Button
+            type="button"
+            onClick={() => void handleSend()}
+            disabled={!canSend}
+            aria-label="Send message"
+            variant="ghost"
+            size="icon"
+            className={cn(
+              "h-9 w-9 shrink-0 self-end hover:bg-transparent",
+              canSend
+                ? "text-amber-700 hover:text-amber-600 dark:text-amber-500 dark:hover:text-amber-400"
+                : "text-stone-300 dark:text-stone-600 cursor-not-allowed"
+            )}
+          >
+            <SendHorizontal size={15} className={canSend ? "-translate-x-px" : ""} />
+          </Button>
         </div>
       </div>
     </div>

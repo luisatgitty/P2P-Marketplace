@@ -66,7 +66,7 @@ export function MediaViewerModal({
         gap: 8,
       }}
       carousel={{
-        finite: false,
+        finite: true,
       }}
       controller={{
         closeOnBackdropClick: true,
