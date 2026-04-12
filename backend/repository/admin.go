@@ -1008,6 +1008,10 @@ func SetAdminReportAction(reportId, adminUserId, action, reason string) error {
 	if target.ReportedListingId != nil {
 		targetListingId = strings.TrimSpace(*target.ReportedListingId)
 	}
+	reportLink := "/notifications"
+	if targetListingId != "" {
+		reportLink = "/listing/" + targetListingId
+	}
 
 	effectiveAction := normalizedAction
 	now := time.Now()
@@ -1065,8 +1069,8 @@ func SetAdminReportAction(reportId, adminUserId, action, reason string) error {
 		if targetUserId != "" {
 			if err := tx.Exec(`
 				INSERT INTO public.notifications (user_id, type, message, link)
-				VALUES ($1, 'REPORT_ACTION', $2, '/notifications')
-			`, targetUserId, "Your listing was removed after moderator review. Reason: "+trimmedReason).Error; err != nil {
+				VALUES ($1, 'REPORT_ACTION', $2, $3)
+			`, targetUserId, "Your listing was removed after moderator review.", reportLink).Error; err != nil {
 				tx.Rollback()
 				return fmt.Errorf("Failed to notify listing owner")
 			}
@@ -1122,8 +1126,8 @@ func SetAdminReportAction(reportId, adminUserId, action, reason string) error {
 
 			if err := tx.Exec(`
 				INSERT INTO public.notifications (user_id, type, message, link)
-				VALUES ($1, 'REPORT_ACTION', $2, '/notifications')
-			`, targetUserId, fmt.Sprintf("Your account has been temporarily locked for %d day(s) after moderator review. Reason: %s", lockDays, trimmedReason)).Error; err != nil {
+				VALUES ($1, 'REPORT_ACTION', $2, $3)
+			`, targetUserId, fmt.Sprintf("Your account has been temporarily locked for %d day(s) after moderator review.", lockDays), reportLink).Error; err != nil {
 				tx.Rollback()
 				return fmt.Errorf("Failed to notify locked user")
 			}
@@ -1157,8 +1161,8 @@ func SetAdminReportAction(reportId, adminUserId, action, reason string) error {
 
 		if err := tx.Exec(`
 			INSERT INTO public.notifications (user_id, type, message, link)
-			VALUES ($1, 'REPORT_ACTION', $2, '/notifications')
-		`, targetUserId, "Your account has been permanently banned after moderator review. Reason: "+trimmedReason).Error; err != nil {
+			VALUES ($1, 'REPORT_ACTION', $2, $3)
+		`, targetUserId, "Your account has been permanently banned after moderator review.", reportLink).Error; err != nil {
 			tx.Rollback()
 			return fmt.Errorf("Failed to notify banned user")
 		}
