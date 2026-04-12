@@ -282,6 +282,16 @@ type AdminListingTypeCountFromDb struct {
 	Count       int    `gorm:"column:count" json:"count"`
 }
 
+type NotificationFromDb struct {
+	Id        string    `gorm:"column:id" json:"id"`
+	UserId    string    `gorm:"column:user_id" json:"userId"`
+	Type      string    `gorm:"column:type" json:"type"`
+	Message   string    `gorm:"column:message" json:"message"`
+	Link      string    `gorm:"column:link" json:"link"`
+	IsRead    bool      `gorm:"column:is_read" json:"isRead"`
+	CreatedAt time.Time `gorm:"column:created_at" json:"createdAt"`
+}
+
 type AdminListingTypeBreakdownItem struct {
 	Type  string  `json:"type"`
 	Count int     `json:"count"`

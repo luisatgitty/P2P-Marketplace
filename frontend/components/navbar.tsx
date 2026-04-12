@@ -7,6 +7,12 @@ import { useUser } from "@/utils/UserContext";
 import { useTheme } from "next-themes";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { getConversations } from "@/services/messagingService";
+import {
+  getNotifications,
+  markAllNotificationsRead,
+  markNotificationRead,
+} from "@/services/notificationService";
+import { toast } from "sonner";
 import { LogoutModal } from "@/components/auth/logout-modal";
 import {
   Sun, Moon, MessageCircle, LogOut, User, Home,
@@ -24,36 +30,6 @@ const TABS = [
   { label: "Buy",      value: "sell",    icon: Tag        },
   { label: "Rent",     value: "rent",    icon: Store      },
   { label: "Services", value: "service", icon: Wrench     },
-];
-
-const INITIAL_MOCK_NOTIFICATIONS: NotificationItemData[] = [
-  {
-    id: "notif-1",
-    user_id: "mock-user-1",
-    type: "NEW_MESSAGE",
-    message: "You received a new message about your listing: Vintage Camera.",
-    link: "/messages",
-    is_read: false,
-    created_at: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
-  },
-  {
-    id: "notif-2",
-    user_id: "mock-user-1",
-    type: "LISTING_UPDATE",
-    message: "Your listing status has been changed to UNAVAILABLE.",
-    link: "/profile",
-    is_read: true,
-    created_at: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
-  },
-  {
-    id: "notif-3",
-    user_id: "mock-user-1",
-    type: "REPORT_REVIEWED",
-    message: "A report you submitted has been reviewed by the moderation team.",
-    link: "/notifications",
-    is_read: false,
-    created_at: new Date(Date.now() - 26 * 60 * 60 * 1000).toISOString(),
-  },
 ];
 
 // ─── Center tabs (needs Suspense because of useSearchParams) ───────────────────
@@ -116,7 +92,7 @@ export default function Navbar() {
   const [logoutModalOpen, setLogoutModalOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [hasUnreadMessages, setHasUnreadMessages] = useState(false);
-  const [notifications, setNotifications] = useState<NotificationItemData[]>(INITIAL_MOCK_NOTIFICATIONS);
+  const [notifications, setNotifications] = useState<NotificationItemData[]>([]);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const notificationRef = useRef<HTMLDivElement>(null);
 
@@ -125,17 +101,58 @@ export default function Navbar() {
   const canSeeNotifications = Boolean(isAuth && user && user.role === "USER");
   const hasUnreadNotifications = notifications.some((notification) => !notification.is_read);
 
-  const handleMarkNotificationRead = (id: string) => {
+  const refreshNotifications = useCallback(async () => {
+    if (!isAuth) {
+      setNotifications([]);
+      return;
+    }
+
+    try {
+      const rows = await getNotifications();
+      const mapped: NotificationItemData[] = rows.map((row) => ({
+        id: row.id,
+        user_id: row.userId,
+        type: row.type,
+        message: row.message,
+        link: row.link,
+        is_read: row.isRead,
+        created_at: row.createdAt,
+      }));
+      setNotifications(mapped);
+    } catch {
+      // Keep existing notification state on transient errors.
+    }
+  }, [isAuth]);
+
+  const handleMarkNotificationRead = async (id: string) => {
+    const previous = notifications;
     setNotifications((prev) =>
       prev.map((notification) =>
         notification.id === id ? { ...notification, is_read: true } : notification
       )
     );
-    setNotificationOpen(false);
+
+    try {
+      await markNotificationRead(id);
+    } catch (error) {
+      setNotifications(previous);
+      const message = error instanceof Error ? error.message : "Failed to mark notification as read.";
+      toast.error(message, { position: "top-center" });
+      throw error;
+    }
   };
 
-  const handleMarkAllNotificationsRead = () => {
+  const handleMarkAllNotificationsRead = async () => {
+    const previous = notifications;
     setNotifications((prev) => prev.map((notification) => ({ ...notification, is_read: true })));
+
+    try {
+      await markAllNotificationsRead();
+    } catch (error) {
+      setNotifications(previous);
+      const message = error instanceof Error ? error.message : "Failed to mark all notifications as read.";
+      toast.error(message, { position: "top-center" });
+    }
   };
 
   const handleLogOut = () => {
@@ -196,6 +213,20 @@ export default function Navbar() {
 
     refreshUnreadState();
   }, [isAuth, pathname, refreshUnreadState]);
+
+  useEffect(() => {
+    if (!canSeeNotifications) {
+      setNotifications([]);
+      return;
+    }
+
+    refreshNotifications();
+  }, [canSeeNotifications, refreshNotifications]);
+
+  useEffect(() => {
+    if (!notificationOpen || !canSeeNotifications) return;
+    refreshNotifications();
+  }, [notificationOpen, canSeeNotifications, refreshNotifications]);
 
   return (
     <>

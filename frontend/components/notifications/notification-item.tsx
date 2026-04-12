@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Bell, CheckCircle2, ShieldAlert, ShoppingBag } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -16,7 +16,7 @@ export type NotificationItemData = {
 
 type NotificationItemProps = {
   notification: NotificationItemData;
-  onClick?: (id: string) => void;
+  onClick?: (id: string) => Promise<void>;
 };
 
 function getNotificationIcon(type: string) {
@@ -59,10 +59,30 @@ function formatRelativeTime(value: string) {
 }
 
 export function NotificationItem({ notification, onClick }: NotificationItemProps) {
+  const router = useRouter();
+
+  const handleClick = async () => {
+    try {
+      if (onClick) {
+        await onClick(notification.id);
+      }
+    } catch {
+      return;
+    }
+
+    const target = notification.link.trim();
+    if (/^https?:\/\//i.test(target)) {
+      window.location.href = target;
+      return;
+    }
+
+    router.push(target || "/notifications");
+  };
+
   return (
-    <Link
-      href={notification.link}
-      onClick={() => onClick?.(notification.id)}
+    <button
+      type="button"
+      onClick={() => void handleClick()}
       className={cn(
         "block w-full text-left px-3 py-2.5 rounded-lg border transition-colors",
         notification.is_read
@@ -88,6 +108,6 @@ export function NotificationItem({ notification, onClick }: NotificationItemProp
 
         {!notification.is_read && <span className="mt-1 h-2 w-2 rounded-full bg-amber-400 shrink-0" />}
       </div>
-    </Link>
+    </button>
   );
 }

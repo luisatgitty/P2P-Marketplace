@@ -1064,8 +1064,8 @@ func SetAdminReportAction(reportId, adminUserId, action, reason string) error {
 
 		if targetUserId != "" {
 			if err := tx.Exec(`
-				INSERT INTO public.notifications (user_id, type, message)
-				VALUES ($1, 'REPORT_ACTION', $2)
+				INSERT INTO public.notifications (user_id, type, message, link)
+				VALUES ($1, 'REPORT_ACTION', $2, '/notifications')
 			`, targetUserId, "Your listing was removed after moderator review. Reason: "+trimmedReason).Error; err != nil {
 				tx.Rollback()
 				return fmt.Errorf("Failed to notify listing owner")
@@ -1121,8 +1121,8 @@ func SetAdminReportAction(reportId, adminUserId, action, reason string) error {
 			}
 
 			if err := tx.Exec(`
-				INSERT INTO public.notifications (user_id, type, message)
-				VALUES ($1, 'REPORT_ACTION', $2)
+				INSERT INTO public.notifications (user_id, type, message, link)
+				VALUES ($1, 'REPORT_ACTION', $2, '/notifications')
 			`, targetUserId, fmt.Sprintf("Your account has been temporarily locked for %d day(s) after moderator review. Reason: %s", lockDays, trimmedReason)).Error; err != nil {
 				tx.Rollback()
 				return fmt.Errorf("Failed to notify locked user")
@@ -1156,8 +1156,8 @@ func SetAdminReportAction(reportId, adminUserId, action, reason string) error {
 		}
 
 		if err := tx.Exec(`
-			INSERT INTO public.notifications (user_id, type, message)
-			VALUES ($1, 'REPORT_ACTION', $2)
+			INSERT INTO public.notifications (user_id, type, message, link)
+			VALUES ($1, 'REPORT_ACTION', $2, '/notifications')
 		`, targetUserId, "Your account has been permanently banned after moderator review. Reason: "+trimmedReason).Error; err != nil {
 			tx.Rollback()
 			return fmt.Errorf("Failed to notify banned user")

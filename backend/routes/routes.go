@@ -72,6 +72,9 @@ func AppRoutes(app *fiber.App) {
 	app.Patch("/messages/conversations/:id/messages/:messageId", controller.AuthenticateUser, controller.EditMessage)
 	app.Delete("/messages/conversations/:id/messages/:messageId", controller.AuthenticateUser, controller.DeleteMessage)
 	app.Delete("/messages/conversations/:id", controller.AuthenticateUser, controller.DeleteConversation)
+	app.Get("/notifications", controller.AuthenticateUser, controller.GetNotifications)
+	app.Patch("/notifications/read-all", controller.AuthenticateUser, controller.MarkAllNotificationsRead)
+	app.Patch("/notifications/:id/read", controller.AuthenticateUser, controller.MarkNotificationRead)
 	app.Get("/ws", controller.AuthenticateUser, controller.UpgradeRealtimeSocket, websocket.New(controller.RealtimeSocket))
 
 	app.Post("/auth/otp/send", controller.AuthenticateUser, controller.SendOTP)
