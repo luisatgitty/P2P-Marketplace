@@ -10,6 +10,7 @@ import {
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { validateImageURL } from "@/utils/validation";
+import { SafeImage } from "@/components/ui/safe-image";
 import { ImageLink } from "@/components/image-link";
 import { MediaViewerModal, type MediaViewerItem } from "@/components/media-viewer-modal";
 import {
@@ -143,12 +144,12 @@ function IdImageCard({
       </p>
       {resolvedUrl ? (
         <div className="relative w-full rounded-xl overflow-hidden border border-stone-200 dark:border-[#2a2d3e] bg-stone-100 dark:bg-[#13151f] hover:opacity-95 transition-opacity">
-          <ImageLink
-            href={resolvedUrl}
-            newTab
+          <SafeImage
             src={resolvedUrl}
             type="id"
-            label={label}
+            alt={`Image of ${label}`}
+            width={120}
+            height={120}
             className="w-full h-auto"
           />
           {onOpenFullscreen && (
