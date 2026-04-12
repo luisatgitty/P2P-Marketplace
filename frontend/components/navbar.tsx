@@ -16,6 +16,7 @@ import {
 import { cn } from "@/lib/utils";
 import { SafeImage } from "@/components/ui/safe-image";
 import VerificationBadge from "@/components/verification-badge";
+import { NotificationItem, type NotificationItemData } from "@/components/notifications/notification-item";
 
 // ─── Tab config ────────────────────────────────────────────────────────────────
 const TABS = [
@@ -23,6 +24,36 @@ const TABS = [
   { label: "Buy",      value: "sell",    icon: Tag        },
   { label: "Rent",     value: "rent",    icon: Store      },
   { label: "Services", value: "service", icon: Wrench     },
+];
+
+const INITIAL_MOCK_NOTIFICATIONS: NotificationItemData[] = [
+  {
+    id: "notif-1",
+    user_id: "mock-user-1",
+    type: "NEW_MESSAGE",
+    message: "You received a new message about your listing: Vintage Camera.",
+    link: "/messages",
+    is_read: false,
+    created_at: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
+  },
+  {
+    id: "notif-2",
+    user_id: "mock-user-1",
+    type: "LISTING_UPDATE",
+    message: "Your listing status has been changed to UNAVAILABLE.",
+    link: "/profile",
+    is_read: true,
+    created_at: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
+  },
+  {
+    id: "notif-3",
+    user_id: "mock-user-1",
+    type: "REPORT_REVIEWED",
+    message: "A report you submitted has been reviewed by the moderation team.",
+    link: "/notifications",
+    is_read: false,
+    created_at: new Date(Date.now() - 26 * 60 * 60 * 1000).toISOString(),
+  },
 ];
 
 // ─── Center tabs (needs Suspense because of useSearchParams) ───────────────────
@@ -81,17 +112,36 @@ export default function Navbar() {
   const pathname = usePathname();
   const isVerifiedSeller = (user?.status ?? "").toLowerCase() === "verified";
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [notificationOpen, setNotificationOpen] = useState(false);
   const [logoutModalOpen, setLogoutModalOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [hasUnreadMessages, setHasUnreadMessages] = useState(false);
+  const [notifications, setNotifications] = useState<NotificationItemData[]>(INITIAL_MOCK_NOTIFICATIONS);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const notificationRef = useRef<HTMLDivElement>(null);
 
   // If the user role is ADMIN or SUPER_ADMIN, show a banner at the top linking to the admin dashboard
   const isAdmin = user && (user.role === "ADMIN" || user.role === "SUPER_ADMIN");
+  const canSeeNotifications = Boolean(isAuth && user && user.role === "USER");
+  const hasUnreadNotifications = notifications.some((notification) => !notification.is_read);
+
+  const handleMarkNotificationRead = (id: string) => {
+    setNotifications((prev) =>
+      prev.map((notification) =>
+        notification.id === id ? { ...notification, is_read: true } : notification
+      )
+    );
+    setNotificationOpen(false);
+  };
+
+  const handleMarkAllNotificationsRead = () => {
+    setNotifications((prev) => prev.map((notification) => ({ ...notification, is_read: true })));
+  };
 
   const handleLogOut = () => {
     setLogoutModalOpen(true);
     setDropdownOpen(false);
+    setNotificationOpen(false);
   }
 
   const refreshUnreadState = useCallback(async () => {
@@ -117,6 +167,10 @@ export default function Navbar() {
     const handler = (e: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
         setDropdownOpen(false);
+      }
+
+      if (notificationRef.current && !notificationRef.current.contains(e.target as Node)) {
+        setNotificationOpen(false);
       }
     };
     document.addEventListener("mousedown", handler);
@@ -178,6 +232,54 @@ export default function Navbar() {
 
           {/* ── RIGHT: Actions ──────────────────────────────────── */}
           <div className="flex items-center gap-1 shrink-0">
+            {/* Notification dropdown */}
+            {canSeeNotifications && (
+              <div className="relative" ref={notificationRef}>
+                <button
+                  onClick={() => setNotificationOpen((v) => !v)}
+                  className="relative p-2 rounded-lg hover:bg-white/10 transition-colors"
+                  aria-label="Notifications"
+                >
+                  <Bell size={18} className="text-stone-400" />
+                  {hasUnreadNotifications && (
+                    <span className="absolute right-0 bottom-0 w-2 h-2 rounded-full bg-amber-500 border border-[#1a2235]" />
+                  )}
+                </button>
+
+                {notificationOpen && (
+                  <div className="absolute right-0 mt-2 w-88 max-w-[90vw] rounded-xl border border-white/10 bg-[#1e2b3c] shadow-2xl z-50 animate-in fade-in slide-in-from-top-2 duration-150 overflow-hidden">
+                    <div className="px-3 py-2.5 border-b border-white/10 bg-white/5 flex items-center justify-between gap-2">
+                      <h3 className="text-sm font-semibold text-white">Notifications</h3>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[11px] text-stone-400">{notifications.length} items</span>
+                        <button
+                          type="button"
+                          onClick={handleMarkAllNotificationsRead}
+                          disabled={!hasUnreadNotifications}
+                          className="text-[11px] font-medium text-amber-300 hover:text-amber-200 disabled:text-stone-500 disabled:cursor-not-allowed transition-colors"
+                        >
+                          Mark all as read
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="max-h-96 overflow-y-auto p-2 space-y-1.5">
+                      {notifications.length === 0 ? (
+                        <div className="px-2 py-8 text-center text-sm text-stone-400">No notifications yet.</div>
+                      ) : (
+                        notifications.map((notification) => (
+                          <NotificationItem
+                            key={notification.id}
+                            notification={notification}
+                            onClick={handleMarkNotificationRead}
+                          />
+                        ))
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Profile dropdown */}
             <div className="relative" ref={dropdownRef}>
