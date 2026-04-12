@@ -42,8 +42,7 @@ type ListingTab = "all" | "active" | "sold" | "booked";
 type ProfileTab = "listings" | "bookmarks" | "reviews";
 type ReviewTab = "received" | "personal";
 
-const SOLD_STATUSES = new Set(["sold", "rented", "completed"]);
-const BOOKED_STATUSES = new Set(["hidden"]);
+const SOLD_STATUSES = new Set(["sold"]);
 
 interface ProfileForm {
   firstName: string;
@@ -605,15 +604,13 @@ export default function ProfilePage() {
     }
   }, [form.locationProv, provinces]);
 
-  const activeListings = userListings.filter((l) => {
-    if ((l.status ?? "").toLowerCase() === "deleted") return false;
-    const status = (l.status ?? "").toLowerCase();
-    return status === "" || status === "active" || status === "available" || (!SOLD_STATUSES.has(status) && !BOOKED_STATUSES.has(status));
-  });
-
+  const activeListings = userListings.filter((l) => (l.status ?? "").toLowerCase() === "available");
   const visibleUserListings = userListings.filter((l) => (l.status ?? "").toLowerCase() !== "deleted");
   const soldListings = visibleUserListings.filter((l) => SOLD_STATUSES.has((l.status ?? "").toLowerCase()));
-  const bookedListings = visibleUserListings.filter((l) => BOOKED_STATUSES.has((l.status ?? "").toLowerCase()));
+  const bookedListings = visibleUserListings.filter((l) => {
+    const type = (l.type ?? "").toLowerCase();
+    return (type === "rent" || type === "service") && Boolean(l.hasActiveBooking);
+  });
   const visibleBookmarkListings = bookmarkListings.filter((l) => (l.status ?? "").toLowerCase() !== "deleted");
   const allListings: ProfileListingItem[] = listingTab === "all"
     ? visibleUserListings

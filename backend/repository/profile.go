@@ -76,7 +76,18 @@ func GetUserListings(userId string) ([]model.ProfileListingFromDb, error) {
 			COALESCE(li.image_url, '') AS image_url,
 			TRIM(BOTH ' ' FROM CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, ''))) AS seller_name,
 			COALESCE(rv.avg_rating, 5.0) AS seller_rating,
-			LOWER(l.status::text) AS status
+			LOWER(l.status::text) AS status,
+			(
+				LOWER(l.listing_type::text) IN ('rent', 'service')
+				AND EXISTS (
+					SELECT 1
+					FROM public.listing_transactions lt
+					WHERE lt.listing_id = l.id
+						AND lt.status = 'CONFIRMED'
+						AND lt.end_date IS NOT NULL
+						AND lt.end_date > now()
+				)
+			) AS has_active_booking
 		FROM public.listings l
 		INNER JOIN public.users u ON u.id = l.user_id
 		LEFT JOIN public.categories c ON c.id = l.category_id
@@ -93,6 +104,7 @@ func GetUserListings(userId string) ([]model.ProfileListingFromDb, error) {
 			WHERE r.reviewed_user_id = l.user_id
 		) rv ON TRUE
 		WHERE l.user_id = $1
+			AND l.status <> 'DELETED'
 		ORDER BY l.created_at DESC
 	`
 
@@ -119,7 +131,18 @@ func GetUserBookmarks(userId string) ([]model.ProfileListingFromDb, error) {
 			COALESCE(li.image_url, '') AS image_url,
 			TRIM(BOTH ' ' FROM CONCAT(COALESCE(owner.first_name, ''), ' ', COALESCE(owner.last_name, ''))) AS seller_name,
 			COALESCE(rv.avg_rating, 5.0) AS seller_rating,
-			LOWER(l.status::text) AS status
+			LOWER(l.status::text) AS status,
+			(
+				LOWER(l.listing_type::text) IN ('rent', 'service')
+				AND EXISTS (
+					SELECT 1
+					FROM public.listing_transactions lt
+					WHERE lt.listing_id = l.id
+						AND lt.status = 'CONFIRMED'
+						AND lt.end_date IS NOT NULL
+						AND lt.end_date > now()
+				)
+			) AS has_active_booking
 		FROM public.bookmarks b
 		INNER JOIN public.listings l ON l.id = b.listing_id
 		INNER JOIN public.users owner ON owner.id = l.user_id
@@ -137,6 +160,7 @@ func GetUserBookmarks(userId string) ([]model.ProfileListingFromDb, error) {
 			WHERE r.reviewed_user_id = l.user_id
 		) rv ON TRUE
 		WHERE b.user_id = $1
+			AND l.status <> 'DELETED'
 		ORDER BY b.created_at DESC
 	`
 
