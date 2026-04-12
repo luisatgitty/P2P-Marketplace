@@ -5,12 +5,13 @@ import {
   Search, X, CheckCircle2, XCircle, ShieldCheck, Clock,
   Eye, AlertTriangle, IdCard, ChevronLeft, ChevronRight,
   User, Phone, Calendar, Hash, Monitor, Globe,
-  Cpu, CreditCard, ChevronDown, ChevronUp, ChevronsUpDown, RotateCw,
+  Cpu, CreditCard, ChevronDown, ChevronUp, ChevronsUpDown, RotateCw, Expand,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { validateImageURL } from "@/utils/validation";
 import { ImageLink } from "@/components/image-link";
+import { MediaViewerModal, type MediaViewerItem } from "@/components/media-viewer-modal";
 import {
   getAdminVerifications,
   setAdminVerificationStatus,
@@ -127,9 +128,11 @@ function InfoRow({ icon: Icon, label, value, mono = false }: {
 function IdImageCard({
   label,
   imageUrl,
+  onOpenFullscreen,
 }: {
   label: string;
   imageUrl?: string | null;
+  onOpenFullscreen?: () => void;
 }) {
   const resolvedUrl = imageUrl ? validateImageURL(imageUrl) : '';
 
@@ -139,7 +142,7 @@ function IdImageCard({
         {label}
       </p>
       {resolvedUrl ? (
-        <div className="w-full rounded-xl overflow-hidden border border-stone-200 dark:border-[#2a2d3e] bg-stone-100 dark:bg-[#13151f] hover:opacity-95 transition-opacity">
+        <div className="relative w-full rounded-xl overflow-hidden border border-stone-200 dark:border-[#2a2d3e] bg-stone-100 dark:bg-[#13151f] hover:opacity-95 transition-opacity">
           <ImageLink
             href={resolvedUrl}
             newTab
@@ -148,6 +151,20 @@ function IdImageCard({
             label={label}
             className="w-full h-auto"
           />
+          {onOpenFullscreen && (
+            <button
+              type="button"
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                onOpenFullscreen();
+              }}
+              className="absolute bottom-2 right-2 w-8 h-8 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black/80 transition-colors"
+              aria-label={`Open ${label} fullscreen`}
+            >
+              <Expand className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
       ) : (
         <div className='aspect-4/3 rounded-xl bg-stone-100 dark:bg-[#13151f] border-2 border-dashed border-stone-200 dark:border-[#2a2d3e] flex flex-col items-center justify-center gap-2'>
@@ -199,6 +216,7 @@ function DetailModal({ verif, onClose, onApprove, onReject, actionLoading = fals
     verif.status === "REJECTED" ? (verif.reason ?? "") : "",
   );
   const [hardwareOpen, setHardwareOpen] = useState(false);
+  const [mediaViewerIndex, setMediaViewerIndex] = useState<number | null>(null);
 
   const sc   = STATUS_CONFIG[verif.status];
   const Icon = sc.Icon;
@@ -212,6 +230,31 @@ function DetailModal({ verif, onClose, onApprove, onReject, actionLoading = fals
     try   { return JSON.stringify(JSON.parse(verif.hardware_info), null, 2); }
     catch { return verif.hardware_info; }
   }, [verif.hardware_info]);
+
+  const submittedMediaItems = useMemo<MediaViewerItem[]>(() => {
+    const entries: Array<{ label: string; url: string }> = [
+      { label: "Front of ID", url: validateImageURL(verif.id_image_front_url) },
+      { label: "Back of ID", url: validateImageURL(verif.id_image_back_url) },
+      { label: "Selfie while holding ID", url: validateImageURL(verif.selfie_url) },
+    ];
+
+    return entries
+      .filter((entry) => entry.url !== "")
+      .map((entry, index) => ({
+        id: `verification-image-${index}`,
+        fileUrl: entry.url,
+        fileType: "IMAGE",
+        fileName: entry.label,
+      }));
+  }, [verif.id_image_back_url, verif.id_image_front_url, verif.selfie_url]);
+
+  const frontImageUrl = validateImageURL(verif.id_image_front_url);
+  const backImageUrl = validateImageURL(verif.id_image_back_url);
+  const selfieImageUrl = validateImageURL(verif.selfie_url);
+
+  const frontImageIndex = submittedMediaItems.findIndex((item) => item.fileUrl === frontImageUrl);
+  const backImageIndex = submittedMediaItems.findIndex((item) => item.fileUrl === backImageUrl);
+  const selfieImageIndex = submittedMediaItems.findIndex((item) => item.fileUrl === selfieImageUrl);
 
   return (
     <div
@@ -402,9 +445,21 @@ function DetailModal({ verif, onClose, onApprove, onReject, actionLoading = fals
             <div>
               <SectionLabel>Uploaded Photos</SectionLabel>
               <div className="space-y-4">
-                <IdImageCard label="Front of ID" imageUrl={verif.id_image_front_url} />
-                <IdImageCard label="Back of ID" imageUrl={verif.id_image_back_url} />
-                <IdImageCard label="Selfie while holding ID" imageUrl={verif.selfie_url} />
+                <IdImageCard
+                  label="Front of ID"
+                  imageUrl={verif.id_image_front_url}
+                  onOpenFullscreen={frontImageIndex >= 0 ? () => setMediaViewerIndex(frontImageIndex) : undefined}
+                />
+                <IdImageCard
+                  label="Back of ID"
+                  imageUrl={verif.id_image_back_url}
+                  onOpenFullscreen={backImageIndex >= 0 ? () => setMediaViewerIndex(backImageIndex) : undefined}
+                />
+                <IdImageCard
+                  label="Selfie while holding ID"
+                  imageUrl={verif.selfie_url}
+                  onOpenFullscreen={selfieImageIndex >= 0 ? () => setMediaViewerIndex(selfieImageIndex) : undefined}
+                />
               </div>
             </div>
 
@@ -470,6 +525,15 @@ function DetailModal({ verif, onClose, onApprove, onReject, actionLoading = fals
         </div>
 
       </div>
+
+      {mediaViewerIndex !== null && submittedMediaItems.length > 0 && (
+        <MediaViewerModal
+          mediaItems={submittedMediaItems}
+          activeIndex={mediaViewerIndex}
+          onSelect={setMediaViewerIndex}
+          onClose={() => setMediaViewerIndex(null)}
+        />
+      )}
     </div>
   );
 }
