@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { Bell, CheckCircle2, ShieldAlert, ShoppingBag } from "lucide-react";
+import { formatTimeAgo } from '@/utils/string-builder';
 import { cn } from "@/lib/utils";
 
 export type NotificationItemData = {
@@ -35,27 +36,6 @@ function getNotificationIcon(type: string) {
   }
 
   return <CheckCircle2 size={14} className="text-stone-400" />;
-}
-
-function formatRelativeTime(value: string) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "Just now";
-
-  const diffMs = date.getTime() - Date.now();
-  const diffSec = Math.round(diffMs / 1000);
-
-  const formatter = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
-
-  if (Math.abs(diffSec) < 60) return formatter.format(diffSec, "second");
-
-  const diffMin = Math.round(diffSec / 60);
-  if (Math.abs(diffMin) < 60) return formatter.format(diffMin, "minute");
-
-  const diffHour = Math.round(diffMin / 60);
-  if (Math.abs(diffHour) < 24) return formatter.format(diffHour, "hour");
-
-  const diffDay = Math.round(diffHour / 24);
-  return formatter.format(diffDay, "day");
 }
 
 export function NotificationItem({ notification, onClick }: NotificationItemProps) {
@@ -100,13 +80,13 @@ export function NotificationItem({ notification, onClick }: NotificationItemProp
             <p className="text-[11px] font-semibold uppercase tracking-wide text-stone-400 truncate">
               {notification.type.replaceAll("_", " ")}
             </p>
-            <span className="text-[10px] text-stone-500 shrink-0">{formatRelativeTime(notification.created_at)}</span>
+            <span className="text-[10px] text-stone-500 shrink-0">{formatTimeAgo(notification.created_at)}</span>
           </div>
 
           <p className="text-sm text-stone-200 leading-snug mt-0.5 line-clamp-2">{notification.message}</p>
         </div>
 
-        {!notification.is_read && <span className="mt-1 h-2 w-2 rounded-full bg-amber-400 shrink-0" />}
+        {!notification.is_read && <span className="mt-1 h-1.5 w-1.5 rounded-full bg-amber-400 shrink-0" />}
       </div>
     </button>
   );

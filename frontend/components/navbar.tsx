@@ -273,7 +273,7 @@ export default function Navbar() {
                 >
                   <Bell size={18} className="text-stone-400" />
                   {hasUnreadNotifications && (
-                    <span className="absolute right-0 bottom-0 w-2 h-2 rounded-full bg-amber-500 border border-[#1a2235]" />
+                    <span className="absolute right-0 bottom-0 w-2.5 h-2.5 rounded-full bg-amber-500 border border-[#1a2235]" />
                   )}
                 </button>
 
@@ -330,7 +330,7 @@ export default function Navbar() {
                   />
                   </div>
                   {isAuth && hasUnreadMessages && (
-                    <span className="absolute bottom-0 right-0 z-10 w-3 h-3 rounded-full bg-amber-500 border border-[#1a2235]" />
+                    <span className="absolute bottom-0 right-0 z-10 w-2.5 h-2.5 rounded-full bg-amber-500 border border-[#1a2235]" />
                   )}
                 </div>
                 <ChevronDown
@@ -407,14 +407,6 @@ export default function Navbar() {
                                 )}
                               </span>
                               Messages
-                            </Link>
-                            <Link
-                              href="/notifications"
-                              onClick={() => setDropdownOpen(false)}
-                              className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-200 hover:bg-white/10 hover:text-white transition-colors"
-                            >
-                              <Bell size={15} className="text-stone-400" />
-                              Notifications
                             </Link>
                             {isVerifiedSeller ? (
                               <Link
