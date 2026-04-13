@@ -220,11 +220,17 @@ function HomePageInner() {
 
       {/* ──────────────────────────── HERO ──────────────────────────────────── */}
       <section className="max-h-max relative bg-[#1a2235] overflow-hidden">
+
+    {/* Floating orbs */}
+        <div className="orb orb-amber" />
+        <div className="orb orb-blue" />
+        <div className="orb orb-white" />
+
         {/* Background texture */}
         <div className="absolute inset-0 opacity-20"
           style={{ backgroundImage: "radial-gradient(circle at 20% 50%, #b45309 0%, transparent 50%), radial-gradient(circle at 80% 20%, #1e40af 0%, transparent 40%)" }}
         />
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-7 py-8 sm:py-10">
+        <div className="relative z-20 max-w-7xl mx-auto px-4 sm:px-7 py-8 sm:py-10">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-8">
 
             {/* Left: Headline */}
