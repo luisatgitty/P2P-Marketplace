@@ -158,9 +158,33 @@ export const FORM_CONFIG = {
 
 // ─── Field data ─────────────────────────────────────────────────────────────────
 const PRICE_UNITS: Record<FormType, string[]> = {
-  sell: ["Fixed Price", "Negotiable"],
-  rent: ["/ month", "/ week", "/ day", "/ night", "/ hour"],
-  service: ["/ hour", "/ project", "/ session", "/ unit", "/ day", "/ package"],
+  sell: [
+    "Fixed Price",
+    "Negotiable",
+    "Contact for Price",
+    "Starting Price"
+  ],
+  rent: [
+    "/ hour",
+    "/ day", 
+    "/ night",
+    "/ week",
+    "/ month",
+    "/ year",
+    "/ sq m",
+    "/ km"
+  ],
+  service: [
+    "/ hour",
+    "/ session",
+    "/ project",
+    "/ package",
+    "/ unit",
+    "/ sq m",
+    "/ km",
+    "/ head",
+    "Quote Required"
+  ],
 };
 
 const CONDITIONS = [
