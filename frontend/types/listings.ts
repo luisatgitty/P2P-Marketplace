@@ -1,0 +1,21 @@
+export const LISTING_CATEGORIES = [
+  "Agriculture & Gardening",
+  "Education",
+  "Electronics & Gadgets",
+  "Events",
+  "Fashion & Beauty",
+  "Food",
+  "Health & Wellness",
+  "Hobbies & Collectibles",
+  "Home & Living",
+  "IT & Digital",
+  "Logistics",
+  "Maintenance & Repair",
+  "Office Supplies",
+  "Pet",
+  "Professional",
+  "Space & Property",
+  "Sports & Outdoors",
+  "Tools & Equipment",
+  "Vehicles"
+];

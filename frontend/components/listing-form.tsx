@@ -30,6 +30,7 @@ import {
   BookingCalendar,
   type BookingCalendarColors,
 } from "./ui/booking-calendar";
+import { LISTING_CATEGORIES } from "@/types/listings";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 export type FormType = "sell" | "rent" | "service";
@@ -156,44 +157,6 @@ export const FORM_CONFIG = {
 } as const;
 
 // ─── Field data ─────────────────────────────────────────────────────────────────
-const CATEGORIES: Record<FormType, string[]> = {
-  sell: [
-    "Electronics",
-    "Clothing & Shoes",
-    "Vehicles",
-    "Furniture & Home",
-    "Sports & Outdoors",
-    "Books & Media",
-    "Hobbies & Collectibles",
-    "Health & Beauty",
-    "Food & Grocery",
-    "Others",
-  ],
-  rent: [
-    "Rooms & Bedspace",
-    "Studio Units",
-    "Apartments",
-    "Houses",
-    "Commercial Spaces",
-    "Event Venues",
-    "Vehicles",
-    "Equipment & Tools",
-    "Others",
-  ],
-  service: [
-    "Home Repair & Cleaning",
-    "IT & Tech",
-    "Tutoring & Lessons",
-    "Photography & Video",
-    "Catering & Food",
-    "Beauty & Wellness",
-    "Transportation",
-    "Events & Entertainment",
-    "Creative & Design",
-    "Others",
-  ],
-};
-
 const PRICE_UNITS: Record<FormType, string[]> = {
   sell: ["Fixed Price", "Negotiable"],
   rent: ["/ month", "/ week", "/ day", "/ night", "/ hour"],
@@ -1550,7 +1513,7 @@ export default function ListingForm({
             <FieldLabel required>Category</FieldLabel>
             <StyledSelect value={category} onChange={setCategory}>
               <option value="">Select a category</option>
-              {CATEGORIES[type].map((c) => (
+              {LISTING_CATEGORIES.map((c) => (
                 <option key={c}>{c}</option>
               ))}
             </StyledSelect>
