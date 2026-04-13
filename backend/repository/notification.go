@@ -2,6 +2,9 @@ package repository
 
 import (
 	"fmt"
+	"strings"
+
+	"gorm.io/gorm"
 
 	"p2p_marketplace/backend/middleware"
 	"p2p_marketplace/backend/model"
@@ -61,6 +64,31 @@ func MarkNotificationRead(userId, notificationId string) error {
 	}
 	if result.RowsAffected == 0 {
 		return fmt.Errorf("Notification not found")
+	}
+
+	return nil
+}
+
+func InsertVerificationNotificationTx(tx *gorm.DB, userId, status, reason string) error {
+	normalizedStatus := strings.ToUpper(strings.TrimSpace(status))
+	trimmedReason := strings.TrimSpace(reason)
+
+	message := "Your verification request has been updated."
+	switch normalizedStatus {
+	case "VERIFIED":
+		message = "Your verification request has been approved."
+	case "REJECTED":
+		message = "Your verification request was rejected."
+		if trimmedReason != "" {
+			message = fmt.Sprintf("Your verification request was rejected. Reason: %s.", trimmedReason)
+		}
+	}
+
+	if err := tx.Exec(`
+		INSERT INTO public.notifications (user_id, type, message, link)
+		VALUES ($1, 'VERIFICATION', $2, '/profile')
+	`, userId, message).Error; err != nil {
+		return fmt.Errorf("Failed to create verification notification")
 	}
 
 	return nil

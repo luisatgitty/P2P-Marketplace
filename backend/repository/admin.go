@@ -1339,6 +1339,11 @@ func SetAdminVerificationStatus(verificationId, reviewedById, status, reason str
 		return fmt.Errorf("Failed to update user verification status")
 	}
 
+	if err := InsertVerificationNotificationTx(tx, verificationRow.UserID, normalizedStatus, trimmedReason); err != nil {
+		tx.Rollback()
+		return err
+	}
+
 	if err := tx.Commit().Error; err != nil {
 		return err
 	}
