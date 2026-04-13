@@ -93,3 +93,24 @@ func InsertVerificationNotificationTx(tx *gorm.DB, userId, status, reason string
 
 	return nil
 }
+
+func InsertReportNotificationTx(tx *gorm.DB, userId, message, link string) error {
+	trimmedMessage := strings.TrimSpace(message)
+	if trimmedMessage == "" {
+		return fmt.Errorf("Notification message is required")
+	}
+
+	trimmedLink := strings.TrimSpace(link)
+	if trimmedLink == "" {
+		trimmedLink = "/notifications"
+	}
+
+	if err := tx.Exec(`
+		INSERT INTO public.notifications (user_id, type, message, link)
+		VALUES ($1, 'REPORT', $2, $3)
+	`, userId, trimmedMessage, trimmedLink).Error; err != nil {
+		return fmt.Errorf("Failed to create report notification")
+	}
+
+	return nil
+}

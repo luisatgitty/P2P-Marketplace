@@ -1073,10 +1073,7 @@ func SetAdminReportAction(reportId, adminUserId, action, reason string) error {
 		}
 
 		if targetUserId != "" {
-			if err := tx.Exec(`
-				INSERT INTO public.notifications (user_id, type, message, link)
-				VALUES ($1, 'REPORT', $2, $3)
-			`, targetUserId, fmt.Sprintf("Your listing was removed due to %s.", reportReason), reportLink).Error; err != nil {
+			if err := InsertReportNotificationTx(tx, targetUserId, fmt.Sprintf("Your listing was removed due to %s.", reportReason), reportLink); err != nil {
 				tx.Rollback()
 				return fmt.Errorf("Failed to notify listing owner")
 			}
@@ -1101,9 +1098,10 @@ func SetAdminReportAction(reportId, adminUserId, action, reason string) error {
 			effectiveAction = "PERMANENT_BAN"
 		} else {
 			lockDays := 3
-			if effectiveAction == "LOCK_7" {
+			switch effectiveAction {
+			case "LOCK_7":
 				lockDays = 7
-			} else if effectiveAction == "LOCK_30" {
+			case "LOCK_30":
 				lockDays = 30
 			}
 			lockUntil := now.Add(time.Duration(lockDays) * 24 * time.Hour)
@@ -1130,10 +1128,7 @@ func SetAdminReportAction(reportId, adminUserId, action, reason string) error {
 				return fmt.Errorf("Failed to revoke user sessions")
 			}
 
-			if err := tx.Exec(`
-				INSERT INTO public.notifications (user_id, type, message, link)
-				VALUES ($1, 'REPORT', $2, $3)
-			`, targetUserId, fmt.Sprintf("Your account has been temporarily locked for %d day(s) due to %s.", lockDays, reportReason), reportLink).Error; err != nil {
+			if err := InsertReportNotificationTx(tx, targetUserId, fmt.Sprintf("Your account has been temporarily locked for %d day(s) due to %s.", lockDays, reportReason), reportLink); err != nil {
 				tx.Rollback()
 				return fmt.Errorf("Failed to notify locked user")
 			}
@@ -1165,10 +1160,7 @@ func SetAdminReportAction(reportId, adminUserId, action, reason string) error {
 			return fmt.Errorf("Failed to revoke user sessions")
 		}
 
-		if err := tx.Exec(`
-			INSERT INTO public.notifications (user_id, type, message, link)
-			VALUES ($1, 'REPORT', $2, $3)
-		`, targetUserId, fmt.Sprintf("Your account has been permanently banned due to %s.", reportReason), reportLink).Error; err != nil {
+		if err := InsertReportNotificationTx(tx, targetUserId, fmt.Sprintf("Your account has been permanently banned due to %s.", reportReason), reportLink); err != nil {
 			tx.Rollback()
 			return fmt.Errorf("Failed to notify banned user")
 		}
