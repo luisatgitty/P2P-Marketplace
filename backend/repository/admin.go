@@ -967,6 +967,7 @@ func SetAdminReportAction(reportId, adminUserId, action, reason string) error {
 		ReportedUserId    *string `gorm:"column:reported_user_id"`
 		ReportedListingId *string `gorm:"column:reported_listing_id"`
 		ListingOwnerId    *string `gorm:"column:listing_owner_id"`
+		ReportReason      string  `gorm:"column:report_reason"`
 		Status            string  `gorm:"column:status"`
 	}
 
@@ -976,6 +977,7 @@ func SetAdminReportAction(reportId, adminUserId, action, reason string) error {
 			r.reported_user_id::text AS reported_user_id,
 			r.reported_listing_id::text AS reported_listing_id,
 			l.user_id::text AS listing_owner_id,
+			COALESCE(NULLIF(TRIM(r.reason), ''), 'Policy violation') AS report_reason,
 			r.status::text AS status
 		FROM public.reports r
 		LEFT JOIN public.listings l ON l.id = r.reported_listing_id
@@ -1011,6 +1013,10 @@ func SetAdminReportAction(reportId, adminUserId, action, reason string) error {
 	reportLink := "/notifications"
 	if targetListingId != "" {
 		reportLink = "/listing/" + targetListingId
+	}
+	reportReason := strings.TrimSpace(target.ReportReason)
+	if reportReason == "" {
+		reportReason = "Policy violation"
 	}
 
 	effectiveAction := normalizedAction
@@ -1069,8 +1075,8 @@ func SetAdminReportAction(reportId, adminUserId, action, reason string) error {
 		if targetUserId != "" {
 			if err := tx.Exec(`
 				INSERT INTO public.notifications (user_id, type, message, link)
-				VALUES ($1, 'REPORT_ACTION', $2, $3)
-			`, targetUserId, "Your listing was removed after moderator review.", reportLink).Error; err != nil {
+				VALUES ($1, 'REPORT', $2, $3)
+			`, targetUserId, fmt.Sprintf("Your listing was removed due to %s.", reportReason), reportLink).Error; err != nil {
 				tx.Rollback()
 				return fmt.Errorf("Failed to notify listing owner")
 			}
@@ -1126,8 +1132,8 @@ func SetAdminReportAction(reportId, adminUserId, action, reason string) error {
 
 			if err := tx.Exec(`
 				INSERT INTO public.notifications (user_id, type, message, link)
-				VALUES ($1, 'REPORT_ACTION', $2, $3)
-			`, targetUserId, fmt.Sprintf("Your account has been temporarily locked for %d day(s) after moderator review.", lockDays), reportLink).Error; err != nil {
+				VALUES ($1, 'REPORT', $2, $3)
+			`, targetUserId, fmt.Sprintf("Your account has been temporarily locked for %d day(s) due to %s.", lockDays, reportReason), reportLink).Error; err != nil {
 				tx.Rollback()
 				return fmt.Errorf("Failed to notify locked user")
 			}
@@ -1161,8 +1167,8 @@ func SetAdminReportAction(reportId, adminUserId, action, reason string) error {
 
 		if err := tx.Exec(`
 			INSERT INTO public.notifications (user_id, type, message, link)
-			VALUES ($1, 'REPORT_ACTION', $2, $3)
-		`, targetUserId, "Your account has been permanently banned after moderator review.", reportLink).Error; err != nil {
+			VALUES ($1, 'REPORT', $2, $3)
+		`, targetUserId, fmt.Sprintf("Your account has been permanently banned due to %s.", reportReason), reportLink).Error; err != nil {
 			tx.Rollback()
 			return fmt.Errorf("Failed to notify banned user")
 		}
