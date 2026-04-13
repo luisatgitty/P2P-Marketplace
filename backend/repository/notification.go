@@ -135,3 +135,24 @@ func InsertReviewNotificationTx(tx *gorm.DB, userId, message, link string) error
 
 	return nil
 }
+
+func InsertTransactionNotificationTx(tx *gorm.DB, userId, message, link string) error {
+	trimmedMessage := strings.TrimSpace(message)
+	if trimmedMessage == "" {
+		trimmedMessage = "A transaction has been updated."
+	}
+
+	trimmedLink := strings.TrimSpace(link)
+	if trimmedLink == "" {
+		trimmedLink = "/messages"
+	}
+
+	if err := tx.Exec(`
+		INSERT INTO public.notifications (user_id, type, message, link)
+		VALUES ($1, 'TRANSACTION', $2, $3)
+	`, userId, trimmedMessage, trimmedLink).Error; err != nil {
+		return fmt.Errorf("Failed to create transaction notification")
+	}
+
+	return nil
+}

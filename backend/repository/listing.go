@@ -912,13 +912,17 @@ func MarkListingAsComplete(userId, listingId string) ([]string, bool, error) {
 	}
 
 	actionContent := fmt.Sprintf("__SOLD_ACTION__:%s completed the transaction", actorFirstName)
+	notificationMessage := "The listing owner marked the transaction as completed."
 	switch listingType {
 	case "sell":
 		actionContent = fmt.Sprintf("__SOLD_ACTION__:%s sold the item", actorFirstName)
+		notificationMessage = "The listing owner marked the transaction as sold."
 	case "rent":
 		actionContent = fmt.Sprintf("__SOLD_ACTION__:%s fulfilled the rental", actorFirstName)
+		notificationMessage = "The listing owner marked the rental transaction as completed."
 	case "service":
 		actionContent = fmt.Sprintf("__SOLD_ACTION__:%s fulfilled the service", actorFirstName)
+		notificationMessage = "The listing owner marked the service transaction as completed."
 	}
 	affectedConversationIds := make([]string, 0, len(affectedRows))
 	for _, row := range affectedRows {
@@ -947,6 +951,16 @@ func MarkListingAsComplete(userId, listingId string) ([]string, bool, error) {
 		if err := tx.Exec(updateConversationQuery, conversationId, actionMessage.Id, strings.TrimSpace(actionMessage.Content), userId, actionMessage.CreatedAt).Error; err != nil {
 			tx.Rollback()
 			return nil, false, fmt.Errorf("Failed to update conversation metadata")
+		}
+
+		if err := InsertTransactionNotificationTx(
+			tx,
+			buyerId,
+			notificationMessage,
+			"/messages/"+conversationId,
+		); err != nil {
+			tx.Rollback()
+			return nil, false, err
 		}
 
 		affectedConversationIds = append(affectedConversationIds, conversationId)
