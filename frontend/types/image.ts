@@ -1,1 +1,1 @@
-export type ImageType = 'profile' | 'thumbnail' | 'card' | 'id' | 'cover' | 'full';
+export type ImageType = 'profile' | 'thumbnail' | 'card' | 'id' | 'listing' | 'cover';
