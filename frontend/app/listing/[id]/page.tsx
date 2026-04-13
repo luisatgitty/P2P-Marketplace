@@ -551,10 +551,10 @@ export default function ListingDetailPage() {
 
             {/* ── Image gallery ── */}
             <div className="bg-white dark:bg-[#1c1f2e] rounded-2xl border border-stone-200 dark:border-[#2a2d3e] overflow-hidden shadow-sm">
-              <div className="relative aspect-16/10 bg-stone-100 dark:bg-[#13151f] overflow-hidden group">
+              <div className="relative aspect-video overflow-hidden group">
                 <SafeImage
                   src={images[imgIdx] ?? listing.imageUrl}
-                  type="cover"
+                  type="listing"
                   alt={`Photo ${imgIdx + 1} of ${images.length}`}
                   fill
                 />
@@ -626,7 +626,7 @@ export default function ListingDetailPage() {
                     <button key={i} onClick={() => setImgIdx(i)}
                       className={cn(
                         "relative shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 transition-all",
-                        i === imgIdx ? "border-stone-800 dark:border-stone-300" : "border-transparent opacity-60 hover:opacity-100"
+                        i === imgIdx ? "border-slate-800 dark:border-stone-300" : "border-transparent opacity-60 hover:opacity-100"
                       )}>
                       <SafeImage
                         src={img}

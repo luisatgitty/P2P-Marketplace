@@ -782,7 +782,7 @@ export default function ProfilePage() {
         <div className="bg-white dark:bg-[#1c1f2e] rounded-2xl border border-stone-200 dark:border-[#2a2d3e] shadow-sm overflow-hidden mb-4">
 
           {/* Cover photo */}
-          <div className={cn("relative h-32 bg-linear-to-r from-[#1e2433] via-[#2a3650] to-[#1a2a3a] overflow-hidden group", !isViewingExternalProfile && "cursor-pointer")} onClick={() => !isViewingExternalProfile && cover.trigger()}>
+          <div className={cn("relative aspect-7/1 bg-linear-to-r from-[#1e2433] via-[#2a3650] to-[#1a2a3a] overflow-hidden group", !isViewingExternalProfile && "cursor-pointer")} onClick={() => !isViewingExternalProfile && cover.trigger()}>
             {cover.src
               ? <SafeImage
                 src={cover.src}
@@ -839,7 +839,7 @@ export default function ProfilePage() {
                     alt={`${fullName}'s profile photo`}
                     width={80}
                     height={80}
-                    className="w-20 h-20 border-4 border-white dark:border-[#1c1f2e] overflow-hidden shadow-md bg-[#1e2a40] flex items-center justify-center"
+                    className="w-20 h-20 border-4 border-white dark:border-slate-900 overflow-hidden shadow-md flex items-center justify-center"
                   />
                   {isProfileOnline && (
                     <span className="absolute bottom-1.5 right-1.5 w-4 h-4 rounded-full bg-emerald-500 border-3 border-white dark:border-[#1c1f2e]" />
