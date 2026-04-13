@@ -795,7 +795,34 @@ func GetAdminTransactions() ([]model.AdminTransactionListItemFromDb, error) {
 
 func DeleteAdminListing(listingId string) error {
 	db := middleware.DBConn
-	result := db.Exec(`
+	tx := db.Begin()
+	if tx.Error != nil {
+		return tx.Error
+	}
+
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	var ownerId string
+	ownerResult := tx.Raw(`
+		SELECT user_id::text
+		FROM public.listings
+		WHERE id = $1
+		LIMIT 1
+	`, listingId).Scan(&ownerId)
+	if ownerResult.Error != nil {
+		tx.Rollback()
+		return fmt.Errorf("Failed to validate listing")
+	}
+	if ownerResult.RowsAffected == 0 {
+		tx.Rollback()
+		return fmt.Errorf("Listing not found")
+	}
+
+	result := tx.Exec(`
 		UPDATE public.listings
 		SET
 			status = 'DELETED'::listing_status,
@@ -804,10 +831,28 @@ func DeleteAdminListing(listingId string) error {
 		WHERE id = $1
 	`, listingId)
 	if result.Error != nil {
+		tx.Rollback()
 		return fmt.Errorf("Failed to delete listing")
 	}
 	if result.RowsAffected == 0 {
+		tx.Rollback()
 		return fmt.Errorf("Listing not found")
+	}
+
+	if strings.TrimSpace(ownerId) != "" {
+		if err := InsertListingNotificationTx(
+			tx,
+			strings.TrimSpace(ownerId),
+			"Your listing was removed by an administrator.",
+			"/listing/"+strings.TrimSpace(listingId),
+		); err != nil {
+			tx.Rollback()
+			return err
+		}
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		return err
 	}
 
 	return nil
@@ -967,6 +1012,7 @@ func SetAdminReportAction(reportId, adminUserId, action, reason string) error {
 		ReportedUserId    *string `gorm:"column:reported_user_id"`
 		ReportedListingId *string `gorm:"column:reported_listing_id"`
 		ListingOwnerId    *string `gorm:"column:listing_owner_id"`
+		ReportReason      string  `gorm:"column:report_reason"`
 		Status            string  `gorm:"column:status"`
 	}
 
@@ -976,6 +1022,7 @@ func SetAdminReportAction(reportId, adminUserId, action, reason string) error {
 			r.reported_user_id::text AS reported_user_id,
 			r.reported_listing_id::text AS reported_listing_id,
 			l.user_id::text AS listing_owner_id,
+			COALESCE(NULLIF(TRIM(r.reason), ''), 'Policy violation') AS report_reason,
 			r.status::text AS status
 		FROM public.reports r
 		LEFT JOIN public.listings l ON l.id = r.reported_listing_id
@@ -1007,6 +1054,14 @@ func SetAdminReportAction(reportId, adminUserId, action, reason string) error {
 	targetListingId := ""
 	if target.ReportedListingId != nil {
 		targetListingId = strings.TrimSpace(*target.ReportedListingId)
+	}
+	reportLink := "/notifications"
+	if targetListingId != "" {
+		reportLink = "/listing/" + targetListingId
+	}
+	reportReason := strings.TrimSpace(target.ReportReason)
+	if reportReason == "" {
+		reportReason = "Policy violation"
 	}
 
 	effectiveAction := normalizedAction
@@ -1063,10 +1118,7 @@ func SetAdminReportAction(reportId, adminUserId, action, reason string) error {
 		}
 
 		if targetUserId != "" {
-			if err := tx.Exec(`
-				INSERT INTO public.notifications (user_id, type, message)
-				VALUES ($1, 'REPORT_ACTION', $2)
-			`, targetUserId, "Your listing was removed after moderator review. Reason: "+trimmedReason).Error; err != nil {
+			if err := InsertReportNotificationTx(tx, targetUserId, fmt.Sprintf("Your listing was removed due to %s.", reportReason), reportLink); err != nil {
 				tx.Rollback()
 				return fmt.Errorf("Failed to notify listing owner")
 			}
@@ -1091,9 +1143,10 @@ func SetAdminReportAction(reportId, adminUserId, action, reason string) error {
 			effectiveAction = "PERMANENT_BAN"
 		} else {
 			lockDays := 3
-			if effectiveAction == "LOCK_7" {
+			switch effectiveAction {
+			case "LOCK_7":
 				lockDays = 7
-			} else if effectiveAction == "LOCK_30" {
+			case "LOCK_30":
 				lockDays = 30
 			}
 			lockUntil := now.Add(time.Duration(lockDays) * 24 * time.Hour)
@@ -1120,10 +1173,7 @@ func SetAdminReportAction(reportId, adminUserId, action, reason string) error {
 				return fmt.Errorf("Failed to revoke user sessions")
 			}
 
-			if err := tx.Exec(`
-				INSERT INTO public.notifications (user_id, type, message)
-				VALUES ($1, 'REPORT_ACTION', $2)
-			`, targetUserId, fmt.Sprintf("Your account has been temporarily locked for %d day(s) after moderator review. Reason: %s", lockDays, trimmedReason)).Error; err != nil {
+			if err := InsertReportNotificationTx(tx, targetUserId, fmt.Sprintf("Your account has been temporarily locked for %d day(s) due to %s.", lockDays, reportReason), reportLink); err != nil {
 				tx.Rollback()
 				return fmt.Errorf("Failed to notify locked user")
 			}
@@ -1155,10 +1205,7 @@ func SetAdminReportAction(reportId, adminUserId, action, reason string) error {
 			return fmt.Errorf("Failed to revoke user sessions")
 		}
 
-		if err := tx.Exec(`
-			INSERT INTO public.notifications (user_id, type, message)
-			VALUES ($1, 'REPORT_ACTION', $2)
-		`, targetUserId, "Your account has been permanently banned after moderator review. Reason: "+trimmedReason).Error; err != nil {
+		if err := InsertReportNotificationTx(tx, targetUserId, fmt.Sprintf("Your account has been permanently banned due to %s.", reportReason), reportLink); err != nil {
 			tx.Rollback()
 			return fmt.Errorf("Failed to notify banned user")
 		}
@@ -1327,6 +1374,11 @@ func SetAdminVerificationStatus(verificationId, reviewedById, status, reason str
 	`, normalizedStatus, verificationRow.UserID).Error; err != nil {
 		tx.Rollback()
 		return fmt.Errorf("Failed to update user verification status")
+	}
+
+	if err := InsertVerificationNotificationTx(tx, verificationRow.UserID, normalizedStatus, trimmedReason); err != nil {
+		tx.Rollback()
+		return err
 	}
 
 	if err := tx.Commit().Error; err != nil {
