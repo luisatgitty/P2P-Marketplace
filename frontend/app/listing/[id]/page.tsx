@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   MapPin, Star, MessageCircle, Bookmark, Share2,
   ChevronLeft, ChevronRight, Flag, Eye, Clock, Package,
-  CheckCircle, Phone, Zap, ArrowLeft, Truck, AlertTriangle
+  CheckCircle, Phone, Zap, ArrowLeft, Truck, AlertTriangle, Expand
 } from "lucide-react";
 import { useUser } from "@/utils/UserContext";
 import { addListingBookmark, deleteListing, getListingDetailById, removeListingBookmark, submitListingReport, toggleListingVisibility } from "@/services/listingDetailService";
@@ -25,6 +25,7 @@ import { cn } from "@/lib/utils";
 import { SafeImage } from "@/components/ui/safe-image";
 import { ImageLink } from "@/components/image-link";
 import { formatPrice, formatTimeAgo } from "@/utils/string-builder";
+import { MediaViewerModal, type MediaViewerItem } from "@/components/media-viewer-modal";
 
 // ── ExtraDetail — mirrors every field the listing form collects ────────────────
 interface ExtraDetail {
@@ -192,6 +193,7 @@ export default function ListingDetailPage() {
   const [messaging,   setMessaging]  = useState(false);
   const [isBookmarking, setIsBookmarking] = useState(false);
   const [isFetchingContact, setIsFetchingContact] = useState(false);
+  const [mediaViewerIndex, setMediaViewerIndex] = useState<number | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -225,6 +227,25 @@ export default function ListingDetailPage() {
     };
   }, [id]);
 
+  const galleryImageUrls = useMemo(() => {
+    const extraImages = extra.images.filter(Boolean);
+    if (extraImages.length > 0) {
+      return extraImages;
+    }
+
+    const primaryImage = (listing?.imageUrl ?? "").trim();
+    return primaryImage ? [primaryImage] : [];
+  }, [extra.images, listing?.imageUrl]);
+
+  const galleryMediaItems = useMemo<MediaViewerItem[]>(() => {
+    return galleryImageUrls.map((url, index) => ({
+      id: `gallery-${index}`,
+      fileUrl: url,
+      fileType: "IMAGE",
+      fileName: `Photo ${index + 1}`,
+    }));
+  }, [galleryImageUrls]);
+
   if (isLoading) {
     return (<LoadingPage />);
   }
@@ -254,7 +275,7 @@ export default function ListingDetailPage() {
   const visitorUnavailableState = isUnavailableState || isBannedState || isDeletedState || isSellerInactiveState;
   const isSold = isSell && (listingStatus === "sold" || listingSellStatus === "sold");
   const isListingAvailable = listingStatus === "available";
-  const images       = extra.images.filter(Boolean);
+  const images       = galleryImageUrls;
   const sellerRating = Number.isFinite(listing.seller.rating) ? Number(listing.seller.rating) : 0;
   const hasSellerRating = sellerRating > 0;
   const sellerProfileHref = isOwnListing
@@ -584,6 +605,17 @@ export default function ListingDetailPage() {
                         className={cn("w-1.5 h-1.5 rounded-full transition-all", i === imgIdx ? "bg-white w-4" : "bg-white/50")} />
                     ))}
                   </div>
+                )}
+
+                {/* Fullscreen gallery */}
+                {galleryMediaItems.length > 0 && (
+                  <button
+                    onClick={() => setMediaViewerIndex(Math.min(imgIdx, galleryMediaItems.length - 1))}
+                    className="absolute bottom-3 right-3 w-9 h-9 bg-black/55 rounded-full flex items-center justify-center text-white hover:bg-black/75 transition-colors"
+                    aria-label="Open fullscreen gallery"
+                  >
+                    <Expand className="w-4 h-4" />
+                  </button>
                 )}
               </div>
 
@@ -920,6 +952,15 @@ export default function ListingDetailPage() {
           submitting={submittingReport}
           onClose={handleCloseReportModal}
           onSubmit={handleSubmitReport}
+        />
+      )}
+
+      {mediaViewerIndex !== null && galleryMediaItems.length > 0 && (
+        <MediaViewerModal
+          mediaItems={galleryMediaItems}
+          activeIndex={mediaViewerIndex}
+          onSelect={setMediaViewerIndex}
+          onClose={() => setMediaViewerIndex(null)}
         />
       )}
 

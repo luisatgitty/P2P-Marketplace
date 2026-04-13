@@ -34,7 +34,7 @@ function ConversationShell({ children }: { children: React.ReactNode }) {
         <>
           <ChatHeader conversation={conversation} onDelete={onDelete} onMarkedComplete={onMarkedComplete} />
           <div className="relative flex-1 overflow-hidden">
-            <div className="absolute top-2 left-0 right-0 z-20 px-4 pointer-events-auto">
+            <div className="absolute top-2 left-0 right-0 z-20 pointer-events-auto">
               <ListingContextCard
                 conversationId={conversation.id}
                 listing={conversation.listing}

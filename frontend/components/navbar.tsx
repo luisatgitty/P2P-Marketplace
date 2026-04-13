@@ -7,6 +7,12 @@ import { useUser } from "@/utils/UserContext";
 import { useTheme } from "next-themes";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { getConversations } from "@/services/messagingService";
+import {
+  getNotifications,
+  markAllNotificationsRead,
+  markNotificationRead,
+} from "@/services/notificationService";
+import { toast } from "sonner";
 import { LogoutModal } from "@/components/auth/logout-modal";
 import {
   Sun, Moon, MessageCircle, LogOut, User, Home,
@@ -16,6 +22,7 @@ import {
 import { cn } from "@/lib/utils";
 import { SafeImage } from "@/components/ui/safe-image";
 import VerificationBadge from "@/components/verification-badge";
+import { NotificationItem, type NotificationItemData } from "@/components/notifications/notification-item";
 
 // ─── Tab config ────────────────────────────────────────────────────────────────
 const TABS = [
@@ -81,17 +88,77 @@ export default function Navbar() {
   const pathname = usePathname();
   const isVerifiedSeller = (user?.status ?? "").toLowerCase() === "verified";
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [notificationOpen, setNotificationOpen] = useState(false);
   const [logoutModalOpen, setLogoutModalOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [hasUnreadMessages, setHasUnreadMessages] = useState(false);
+  const [notifications, setNotifications] = useState<NotificationItemData[]>([]);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const notificationRef = useRef<HTMLDivElement>(null);
 
   // If the user role is ADMIN or SUPER_ADMIN, show a banner at the top linking to the admin dashboard
   const isAdmin = user && (user.role === "ADMIN" || user.role === "SUPER_ADMIN");
+  const canSeeNotifications = Boolean(isAuth && user && user.role === "USER");
+  const hasUnreadNotifications = notifications.some((notification) => !notification.is_read);
+
+  const refreshNotifications = useCallback(async () => {
+    if (!isAuth) {
+      setNotifications([]);
+      return;
+    }
+
+    try {
+      const rows = await getNotifications();
+      const mapped: NotificationItemData[] = rows.map((row) => ({
+        id: row.id,
+        user_id: row.userId,
+        type: row.type,
+        message: row.message,
+        link: row.link,
+        is_read: row.isRead,
+        created_at: row.createdAt,
+      }));
+      setNotifications(mapped);
+    } catch {
+      // Keep existing notification state on transient errors.
+    }
+  }, [isAuth]);
+
+  const handleMarkNotificationRead = async (id: string) => {
+    const previous = notifications;
+    setNotifications((prev) =>
+      prev.map((notification) =>
+        notification.id === id ? { ...notification, is_read: true } : notification
+      )
+    );
+
+    try {
+      await markNotificationRead(id);
+    } catch (error) {
+      setNotifications(previous);
+      const message = error instanceof Error ? error.message : "Failed to mark notification as read.";
+      toast.error(message, { position: "top-center" });
+      throw error;
+    }
+  };
+
+  const handleMarkAllNotificationsRead = async () => {
+    const previous = notifications;
+    setNotifications((prev) => prev.map((notification) => ({ ...notification, is_read: true })));
+
+    try {
+      await markAllNotificationsRead();
+    } catch (error) {
+      setNotifications(previous);
+      const message = error instanceof Error ? error.message : "Failed to mark all notifications as read.";
+      toast.error(message, { position: "top-center" });
+    }
+  };
 
   const handleLogOut = () => {
     setLogoutModalOpen(true);
     setDropdownOpen(false);
+    setNotificationOpen(false);
   }
 
   const refreshUnreadState = useCallback(async () => {
@@ -118,6 +185,10 @@ export default function Navbar() {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
         setDropdownOpen(false);
       }
+
+      if (notificationRef.current && !notificationRef.current.contains(e.target as Node)) {
+        setNotificationOpen(false);
+      }
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
@@ -142,6 +213,20 @@ export default function Navbar() {
 
     refreshUnreadState();
   }, [isAuth, pathname, refreshUnreadState]);
+
+  useEffect(() => {
+    if (!canSeeNotifications) {
+      setNotifications([]);
+      return;
+    }
+
+    refreshNotifications();
+  }, [canSeeNotifications, refreshNotifications]);
+
+  useEffect(() => {
+    if (!notificationOpen || !canSeeNotifications) return;
+    refreshNotifications();
+  }, [notificationOpen, canSeeNotifications, refreshNotifications]);
 
   return (
     <>
@@ -178,6 +263,54 @@ export default function Navbar() {
 
           {/* ── RIGHT: Actions ──────────────────────────────────── */}
           <div className="flex items-center gap-1 shrink-0">
+            {/* Notification dropdown */}
+            {canSeeNotifications && (
+              <div className="relative" ref={notificationRef}>
+                <button
+                  onClick={() => setNotificationOpen((v) => !v)}
+                  className="relative p-2 rounded-lg hover:bg-white/10 transition-colors"
+                  aria-label="Notifications"
+                >
+                  <Bell size={18} className="text-stone-400" />
+                  {hasUnreadNotifications && (
+                    <span className="absolute right-0 bottom-0 w-2.5 h-2.5 rounded-full bg-amber-500 border border-[#1a2235]" />
+                  )}
+                </button>
+
+                {notificationOpen && (
+                  <div className="absolute right-0 mt-2 w-88 max-w-[90vw] rounded-xl border border-white/10 bg-[#1e2b3c] shadow-2xl z-50 animate-in fade-in slide-in-from-top-2 duration-150 overflow-hidden">
+                    <div className="px-3 py-2.5 border-b border-white/10 bg-white/5 flex items-center justify-between gap-2">
+                      <h3 className="text-sm font-semibold text-white">Notifications</h3>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[11px] text-stone-400">{notifications.length} items</span>
+                        <button
+                          type="button"
+                          onClick={handleMarkAllNotificationsRead}
+                          disabled={!hasUnreadNotifications}
+                          className="text-[11px] font-medium text-amber-300 hover:text-amber-200 disabled:text-stone-500 disabled:cursor-not-allowed transition-colors"
+                        >
+                          Mark all as read
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="max-h-96 overflow-y-auto p-2 space-y-1.5">
+                      {notifications.length === 0 ? (
+                        <div className="px-2 py-8 text-center text-sm text-stone-400">No notifications yet.</div>
+                      ) : (
+                        notifications.map((notification) => (
+                          <NotificationItem
+                            key={notification.id}
+                            notification={notification}
+                            onClick={handleMarkNotificationRead}
+                          />
+                        ))
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Profile dropdown */}
             <div className="relative" ref={dropdownRef}>
@@ -197,7 +330,7 @@ export default function Navbar() {
                   />
                   </div>
                   {isAuth && hasUnreadMessages && (
-                    <span className="absolute bottom-0 right-0 z-10 w-3 h-3 rounded-full bg-amber-500 border border-[#1a2235]" />
+                    <span className="absolute bottom-0 right-0 z-10 w-2.5 h-2.5 rounded-full bg-amber-500 border border-[#1a2235]" />
                   )}
                 </div>
                 <ChevronDown
@@ -274,14 +407,6 @@ export default function Navbar() {
                                 )}
                               </span>
                               Messages
-                            </Link>
-                            <Link
-                              href="/notifications"
-                              onClick={() => setDropdownOpen(false)}
-                              className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-200 hover:bg-white/10 hover:text-white transition-colors"
-                            >
-                              <Bell size={15} className="text-stone-400" />
-                              Notifications
                             </Link>
                             {isVerifiedSeller ? (
                               <Link
