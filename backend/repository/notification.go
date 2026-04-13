@@ -114,3 +114,24 @@ func InsertReportNotificationTx(tx *gorm.DB, userId, message, link string) error
 
 	return nil
 }
+
+func InsertReviewNotificationTx(tx *gorm.DB, userId, message, link string) error {
+	trimmedMessage := strings.TrimSpace(message)
+	if trimmedMessage == "" {
+		trimmedMessage = "You received a new review on your listing."
+	}
+
+	trimmedLink := strings.TrimSpace(link)
+	if trimmedLink == "" {
+		trimmedLink = "/"
+	}
+
+	if err := tx.Exec(`
+		INSERT INTO public.notifications (user_id, type, message, link)
+		VALUES ($1, 'REVIEW', $2, $3)
+	`, userId, trimmedMessage, trimmedLink).Error; err != nil {
+		return fmt.Errorf("Failed to create review notification")
+	}
+
+	return nil
+}

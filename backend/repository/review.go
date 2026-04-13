@@ -150,11 +150,37 @@ func CreateListingReview(reviewerId, listingId string, rating int, comment strin
 	`
 
 	trimmedComment := strings.TrimSpace(comment)
-	if err := db.Raw(query, reviewerId, reviewedUserId, listingId, rating, trimmedComment).Scan(&review).Error; err != nil {
+	tx := db.Begin()
+	if tx.Error != nil {
+		return review, tx.Error
+	}
+
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	if err := tx.Raw(query, reviewerId, reviewedUserId, listingId, rating, trimmedComment).Scan(&review).Error; err != nil {
+		tx.Rollback()
 		if strings.Contains(strings.ToLower(err.Error()), "uniq_reviews_reviewer_listing") || strings.Contains(strings.ToLower(err.Error()), "duplicate key") {
 			return review, fmt.Errorf("Review already exists for this listing")
 		}
 		return review, fmt.Errorf("Failed to submit review")
+	}
+
+	if err := InsertReviewNotificationTx(
+		tx,
+		reviewedUserId,
+		fmt.Sprintf("You received a new %d-star review on your listing.", rating),
+		"/listing/"+strings.TrimSpace(listingId),
+	); err != nil {
+		tx.Rollback()
+		return review, err
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		return review, err
 	}
 
 	return review, nil
