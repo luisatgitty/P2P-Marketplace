@@ -795,7 +795,34 @@ func GetAdminTransactions() ([]model.AdminTransactionListItemFromDb, error) {
 
 func DeleteAdminListing(listingId string) error {
 	db := middleware.DBConn
-	result := db.Exec(`
+	tx := db.Begin()
+	if tx.Error != nil {
+		return tx.Error
+	}
+
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	var ownerId string
+	ownerResult := tx.Raw(`
+		SELECT user_id::text
+		FROM public.listings
+		WHERE id = $1
+		LIMIT 1
+	`, listingId).Scan(&ownerId)
+	if ownerResult.Error != nil {
+		tx.Rollback()
+		return fmt.Errorf("Failed to validate listing")
+	}
+	if ownerResult.RowsAffected == 0 {
+		tx.Rollback()
+		return fmt.Errorf("Listing not found")
+	}
+
+	result := tx.Exec(`
 		UPDATE public.listings
 		SET
 			status = 'DELETED'::listing_status,
@@ -804,10 +831,28 @@ func DeleteAdminListing(listingId string) error {
 		WHERE id = $1
 	`, listingId)
 	if result.Error != nil {
+		tx.Rollback()
 		return fmt.Errorf("Failed to delete listing")
 	}
 	if result.RowsAffected == 0 {
+		tx.Rollback()
 		return fmt.Errorf("Listing not found")
+	}
+
+	if strings.TrimSpace(ownerId) != "" {
+		if err := InsertListingNotificationTx(
+			tx,
+			strings.TrimSpace(ownerId),
+			"Your listing was removed by an administrator.",
+			"/listing/"+strings.TrimSpace(listingId),
+		); err != nil {
+			tx.Rollback()
+			return err
+		}
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		return err
 	}
 
 	return nil

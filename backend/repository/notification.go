@@ -156,3 +156,24 @@ func InsertTransactionNotificationTx(tx *gorm.DB, userId, message, link string) 
 
 	return nil
 }
+
+func InsertListingNotificationTx(tx *gorm.DB, userId, message, link string) error {
+	trimmedMessage := strings.TrimSpace(message)
+	if trimmedMessage == "" {
+		trimmedMessage = "A listing update requires your attention."
+	}
+
+	trimmedLink := strings.TrimSpace(link)
+	if trimmedLink == "" {
+		trimmedLink = "/"
+	}
+
+	if err := tx.Exec(`
+		INSERT INTO public.notifications (user_id, type, message, link)
+		VALUES ($1, 'LISTING', $2, $3)
+	`, userId, trimmedMessage, trimmedLink).Error; err != nil {
+		return fmt.Errorf("Failed to create listing notification")
+	}
+
+	return nil
+}
