@@ -40,7 +40,7 @@ const (
 // ─── Listing ─────────────────────────────────────────
 const (
 	ListingTitleMinLength       = 5
-	ListingTitleMaxLength       = 120
+	ListingTitleMaxLength       = 80
 	ListingCategoryMinLength    = 2
 	ListingCategoryMaxLength    = 80
 	ListingDescriptionMinLength = 20
@@ -50,13 +50,13 @@ const (
 	ListingPriceMinValue        = 1
 	ListingPriceMaxValue        = 100000000
 	ListingMinPeriodMinLength   = 1
-	ListingMinPeriodMaxLength   = 100
-	ListingDepositMaxLength     = 120
+	ListingMinPeriodMaxLength   = 60
+	ListingDepositMaxLength     = 60
 	ListingTurnaroundMinLength  = 2
-	ListingTurnaroundMaxLength  = 120
+	ListingTurnaroundMaxLength  = 60
 	ListingServiceAreaMinLength = 2
-	ListingServiceAreaMaxLength = 120
-	ListingArrangementMaxLength = 80
+	ListingServiceAreaMaxLength = 60
+	ListingArrangementMaxLength = 60
 	ListingTagMinLength         = 2
 	ListingTagMaxLength         = 60
 	ListingMaxHighlights        = 10

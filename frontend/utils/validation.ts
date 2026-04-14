@@ -1,5 +1,11 @@
 import type { SignupForm } from "@/types/forms";
-import { LISTING_CATEGORIES } from "@/types/listings";
+import {
+  ListingType,
+  CATEGORIES,
+  PRICE_UNITS,
+  CONDITIONS,
+  DELIVERY_OPTIONS
+} from "@/types/listings";
 
 export const AUTH_LIMITS = {
   nameMinLength: 2,
@@ -25,13 +31,13 @@ export const LISTING_LIMITS = {
   priceMinValue: 1,
   priceMaxValue: 100000000,
   minPeriodMinLength: 1,
-  minPeriodMaxLength: 100,
-  depositMaxLength: 120,
+  minPeriodMaxLength: 60,
+  depositMaxLength: 60,
   turnaroundMinLength: 2,
-  turnaroundMaxLength: 120,
+  turnaroundMaxLength: 60,
   serviceAreaMinLength: 2,
-  serviceAreaMaxLength: 120,
-  arrangementMaxLength: 80,
+  serviceAreaMaxLength: 60,
+  arrangementMaxLength: 60,
   tagMinLength: 2,
   tagMaxLength: 60,
   maxHighlights: 10,
@@ -41,10 +47,8 @@ export const LISTING_LIMITS = {
   maxTimeWindows: 8,
 } as const;
 
-export type ListingValidationType = "sell" | "rent" | "service";
-
 export interface ListingValidationInput {
-  type: ListingValidationType;
+  type: ListingType;
   title: string;
   category: string;
   price: string;
@@ -68,28 +72,10 @@ export interface ListingValidationInput {
   timeWindows?: Array<{ start: string; end: string }>;
 }
 
-const LISTING_CATEGORY_SET = new Set(LISTING_CATEGORIES);
-
-const LISTING_PRICE_UNITS: Record<ListingValidationType, string[]> = {
-  sell: ["Fixed Price", "Negotiable", "Contact for Price", "Starting Price"],
-  rent: ["/ hour", "/ day", "/ night", "/ week", "/ month", "/ year", "/ sq m", "/ km"],
-  service: ["/ hour", "/ session", "/ project", "/ package", "/ unit", "/ sq m", "/ km", "/ head", "Quote Required"],
-};
-
-const LISTING_CONDITION_SET = new Set([
-  "New",
-  "Like New",
-  "Well Used",
-  "Heavily Used",
-  "Defective",
-  "Not Working",
-]);
-
-const LISTING_DELIVERY_OPTION_SET = new Set([
-  "Meet-up only",
-  "Delivery available",
-  "Meet-up or Delivery",
-]);
+const CONDITION_SET = new Set(CONDITIONS.map((item) => item.value));
+const DELIVERY_OPTION_SET = new Set(
+  DELIVERY_OPTIONS.map((item) => item.value),
+);
 
 function validateTagItems(items: string[], fieldLabel: string): string | null {
   for (const rawItem of items) {
@@ -154,7 +140,7 @@ export function validateListingStep(
 
     if (!category) {
       errors.category = "Please select a category.";
-    } else if (!LISTING_CATEGORY_SET.has(category)) {
+    } else if (!CATEGORIES.includes(category)) {
       errors.category = "Invalid category selected.";
     }
 
@@ -169,7 +155,7 @@ export function validateListingStep(
 
     if (!priceUnit) {
       errors.priceUnit = "Please select a price unit.";
-    } else if (!LISTING_PRICE_UNITS[input.type].includes(priceUnit)) {
+    } else if (!PRICE_UNITS[input.type].includes(priceUnit)) {
       errors.priceUnit = "Invalid price unit selected.";
     }
 
@@ -194,12 +180,12 @@ export function validateListingStep(
     if (input.type === "sell") {
       if (!input.condition?.trim()) {
         errors.condition = "Please select a condition.";
-      } else if (!LISTING_CONDITION_SET.has(input.condition.trim())) {
+      } else if (!CONDITION_SET.has(input.condition)) {
         errors.condition = "Invalid condition selected.";
       }
       if (!input.deliveryMethod?.trim()) {
         errors.deliveryMethod = "Please choose a delivery option.";
-      } else if (!LISTING_DELIVERY_OPTION_SET.has(input.deliveryMethod.trim())) {
+      } else if (!DELIVERY_OPTION_SET.has(input.deliveryMethod)) {
         errors.deliveryMethod = "Invalid delivery option selected.";
       }
 
@@ -226,7 +212,7 @@ export function validateListingStep(
 
       if (!input.deliveryMethod?.trim()) {
         errors.deliveryMethod = "Please choose a delivery option.";
-      } else if (!LISTING_DELIVERY_OPTION_SET.has(input.deliveryMethod.trim())) {
+      } else if (!DELIVERY_OPTION_SET.has(input.deliveryMethod.trim())) {
         errors.deliveryMethod = "Invalid delivery option selected.";
       }
 
