@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"p2p_marketplace/backend/config"
 	"p2p_marketplace/backend/middleware"
 	"p2p_marketplace/backend/model"
 	"p2p_marketplace/backend/repository"
@@ -466,8 +467,12 @@ func CreateListingReview(c *fiber.Ctx) error {
 		return SendErrorResponse(c, 400, "Invalid request body. Please contact support.", err)
 	}
 
-	if body.Rating < 1 || body.Rating > 5 {
+	if body.Rating < config.ReviewRatingMin || body.Rating > config.ReviewRatingMax {
 		return SendErrorResponse(c, 400, "Rating must be between 1 and 5", nil)
+	}
+
+	if len(strings.TrimSpace(body.Comment)) > config.ReviewCommentMaxLength {
+		return SendErrorResponse(c, 400, "Review comment must be at most 500 characters", nil)
 	}
 
 	review, err := repository.CreateListingReview(userId, listingId, body.Rating, body.Comment)
@@ -498,8 +503,12 @@ func UpdateListingReview(c *fiber.Ctx) error {
 		return SendErrorResponse(c, 400, "Invalid request body. Please contact support.", err)
 	}
 
-	if body.Rating < 1 || body.Rating > 5 {
+	if body.Rating < config.ReviewRatingMin || body.Rating > config.ReviewRatingMax {
 		return SendErrorResponse(c, 400, "Rating must be between 1 and 5", nil)
+	}
+
+	if len(strings.TrimSpace(body.Comment)) > config.ReviewCommentMaxLength {
+		return SendErrorResponse(c, 400, "Review comment must be at most 500 characters", nil)
 	}
 
 	review, err := repository.UpdateListingReview(userId, listingId, body.Rating, body.Comment)

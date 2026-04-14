@@ -8,6 +8,8 @@ import {
 } from "@/types/listings";
 
 export const MESSAGE_MAX_LENGTH = 2000;
+export const REVIEW_MAX_LENGTH = 500;
+export const REPORT_MAX_LENGTH = 500;
 
 export function limitMessageInputLength(value: string): string {
   if (value.length <= MESSAGE_MAX_LENGTH) return value;

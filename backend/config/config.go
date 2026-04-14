@@ -137,3 +137,10 @@ var ListingDeliveryOptions = []string{
 const (
 	MessageContentMaxLength = 2000
 )
+
+// ─── Review ─────────────────────────────────────────
+const (
+	ReviewRatingMin        = 1
+	ReviewRatingMax        = 5
+	ReviewCommentMaxLength = 500
+)
