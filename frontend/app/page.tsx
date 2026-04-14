@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { LISTING_CATEGORIES } from "@/types/listings";
+import { CATEGORIES } from "@/types/listings";
 
 type ListingWithMeta = HomeListing;
 
@@ -314,7 +314,7 @@ function HomePageInner() {
             <div className="relative min-w-35 flex-1">
               <FilterSelect value={category} onChange={setCategory}>
                 <option value="">All Categories</option>
-                {LISTING_CATEGORIES.map((c) => <option key={c}>{c}</option>)}
+                {CATEGORIES.map((c) => <option key={c}>{c}</option>)}
               </FilterSelect>
               <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
                 <SlidersHorizontal size={12} className="text-stone-400" />
