@@ -25,26 +25,8 @@ func CreateListing(c *fiber.Ctx) error {
 		return SendErrorResponse(c, 401, "User is not authenticated", nil)
 	}
 
-	if strings.TrimSpace(body.Type) == "" {
-		return SendErrorResponse(c, 400, "Listing type is required", nil)
-	}
-	if strings.TrimSpace(body.Title) == "" {
-		return SendErrorResponse(c, 400, "Title is required", nil)
-	}
-	if strings.TrimSpace(body.Category) == "" {
-		return SendErrorResponse(c, 400, "Category is required", nil)
-	}
-	if body.Price <= 0 {
-		return SendErrorResponse(c, 400, "Price must be greater than 0", nil)
-	}
-	if strings.TrimSpace(body.Description) == "" {
-		return SendErrorResponse(c, 400, "Description is required", nil)
-	}
-	if strings.TrimSpace(body.LocationCity) == "" || strings.TrimSpace(body.LocationProv) == "" {
-		return SendErrorResponse(c, 400, "City and province are required", nil)
-	}
-	if len(body.Images) == 0 {
-		return SendErrorResponse(c, 400, "At least one image is required", nil)
+	if err := middleware.ValidateCreateListingInput(&body, false); err != nil {
+		return SendErrorResponse(c, 400, err.Error(), err)
 	}
 
 	listingId, err := repository.CreateListing(userId, body)
@@ -135,23 +117,8 @@ func UpdateListing(c *fiber.Ctx) error {
 		return SendErrorResponse(c, 401, "User is not authenticated", nil)
 	}
 
-	if strings.TrimSpace(body.Type) == "" {
-		return SendErrorResponse(c, 400, "Listing type is required", nil)
-	}
-	if strings.TrimSpace(body.Title) == "" {
-		return SendErrorResponse(c, 400, "Title is required", nil)
-	}
-	if strings.TrimSpace(body.Category) == "" {
-		return SendErrorResponse(c, 400, "Category is required", nil)
-	}
-	if body.Price <= 0 {
-		return SendErrorResponse(c, 400, "Price must be greater than 0", nil)
-	}
-	if strings.TrimSpace(body.Description) == "" {
-		return SendErrorResponse(c, 400, "Description is required", nil)
-	}
-	if strings.TrimSpace(body.LocationCity) == "" || strings.TrimSpace(body.LocationProv) == "" {
-		return SendErrorResponse(c, 400, "City and province are required", nil)
+	if err := middleware.ValidateCreateListingInput(&body, true); err != nil {
+		return SendErrorResponse(c, 400, err.Error(), err)
 	}
 
 	if err := repository.UpdateListing(userId, listingId, body); err != nil {

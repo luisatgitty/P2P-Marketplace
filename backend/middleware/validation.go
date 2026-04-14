@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/mail"
 	"strings"
+	"time"
 	"unicode"
 
 	"p2p_marketplace/backend/config"
@@ -180,4 +181,271 @@ func ValidateOTP(otp string) error {
 		}
 	}
 	return nil
+}
+
+func ValidateCreateListingInput(body *model.CreateListingBody, isEdit bool) error {
+	body.Type = strings.TrimSpace(body.Type)
+	body.Type = strings.ToLower(body.Type)
+	body.Title = strings.TrimSpace(body.Title)
+	body.Category = strings.TrimSpace(body.Category)
+	body.PriceUnit = strings.TrimSpace(body.PriceUnit)
+	body.Description = strings.TrimSpace(body.Description)
+	body.LocationCity = strings.TrimSpace(body.LocationCity)
+	body.LocationProv = strings.TrimSpace(body.LocationProv)
+	body.LocationBrgy = strings.TrimSpace(body.LocationBrgy)
+
+	if body.Type == "" {
+		return fmt.Errorf("Listing type is required")
+	}
+	if body.Type != "sell" && body.Type != "rent" && body.Type != "service" {
+		return fmt.Errorf("Invalid listing type")
+	}
+
+	if body.Title == "" {
+		return fmt.Errorf("Title is required")
+	}
+	if len(body.Title) < config.ListingTitleMinLength || len(body.Title) > config.ListingTitleMaxLength {
+		return fmt.Errorf("Title must be between %d and %d characters", config.ListingTitleMinLength, config.ListingTitleMaxLength)
+	}
+
+	if body.Category == "" {
+		return fmt.Errorf("Category is required")
+	}
+	if !containsExactCategory(body.Category, config.ListingCategories) {
+		return fmt.Errorf("Invalid category selected")
+	}
+
+	if body.Price < config.ListingPriceMinValue || body.Price > config.ListingPriceMaxValue {
+		return fmt.Errorf("Price must be between %d and %d", config.ListingPriceMinValue, config.ListingPriceMaxValue)
+	}
+
+	if body.PriceUnit == "" {
+		return fmt.Errorf("Price unit is required")
+	}
+	switch body.Type {
+	case "sell":
+		if !containsExactOption(body.PriceUnit, config.ListingSellPriceUnits) {
+			return fmt.Errorf("Invalid price unit selected")
+		}
+	case "rent":
+		if !containsExactOption(body.PriceUnit, config.ListingRentPriceUnits) {
+			return fmt.Errorf("Invalid price unit selected")
+		}
+	case "service":
+		if !containsExactOption(body.PriceUnit, config.ListingServicePriceUnits) {
+			return fmt.Errorf("Invalid price unit selected")
+		}
+	}
+
+	if body.Description == "" {
+		return fmt.Errorf("Description is required")
+	}
+	if len(body.Description) < config.ListingDescriptionMinLength || len(body.Description) > config.ListingDescriptionMaxLength {
+		return fmt.Errorf("Description must be between %d and %d characters", config.ListingDescriptionMinLength, config.ListingDescriptionMaxLength)
+	}
+
+	if body.LocationCity == "" || body.LocationProv == "" {
+		return fmt.Errorf("City and province are required")
+	}
+	if len(body.LocationCity) < config.ListingLocationMinLength || len(body.LocationCity) > config.ListingLocationMaxLength {
+		return fmt.Errorf("City must be between %d and %d characters", config.ListingLocationMinLength, config.ListingLocationMaxLength)
+	}
+	if len(body.LocationProv) < config.ListingLocationMinLength || len(body.LocationProv) > config.ListingLocationMaxLength {
+		return fmt.Errorf("Province must be between %d and %d characters", config.ListingLocationMinLength, config.ListingLocationMaxLength)
+	}
+	if body.LocationBrgy != "" && len(body.LocationBrgy) > config.ListingLocationMaxLength {
+		return fmt.Errorf("Barangay must not exceed %d characters", config.ListingLocationMaxLength)
+	}
+
+	if len(body.Highlights) > config.ListingMaxHighlights {
+		return fmt.Errorf("You can only add up to %d highlights", config.ListingMaxHighlights)
+	}
+	if err := validateListingTags(body.Highlights, "Highlight"); err != nil {
+		return err
+	}
+
+	if !isEdit && len(body.Images) == 0 {
+		return fmt.Errorf("At least one image is required")
+	}
+	if len(body.Images) > config.ListingMaxImages {
+		return fmt.Errorf("You can upload up to %d images", config.ListingMaxImages)
+	}
+
+	if len(body.TimeWindows) > config.ListingMaxTimeWindows {
+		return fmt.Errorf("You can add up to %d time windows", config.ListingMaxTimeWindows)
+	}
+	for _, tw := range body.TimeWindows {
+		start := strings.TrimSpace(tw.StartTime)
+		end := strings.TrimSpace(tw.EndTime)
+		if start == "" || end == "" {
+			return fmt.Errorf("Time window start and end are required")
+		}
+		normalizedStart, err := parseTimeWindowInput(start)
+		if err != nil {
+			return fmt.Errorf("Invalid time window value")
+		}
+		normalizedEnd, err := parseTimeWindowInput(end)
+		if err != nil {
+			return fmt.Errorf("Invalid time window value")
+		}
+		if normalizedStart >= normalizedEnd {
+			return fmt.Errorf("End time must be later than start time")
+		}
+	}
+
+	switch body.Type {
+	case "sell":
+		if body.SellData == nil {
+			return fmt.Errorf("Missing sell data")
+		}
+		body.SellData.Condition = strings.TrimSpace(body.SellData.Condition)
+		body.SellData.DeliveryMethod = strings.TrimSpace(body.SellData.DeliveryMethod)
+		if body.SellData.Condition == "" {
+			return fmt.Errorf("Please select a condition")
+		}
+		if !containsExactOption(body.SellData.Condition, config.ListingConditionOptions) {
+			return fmt.Errorf("Invalid condition")
+		}
+		if body.SellData.DeliveryMethod == "" {
+			return fmt.Errorf("Please choose a delivery option")
+		}
+		if !containsExactOption(body.SellData.DeliveryMethod, config.ListingDeliveryOptions) {
+			return fmt.Errorf("Invalid delivery method")
+		}
+		if len(body.Inclusions) == 0 {
+			return fmt.Errorf("Please add at least one inclusion item")
+		}
+		if len(body.Inclusions) > config.ListingMaxInclusions {
+			return fmt.Errorf("You can only add up to %d inclusion items", config.ListingMaxInclusions)
+		}
+		if err := validateListingTags(body.Inclusions, "Inclusion"); err != nil {
+			return err
+		}
+
+	case "rent":
+		if body.RentData == nil {
+			return fmt.Errorf("Missing rent data")
+		}
+		body.RentData.MinPeriod = strings.TrimSpace(body.RentData.MinPeriod)
+		body.RentData.Availability = strings.TrimSpace(body.RentData.Availability)
+		body.RentData.Deposit = strings.TrimSpace(body.RentData.Deposit)
+		body.RentData.DeliveryMethod = strings.TrimSpace(body.RentData.DeliveryMethod)
+
+		if body.RentData.MinPeriod == "" {
+			return fmt.Errorf("Minimum rental period is required")
+		}
+		if len(body.RentData.MinPeriod) < config.ListingMinPeriodMinLength || len(body.RentData.MinPeriod) > config.ListingMinPeriodMaxLength {
+			return fmt.Errorf("Minimum rental period must be between %d and %d characters", config.ListingMinPeriodMinLength, config.ListingMinPeriodMaxLength)
+		}
+		if body.RentData.DeliveryMethod == "" {
+			return fmt.Errorf("Please choose a delivery option")
+		}
+		if !containsExactOption(body.RentData.DeliveryMethod, config.ListingDeliveryOptions) {
+			return fmt.Errorf("Invalid delivery method")
+		}
+		if body.RentData.Availability == "" {
+			return fmt.Errorf("Availability date is required")
+		}
+		if _, err := time.Parse("2006-01-02", body.RentData.Availability); err != nil {
+			return fmt.Errorf("Invalid availability date")
+		}
+		if len(body.RentData.Deposit) > config.ListingDepositMaxLength {
+			return fmt.Errorf("Deposit must not exceed %d characters", config.ListingDepositMaxLength)
+		}
+		if len(body.Amenities) == 0 {
+			return fmt.Errorf("Please add at least one amenity")
+		}
+		if len(body.Amenities) > config.ListingMaxAmenities {
+			return fmt.Errorf("You can only add up to %d amenities", config.ListingMaxAmenities)
+		}
+		if err := validateListingTags(body.Amenities, "Amenity"); err != nil {
+			return err
+		}
+
+	case "service":
+		if body.ServiceData == nil {
+			return fmt.Errorf("Missing service data")
+		}
+		body.ServiceData.Availability = strings.TrimSpace(body.ServiceData.Availability)
+		body.ServiceData.Turnaround = strings.TrimSpace(body.ServiceData.Turnaround)
+		body.ServiceData.ServiceArea = strings.TrimSpace(body.ServiceData.ServiceArea)
+		body.ServiceData.Arrangement = strings.TrimSpace(body.ServiceData.Arrangement)
+
+		if body.ServiceData.Availability == "" {
+			return fmt.Errorf("Availability date is required")
+		}
+		if _, err := time.Parse("2006-01-02", body.ServiceData.Availability); err != nil {
+			return fmt.Errorf("Invalid availability date")
+		}
+		if body.ServiceData.Turnaround == "" {
+			return fmt.Errorf("Turnaround is required")
+		}
+		if len(body.ServiceData.Turnaround) < config.ListingTurnaroundMinLength || len(body.ServiceData.Turnaround) > config.ListingTurnaroundMaxLength {
+			return fmt.Errorf("Turnaround must be between %d and %d characters", config.ListingTurnaroundMinLength, config.ListingTurnaroundMaxLength)
+		}
+		if body.ServiceData.ServiceArea == "" {
+			return fmt.Errorf("Service area is required")
+		}
+		if len(body.ServiceData.ServiceArea) < config.ListingServiceAreaMinLength || len(body.ServiceData.ServiceArea) > config.ListingServiceAreaMaxLength {
+			return fmt.Errorf("Service area must be between %d and %d characters", config.ListingServiceAreaMinLength, config.ListingServiceAreaMaxLength)
+		}
+		if len(body.ServiceData.Arrangement) > config.ListingArrangementMaxLength {
+			return fmt.Errorf("Arrangement must not exceed %d characters", config.ListingArrangementMaxLength)
+		}
+		if len(body.Inclusions) == 0 {
+			return fmt.Errorf("Please add at least one inclusion item")
+		}
+		if len(body.Inclusions) > config.ListingMaxInclusions {
+			return fmt.Errorf("You can only add up to %d inclusion items", config.ListingMaxInclusions)
+		}
+		if err := validateListingTags(body.Inclusions, "Inclusion"); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func validateListingTags(tags []string, label string) error {
+	for _, tag := range tags {
+		value := strings.TrimSpace(tag)
+		if value == "" {
+			return fmt.Errorf("%s entries must not be empty", label)
+		}
+		if len(value) < config.ListingTagMinLength || len(value) > config.ListingTagMaxLength {
+			return fmt.Errorf("%s entries must be between %d and %d characters", label, config.ListingTagMinLength, config.ListingTagMaxLength)
+		}
+	}
+	return nil
+}
+
+func containsExactOption(value string, allowed []string) bool {
+	trimmed := strings.TrimSpace(value)
+	for _, option := range allowed {
+		if trimmed == option {
+			return true
+		}
+	}
+	return false
+}
+
+func parseTimeWindowInput(value string) (string, error) {
+	trimmed := strings.TrimSpace(value)
+	if parsed, err := time.Parse("15:04", trimmed); err == nil {
+		return parsed.Format("15:04:05"), nil
+	}
+	if parsed, err := time.Parse("15:04:05", trimmed); err == nil {
+		return parsed.Format("15:04:05"), nil
+	}
+	return "", fmt.Errorf("invalid time")
+}
+
+func containsExactCategory(value string, categories []string) bool {
+	trimmed := strings.TrimSpace(value)
+	for _, category := range categories {
+		if trimmed == category {
+			return true
+		}
+	}
+	return false
 }

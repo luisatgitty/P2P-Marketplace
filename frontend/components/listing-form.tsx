@@ -27,6 +27,10 @@ import {
   toISODate,
 } from "@/utils/scheduleAvailability";
 import {
+  LISTING_LIMITS,
+  validateListingStep,
+} from "@/utils/validation";
+import {
   BookingCalendar,
   type BookingCalendarColors,
 } from "./ui/booking-calendar";
@@ -202,10 +206,10 @@ const DELIVERY_OPTIONS = [
   { value: "Meet-up or Delivery", desc: "Either option works" },
 ];
 
-const MAX_HIGHLIGHTS = 10;
-const MAX_INCLUSIONS = 10;
-const MAX_AMENITIES = 10;
-const MAX_IMAGES = 8;
+const MAX_HIGHLIGHTS = LISTING_LIMITS.maxHighlights;
+const MAX_INCLUSIONS = LISTING_LIMITS.maxInclusions;
+const MAX_AMENITIES = LISTING_LIMITS.maxAmenities;
+const MAX_IMAGES = LISTING_LIMITS.maxImages;
 
 function sod(d: Date): Date {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate());
@@ -431,11 +435,13 @@ function StyledTextarea({
   onChange,
   placeholder,
   rows = 5,
+  maxLength,
 }: {
   value: string;
   onChange: (v: string) => void;
   placeholder?: string;
   rows?: number;
+  maxLength?: number;
 }) {
   return (
     <textarea
@@ -443,6 +449,7 @@ function StyledTextarea({
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
       rows={rows}
+      maxLength={maxLength}
       className={cn(
         "w-full rounded-xl border border-stone-200 dark:border-[#2a2d3e]",
         "bg-white dark:bg-[#13151f] text-stone-800 dark:text-stone-100 text-sm",
@@ -569,10 +576,14 @@ function RadioOption({
 function TagInput({
   tags,
   setTags,
+  maxTags,
+  maxLength,
   placeholder,
 }: {
   tags: string[];
   setTags: (v: string[]) => void;
+  maxTags: number;
+  maxLength: number;
   placeholder?: string;
 }) {
   const [draft, setDraft] = useState("");
@@ -580,7 +591,7 @@ function TagInput({
 
   const add = () => {
     const t = draft.trim();
-    if (!t || tags.length >= MAX_HIGHLIGHTS || tags.includes(t)) {
+    if (!t || tags.length >= maxTags || tags.includes(t)) {
       setDraft("");
       return;
     }
@@ -631,14 +642,14 @@ function TagInput({
       )}
 
       {/* Input row */}
-      {tags.length < MAX_HIGHLIGHTS && (
+      {tags.length < maxTags && (
         <div className="flex gap-2">
           <input
             ref={inputRef}
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={onKey}
-            maxLength={40}
+            maxLength={maxLength}
             placeholder={placeholder}
             className={cn(
               "flex-1 rounded-xl border border-stone-200 dark:border-[#2a2d3e]",
@@ -720,7 +731,7 @@ function ImageUploadZone({
               Click or drag photos here
             </p>
             <p className="text-xs text-stone-400 dark:text-stone-500 mt-0.5">
-              JPG, PNG, WEBP · Max 5 MB each · Up to 8 photos
+              JPG, PNG, WEBP · Max 5 MB each · Up to {LISTING_LIMITS.maxImages} photos
             </p>
           </div>
         </button>
@@ -862,7 +873,7 @@ function InclusionList({
           )}
         </div>
       ))}
-      {items.length < 10 && (
+      {items.length < MAX_INCLUSIONS && (
         <button
           type="button"
           onClick={() => setItems([...items, ""])}
@@ -1085,56 +1096,37 @@ export default function ListingForm({
 
   // ── Validation ───────────────────────────────────────────────────────────────
   const validate = (s: number) => {
-    const e: Record<string, string> = {};
-    if (s === 0) {
-      if (!title.trim()) e.title = "Title is required.";
-      if (!category) e.category = "Please select a category.";
-      if (!price || isNaN(+price) || +price <= 0)
-        e.price = "Enter a valid price.";
-      if (!description.trim()) e.description = "Description is required.";
-    }
-    if (s === 1) {
-      if (type === "sell") {
-        if (!condition) e.condition = "Please select a condition.";
-        if (!deliveryMethod)
-          e.deliveryMethod = "Please choose a delivery option.";
-        if (inclusions.length === 0)
-          e.inclusions = "Please add at least one inclusion item.";
-        if (inclusions.length > 10)
-          e.inclusions = "You can only add up to 10 inclusion items.";
-      }
-      if (type === "rent") {
-        if (!minPeriod.trim())
-          e.minPeriod = "Minimum rental period is required.";
-        if (!deliveryMethod)
-          e.deliveryMethod = "Please choose a delivery option.";
-        if (!parseISODate(availability)) {
-          e.availability = "Please select a starting availability date.";
-        }
-        if (amenities.length === 0)
-          e.amenities = "Please add at least one amenity.";
-        if (amenities.length > 10)
-          e.amenities = "You can only add up to 10 amenities.";
-      }
-      if (type === "service") {
-        if (!turnaround.trim()) e.turnaround = "Turnaround time is required.";
-        if (!serviceArea.trim()) e.serviceArea = "Service area is required.";
-        if (inclusions.length === 0)
-          e.inclusions = "Please add at least one inclusion item.";
-        if (inclusions.length > 10)
-          e.inclusions = "You can only add up to 10 inclusion items.";
-        if (!parseISODate(availability)) {
-          e.availability = "Please select a starting availability date.";
-        }
-      }
-    }
-    if (s === 2) {
-      if (!locationCity.trim())
-        e.locationCity = "City / Municipality is required.";
-      if (!locationProv) e.locationProv = "Province is required.";
-      if (!isEdit && images.length === 0)
-        e.images = "At least one photo is required.";
-    }
+    const e = validateListingStep(
+      {
+        type,
+        title,
+        category,
+        price,
+        priceUnit,
+        description,
+        locationCity,
+        locationProv,
+        locationBrgy,
+        condition,
+        deliveryMethod,
+        minPeriod,
+        availability,
+        deposit,
+        amenities,
+        turnaround,
+        serviceArea,
+        arrangement,
+        inclusions,
+        highlights,
+        imageCount: images.length,
+        timeWindows: timeWindows.map((slot) => ({
+          start: slot.start,
+          end: slot.end,
+        })),
+      },
+      s,
+      isEdit,
+    );
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -1322,8 +1314,10 @@ export default function ListingForm({
       setTimeWindowError("End time must be later than start time.");
       return;
     }
-    if (timeWindows.length >= 8) {
-      setTimeWindowError("You can add up to 8 window times only.");
+    if (timeWindows.length >= LISTING_LIMITS.maxTimeWindows) {
+      setTimeWindowError(
+        `You can add up to ${LISTING_LIMITS.maxTimeWindows} window times only.`,
+      );
       return;
     }
 
@@ -1429,12 +1423,12 @@ export default function ListingForm({
             <span
               className={cn(
                 "text-xs font-semibold shrink-0",
-                timeWindows.length >= 8
+                timeWindows.length >= LISTING_LIMITS.maxTimeWindows
                   ? "text-amber-600 dark:text-amber-400"
                   : "text-stone-400 dark:text-stone-500",
               )}
             >
-              {timeWindows.length}/{8}
+              {timeWindows.length}/{LISTING_LIMITS.maxTimeWindows}
             </span>
           </p>
 
@@ -1459,7 +1453,7 @@ export default function ListingForm({
             <button
               type="button"
               onClick={addTimeWindow}
-              disabled={timeWindows.length >= 8}
+              disabled={timeWindows.length >= LISTING_LIMITS.maxTimeWindows}
               className={cn(
                 "mb-0.5 flex items-center justify-center gap-1.5 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all",
                 "border border-stone-200 text-stone-600 hover:border-stone-400 hover:bg-stone-100",
@@ -1472,6 +1466,7 @@ export default function ListingForm({
           </div>
 
           <ErrMsg msg={timeWindowError} />
+          <ErrMsg msg={errors.timeWindows} />
 
           {timeWindows.length > 0 ? (
             <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
@@ -1514,7 +1509,8 @@ export default function ListingForm({
           <StyledInput
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            maxLength={120}
+            minLength={LISTING_LIMITS.titleMinLength}
+            maxLength={LISTING_LIMITS.titleMaxLength}
             placeholder={
               type === "sell"
                 ? 'e.g. MacBook Pro M2 2023 — Space Gray 16"'
@@ -1526,7 +1522,7 @@ export default function ListingForm({
           <div className="flex justify-between mt-1.5">
             <ErrMsg msg={errors.title} />
             <span className="text-xs text-stone-400 ml-auto">
-              {title.length}/120
+              {title.length}/{LISTING_LIMITS.titleMaxLength}
             </span>
           </div>
         </div>
@@ -1555,7 +1551,8 @@ export default function ListingForm({
                   value={price}
                   onChange={(e) => setPrice(e.target.value)}
                   placeholder="0"
-                  min={0}
+                  min={LISTING_LIMITS.priceMinValue}
+                  max={LISTING_LIMITS.priceMaxValue}
                   className="pl-8"
                 />
               </div>
@@ -1569,6 +1566,7 @@ export default function ListingForm({
                 ))}
               </StyledSelect>
             </div>
+            <ErrMsg msg={errors.priceUnit} />
             <ErrMsg msg={errors.price} />
           </div>
         </div>
@@ -1593,6 +1591,7 @@ export default function ListingForm({
                   : "Describe your service — experience, what clients can expect, tools used, process..."
             }
             rows={6}
+            maxLength={LISTING_LIMITS.descriptionMaxLength}
           />
           <ErrMsg msg={errors.description} />
           <FieldHint>
@@ -1655,6 +1654,8 @@ export default function ListingForm({
               <TagInput
                 tags={inclusions}
                 setTags={setIncl}
+                maxTags={MAX_INCLUSIONS}
+                maxLength={LISTING_LIMITS.tagMaxLength}
                 placeholder={pHolderIncludes}
               />
               <ErrMsg msg={errors.inclusions} />
@@ -1671,8 +1672,11 @@ export default function ListingForm({
               <TagInput
                 tags={highlights}
                 setTags={setHL}
+                maxTags={MAX_HIGHLIGHTS}
+                maxLength={LISTING_LIMITS.tagMaxLength}
                 placeholder={pHolderHighlights}
               />
+              <ErrMsg msg={errors.highlights} />
             </div>
           </SectionWithCount>
         </>
@@ -1696,6 +1700,8 @@ export default function ListingForm({
                 <StyledInput
                   value={minPeriod}
                   onChange={(e) => setMinPer(e.target.value)}
+                  minLength={LISTING_LIMITS.minPeriodMinLength}
+                  maxLength={LISTING_LIMITS.minPeriodMaxLength}
                   placeholder="e.g. 3 months, 1 week, daily"
                 />
                 <ErrMsg msg={errors.minPeriod} />
@@ -1705,8 +1711,10 @@ export default function ListingForm({
                 <StyledInput
                   value={deposit}
                   onChange={(e) => setDep(e.target.value)}
+                  maxLength={LISTING_LIMITS.depositMaxLength}
                   placeholder="e.g. 2 months deposit + 1 month advance"
                 />
+                <ErrMsg msg={errors.deposit} />
               </div>
             </div>
             <div>
@@ -1740,6 +1748,8 @@ export default function ListingForm({
               <TagInput
                 tags={amenities}
                 setTags={setAmen}
+                maxTags={MAX_AMENITIES}
+                maxLength={LISTING_LIMITS.tagMaxLength}
                 placeholder={pHolderIncludes}
               />
               <ErrMsg msg={errors.amenities} />
@@ -1756,8 +1766,11 @@ export default function ListingForm({
               <TagInput
                 tags={highlights}
                 setTags={setHL}
+                maxTags={MAX_HIGHLIGHTS}
+                maxLength={LISTING_LIMITS.tagMaxLength}
                 placeholder={pHolderHighlights}
               />
+              <ErrMsg msg={errors.highlights} />
             </div>
           </SectionWithCount>
         </>
@@ -1774,6 +1787,8 @@ export default function ListingForm({
               <StyledInput
                 value={turnaround}
                 onChange={(e) => setTA(e.target.value)}
+                minLength={LISTING_LIMITS.turnaroundMinLength}
+                maxLength={LISTING_LIMITS.turnaroundMaxLength}
                 placeholder="e.g. Same-day, 1–3 business days"
               />
               <ErrMsg msg={errors.turnaround} />
@@ -1783,6 +1798,7 @@ export default function ListingForm({
               <StyledInput
                 value={arrangement}
                 onChange={(e) => setArrangement(e.target.value)}
+                maxLength={LISTING_LIMITS.arrangementMaxLength}
                 placeholder="e.g. Onsite, Remote, Home-Visit"
               />
               <ErrMsg msg={errors.arrangement} />
@@ -1793,6 +1809,8 @@ export default function ListingForm({
             <StyledInput
               value={serviceArea}
               onChange={(e) => setSA(e.target.value)}
+              minLength={LISTING_LIMITS.serviceAreaMinLength}
+              maxLength={LISTING_LIMITS.serviceAreaMaxLength}
               placeholder="e.g. Around Laguna, Batangas, Manila"
             />
             <ErrMsg msg={errors.serviceArea} />
@@ -1818,6 +1836,8 @@ export default function ListingForm({
             <TagInput
               tags={inclusions}
               setTags={setIncl}
+              maxTags={MAX_INCLUSIONS}
+              maxLength={LISTING_LIMITS.tagMaxLength}
               placeholder={pHolderIncludes}
             />
             <ErrMsg msg={errors.inclusions} />
@@ -1834,8 +1854,11 @@ export default function ListingForm({
             <TagInput
               tags={highlights}
               setTags={setHL}
+              maxTags={MAX_HIGHLIGHTS}
+              maxLength={LISTING_LIMITS.tagMaxLength}
               placeholder={pHolderHighlights}
             />
+            <ErrMsg msg={errors.highlights} />
           </div>
         </SectionWithCount>
       </>
@@ -1924,6 +1947,7 @@ export default function ListingForm({
                 </option>
               ))}
             </StyledSelect>
+            <ErrMsg msg={errors.locationBrgy} />
           </div>
         </div>
       </Section>
