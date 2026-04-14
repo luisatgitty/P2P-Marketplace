@@ -410,12 +410,29 @@ func ReportListing(c *fiber.Ctx) error {
 		return SendErrorResponse(c, 400, "Report reason is required", nil)
 	}
 
-	descriptionWords := strings.Fields(strings.TrimSpace(body.Description))
-	if len(descriptionWords) > 80 {
+	trimmedReason := strings.TrimSpace(body.Reason)
+	reasonAllowed := false
+	for _, allowedReason := range config.ReportReasons {
+		if trimmedReason == allowedReason {
+			reasonAllowed = true
+			break
+		}
+	}
+	if !reasonAllowed {
+		return SendErrorResponse(c, 400, "Invalid report reason", nil)
+	}
+
+	trimmedDescription := strings.TrimSpace(body.Description)
+	if len(trimmedDescription) > config.ReportDescriptionMaxLength {
+		return SendErrorResponse(c, 400, "Report details must be at most 500 characters", nil)
+	}
+
+	descriptionWords := strings.Fields(trimmedDescription)
+	if len(descriptionWords) > config.ReportDescriptionMaxWords {
 		return SendErrorResponse(c, 400, "Report details must be at most 80 words", nil)
 	}
 
-	reportId, err := repository.CreateListingReport(userId, listingId, body.ReportedUserId, body.Reason, body.Description)
+	reportId, err := repository.CreateListingReport(userId, listingId, body.ReportedUserId, trimmedReason, trimmedDescription)
 	if err != nil {
 		return SendErrorResponse(c, 400, err.Error(), err)
 	}

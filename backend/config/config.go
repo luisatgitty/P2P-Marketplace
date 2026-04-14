@@ -144,3 +144,18 @@ const (
 	ReviewRatingMax        = 5
 	ReviewCommentMaxLength = 500
 )
+
+// ─── Report ─────────────────────────────────────────
+const (
+	ReportDescriptionMaxLength = 500
+	ReportDescriptionMaxWords  = 80
+)
+
+var ReportReasons = []string{
+	"Scam / Fraud",
+	"Prohibited item",
+	"Fake / Counterfeit",
+	"Wrong category",
+	"Spam / Duplicate",
+	"Other",
+}
