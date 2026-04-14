@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"p2p_marketplace/backend/config"
 	"p2p_marketplace/backend/middleware"
 	"p2p_marketplace/backend/model"
 
@@ -571,6 +572,9 @@ func CreateMessage(userId, conversationId, content, replyToMessageId string, att
 	if trimmed == "" && len(attachments) == 0 {
 		return created, fmt.Errorf("Message content is required")
 	}
+	if len(trimmed) > config.MessageContentMaxLength {
+		return created, fmt.Errorf("Message content must not exceed %d characters", config.MessageContentMaxLength)
+	}
 
 	tx := db.Begin()
 	if tx.Error != nil {
@@ -888,6 +892,9 @@ func EditMessageContent(userId, conversationId, messageId, content string) error
 	trimmed := strings.TrimSpace(content)
 	if trimmed == "" {
 		return fmt.Errorf("Message content is required")
+	}
+	if len(trimmed) > config.MessageContentMaxLength {
+		return fmt.Errorf("Message content must not exceed %d characters", config.MessageContentMaxLength)
 	}
 
 	updateQuery := `
@@ -1859,6 +1866,10 @@ func formatAmountWithCommas(amount int) string {
 
 func insertConversationMessageTx(tx *gorm.DB, conversationId, senderId, receiverId, content string) (model.MessageFromDb, error) {
 	var created model.MessageFromDb
+	trimmedContent := strings.TrimSpace(content)
+	if len(trimmedContent) > config.MessageContentMaxLength {
+		return created, fmt.Errorf("Message content must not exceed %d characters", config.MessageContentMaxLength)
+	}
 
 	insertQuery := `
 		INSERT INTO public.messages (
@@ -1881,7 +1892,7 @@ func insertConversationMessageTx(tx *gorm.DB, conversationId, senderId, receiver
 		RETURNING id, conversation_id, sender_id, receiver_id, COALESCE(content, '') AS content, status::text AS status, is_edited, is_unsent, created_at
 	`
 
-	if err := tx.Raw(insertQuery, conversationId, senderId, receiverId, strings.TrimSpace(content)).Scan(&created).Error; err != nil {
+	if err := tx.Raw(insertQuery, conversationId, senderId, receiverId, trimmedContent).Scan(&created).Error; err != nil {
 		return created, fmt.Errorf("Failed to send offer message")
 	}
 

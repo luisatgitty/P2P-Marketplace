@@ -132,3 +132,8 @@ var ListingDeliveryOptions = []string{
 	"Delivery available",
 	"Meet-up or Delivery",
 }
+
+// ─── Messaging ──────────────────────────────────────
+const (
+	MessageContentMaxLength = 2000
+)

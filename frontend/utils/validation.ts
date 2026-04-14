@@ -7,6 +7,13 @@ import {
   DELIVERY_OPTIONS
 } from "@/types/listings";
 
+export const MESSAGE_MAX_LENGTH = 2000;
+
+export function limitMessageInputLength(value: string): string {
+  if (value.length <= MESSAGE_MAX_LENGTH) return value;
+  return value.slice(0, MESSAGE_MAX_LENGTH);
+}
+
 export const AUTH_LIMITS = {
   nameMinLength: 2,
   nameMaxLength: 50,

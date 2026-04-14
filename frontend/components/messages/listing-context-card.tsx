@@ -620,7 +620,6 @@ export default function ListingContextCard({
         onOfferAmountChange={(value) => setNewPrice(Number.parseInt(value || "0", 10) || 0)}
         note={offerMessage}
         onNoteChange={setOfferMessage}
-        noteLabel="Add a message (optional)"
         notePlaceholder="e.g. Updated offer based on our discussion."
         submitLabel="Update Offer"
         submitDisabled={!isOfferChanged}

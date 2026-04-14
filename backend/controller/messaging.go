@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"p2p_marketplace/backend/config"
 	"p2p_marketplace/backend/middleware"
 	"p2p_marketplace/backend/model"
 	"p2p_marketplace/backend/repository"
@@ -371,6 +372,12 @@ func CreateConversationFromListing(c *fiber.Ctx) error {
 	startTime := strings.TrimSpace(body.StartTime)
 	endTime := strings.TrimSpace(body.EndTime)
 	scheduleMessage := strings.TrimSpace(body.ScheduleMessage)
+	if len(offerMessage) > config.MessageContentMaxLength {
+		return SendErrorResponse(c, 400, fmt.Sprintf("Offer message must not exceed %d characters", config.MessageContentMaxLength), nil)
+	}
+	if len(scheduleMessage) > config.MessageContentMaxLength {
+		return SendErrorResponse(c, 400, fmt.Sprintf("Schedule message must not exceed %d characters", config.MessageContentMaxLength), nil)
+	}
 	hasScheduleRequest := startDate != "" || endDate != ""
 	if hasScheduleRequest && (startDate == "" || endDate == "") {
 		return SendErrorResponse(c, 400, "Start date and end date are required for schedule request", nil)
@@ -446,13 +453,17 @@ func UpdateConversationOfferByOwner(c *fiber.Ctx) error {
 	if offerPrice <= 0 {
 		return SendErrorResponse(c, 400, "Offer price must be greater than 0", nil)
 	}
+	offerMessage := strings.TrimSpace(body.OfferMessage)
+	if len(offerMessage) > config.MessageContentMaxLength {
+		return SendErrorResponse(c, 400, fmt.Sprintf("Offer message must not exceed %d characters", config.MessageContentMaxLength), nil)
+	}
 
 	userId, err := getAuthenticatedUserId(c)
 	if err != nil {
 		return SendErrorResponse(c, 401, err.Error(), nil)
 	}
 
-	state, err := repository.UpdateConversationOfferByOwner(userId, conversationId, offerPrice, strings.TrimSpace(body.OfferMessage))
+	state, err := repository.UpdateConversationOfferByOwner(userId, conversationId, offerPrice, offerMessage)
 	if err != nil {
 		return SendErrorResponse(c, 400, err.Error(), err)
 	}
@@ -498,6 +509,9 @@ func SendMessage(c *fiber.Ctx) error {
 	var body model.SendMessageBody
 	if err := c.BodyParser(&body); err != nil {
 		return SendErrorResponse(c, 400, "Invalid request body. Please contact support.", err)
+	}
+	if len(strings.TrimSpace(body.Content)) > config.MessageContentMaxLength {
+		return SendErrorResponse(c, 400, fmt.Sprintf("Message content must not exceed %d characters", config.MessageContentMaxLength), nil)
 	}
 	if strings.TrimSpace(body.Content) == "" && len(body.Attachments) == 0 {
 		return SendErrorResponse(c, 400, "Message content is required", nil)
@@ -629,6 +643,9 @@ func EditMessage(c *fiber.Ctx) error {
 	var body model.EditMessageBody
 	if err := c.BodyParser(&body); err != nil {
 		return SendErrorResponse(c, 400, "Invalid request body. Please contact support.", err)
+	}
+	if len(strings.TrimSpace(body.Content)) > config.MessageContentMaxLength {
+		return SendErrorResponse(c, 400, fmt.Sprintf("Message content must not exceed %d characters", config.MessageContentMaxLength), nil)
 	}
 	if strings.TrimSpace(body.Content) == "" {
 		return SendErrorResponse(c, 400, "Message content is required", nil)

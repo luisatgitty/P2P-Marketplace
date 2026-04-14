@@ -15,6 +15,7 @@ import { Label } from "./ui/label";
 import { Input } from "./ui/input";
 import { BookingCalendar, type BookingCalendarColors } from "./ui/booking-calendar";
 import { formatPrice } from "@/utils/string-builder";
+import { MESSAGE_MAX_LENGTH, limitMessageInputLength } from "@/utils/validation";
 
 // ── Date helpers ───────────────────────────────────────────────────────────────
 function sod(d: Date): Date {
@@ -618,7 +619,8 @@ export function ScheduleModal({
               <textarea
                 rows={3}
                 value={message}
-                onChange={e => setMessage(e.target.value)}
+                onChange={(e) => setMessage(limitMessageInputLength(e.target.value))}
+                maxLength={MESSAGE_MAX_LENGTH}
                 placeholder="Enter any specific requests or questions for the seller here."
                 className="w-full bg-stone-50 dark:bg-[#13151f] border border-stone-200 dark:border-[#2a2d3e] rounded-xl px-3 py-2.5 text-sm text-stone-800 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-600 outline-none focus:border-teal-400 dark:focus:border-teal-600 resize-none transition-colors"
               />
