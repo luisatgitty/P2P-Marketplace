@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner"
 import { Eye, EyeOff } from "lucide-react";
 import { sendPostRequest } from "@/services/authService";
-import { validateSignupForm } from "@/utils/validation";
+import { AUTH_LIMITS, validateSignupForm } from "@/utils/validation";
 import type { SignupForm } from "@/types/forms";
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -87,6 +87,8 @@ export function SignupForm({ className, ...props }: React.ComponentProps<"div">)
                   type="text"
                   value={form.firstName}
                   onChange={handleChange}
+                  minLength={AUTH_LIMITS.nameMinLength}
+                  maxLength={AUTH_LIMITS.nameMaxLength}
                   required
                 />
               </Field>
@@ -97,6 +99,8 @@ export function SignupForm({ className, ...props }: React.ComponentProps<"div">)
                   type="text"
                   value={form.lastName}
                   onChange={handleChange}
+                  minLength={AUTH_LIMITS.nameMinLength}
+                  maxLength={AUTH_LIMITS.nameMaxLength}
                   required
                 />
               </Field>
@@ -108,6 +112,8 @@ export function SignupForm({ className, ...props }: React.ComponentProps<"div">)
                   placeholder="example@email.com"
                   value={form.email}
                   onChange={handleChange}
+                  minLength={AUTH_LIMITS.emailMinLength}
+                  maxLength={AUTH_LIMITS.emailMaxLength}
                   required
                 />
               </Field>
@@ -123,6 +129,8 @@ export function SignupForm({ className, ...props }: React.ComponentProps<"div">)
                         value={form.password}
                         onChange={handleChange}
                         className="pr-10"
+                        minLength={AUTH_LIMITS.passwordMinLength}
+                        maxLength={AUTH_LIMITS.passwordMaxLength}
                         required
                       />
                       <button
@@ -144,6 +152,8 @@ export function SignupForm({ className, ...props }: React.ComponentProps<"div">)
                         value={form.confirmPassword}
                         onChange={handleChange}
                         className="pr-10"
+                        minLength={AUTH_LIMITS.passwordMinLength}
+                        maxLength={AUTH_LIMITS.passwordMaxLength}
                         required
                       />
                       <button

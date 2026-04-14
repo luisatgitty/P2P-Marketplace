@@ -31,6 +31,11 @@ func ValidateSignUpInput(rcvUser *model.UserFromBody) error {
 		return err
 	}
 
+	// Validate password length
+	if err := ValidatePasswordLength(rcvUser.Password); err != nil {
+		return err
+	}
+
 	// NOTE: Disabled password complexity validation during development
 	// Validate password complexity
 	// if err := validatePasswordComplexity(rcvUser.Password); err != nil {
@@ -50,10 +55,10 @@ func validateUserName(name string, field string) error {
 		return fmt.Errorf("%s must not exceed %d characters", field, config.NameMaxLength)
 	}
 
-	// Check if the name contains only letters, spaces, or hyphens
+	// Check if the name contains only letters, spaces, hyphens, or apostrophes
 	for _, ch := range name {
-		if !(unicode.IsLetter(ch) || unicode.IsSpace(ch) || ch == '-') {
-			return fmt.Errorf("%s can only contain letters, spaces, or hyphens", field)
+		if !(unicode.IsLetter(ch) || unicode.IsSpace(ch) || ch == '-' || ch == '\'') {
+			return fmt.Errorf("%s can only contain letters, spaces, hyphens, or apostrophes", field)
 		}
 	}
 
@@ -161,5 +166,18 @@ func ValidateTokenFormat(token string) error {
 		return fmt.Errorf("Invalid token format")
 	}
 
+	return nil
+}
+
+func ValidateOTP(otp string) error {
+	otp = strings.TrimSpace(otp)
+	if len(otp) != config.EmailOTPLength {
+		return fmt.Errorf("OTP must be %d digits", config.EmailOTPLength)
+	}
+	for _, ch := range otp {
+		if !unicode.IsDigit(ch) {
+			return fmt.Errorf("OTP must contain numbers only")
+		}
+	}
 	return nil
 }

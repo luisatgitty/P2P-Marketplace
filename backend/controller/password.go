@@ -3,6 +3,7 @@ package controller
 import (
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"p2p_marketplace/backend/config"
@@ -24,6 +25,7 @@ func ForgotPassword(c *fiber.Ctx) error {
 	}
 
 	// Validate email format
+	body.Email = strings.TrimSpace(body.Email)
 	if err := middleware.ValidateEmail(body.Email); err != nil {
 		return SendErrorResponse(c, 400, err.Error(), err)
 	}
@@ -77,6 +79,12 @@ func ResetPassword(c *fiber.Ctx) error {
 	var body model.PwdResetFromBody
 	if err := c.BodyParser(&body); err != nil {
 		return SendErrorResponse(c, 400, "Invalid request body. Please contact support.", err)
+	}
+	body.Token = strings.TrimSpace(body.Token)
+	body.Password = strings.TrimSpace(body.Password)
+
+	if err := middleware.ValidatePasswordLength(body.Password); err != nil {
+		return SendErrorResponse(c, 400, err.Error(), err)
 	}
 
 	// NOTE: Disabled password complexity validation during development

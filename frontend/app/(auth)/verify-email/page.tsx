@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Banner, Container } from "@/components/auth/auth-container";
 import { LoadingPage } from "@/components/loading";
 import { SignupForm } from "@/types/forms";
+import { AUTH_LIMITS, validateOtpCode } from "@/utils/validation";
 
 function VerifyEmailForm() {
   const router = useRouter();
@@ -128,8 +129,9 @@ function VerifyEmailForm() {
 
     // Validate OTP length
     const otpString = otp.join("");
-    if (otpString.length < 6) {
-      showErrorToast("Please enter the complete 6-digit OTP");
+    const otpError = validateOtpCode(otpString);
+    if (otpError) {
+      showErrorToast(otpError);
       setLoading(false);
       return;
     }
@@ -212,6 +214,7 @@ function VerifyEmailForm() {
                         type="text"
                         inputMode="numeric"
                         maxLength={1}
+                        minLength={1}
                         value={digit}
                         onChange={(e) => handleOtpChange(index, e.target.value)}
                         onKeyDown={(e) => handleKeyDown(index, e)}

@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Banner, Container } from "@/components/auth/auth-container";
 import { LoadingPage } from "@/components/loading";
 import { Eye, EyeOff } from "lucide-react";
+import { AUTH_LIMITS, validateResetPasswordInput } from "@/utils/validation";
 import Link from "next/link";
 
 export default function ResetPasswordPage() {
@@ -60,13 +61,14 @@ export default function ResetPasswordPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitting(true);
 
-    if (password !== confirmPassword) {
-      showErrorToast("Passwords do not match");
-      setIsSubmitting(false);
+    const validationError = validateResetPasswordInput(password, confirmPassword);
+    if (validationError) {
+      showErrorToast(validationError);
       return;
     }
+
+    setIsSubmitting(true);
 
     try {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/reset-password`, {
@@ -112,6 +114,8 @@ export default function ResetPasswordPage() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="pr-10"
+                    minLength={AUTH_LIMITS.passwordMinLength}
+                    maxLength={AUTH_LIMITS.passwordMaxLength}
                     required
                   />
                   <button
@@ -132,6 +136,8 @@ export default function ResetPasswordPage() {
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
                       className="pr-10"
+                      minLength={AUTH_LIMITS.passwordMinLength}
+                      maxLength={AUTH_LIMITS.passwordMaxLength}
                       required
                     />
                     <button
