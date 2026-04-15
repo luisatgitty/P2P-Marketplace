@@ -159,3 +159,31 @@ var ReportReasons = []string{
 	"Spam / Duplicate",
 	"Other",
 }
+
+// ─── Seller Verification ───────────────────────────
+const (
+	VerificationIdTypeMinLength    = 3
+	VerificationIdTypeMaxLength    = 20
+	VerificationIdNumberMinLength  = 4
+	VerificationIdNumberMaxLength  = 60
+	VerificationMobileExactLength  = 11
+	VerificationUserAgentMinLength = 1
+	VerificationUserAgentMaxLength = 1024
+	VerificationIpAddressMinLength = 7
+	VerificationIpAddressMaxLength = 45
+	VerificationHardwareMinLength  = 200
+	VerificationHardwareMaxLength  = 350
+)
+
+var VerificationIdTypes = []string{
+	"philsys",
+	"postal",
+	"drivers",
+	"prc",
+	"passport",
+	"sss",
+	"gsis",
+	"hdmf",
+	"voters",
+	"acr",
+}

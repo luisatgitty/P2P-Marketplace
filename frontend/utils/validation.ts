@@ -8,8 +8,6 @@ import {
 } from "@/types/listings";
 
 export const MESSAGE_MAX_LENGTH = 2000;
-export const REVIEW_MAX_LENGTH = 500;
-export const REPORT_MAX_LENGTH = 500;
 
 export function limitMessageInputLength(value: string): string {
   if (value.length <= MESSAGE_MAX_LENGTH) return value;
@@ -55,6 +53,32 @@ export const LISTING_LIMITS = {
   maxImages: 8,
   maxTimeWindows: 8,
 } as const;
+
+export const VERIFICATION_LIMITS = {
+  idTypeMinLength: 3,
+  idTypeMaxLength: 20,
+  idNumberMinLength: 4,
+  idNumberMaxLength: 50,
+  mobileNumberLength: 11,
+  userAgentMaxLength: 1024,
+  ipAddressMinLength: 7,
+  ipAddressMaxLength: 45,
+  hardwareInfoMinLength: 200,
+  hardwareInfoMaxLength: 350,
+} as const;
+
+export const VERIFICATION_ID_TYPES = [
+  "philsys",
+  "postal",
+  "drivers",
+  "prc",
+  "passport",
+  "sss",
+  "gsis",
+  "hdmf",
+  "voters",
+  "acr",
+] as const;
 
 export interface ListingValidationInput {
   type: ListingType;

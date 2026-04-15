@@ -222,38 +222,8 @@ func SubmitMeVerification(c *fiber.Ctx) error {
 		return SendErrorResponse(c, 400, "Invalid request body", err)
 	}
 
-	body.IdType = strings.TrimSpace(body.IdType)
-	body.IdNumber = strings.TrimSpace(body.IdNumber)
-	body.IdFirstName = strings.TrimSpace(body.IdFirstName)
-	body.IdLastName = strings.TrimSpace(body.IdLastName)
-	body.IdBirthdate = strings.TrimSpace(body.IdBirthdate)
-	body.UserAgent = strings.TrimSpace(body.UserAgent)
-	body.IpAddress = strings.TrimSpace(body.IpAddress)
-	body.HardwareInfo = strings.TrimSpace(body.HardwareInfo)
-
-	if body.IdType == "" {
-		return SendErrorResponse(c, 400, "ID type is required", nil)
-	}
-	if body.IdNumber == "" {
-		return SendErrorResponse(c, 400, "ID number is required", nil)
-	}
-	if body.IdFirstName == "" || body.IdLastName == "" {
-		return SendErrorResponse(c, 400, "ID first and last name are required", nil)
-	}
-	if body.IdBirthdate == "" {
-		return SendErrorResponse(c, 400, "ID birthdate is required", nil)
-	}
-	if body.MobileNumber == "" {
-		return SendErrorResponse(c, 400, "Mobile number is required", nil)
-	}
-	if body.IdImageFront == nil || strings.TrimSpace(body.IdImageFront.Data) == "" {
-		return SendErrorResponse(c, 400, "ID front image is required", nil)
-	}
-	if body.IdImageBack == nil || strings.TrimSpace(body.IdImageBack.Data) == "" {
-		return SendErrorResponse(c, 400, "ID back image is required", nil)
-	}
-	if body.SelfieImage == nil || strings.TrimSpace(body.SelfieImage.Data) == "" {
-		return SendErrorResponse(c, 400, "Selfie image is required", nil)
+	if err := middleware.ValidateSubmitVerificationInput(&body); err != nil {
+		return SendErrorResponse(c, 400, err.Error(), err)
 	}
 
 	if err := repository.SubmitUserVerification(userId, body); err != nil {

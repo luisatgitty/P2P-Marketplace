@@ -183,6 +183,90 @@ func ValidateOTP(otp string) error {
 	return nil
 }
 
+func ValidateSubmitVerificationInput(body *model.SubmitVerificationBody) error {
+	body.IdType = strings.TrimSpace(body.IdType)
+	body.IdNumber = strings.TrimSpace(body.IdNumber)
+	body.IdFirstName = strings.TrimSpace(body.IdFirstName)
+	body.IdLastName = strings.TrimSpace(body.IdLastName)
+	body.IdBirthdate = strings.TrimSpace(body.IdBirthdate)
+	body.MobileNumber = strings.TrimSpace(body.MobileNumber)
+	body.UserAgent = strings.TrimSpace(body.UserAgent)
+	body.IpAddress = strings.TrimSpace(body.IpAddress)
+	body.HardwareInfo = strings.TrimSpace(body.HardwareInfo)
+
+	if body.IdType == "" {
+		return fmt.Errorf("ID type is required")
+	}
+	if len(body.IdType) < config.VerificationIdTypeMinLength || len(body.IdType) > config.VerificationIdTypeMaxLength {
+		return fmt.Errorf("ID type must be between %d and %d characters", config.VerificationIdTypeMinLength, config.VerificationIdTypeMaxLength)
+	}
+	if !containsExactOption(body.IdType, config.VerificationIdTypes) {
+		return fmt.Errorf("Invalid ID type selected")
+	}
+
+	if body.IdNumber == "" {
+		return fmt.Errorf("ID number is required")
+	}
+	if len(body.IdNumber) < config.VerificationIdNumberMinLength || len(body.IdNumber) > config.VerificationIdNumberMaxLength {
+		return fmt.Errorf("ID number must be between %d and %d characters", config.VerificationIdNumberMinLength, config.VerificationIdNumberMaxLength)
+	}
+
+	if err := validateUserName(body.IdFirstName, "First name"); err != nil {
+		return err
+	}
+	if err := validateUserName(body.IdLastName, "Last name"); err != nil {
+		return err
+	}
+
+	if body.IdBirthdate == "" {
+		return fmt.Errorf("ID birthdate is required")
+	}
+	birthdate, err := time.Parse("2006-01-02", body.IdBirthdate)
+	if err != nil {
+		return fmt.Errorf("Invalid birthdate format")
+	}
+	if birthdate.After(time.Now()) {
+		return fmt.Errorf("Birthdate cannot be in the future")
+	}
+
+	if body.MobileNumber == "" {
+		return fmt.Errorf("Mobile number is required")
+	}
+	if len(body.MobileNumber) != config.VerificationMobileExactLength {
+		return fmt.Errorf("Mobile number must be exactly %d digits", config.VerificationMobileExactLength)
+	}
+	if !strings.HasPrefix(body.MobileNumber, "09") {
+		return fmt.Errorf("Mobile number must start with 09")
+	}
+	for _, ch := range body.MobileNumber {
+		if !unicode.IsDigit(ch) {
+			return fmt.Errorf("Mobile number must contain numbers only")
+		}
+	}
+
+	if len(body.UserAgent) < config.VerificationUserAgentMinLength || len(body.UserAgent) > config.VerificationUserAgentMaxLength {
+		return fmt.Errorf("User agent must be between %d and %d characters", config.VerificationUserAgentMinLength, config.VerificationUserAgentMaxLength)
+	}
+	if len(body.IpAddress) < config.VerificationIpAddressMinLength || len(body.IpAddress) > config.VerificationIpAddressMaxLength {
+		return fmt.Errorf("IP address must be between %d and %d characters", config.VerificationIpAddressMinLength, config.VerificationIpAddressMaxLength)
+	}
+	if len(body.HardwareInfo) < config.VerificationHardwareMinLength || len(body.HardwareInfo) > config.VerificationHardwareMaxLength {
+		return fmt.Errorf("Hardware info must be between %d and %d characters", config.VerificationHardwareMinLength, config.VerificationHardwareMaxLength)
+	}
+
+	if body.IdImageFront == nil || strings.TrimSpace(body.IdImageFront.Data) == "" {
+		return fmt.Errorf("ID front image is required")
+	}
+	if body.IdImageBack == nil || strings.TrimSpace(body.IdImageBack.Data) == "" {
+		return fmt.Errorf("ID back image is required")
+	}
+	if body.SelfieImage == nil || strings.TrimSpace(body.SelfieImage.Data) == "" {
+		return fmt.Errorf("Selfie image is required")
+	}
+
+	return nil
+}
+
 func ValidateCreateListingInput(body *model.CreateListingBody, isEdit bool) error {
 	body.Type = strings.TrimSpace(body.Type)
 	body.Type = strings.ToLower(body.Type)
