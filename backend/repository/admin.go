@@ -1012,11 +1012,64 @@ func DeleteAdminListing(listingId string) error {
 	return nil
 }
 
-func GetAdminReports() ([]model.AdminReportListItemFromDb, error) {
+func GetAdminReports(query model.AdminReportsQuery) ([]model.AdminReportListItemFromDb, int, error) {
 	db := middleware.DBConn
 	reports := make([]model.AdminReportListItemFromDb, 0)
+	total := 0
 
-	query := `
+	whereParts := make([]string, 0)
+	args := make([]any, 0)
+
+	search := strings.ToLower(strings.TrimSpace(query.Search))
+	if search != "" {
+		likeSearch := "%" + search + "%"
+		whereParts = append(whereParts, `
+			(
+				LOWER(COALESCE(NULLIF(TRIM(CONCAT_WS(' ', NULLIF(TRIM(rep.first_name), ''), NULLIF(TRIM(rep.last_name), ''))), ''), rep.email, '')) LIKE ?
+				OR LOWER(COALESCE(NULLIF(TRIM(CONCAT_WS(' ', NULLIF(TRIM(owner.first_name), ''), NULLIF(TRIM(owner.last_name), ''))), ''), owner.email, '')) LIKE ?
+				OR LOWER(
+					CASE
+						WHEN r.reported_listing_id IS NOT NULL THEN COALESCE(l.title, 'Unknown Listing')
+						ELSE COALESCE(NULLIF(TRIM(CONCAT_WS(' ', NULLIF(TRIM(ru.first_name), ''), NULLIF(TRIM(ru.last_name), ''))), ''), ru.email, 'Unknown User')
+					END
+				) LIKE ?
+				OR LOWER(COALESCE(r.reason, '')) LIKE ?
+			)
+		`)
+		args = append(args, likeSearch, likeSearch, likeSearch, likeSearch)
+	}
+
+	statusFilter := strings.ToUpper(strings.TrimSpace(query.Status))
+	if statusFilter != "" && statusFilter != "ALL" {
+		whereParts = append(whereParts, "r.status::text = ?")
+		args = append(args, statusFilter)
+	}
+
+	reasonFilter := strings.TrimSpace(query.Reason)
+	if reasonFilter != "" && !strings.EqualFold(reasonFilter, "ALL") {
+		whereParts = append(whereParts, "r.reason = ?")
+		args = append(args, reasonFilter)
+	}
+
+	whereClause := ""
+	if len(whereParts) > 0 {
+		whereClause = "WHERE " + strings.Join(whereParts, " AND ")
+	}
+
+	countQuery := `
+		SELECT COUNT(*)::int
+		FROM public.reports r
+		LEFT JOIN public.users rep ON rep.id = r.reporter_id
+		LEFT JOIN public.listings l ON l.id = r.reported_listing_id
+		LEFT JOIN public.users owner ON owner.id = l.user_id
+		LEFT JOIN public.users ru ON ru.id = r.reported_user_id
+		` + whereClause
+
+	if err := db.Raw(countQuery, args...).Scan(&total).Error; err != nil {
+		return nil, 0, fmt.Errorf("Failed to fetch report count")
+	}
+
+	selectQuery := `
 		SELECT
 			r.id::text AS id,
 			COALESCE(r.reporter_id::text, '') AS reporter_id,
@@ -1071,11 +1124,17 @@ func GetAdminReports() ([]model.AdminReportListItemFromDb, error) {
 		LEFT JOIN public.users ru ON ru.id = r.reported_user_id
 		LEFT JOIN public.users rev ON rev.id = r.reviewed_by_id
 		LEFT JOIN public.users res ON res.id = r.resolved_by_id
+		` + whereClause + `
 		ORDER BY r.created_at DESC
+		LIMIT ?
+		OFFSET ?
 	`
 
-	if err := db.Raw(query).Scan(&reports).Error; err != nil {
-		return nil, fmt.Errorf("Failed to fetch reports")
+	selectArgs := append([]any{}, args...)
+	selectArgs = append(selectArgs, query.Limit, query.Offset)
+
+	if err := db.Raw(selectQuery, selectArgs...).Scan(&reports).Error; err != nil {
+		return nil, 0, fmt.Errorf("Failed to fetch reports")
 	}
 
 	for i := range reports {
@@ -1096,7 +1155,7 @@ func GetAdminReports() ([]model.AdminReportListItemFromDb, error) {
 		}
 	}
 
-	return reports, nil
+	return reports, total, nil
 }
 
 func SetAdminReportStatus(reportId, reviewedById, status string) error {

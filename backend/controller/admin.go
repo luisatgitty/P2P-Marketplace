@@ -414,7 +414,36 @@ func GetAdminReports(c *fiber.Ctx) error {
 		return authErr
 	}
 
-	reports, err := repository.GetAdminReports()
+	limit := 20
+	if rawLimit := strings.TrimSpace(c.Query("limit")); rawLimit != "" {
+		parsedLimit, parseErr := strconv.Atoi(rawLimit)
+		if parseErr != nil || parsedLimit <= 0 {
+			return SendErrorResponse(c, 400, "Invalid limit query parameter", parseErr)
+		}
+		if parsedLimit > 100 {
+			parsedLimit = 100
+		}
+		limit = parsedLimit
+	}
+
+	offset := 0
+	if rawOffset := strings.TrimSpace(c.Query("offset")); rawOffset != "" {
+		parsedOffset, parseErr := strconv.Atoi(rawOffset)
+		if parseErr != nil || parsedOffset < 0 {
+			return SendErrorResponse(c, 400, "Invalid offset query parameter", parseErr)
+		}
+		offset = parsedOffset
+	}
+
+	query := model.AdminReportsQuery{
+		Search: strings.TrimSpace(c.Query("search")),
+		Status: strings.TrimSpace(c.Query("status")),
+		Reason: strings.TrimSpace(c.Query("reason")),
+		Limit:  limit,
+		Offset: offset,
+	}
+
+	reports, total, err := repository.GetAdminReports(query)
 	if err != nil {
 		return SendErrorResponse(c, 500, err.Error(), err)
 	}
@@ -428,6 +457,9 @@ func GetAdminReports(c *fiber.Ctx) error {
 
 	return SendSuccessResponse(c, 200, "Reports fetched successfully", map[string]any{
 		"reports": reports,
+		"total":   total,
+		"limit":   limit,
+		"offset":  offset,
 	})
 }
 
