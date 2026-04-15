@@ -349,17 +349,17 @@ export default function ListingsPage() {
 
   // ── Render ────────────────────────────────────────────────────────────────────
   return (
-    <div className="h-[calc(111vh-4rem)] p-5 sm:p-6 flex flex-col gap-5 min-h-0">
+    <div className="h-[calc(109vh-4rem)] p-5 sm:p-6 flex flex-col gap-5 min-h-0">
 
       {/* ── Page header ── */}
-      <div>
+      {/* <div>
         <h2 className="text-xl font-extrabold text-stone-900 dark:text-stone-50">
           Listings
         </h2>
         <p className="text-sm text-stone-500 dark:text-stone-400 mt-0.5">
           View, search, and manage all marketplace listings
         </p>
-      </div>
+      </div> */}
 
       {/* ── Summary cards — clickable to filter by status ── */}
       <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
@@ -374,7 +374,7 @@ export default function ListingsPage() {
           <Card
             key={label}
             className={cn(
-              "rounded-lg cursor-pointer hover:shadow-sm transition-all border",
+              "p-4 rounded-lg cursor-pointer hover:shadow-sm transition-all border",
               bg, border,
               statusFilter === status && "ring-2 ring-offset-1 ring-current",
             )}
@@ -386,7 +386,7 @@ export default function ListingsPage() {
             }}
           >
             <CardContent className="text-center">
-              <Icon className={cn("w-5 h-5 mx-auto mb-1.5", color)} />
+              {/* <Icon className={cn("w-5 h-5 mx-auto mb-1.5", color)} /> */}
               <p className={cn("text-xl font-extrabold", color)}>{count}</p>
               <p className="text-sm text-stone-500 dark:text-stone-400 mt-0.5">{label}</p>
             </CardContent>
