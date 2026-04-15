@@ -763,7 +763,6 @@ export default function ProfilePage() {
     }
   }
 
-  const initials = `${profileUser?.firstName?.[0] ?? ""}${profileUser?.lastName?.[0] ?? ""}`.toUpperCase() || "?";
   const fullName = profileUser ? `${profileUser.firstName} ${profileUser.lastName}` : "—";
   const locationText = [profileUser?.locationCity, profileUser?.locationProv].filter(Boolean).join(", ") || "Location not set";
   const memberSinceText = formatMemberSince(profileUser?.createdAt);
@@ -958,12 +957,14 @@ export default function ProfilePage() {
               <h1 className="text-xl font-bold text-stone-900 dark:text-stone-100">{fullName}</h1>
               <VerificationBadge verified={verificationState === "verified"} size={16} />
             </div>
-            <p className="text-xs text-stone-400 dark:text-stone-500 mb-3">{memberSinceText}</p>
+            <p className="text-sm text-stone-400 dark:text-stone-500 mb-3">{profileUser?.bio}</p>
 
             {/* Meta row */}
             <div className="flex flex-wrap gap-x-5 gap-y-1.5">
               <span className="flex items-center gap-1.5 text-xs text-stone-500 dark:text-stone-400"><MapPin className="w-3.5 h-3.5 text-stone-400 dark:text-stone-500" /> {locationText}</span>
               {!isViewingExternalProfile && <span className="flex items-center gap-1.5 text-xs text-stone-500 dark:text-stone-400"><Mail className="w-3.5 h-3.5 text-stone-400 dark:text-stone-500" /> {profileUser?.email}</span>}
+
+              <span className="flex items-center gap-1.5 text-xs text-stone-500 dark:text-stone-400"><Calendar className="w-3.5 h-3.5 text-stone-400 dark:text-stone-500" /> {memberSinceText}</span>
               <span className="flex items-center gap-1.5 text-xs text-stone-500 dark:text-stone-400"><Calendar className="w-3.5 h-3.5 text-stone-400 dark:text-stone-500" /> {lastActiveText}</span>
               <span className="flex items-center gap-1.5 text-xs text-stone-500 dark:text-stone-400"><Star className={cn("w-3.5 h-3.5", hasOverallRating ? "fill-amber-400 text-amber-400" : "text-stone-400 dark:text-stone-500")} /> {overallRatingText}</span>
             </div>
