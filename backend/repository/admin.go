@@ -168,11 +168,51 @@ func GetAdminListingTypeBreakdown() ([]model.AdminListingTypeBreakdownItem, int,
 	return items, total, nil
 }
 
-func GetAdminUsers() ([]model.AdminUserListItemFromDb, error) {
+func GetAdminUsers(query model.AdminUsersQuery) ([]model.AdminUserListItemFromDb, int, error) {
 	db := middleware.DBConn
 	users := make([]model.AdminUserListItemFromDb, 0)
+	total := 0
 
-	query := `
+	whereParts := []string{"u.role = 'USER'"}
+	args := make([]any, 0)
+
+	search := strings.ToLower(strings.TrimSpace(query.Search))
+	if search != "" {
+		likeSearch := "%" + search + "%"
+		whereParts = append(whereParts, `
+			(
+				LOWER(TRIM(CONCAT_WS(' ', NULLIF(TRIM(u.first_name), ''), NULLIF(TRIM(u.last_name), '')))) LIKE ?
+				OR LOWER(COALESCE(u.email, '')) LIKE ?
+			)
+		`)
+		args = append(args, likeSearch, likeSearch)
+	}
+
+	verified := strings.ToUpper(strings.TrimSpace(query.Verified))
+	if verified != "" && verified != "ALL" {
+		whereParts = append(whereParts, "u.verification_status::text = ?")
+		args = append(args, verified)
+	}
+
+	status := strings.ToUpper(strings.TrimSpace(query.Status))
+	if status == "ACTIVE" {
+		whereParts = append(whereParts, "u.is_active = TRUE")
+	} else if status == "INACTIVE" {
+		whereParts = append(whereParts, "u.is_active = FALSE")
+	}
+
+	whereClause := "WHERE " + strings.Join(whereParts, " AND ")
+
+	countQuery := `
+		SELECT COUNT(*)::int
+		FROM public.users u
+		` + whereClause
+
+	if err := db.Raw(countQuery, args...).Scan(&total).Error; err != nil {
+		return nil, 0, fmt.Errorf("Failed to fetch user count")
+	}
+
+	selectQuery := `
 		SELECT
 			u.id::text AS id,
 			u.first_name,
@@ -214,15 +254,20 @@ func GetAdminUsers() ([]model.AdminUserListItemFromDb, error) {
 			INNER JOIN public.listings l ON l.id = lt.listing_id
 			GROUP BY l.user_id
 		) ot ON ot.owner_id = u.id
-		WHERE u.role = 'USER'
+		` + whereClause + `
 		ORDER BY u.created_at DESC
+		LIMIT ?
+		OFFSET ?
 	`
 
-	if err := db.Raw(query).Scan(&users).Error; err != nil {
-		return nil, fmt.Errorf("Failed to fetch users")
+	selectArgs := append([]any{}, args...)
+	selectArgs = append(selectArgs, query.Limit, query.Offset)
+
+	if err := db.Raw(selectQuery, selectArgs...).Scan(&users).Error; err != nil {
+		return nil, 0, fmt.Errorf("Failed to fetch users")
 	}
 
-	return users, nil
+	return users, total, nil
 }
 
 func SetAdminUserActive(userId string, isActive bool, actorUserId string) error {

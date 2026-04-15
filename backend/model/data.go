@@ -323,6 +323,14 @@ type AdminUserListItemFromDb struct {
 	Location           string     `gorm:"column:location" json:"location"`
 }
 
+type AdminUsersQuery struct {
+	Search   string
+	Status   string
+	Verified string
+	Limit    int
+	Offset   int
+}
+
 type AdminSetUserActiveBody struct {
 	IsActive *bool `json:"isActive"`
 }

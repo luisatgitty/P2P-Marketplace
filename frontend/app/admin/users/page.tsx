@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect, useCallback, type UIEvent } from "react";
 import {
   Search,
   ShieldCheck,
@@ -11,10 +11,6 @@ import {
   ChevronUp,
   ChevronDown,
   ChevronsUpDown,
-  ChevronLeft,
-  ChevronRight,
-  UserCheck,
-  UserX,
   Trash2,
   RotateCw,
   X,
@@ -195,51 +191,78 @@ function FilterSelect({
 // ── Main page ──────────────────────────────────────────────────────────────────
 export default function UsersPage() {
   const [search,             setSearch]             = useState("");
+  const [debouncedSearch,    setDebouncedSearch]    = useState("");
   const [verifFilter,        setVerif]              = useState<string>("ALL");
   const [statusFilter,       setStatus]             = useState<string>("ALL");
   const [sort,               setSort]               = useState<{ field: SortField; dir: SortDir }>({ field: "joined", dir: "desc" });
-  const [page,               setPage]               = useState(1);
   const [users,              setUsers]              = useState<AdminUser[]>([]);
   const [loadingUsers,       setLoadingUsers]       = useState(true);
+  const [loadingMore,        setLoadingMore]        = useState(false);
+  const [hasMore,            setHasMore]            = useState(true);
+  const [offset,             setOffset]             = useState(0);
+  const [totalUsersCount,    setTotalUsersCount]    = useState(0);
   const [isRefreshing,       setIsRefreshing]       = useState(false);
   const [actionLoadingUserId,setActionLoadingUserId]= useState<string | null>(null);
-  const PER_PAGE = 8;
+  const FETCH_LIMIT = 20;
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      setDebouncedSearch(search.trim());
+    }, 250);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [search]);
 
   // ── Load ──────────────────────────────────────────────────────────────────────
-  const loadUsers = useCallback(async () => {
-    setLoadingUsers(true);
+  const loadUsers = useCallback(async (reset: boolean, requestedOffset = 0) => {
+    if (reset) {
+      setLoadingUsers(true);
+    } else {
+      setLoadingMore(true);
+    }
+
+    const nextOffset = reset ? 0 : requestedOffset;
+
     try {
-      const data = await getAdminUsers();
-      setUsers((data ?? []) as AdminUserRecord[]);
+      const payload = await getAdminUsers({
+        search: debouncedSearch,
+        verified: verifFilter,
+        status: statusFilter,
+        limit: FETCH_LIMIT,
+        offset: nextOffset,
+      });
+
+      const received = (payload.users ?? []) as AdminUserRecord[];
+      const nextCount = reset ? received.length : nextOffset + received.length;
+
+      setUsers((prev) => (reset ? received : [...prev, ...received]));
+      setOffset(nextCount);
+      setTotalUsersCount(payload.total);
+      setHasMore(nextCount < payload.total);
     } catch (err) {
       const message = typeof err === "string" ? err : "Failed to load users";
       toast.error(message, { position: "top-center" });
     } finally {
       setLoadingUsers(false);
+      setLoadingMore(false);
       setIsRefreshing(false);
     }
-  }, []);
+  }, [debouncedSearch, verifFilter, statusFilter]);
 
   useEffect(() => {
-    void loadUsers();
-  }, [loadUsers]);
+    void loadUsers(true, 0);
+  }, [debouncedSearch, verifFilter, statusFilter, loadUsers]);
 
   // ── Sort ──────────────────────────────────────────────────────────────────────
   function toggleSort(field: SortField) {
     setSort(s => s.field === field ? { field, dir: s.dir === "asc" ? "desc" : "asc" } : { field, dir: "asc" });
-    setPage(1);
   }
 
-  // ── Filter + sort + paginate ──────────────────────────────────────────────────
+  // ── Sort loaded chunk ─────────────────────────────────────────────────────────
   const filtered = useMemo(() => {
     let data = [...users];
-    if (search)
-      data = data.filter(u =>
-        `${u.first_name} ${u.last_name}`.toLowerCase().includes(search.toLowerCase()) ||
-        u.email.toLowerCase().includes(search.toLowerCase()),
-      );
-    if (verifFilter  !== "ALL") data = data.filter(u => u.verification === verifFilter);
-    if (statusFilter !== "ALL") data = data.filter(u => (statusFilter === "ACTIVE") === u.is_active);
     data.sort((a, b) => {
       let va: any, vb: any;
       if      (sort.field === "name")       { va = `${a.first_name} ${a.last_name}`; vb = `${b.first_name} ${b.last_name}`; }
@@ -254,12 +277,8 @@ export default function UsersPage() {
       return sort.dir === "asc" ? (va > vb ? 1 : -1) : va < vb ? 1 : -1;
     });
     return data;
-  }, [users, search, verifFilter, statusFilter, sort]);
+  }, [users, sort]);
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
-  const paged      = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
-
-  const totalUsersCount  = users.length;
   const verifiedCount    = users.filter(u => u.verification === "VERIFIED").length;
   const pendingCount     = users.filter(u => u.verification === "PENDING").length;
   const unverifiedCount  = users.filter(u => u.verification === "UNVERIFIED").length;
@@ -342,6 +361,16 @@ export default function UsersPage() {
     }
   }
 
+  function handleTableScroll(event: UIEvent<HTMLDivElement>) {
+    if (loadingUsers || loadingMore || !hasMore) return;
+
+    const node = event.currentTarget;
+    const remaining = node.scrollHeight - node.scrollTop - node.clientHeight;
+    if (remaining > 120) return;
+
+    void loadUsers(false, offset);
+  }
+
   const hasActiveFilters = search || verifFilter !== "ALL" || statusFilter !== "ALL";
 
   // ── Sortable column header ────────────────────────────────────────────────────
@@ -359,7 +388,7 @@ export default function UsersPage() {
 
   // ── Render ────────────────────────────────────────────────────────────────────
   return (
-    <div className="p-5 sm:p-6 space-y-5">
+    <div className="h-[calc(100vh-4rem)] p-5 sm:p-6 flex flex-col gap-5 min-h-0">
 
       {/* ── Page header ── */}
       <div>
@@ -393,7 +422,6 @@ export default function UsersPage() {
                 if (status === "ALL") return "ALL";
                 return prev === status ? "ALL" : status;
               });
-              setPage(1);
             }}
           >
             <CardContent className="text-center">
@@ -413,7 +441,7 @@ export default function UsersPage() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400 pointer-events-none" />
           <Input
             value={search}
-            onChange={e => { setSearch(e.target.value); setPage(1); }}
+            onChange={e => { setSearch(e.target.value); }}
             placeholder="Search by name or email…"
             className="pl-9 dark:bg-[#13151f] dark:border-[#2a2d3e]"
           />
@@ -423,7 +451,7 @@ export default function UsersPage() {
         <div className="flex gap-2 flex-wrap">
           <FilterSelect
             value={verifFilter}
-            onChange={v => { setVerif(v); setPage(1); }}
+            onChange={v => { setVerif(v); }}
             options={[
               ["ALL",        "All Verification" ],
               ["VERIFIED",   "Verified"         ],
@@ -434,7 +462,7 @@ export default function UsersPage() {
           />
           <FilterSelect
             value={statusFilter}
-            onChange={v => { setStatus(v); setPage(1); }}
+            onChange={v => { setStatus(v); }}
             options={[
               ["ALL",      "All Status" ],
               ["ACTIVE",   "Active"     ],
@@ -445,7 +473,7 @@ export default function UsersPage() {
           {hasActiveFilters && (
             <Button
               variant="outline"
-              onClick={() => { setSearch(""); setVerif("ALL"); setStatus("ALL"); setPage(1); }}
+              onClick={() => { setSearch(""); setVerif("ALL"); setStatus("ALL"); }}
               className="hover:bg-destructive/10! text-destructive! border-destructive! focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40"
             >
               <X className="w-3 h-3" /> Clear
@@ -458,8 +486,7 @@ export default function UsersPage() {
           variant="outline"
           onClick={() => {
             setIsRefreshing(true);
-            setPage(1);
-            void loadUsers();
+            void loadUsers(true, 0);
           }}
           disabled={loadingUsers}
           className="border-sky-600 text-sky-600! hover:bg-sky-600/10 focus-visible:border-sky-600 focus-visible:ring-sky-600/20 dark:border-sky-400 dark:text-sky-400! dark:hover:bg-sky-400/10 dark:focus-visible:border-sky-400 dark:focus-visible:ring-sky-400/40"
@@ -469,9 +496,9 @@ export default function UsersPage() {
       </div>
 
       {/* ── Table ── */}
-      <Card className="p-0 rounded-lg dark:bg-[#1c1f2e] dark:border-[#2a2d3e] overflow-hidden">
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
+      <Card className="p-0 rounded-lg dark:bg-[#1c1f2e] dark:border-[#2a2d3e] overflow-hidden flex-1 min-h-0">
+        <CardContent className="p-0 h-full min-h-0 flex flex-col">
+          <div className="overflow-auto h-full" onScroll={handleTableScroll}>
             <Table>
               <TableHeader>
                 <TableRow className="border-stone-200 dark:border-[#2a2d3e] bg-stone-50 dark:bg-[#13151f] hover:bg-stone-50 dark:hover:bg-[#13151f]">
@@ -504,20 +531,20 @@ export default function UsersPage() {
               </TableHeader>
 
               <TableBody>
-                {loadingUsers ? (
+                {loadingUsers && filtered.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={14} className="py-16 text-center text-sm text-stone-400 dark:text-stone-500">
                       Loading users…
                     </TableCell>
                   </TableRow>
-                ) : paged.length === 0 ? (
+                ) : filtered.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={14} className="py-16 text-center text-sm text-stone-400 dark:text-stone-500">
                       No users match the current filters.
                     </TableCell>
                   </TableRow>
                 ) : (
-                  paged.map(user => (
+                  filtered.map(user => (
                     <TableRow
                       key={user.id}
                       className="border-stone-100 dark:border-[#2a2d3e] hover:bg-stone-50 dark:hover:bg-[#252837] transition-colors"
@@ -694,54 +721,29 @@ export default function UsersPage() {
                     </TableRow>
                   ))
                 )}
+
+                {loadingMore && (
+                  <TableRow>
+                    <TableCell colSpan={14} className="py-4 text-center text-sm text-stone-400 dark:text-stone-500">
+                      Loading more users…
+                    </TableCell>
+                  </TableRow>
+                )}
+
+                {!hasMore && filtered.length > 0 && (
+                  <TableRow>
+                    <TableCell colSpan={14} className="py-4 text-center text-xs text-stone-400 dark:text-stone-500">
+                      End of user results.
+                    </TableCell>
+                  </TableRow>
+                )}
               </TableBody>
             </Table>
           </div>
 
-          {/* ── Pagination ── */}
           <Separator className="dark:bg-[#2a2d3e]" />
-          <div className="flex items-center justify-between px-4 py-3">
-            <p className="text-sm text-stone-400 dark:text-stone-500">
-              Page {page} of {totalPages} · {filtered.length} result{filtered.length !== 1 ? "s" : ""}
-            </p>
-            <div className="flex items-center gap-1.5">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPage(p => Math.max(1, p - 1))}
-                disabled={page === 1}
-                className="h-8 w-8 p-0 rounded-lg dark:border-[#2a2d3e] dark:text-stone-300 dark:hover:bg-[#252837]"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </Button>
-
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map(n => (
-                <Button
-                  key={n}
-                  variant={page === n ? "default" : "ghost"}
-                  size="sm"
-                  onClick={() => setPage(n)}
-                  className={cn(
-                    "h-8 w-8 p-0 rounded-lg text-sm font-bold",
-                    page === n
-                      ? "bg-[#1e2433] text-white hover:bg-[#2a3650]"
-                      : "text-stone-500 dark:text-stone-400 dark:hover:bg-[#252837]",
-                  )}
-                >
-                  {n}
-                </Button>
-              ))}
-
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                disabled={page === totalPages}
-                className="h-8 w-8 p-0 rounded-lg dark:border-[#2a2d3e] dark:text-stone-300 dark:hover:bg-[#252837]"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </Button>
-            </div>
+          <div className="px-4 py-3 text-sm text-stone-400 dark:text-stone-500">
+            Showing {filtered.length.toLocaleString()} of {totalUsersCount.toLocaleString()} result{totalUsersCount !== 1 ? "s" : ""}
           </div>
         </CardContent>
       </Card>

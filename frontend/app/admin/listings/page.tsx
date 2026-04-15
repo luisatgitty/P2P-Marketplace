@@ -157,7 +157,7 @@ export default function ListingsPage() {
   const [totalCount, setTotalCount] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [actionLoadingListingId, setActionLoadingListingId] = useState<string | null>(null);
-  const FETCH_LIMIT = 6;
+  const FETCH_LIMIT = 8;
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
