@@ -452,7 +452,7 @@ type AdminVerificationListItemFromDb struct {
 	ProfileImageURL string     `gorm:"column:profile_image_url" json:"profile_image_url"`
 	IdFirstName     string     `gorm:"column:id_first_name" json:"id_first_name"`
 	IdLastName      string     `gorm:"column:id_last_name" json:"id_last_name"`
-	IdBirthdate     time.Time  `gorm:"column:id_birthdate" json:"id_birthdate"`
+	IdBirthdate     string     `gorm:"column:id_birthdate" json:"id_birthdate"`
 	MobileNumber    string     `gorm:"column:mobile_number" json:"mobile_number"`
 	IdType          string     `gorm:"column:id_type" json:"id_type"`
 	IdNumber        string     `gorm:"column:id_number" json:"id_number"`

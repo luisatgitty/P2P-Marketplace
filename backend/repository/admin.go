@@ -1289,6 +1289,33 @@ func GetAdminVerifications() ([]model.AdminVerificationListItemFromDb, error) {
 	}
 
 	for i := range rows {
+		decryptedIDNumber, err := middleware.DecryptVerificationPII(rows[i].IdNumber)
+		if err != nil {
+			return nil, fmt.Errorf("Failed to decrypt verification data")
+		}
+		decryptedIDFirstName, err := middleware.DecryptVerificationPII(rows[i].IdFirstName)
+		if err != nil {
+			return nil, fmt.Errorf("Failed to decrypt verification data")
+		}
+		decryptedIDLastName, err := middleware.DecryptVerificationPII(rows[i].IdLastName)
+		if err != nil {
+			return nil, fmt.Errorf("Failed to decrypt verification data")
+		}
+		decryptedBirthdate, err := middleware.DecryptVerificationPII(rows[i].IdBirthdate)
+		if err != nil {
+			return nil, fmt.Errorf("Failed to decrypt verification data")
+		}
+		decryptedMobileNumber, err := middleware.DecryptVerificationPII(rows[i].MobileNumber)
+		if err != nil {
+			return nil, fmt.Errorf("Failed to decrypt verification data")
+		}
+
+		rows[i].IdNumber = strings.TrimSpace(decryptedIDNumber)
+		rows[i].IdFirstName = strings.TrimSpace(decryptedIDFirstName)
+		rows[i].IdLastName = strings.TrimSpace(decryptedIDLastName)
+		rows[i].IdBirthdate = strings.TrimSpace(decryptedBirthdate)
+		rows[i].MobileNumber = strings.TrimSpace(decryptedMobileNumber)
+
 		rows[i].Status = strings.ToUpper(strings.TrimSpace(rows[i].Status))
 		if strings.TrimSpace(rows[i].UserName) == "" {
 			rows[i].UserName = strings.TrimSpace(rows[i].IdFirstName + " " + rows[i].IdLastName)

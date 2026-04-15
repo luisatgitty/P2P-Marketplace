@@ -320,14 +320,14 @@ func ValidateSubmitVerificationInput(body *model.SubmitVerificationBody) error {
 		}
 	}
 
-	if len(body.UserAgent) < config.VerificationUserAgentMinLength || len(body.UserAgent) > config.VerificationUserAgentMaxLength {
-		return fmt.Errorf("User agent must be between %d and %d characters", config.VerificationUserAgentMinLength, config.VerificationUserAgentMaxLength)
+	if len(body.UserAgent) > config.VerificationUserAgentMaxLength {
+		body.UserAgent = body.UserAgent[:config.VerificationUserAgentMaxLength]
 	}
-	if len(body.IpAddress) < config.VerificationIpAddressMinLength || len(body.IpAddress) > config.VerificationIpAddressMaxLength {
-		return fmt.Errorf("IP address must be between %d and %d characters", config.VerificationIpAddressMinLength, config.VerificationIpAddressMaxLength)
+	if len(body.IpAddress) > config.VerificationIpAddressMaxLength {
+		body.IpAddress = body.IpAddress[:config.VerificationIpAddressMaxLength]
 	}
-	if len(body.HardwareInfo) < config.VerificationHardwareMinLength || len(body.HardwareInfo) > config.VerificationHardwareMaxLength {
-		return fmt.Errorf("Hardware info must be between %d and %d characters", config.VerificationHardwareMinLength, config.VerificationHardwareMaxLength)
+	if len(body.HardwareInfo) > config.VerificationHardwareMaxLength {
+		body.HardwareInfo = body.HardwareInfo[:config.VerificationHardwareMaxLength]
 	}
 
 	if body.IdImageFront == nil || strings.TrimSpace(body.IdImageFront.Data) == "" {
