@@ -412,11 +412,56 @@ func DeleteAdminUser(userId string, actorUserId string) error {
 	return nil
 }
 
-func GetAdminAccounts() ([]model.AdminAccountListItemFromDb, error) {
+func GetAdminAccounts(query model.AdminAccountsQuery) ([]model.AdminAccountListItemFromDb, int, error) {
 	db := middleware.DBConn
 	admins := make([]model.AdminAccountListItemFromDb, 0)
+	total := 0
 
-	query := `
+	whereParts := []string{"u.role IN ('ADMIN', 'SUPER_ADMIN')"}
+	args := make([]any, 0)
+
+	search := strings.ToLower(strings.TrimSpace(query.Search))
+	if search != "" {
+		likeSearch := "%" + search + "%"
+		whereParts = append(whereParts, `
+			(
+				LOWER(COALESCE(u.first_name, '')) LIKE ?
+				OR LOWER(COALESCE(u.last_name, '')) LIKE ?
+				OR LOWER(COALESCE(u.email, '')) LIKE ?
+				OR LOWER(TRIM(CONCAT_WS(' ', COALESCE(u.first_name, ''), COALESCE(u.last_name, '')))) LIKE ?
+			)
+		`)
+		args = append(args, likeSearch, likeSearch, likeSearch, likeSearch)
+	}
+
+	roleFilter := strings.ToUpper(strings.TrimSpace(query.Role))
+	if roleFilter != "" && roleFilter != "ALL" {
+		whereParts = append(whereParts, "u.role::text = ?")
+		args = append(args, roleFilter)
+	}
+
+	statusFilter := strings.ToUpper(strings.TrimSpace(query.Status))
+	if statusFilter == "ACTIVE" {
+		whereParts = append(whereParts, "u.deleted_at IS NULL AND u.is_active = TRUE")
+	} else if statusFilter == "INACTIVE" {
+		whereParts = append(whereParts, "u.deleted_at IS NULL AND u.is_active = FALSE")
+	} else if statusFilter == "DELETED" {
+		whereParts = append(whereParts, "u.deleted_at IS NOT NULL")
+	}
+
+	whereClause := "WHERE " + strings.Join(whereParts, " AND ")
+
+	countQuery := `
+		SELECT COUNT(*)::int
+		FROM public.users u
+		LEFT JOIN public.users du ON du.id = u.deleted_by_id
+		` + whereClause
+
+	if err := db.Raw(countQuery, args...).Scan(&total).Error; err != nil {
+		return nil, 0, fmt.Errorf("Failed to fetch admin account count")
+	}
+
+	selectQuery := `
 		SELECT
 			u.id::text AS id,
 			u.first_name,
@@ -434,22 +479,27 @@ func GetAdminAccounts() ([]model.AdminAccountListItemFromDb, error) {
 			COALESCE(du.email, '') AS deleted_by_email
 		FROM public.users u
 		LEFT JOIN public.users du ON du.id = u.deleted_by_id
-		WHERE u.role IN ('ADMIN', 'SUPER_ADMIN')
+		` + whereClause + `
 		ORDER BY
 			CASE WHEN u.deleted_at IS NULL THEN 0 ELSE 1 END ASC,
 			CASE WHEN u.role = 'SUPER_ADMIN' THEN 0 ELSE 1 END ASC,
 			u.created_at ASC
+		LIMIT ?
+		OFFSET ?
 	`
 
-	if err := db.Raw(query).Scan(&admins).Error; err != nil {
-		return nil, fmt.Errorf("Failed to fetch admin accounts")
+	selectArgs := append([]any{}, args...)
+	selectArgs = append(selectArgs, query.Limit, query.Offset)
+
+	if err := db.Raw(selectQuery, selectArgs...).Scan(&admins).Error; err != nil {
+		return nil, 0, fmt.Errorf("Failed to fetch admin accounts")
 	}
 
 	for i := range admins {
 		admins[i].Role = strings.ToUpper(strings.TrimSpace(admins[i].Role))
 	}
 
-	return admins, nil
+	return admins, total, nil
 }
 
 func CreateAdminAccount(body model.AdminCreateAdminBody) (model.AdminAccountListItemFromDb, error) {

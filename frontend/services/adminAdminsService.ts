@@ -24,9 +24,32 @@ export type CreateAdminPayload = {
   password: string;
 };
 
-export async function getAdminAccounts(): Promise<AdminAccountRecord[]> {
+export type AdminAccountsQuery = {
+  search?: string;
+  role?: string;
+  status?: string;
+  limit?: number;
+  offset?: number;
+};
+
+export type AdminAccountsResponse = {
+  admins: AdminAccountRecord[];
+  total: number;
+  limit: number;
+  offset: number;
+};
+
+export async function getAdminAccounts(query?: AdminAccountsQuery): Promise<AdminAccountsResponse> {
   try {
-    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/admins`, {
+    const params = new URLSearchParams();
+    if (query?.search) params.set("search", query.search);
+    if (query?.role) params.set("role", query.role);
+    if (query?.status) params.set("status", query.status);
+    if (typeof query?.limit === "number") params.set("limit", String(query.limit));
+    if (typeof query?.offset === "number") params.set("offset", String(query.offset));
+
+    const querySuffix = params.toString() ? `?${params.toString()}` : "";
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/admins${querySuffix}`, {
       method: "GET",
       credentials: "include",
     });
@@ -36,7 +59,12 @@ export async function getAdminAccounts(): Promise<AdminAccountRecord[]> {
       throw parsedJson?.data?.message || "Failed to fetch admin accounts.";
     }
 
-    return (parsedJson?.data?.admins ?? []) as AdminAccountRecord[];
+    return {
+      admins: (parsedJson?.data?.admins ?? []) as AdminAccountRecord[],
+      total: Number(parsedJson?.data?.total ?? 0),
+      limit: Number(parsedJson?.data?.limit ?? query?.limit ?? 0),
+      offset: Number(parsedJson?.data?.offset ?? query?.offset ?? 0),
+    };
   } catch {
     throw "An unexpected error occurred. Please try again later.";
   }

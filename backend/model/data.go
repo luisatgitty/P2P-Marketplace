@@ -352,6 +352,14 @@ type AdminAccountListItemFromDb struct {
 	DeletedByEmail  string     `gorm:"column:deleted_by_email" json:"deleted_by_email"`
 }
 
+type AdminAccountsQuery struct {
+	Search string
+	Role   string
+	Status string
+	Limit  int
+	Offset int
+}
+
 type AdminCreateAdminBody struct {
 	FirstName string `json:"firstName"`
 	LastName  string `json:"lastName"`
