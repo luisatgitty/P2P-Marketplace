@@ -35,6 +35,7 @@ import { cn } from "@/lib/utils";
 import { SafeImage } from "@/components/ui/safe-image";
 import { ImageLink } from "@/components/image-link";
 import { formatPrice } from "@/utils/string-builder";
+import { AUTH_LIMITS, isValidName } from "@/utils/validation";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type VerificationState = "unverified" | "pending" | "verified" | "rejected";
@@ -67,7 +68,7 @@ function normalizeEditableProfile(form: EditableProfileSnapshot): EditableProfil
     firstName: form.firstName.trim(),
     lastName: form.lastName.trim(),
     bio: form.bio.trim(),
-    phone: form.phone.trim(),
+    phone: form.phone.replace(/\D/g, "").slice(0, AUTH_LIMITS.phoneLength),
     locationProv: form.locationProv.trim(),
     locationCity: form.locationCity.trim(),
     locationBrgy: form.locationBrgy.trim(),
@@ -624,6 +625,55 @@ export default function ProfilePage() {
     : ["listings", "bookmarks", "reviews"];
 
   async function handleSave() {
+    const firstNameError = isValidName(form.firstName.trim(), "First name");
+    if (firstNameError) {
+      showErrorToast(firstNameError);
+      return;
+    }
+
+    const lastNameError = isValidName(form.lastName.trim(), "Last name");
+    if (lastNameError) {
+      showErrorToast(lastNameError);
+      return;
+    }
+
+    if (form.bio.trim().length > AUTH_LIMITS.profileBioMaxLength) {
+      showErrorToast(`Bio must not exceed ${AUTH_LIMITS.profileBioMaxLength} characters`);
+      return;
+    }
+
+    const normalizedPhone = form.phone.replace(/\D/g, "").slice(0, AUTH_LIMITS.phoneLength);
+    if (normalizedPhone !== "") {
+      if (normalizedPhone.length !== AUTH_LIMITS.phoneLength) {
+        showErrorToast(`Phone number must be exactly ${AUTH_LIMITS.phoneLength} digits`);
+        return;
+      }
+      if (!normalizedPhone.startsWith("09")) {
+        showErrorToast("Phone number must start with 09");
+        return;
+      }
+    }
+
+    if (form.currentPassword.length > AUTH_LIMITS.passwordMaxLength) {
+      showErrorToast(`Current password must not exceed ${AUTH_LIMITS.passwordMaxLength} characters`);
+      return;
+    }
+
+    if (form.newPassword.length > AUTH_LIMITS.passwordMaxLength) {
+      showErrorToast(`New password must not exceed ${AUTH_LIMITS.passwordMaxLength} characters`);
+      return;
+    }
+
+    if (form.confirmPassword.length > AUTH_LIMITS.passwordMaxLength) {
+      showErrorToast(`Confirm password must not exceed ${AUTH_LIMITS.passwordMaxLength} characters`);
+      return;
+    }
+
+    if (form.newPassword && form.newPassword.length < AUTH_LIMITS.passwordMinLength) {
+      showErrorToast(`New password must be at least ${AUTH_LIMITS.passwordMinLength} characters`);
+      return;
+    }
+
     if (form.newPassword && form.newPassword !== form.confirmPassword) {
       showErrorToast("New password and confirm password do not match");
       return;
@@ -928,14 +978,15 @@ export default function ProfilePage() {
             </div>
             <div className="px-6 py-5">
               <div className="grid grid-cols-2 gap-4">
-                <div><label className={lbl}>First Name</label><Input value={form.firstName} onChange={(e) => setForm({ ...form, firstName: e.target.value })} /></div>
-                <div><label className={lbl}>Last Name</label><Input value={form.lastName} onChange={(e) => setForm({ ...form, lastName: e.target.value })} /></div>
+                <div><label className={lbl}>First Name</label><Input value={form.firstName} onChange={(e) => setForm({ ...form, firstName: e.target.value.slice(0, AUTH_LIMITS.nameMaxLength) })} minLength={AUTH_LIMITS.nameMinLength} maxLength={AUTH_LIMITS.nameMaxLength} /></div>
+                <div><label className={lbl}>Last Name</label><Input value={form.lastName} onChange={(e) => setForm({ ...form, lastName: e.target.value.slice(0, AUTH_LIMITS.nameMaxLength) })} minLength={AUTH_LIMITS.nameMinLength} maxLength={AUTH_LIMITS.nameMaxLength} /></div>
                 <div className="col-span-2">
                   <label className={lbl}>Bio</label>
-                  <textarea rows={3} value={form.bio} onChange={(e) => setForm({ ...form, bio: e.target.value })}
+                  <textarea rows={3} value={form.bio} onChange={(e) => setForm({ ...form, bio: e.target.value.slice(0, AUTH_LIMITS.profileBioMaxLength) })}
+                    maxLength={AUTH_LIMITS.profileBioMaxLength}
                     placeholder="Tell buyers and sellers a bit about yourself…"
                     className="w-full bg-stone-50 dark:bg-[#13151f] border border-stone-200 dark:border-[#2a2d3e] rounded-lg px-3 py-2 text-sm text-stone-800 dark:text-stone-200 placeholder-stone-400 dark:placeholder-stone-600 outline-none focus:border-stone-400 dark:focus:border-stone-500 resize-none" />
-                  <p className="text-xs text-stone-400 dark:text-stone-500 mt-1">{form.bio.length} / 200</p>
+                  <p className="text-xs text-stone-400 dark:text-stone-500 mt-1">{form.bio.length} / {AUTH_LIMITS.profileBioMaxLength}</p>
                 </div>
                 <div>
                   <label className={lbl}>Phone Number</label>
@@ -943,11 +994,12 @@ export default function ProfilePage() {
                     id="phoneNumber"
                     name="phoneNumber"
                     value={form.phone}
-                    onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                    onChange={(e) => setForm({ ...form, phone: e.target.value.replace(/\D/g, "").slice(0, AUTH_LIMITS.phoneLength) })}
                     placeholder="09XX XXX XXXX"
                     type="tel"
                     autoComplete="tel-national"
                     inputMode="tel"
+                    maxLength={AUTH_LIMITS.phoneLength}
                   />
                 </div>
                 <div>
@@ -1005,8 +1057,10 @@ export default function ProfilePage() {
                         <Input
                           type={showCurrentPassword ? "text" : "password"}
                           value={form.currentPassword}
-                          onChange={(e) => setForm({ ...form, currentPassword: e.target.value })}
+                          onChange={(e) => setForm({ ...form, currentPassword: e.target.value.slice(0, AUTH_LIMITS.passwordMaxLength) })}
                           placeholder="Required if changing"
+                          maxLength={AUTH_LIMITS.passwordMaxLength}
+                          className="pr-9"
                         />
                         <button
                           type="button"
@@ -1023,8 +1077,10 @@ export default function ProfilePage() {
                         <Input
                           type={showNewPassword ? "text" : "password"}
                           value={form.newPassword}
-                          onChange={(e) => setForm({ ...form, newPassword: e.target.value })}
+                          onChange={(e) => setForm({ ...form, newPassword: e.target.value.slice(0, AUTH_LIMITS.passwordMaxLength) })}
                           placeholder="Leave blank to keep"
+                          maxLength={AUTH_LIMITS.passwordMaxLength}
+                          className="pr-9"
                         />
                         <button
                           type="button"
@@ -1040,8 +1096,9 @@ export default function ProfilePage() {
                       <Input
                         type={showConfirmPassword ? "text" : "password"}
                         value={form.confirmPassword}
-                        onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })}
+                        onChange={(e) => setForm({ ...form, confirmPassword: e.target.value.slice(0, AUTH_LIMITS.passwordMaxLength) })}
                         placeholder="Repeat new password"
+                        maxLength={AUTH_LIMITS.passwordMaxLength}
                       />
                     </div>
                   </div>

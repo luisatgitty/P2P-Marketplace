@@ -37,6 +37,14 @@ const (
 	SessionDuration       = 7 * 24 * time.Hour
 )
 
+// ─── Profile ─────────────────────────────────────────
+const (
+	ProfilePhoneExactLength  = 11
+	ProfileBioMaxLength      = 200
+	ProfileLocationMinLength = 2
+	ProfileLocationMaxLength = 100
+)
+
 // ─── Listing ─────────────────────────────────────────
 const (
 	ListingTitleMinLength       = 5

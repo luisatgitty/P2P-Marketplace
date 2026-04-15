@@ -183,6 +183,78 @@ func ValidateOTP(otp string) error {
 	return nil
 }
 
+func ValidateUpdateProfileInput(body *model.UpdateProfileBody) error {
+	body.FirstName = strings.TrimSpace(body.FirstName)
+	body.LastName = strings.TrimSpace(body.LastName)
+	body.Bio = strings.TrimSpace(body.Bio)
+	body.PhoneNumber = strings.TrimSpace(body.PhoneNumber)
+	body.LocationProv = strings.TrimSpace(body.LocationProv)
+	body.LocationCity = strings.TrimSpace(body.LocationCity)
+	body.LocationBrgy = strings.TrimSpace(body.LocationBrgy)
+	body.CurrentPassword = strings.TrimSpace(body.CurrentPassword)
+	body.NewPassword = strings.TrimSpace(body.NewPassword)
+
+	if err := validateUserName(body.FirstName, "First name"); err != nil {
+		return err
+	}
+	if err := validateUserName(body.LastName, "Last name"); err != nil {
+		return err
+	}
+
+	if len(body.Bio) > config.ProfileBioMaxLength {
+		return fmt.Errorf("Bio must not exceed %d characters", config.ProfileBioMaxLength)
+	}
+
+	if body.PhoneNumber != "" {
+		if len(body.PhoneNumber) != config.ProfilePhoneExactLength {
+			return fmt.Errorf("Phone number must be exactly %d digits", config.ProfilePhoneExactLength)
+		}
+		if !strings.HasPrefix(body.PhoneNumber, "09") {
+			return fmt.Errorf("Phone number must start with 09")
+		}
+		for _, ch := range body.PhoneNumber {
+			if !unicode.IsDigit(ch) {
+				return fmt.Errorf("Phone number must contain numbers only")
+			}
+		}
+	}
+
+	if (body.LocationProv == "" && body.LocationCity != "") || (body.LocationProv != "" && body.LocationCity == "") {
+		return fmt.Errorf("Province and city/municipality must both be provided")
+	}
+
+	if body.LocationProv != "" {
+		if len(body.LocationProv) < config.ProfileLocationMinLength || len(body.LocationProv) > config.ProfileLocationMaxLength {
+			return fmt.Errorf("Province must be between %d and %d characters", config.ProfileLocationMinLength, config.ProfileLocationMaxLength)
+		}
+	}
+
+	if body.LocationCity != "" {
+		if len(body.LocationCity) < config.ProfileLocationMinLength || len(body.LocationCity) > config.ProfileLocationMaxLength {
+			return fmt.Errorf("City / municipality must be between %d and %d characters", config.ProfileLocationMinLength, config.ProfileLocationMaxLength)
+		}
+	}
+
+	if body.LocationBrgy != "" && len(body.LocationBrgy) > config.ProfileLocationMaxLength {
+		return fmt.Errorf("Barangay must not exceed %d characters", config.ProfileLocationMaxLength)
+	}
+
+	if body.CurrentPassword != "" && len(body.CurrentPassword) > config.PwdMaxLength {
+		return fmt.Errorf("Current password must not exceed %d characters", config.PwdMaxLength)
+	}
+
+	if body.NewPassword != "" {
+		if body.CurrentPassword == "" {
+			return fmt.Errorf("Current password is required to set a new password")
+		}
+		if err := ValidatePasswordLength(body.NewPassword); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func ValidateSubmitVerificationInput(body *model.SubmitVerificationBody) error {
 	body.IdType = strings.TrimSpace(body.IdType)
 	body.IdNumber = strings.TrimSpace(body.IdNumber)

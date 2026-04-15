@@ -136,36 +136,8 @@ func UpdateMeProfile(c *fiber.Ctx) error {
 		return SendErrorResponse(c, 400, "Invalid request body. Please contact support.", err)
 	}
 
-	body.FirstName = strings.TrimSpace(body.FirstName)
-	body.LastName = strings.TrimSpace(body.LastName)
-	body.Bio = strings.TrimSpace(body.Bio)
-	body.PhoneNumber = strings.TrimSpace(body.PhoneNumber)
-	body.LocationProv = strings.TrimSpace(body.LocationProv)
-	body.LocationCity = strings.TrimSpace(body.LocationCity)
-	body.LocationBrgy = strings.TrimSpace(body.LocationBrgy)
-	body.CurrentPassword = strings.TrimSpace(body.CurrentPassword)
-	body.NewPassword = strings.TrimSpace(body.NewPassword)
-
-	if len(body.FirstName) < config.NameMinLength || len(body.FirstName) > config.NameMaxLength {
-		return SendErrorResponse(c, 400, fmt.Sprintf("First name must be between %d and %d characters", config.NameMinLength, config.NameMaxLength), nil)
-	}
-	if len(body.LastName) < config.NameMinLength || len(body.LastName) > config.NameMaxLength {
-		return SendErrorResponse(c, 400, fmt.Sprintf("Last name must be between %d and %d characters", config.NameMinLength, config.NameMaxLength), nil)
-	}
-	if (body.LocationProv == "" && body.LocationCity != "") || (body.LocationProv != "" && body.LocationCity == "") {
-		return SendErrorResponse(c, 400, "Province and city/municipality must both be provided", nil)
-	}
-	if len(body.Bio) > 200 {
-		return SendErrorResponse(c, 400, "Bio must not exceed 200 characters", nil)
-	}
-
-	if body.NewPassword != "" {
-		if body.CurrentPassword == "" {
-			return SendErrorResponse(c, 400, "Current password is required to set a new password", nil)
-		}
-		if err := middleware.ValidatePasswordLength(body.NewPassword); err != nil {
-			return SendErrorResponse(c, 400, err.Error(), err)
-		}
+	if err := middleware.ValidateUpdateProfileInput(&body); err != nil {
+		return SendErrorResponse(c, 400, err.Error(), err)
 	}
 
 	if err := repository.UpdateProfile(userId, body); err != nil {

@@ -24,6 +24,8 @@ export const AUTH_LIMITS = {
   passwordMinLength: 8,
   passwordMaxLength: 72,
   otpLength: 6,
+  phoneLength: 11,
+  profileBioMaxLength: 200,
 } as const;
 
 export const LISTING_LIMITS = {
