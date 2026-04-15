@@ -587,11 +587,61 @@ func SetAdminAccountActive(userId string, isActive bool) error {
 	return nil
 }
 
-func GetAdminListings() ([]model.AdminListingListItemFromDb, error) {
+func GetAdminListings(query model.AdminListingsQuery) ([]model.AdminListingListItemFromDb, int, error) {
 	db := middleware.DBConn
 	listings := make([]model.AdminListingListItemFromDb, 0)
+	total := 0
 
-	query := `
+	whereParts := make([]string, 0)
+	args := make([]any, 0)
+
+	search := strings.ToLower(strings.TrimSpace(query.Search))
+	if search != "" {
+		likeSearch := "%" + search + "%"
+		whereParts = append(whereParts, `
+			(
+				LOWER(l.title) LIKE ?
+				OR LOWER(COALESCE(NULLIF(TRIM(CONCAT_WS(' ', NULLIF(TRIM(u.first_name), ''), NULLIF(TRIM(u.last_name), ''))), ''), u.email, '')) LIKE ?
+			)
+		`)
+		args = append(args, likeSearch, likeSearch)
+	}
+
+	typeFilter := strings.ToUpper(strings.TrimSpace(query.Type))
+	if typeFilter != "" && typeFilter != "ALL" {
+		whereParts = append(whereParts, "l.listing_type::text = ?")
+		args = append(args, typeFilter)
+	}
+
+	statusFilter := strings.ToUpper(strings.TrimSpace(query.Status))
+	if statusFilter != "" && statusFilter != "ALL" {
+		whereParts = append(whereParts, "l.status::text = ?")
+		args = append(args, statusFilter)
+	}
+
+	categoryFilter := strings.ToLower(strings.TrimSpace(query.Category))
+	if categoryFilter != "" && categoryFilter != "all" {
+		whereParts = append(whereParts, "LOWER(COALESCE(c.name, 'Others')) = ?")
+		args = append(args, categoryFilter)
+	}
+
+	whereClause := ""
+	if len(whereParts) > 0 {
+		whereClause = "WHERE " + strings.Join(whereParts, " AND ")
+	}
+
+	countQuery := `
+		SELECT COUNT(*)::int
+		FROM public.listings l
+		LEFT JOIN public.categories c ON c.id = l.category_id
+		LEFT JOIN public.users u ON u.id = l.user_id
+		` + whereClause
+
+	if err := db.Raw(countQuery, args...).Scan(&total).Error; err != nil {
+		return nil, 0, fmt.Errorf("Failed to fetch listing count")
+	}
+
+	selectQuery := `
 		SELECT
 			l.id::text AS id,
 			l.title,
@@ -636,11 +686,17 @@ func GetAdminListings() ([]model.AdminListingListItemFromDb, error) {
 			ORDER BY is_primary DESC, id ASC
 			LIMIT 1
 		) li ON TRUE
+		` + whereClause + `
 		ORDER BY l.created_at DESC
+		LIMIT ?
+		OFFSET ?
 	`
 
-	if err := db.Raw(query).Scan(&listings).Error; err != nil {
-		return nil, fmt.Errorf("Failed to fetch listings")
+	selectArgs := append([]any{}, args...)
+	selectArgs = append(selectArgs, query.Limit, query.Offset)
+
+	if err := db.Raw(selectQuery, selectArgs...).Scan(&listings).Error; err != nil {
+		return nil, 0, fmt.Errorf("Failed to fetch listings")
 	}
 
 	for i := range listings {
@@ -654,7 +710,7 @@ func GetAdminListings() ([]model.AdminListingListItemFromDb, error) {
 		}
 	}
 
-	return listings, nil
+	return listings, total, nil
 }
 
 func ToggleAdminListingVisibility(listingId string) (string, error) {

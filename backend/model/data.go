@@ -375,6 +375,15 @@ type AdminListingListItemFromDb struct {
 	DeletedAt        *time.Time `gorm:"column:deleted_at" json:"deleted_at"`
 }
 
+type AdminListingsQuery struct {
+	Search   string
+	Type     string
+	Status   string
+	Category string
+	Limit    int
+	Offset   int
+}
+
 type AdminTransactionListItemFromDb struct {
 	Id                    string     `gorm:"column:id" json:"id"`
 	ListingId             string     `gorm:"column:listing_id" json:"listing_id"`

@@ -669,8 +669,8 @@ export default function UsersPage() {
                                 className="w-7 h-7 hover:bg-stone-100 dark:hover:bg-[#252837] disabled:opacity-50"
                               >
                                 {user.account_locked_until && new Date(user.account_locked_until) > new Date()
-                                  ? <Ban     className="w-4 h-4 text-amber-500 hover:text-amber-800" />
-                                  : <CircleDashed className="w-4 h-4 text-teal-500 hover:text-teal-800" />
+                                  ? <CircleDashed className="w-4 h-4 text-teal-500 hover:text-teal-800" />
+                                  : <Ban className="w-4 h-4 text-amber-500 hover:text-amber-800" />
                                 }
                               </Button>
 
