@@ -2,6 +2,8 @@
 
 import { useState, useRef, KeyboardEvent, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import {
   ImagePlus,
   X,
@@ -27,13 +29,22 @@ import {
   toISODate,
 } from "@/utils/scheduleAvailability";
 import {
+  LISTING_LIMITS,
+  validateListingStep,
+} from "@/utils/validation";
+import {
   BookingCalendar,
   type BookingCalendarColors,
 } from "./ui/booking-calendar";
+import {
+  ListingType,
+  CATEGORIES,
+  PRICE_UNITS,
+  CONDITIONS,
+  DELIVERY_OPTIONS
+} from "@/types/listings";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
-export type FormType = "sell" | "rent" | "service";
-
 export interface ListingFormData {
   // Common
   title: string;
@@ -156,69 +167,10 @@ export const FORM_CONFIG = {
 } as const;
 
 // ─── Field data ─────────────────────────────────────────────────────────────────
-const CATEGORIES: Record<FormType, string[]> = {
-  sell: [
-    "Electronics",
-    "Clothing & Shoes",
-    "Vehicles",
-    "Furniture & Home",
-    "Sports & Outdoors",
-    "Books & Media",
-    "Hobbies & Collectibles",
-    "Health & Beauty",
-    "Food & Grocery",
-    "Others",
-  ],
-  rent: [
-    "Rooms & Bedspace",
-    "Studio Units",
-    "Apartments",
-    "Houses",
-    "Commercial Spaces",
-    "Event Venues",
-    "Vehicles",
-    "Equipment & Tools",
-    "Others",
-  ],
-  service: [
-    "Home Repair & Cleaning",
-    "IT & Tech",
-    "Tutoring & Lessons",
-    "Photography & Video",
-    "Catering & Food",
-    "Beauty & Wellness",
-    "Transportation",
-    "Events & Entertainment",
-    "Creative & Design",
-    "Others",
-  ],
-};
-
-const PRICE_UNITS: Record<FormType, string[]> = {
-  sell: ["Fixed Price", "Negotiable"],
-  rent: ["/ month", "/ week", "/ day", "/ night", "/ hour"],
-  service: ["/ hour", "/ project", "/ session", "/ unit", "/ day", "/ package"],
-};
-
-const CONDITIONS = [
-  { value: "New", hint: "Unopened, original box" },
-  { value: "Like New", hint: "Minimal use, no flaws" },
-  { value: "Well Used", hint: "Visible signs of use" },
-  { value: "Heavily Used", hint: "Major wear and tear" },
-  { value: "Defective", hint: "Has specific flaws" },
-  { value: "Not Working", hint: "For parts or repair" },
-];
-
-const DELIVERY_OPTIONS = [
-  { value: "Meet-up only", desc: "Meet in person" },
-  { value: "Delivery available", desc: "Arrange shipping / courier" },
-  { value: "Meet-up or Delivery", desc: "Either option works" },
-];
-
-const MAX_HIGHLIGHTS = 10;
-const MAX_INCLUSIONS = 10;
-const MAX_AMENITIES = 10;
-const MAX_IMAGES = 8;
+const MAX_HIGHLIGHTS = LISTING_LIMITS.maxHighlights;
+const MAX_INCLUSIONS = LISTING_LIMITS.maxInclusions;
+const MAX_AMENITIES = LISTING_LIMITS.maxAmenities;
+const MAX_IMAGES = LISTING_LIMITS.maxImages;
 
 function sod(d: Date): Date {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate());
@@ -391,18 +343,15 @@ function StyledInput(
 ) {
   const { className, ...rest } = props;
   return (
-    <input
-      {...rest}
-      className={cn(
-        "w-full rounded-xl border border-stone-200 dark:border-[#2a2d3e]",
-        "bg-white dark:bg-[#13151f] text-stone-800 dark:text-stone-100 text-sm",
-        "px-3.5 py-2.5 outline-none transition-colors",
-        "focus:border-stone-400 dark:focus:border-stone-500",
-        "placeholder:text-stone-400 dark:placeholder:text-stone-600",
-        "disabled:opacity-50",
-        className,
-      )}
-    />
+    <div className="relative flex">
+      <Input
+        {...rest}
+        className={'text-sm pr-13 peer'}
+      />
+      <span className='text-muted-foreground pointer-events-none absolute inset-y-0 right-0 flex items-center justify-center pr-3 text-xs tabular-nums peer-disabled:opacity-50'>
+        {String(props.value).length}/{props.maxLength}
+      </span>
+    </div>
   );
 }
 
@@ -427,7 +376,7 @@ function StyledSelect({
       onChange={(e) => onChange(e.target.value)}
       {...props}
       className={cn(
-        "w-full rounded-xl border border-stone-200 dark:border-[#2a2d3e]",
+        "w-full rounded-md border border-stone-200 dark:border-[#2a2d3e]",
         "bg-white dark:bg-[#13151f] text-stone-800 dark:text-stone-100 text-sm",
         "px-3.5 py-2.5 outline-none appearance-none transition-colors",
         "focus:border-stone-400 dark:focus:border-stone-500",
@@ -444,11 +393,13 @@ function StyledTextarea({
   onChange,
   placeholder,
   rows = 5,
+  maxLength,
 }: {
   value: string;
   onChange: (v: string) => void;
   placeholder?: string;
   rows?: number;
+  maxLength?: number;
 }) {
   return (
     <textarea
@@ -456,6 +407,7 @@ function StyledTextarea({
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
       rows={rows}
+      maxLength={maxLength}
       className={cn(
         "w-full rounded-xl border border-stone-200 dark:border-[#2a2d3e]",
         "bg-white dark:bg-[#13151f] text-stone-800 dark:text-stone-100 text-sm",
@@ -535,7 +487,7 @@ function RadioOption({
   onClick: () => void;
   label: string;
   hint: string;
-  cfg: (typeof FORM_CONFIG)[FormType];
+  cfg: (typeof FORM_CONFIG)[ListingType];
 }) {
   return (
     <button
@@ -582,10 +534,14 @@ function RadioOption({
 function TagInput({
   tags,
   setTags,
+  maxTags,
+  maxLength,
   placeholder,
 }: {
   tags: string[];
   setTags: (v: string[]) => void;
+  maxTags: number;
+  maxLength: number;
   placeholder?: string;
 }) {
   const [draft, setDraft] = useState("");
@@ -593,7 +549,7 @@ function TagInput({
 
   const add = () => {
     const t = draft.trim();
-    if (!t || tags.length >= MAX_HIGHLIGHTS || tags.includes(t)) {
+    if (!t || tags.length >= maxTags || tags.includes(t)) {
       setDraft("");
       return;
     }
@@ -631,49 +587,43 @@ function TagInput({
               <span className="text-xs font-medium text-stone-700 dark:text-stone-200 truncate flex-1">
                 {tag}
               </span>
-              <button
+              <Button
                 type="button"
                 onClick={() => remove(i)}
+                variant="ghost"
+                size="sm"
                 className="ml-auto shrink-0 p-0.5 rounded text-stone-400 hover:text-red-500 transition-colors"
               >
                 <X size={10} />
-              </button>
+              </Button>
             </div>
           ))}
         </div>
       )}
 
       {/* Input row */}
-      {tags.length < MAX_HIGHLIGHTS && (
-        <div className="flex gap-2">
-          <input
+      {tags.length < maxTags && (
+        <div className="relative flex items-center gap-3">
+          <Input
             ref={inputRef}
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={onKey}
-            maxLength={40}
+            maxLength={maxLength}
             placeholder={placeholder}
-            className={cn(
-              "flex-1 rounded-xl border border-stone-200 dark:border-[#2a2d3e]",
-              "bg-white dark:bg-[#13151f] text-stone-800 dark:text-stone-100 text-sm",
-              "px-3.5 py-2.5 outline-none transition-colors",
-              "focus:border-stone-400 dark:focus:border-stone-500",
-              "placeholder:text-stone-400 dark:placeholder:text-stone-600",
-            )}
+            className={"text-sm peer pr-13"}
           />
-          <button
-            type="button"
+          <span className='text-muted-foreground pointer-events-none absolute inset-y-0 right-22 flex items-center justify-center pr-3 text-xs tabular-nums peer-disabled:opacity-50'>
+            {draft.length}/{maxLength}
+          </span>
+          <Button
+            type='submit'
+            variant={'outline'}
             onClick={add}
             disabled={!draft.trim()}
-            className={cn(
-              "flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all shrink-0",
-              "border border-stone-200 dark:border-[#2a2d3e] text-stone-600 dark:text-stone-300",
-              "hover:border-stone-400 dark:hover:border-stone-500 hover:bg-stone-50 dark:hover:bg-[#252837]",
-              "disabled:opacity-40 disabled:cursor-not-allowed",
-            )}
           >
             <Plus size={14} /> Add
-          </button>
+          </Button>
         </div>
       )}
     </div>
@@ -733,7 +683,7 @@ function ImageUploadZone({
               Click or drag photos here
             </p>
             <p className="text-xs text-stone-400 dark:text-stone-500 mt-0.5">
-              JPG, PNG, WEBP · Max 5 MB each · Up to 8 photos
+              JPG, PNG, WEBP · Max 5 MB each · Up to {LISTING_LIMITS.maxImages} photos
             </p>
           </div>
         </button>
@@ -796,7 +746,7 @@ function StepIndicator({
 }: {
   steps: readonly string[];
   current: number;
-  cfg: (typeof FORM_CONFIG)[FormType];
+  cfg: (typeof FORM_CONFIG)[ListingType];
 }) {
   return (
     <div className="flex items-center w-full">
@@ -841,58 +791,58 @@ function StepIndicator({
 }
 
 // ─── Service inclusions list ──────────────────────────────────────────────────────
-function InclusionList({
-  items,
-  setItems,
-}: {
-  items: string[];
-  setItems: (v: string[]) => void;
-}) {
-  const update = (i: number, v: string) => {
-    const n = [...items];
-    n[i] = v;
-    setItems(n);
-  };
-  return (
-    <div className="flex flex-col gap-2">
-      {items.map((item, i) => (
-        <div key={i} className="flex gap-2 items-center">
-          <CheckCircle2 size={13} className="text-violet-500 shrink-0" />
-          <StyledInput
-            value={item}
-            onChange={(e) => update(i, e.target.value)}
-            placeholder="e.g. Coil & filter deep clean"
-            className="flex-1"
-          />
-          {items.length > 1 && (
-            <button
-              type="button"
-              onClick={() => setItems(items.filter((_, idx) => idx !== i))}
-              className="p-2 rounded-lg text-stone-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors shrink-0"
-            >
-              <X size={14} />
-            </button>
-          )}
-        </div>
-      ))}
-      {items.length < 10 && (
-        <button
-          type="button"
-          onClick={() => setItems([...items, ""])}
-          className="flex items-center gap-1.5 text-xs font-semibold text-stone-400 hover:text-stone-600 dark:hover:text-stone-300 mt-1 w-fit transition-colors"
-        >
-          <Plus size={12} /> Add item
-        </button>
-      )}
-    </div>
-  );
-}
+// function InclusionList({
+//   items,
+//   setItems,
+// }: {
+//   items: string[];
+//   setItems: (v: string[]) => void;
+// }) {
+//   const update = (i: number, v: string) => {
+//     const n = [...items];
+//     n[i] = v;
+//     setItems(n);
+//   };
+//   return (
+//     <div className="flex flex-col gap-2">
+//       {items.map((item, i) => (
+//         <div key={i} className="flex gap-2 items-center">
+//           <CheckCircle2 size={13} className="text-violet-500 shrink-0" />
+//           <StyledInput
+//             value={item}
+//             onChange={(e) => update(i, e.target.value)}
+//             placeholder="e.g. Coil & filter deep clean"
+//             className="flex-1"
+//           />
+//           {items.length > 1 && (
+//             <button
+//               type="button"
+//               onClick={() => setItems(items.filter((_, idx) => idx !== i))}
+//               className="p-2 rounded-lg text-stone-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors shrink-0"
+//             >
+//               <X size={14} />
+//             </button>
+//           )}
+//         </div>
+//       ))}
+//       {items.length < MAX_INCLUSIONS && (
+//         <button
+//           type="button"
+//           onClick={() => setItems([...items, ""])}
+//           className="flex items-center gap-1.5 text-xs font-semibold text-stone-400 hover:text-stone-600 dark:hover:text-stone-300 mt-1 w-fit transition-colors"
+//         >
+//           <Plus size={12} /> Add item
+//         </button>
+//       )}
+//     </div>
+//   );
+// }
 
 // ═══════════════════════════════════════════════════════════════════════════════
 //  MAIN FORM
 // ═══════════════════════════════════════════════════════════════════════════════
 interface ListingFormProps {
-  type: FormType;
+  type: ListingType;
   initialData?: Partial<ListingFormData>;
   isEdit?: boolean;
   listingId?: string;
@@ -1098,56 +1048,37 @@ export default function ListingForm({
 
   // ── Validation ───────────────────────────────────────────────────────────────
   const validate = (s: number) => {
-    const e: Record<string, string> = {};
-    if (s === 0) {
-      if (!title.trim()) e.title = "Title is required.";
-      if (!category) e.category = "Please select a category.";
-      if (!price || isNaN(+price) || +price <= 0)
-        e.price = "Enter a valid price.";
-      if (!description.trim()) e.description = "Description is required.";
-    }
-    if (s === 1) {
-      if (type === "sell") {
-        if (!condition) e.condition = "Please select a condition.";
-        if (!deliveryMethod)
-          e.deliveryMethod = "Please choose a delivery option.";
-        if (inclusions.length === 0)
-          e.inclusions = "Please add at least one inclusion item.";
-        if (inclusions.length > 10)
-          e.inclusions = "You can only add up to 10 inclusion items.";
-      }
-      if (type === "rent") {
-        if (!minPeriod.trim())
-          e.minPeriod = "Minimum rental period is required.";
-        if (!deliveryMethod)
-          e.deliveryMethod = "Please choose a delivery option.";
-        if (!parseISODate(availability)) {
-          e.availability = "Please select a starting availability date.";
-        }
-        if (amenities.length === 0)
-          e.amenities = "Please add at least one amenity.";
-        if (amenities.length > 10)
-          e.amenities = "You can only add up to 10 amenities.";
-      }
-      if (type === "service") {
-        if (!turnaround.trim()) e.turnaround = "Turnaround time is required.";
-        if (!serviceArea.trim()) e.serviceArea = "Service area is required.";
-        if (inclusions.length === 0)
-          e.inclusions = "Please add at least one inclusion item.";
-        if (inclusions.length > 10)
-          e.inclusions = "You can only add up to 10 inclusion items.";
-        if (!parseISODate(availability)) {
-          e.availability = "Please select a starting availability date.";
-        }
-      }
-    }
-    if (s === 2) {
-      if (!locationCity.trim())
-        e.locationCity = "City / Municipality is required.";
-      if (!locationProv) e.locationProv = "Province is required.";
-      if (!isEdit && images.length === 0)
-        e.images = "At least one photo is required.";
-    }
+    const e = validateListingStep(
+      {
+        type,
+        title,
+        category,
+        price,
+        priceUnit,
+        description,
+        locationCity,
+        locationProv,
+        locationBrgy,
+        condition,
+        deliveryMethod,
+        minPeriod,
+        availability,
+        deposit,
+        amenities,
+        turnaround,
+        serviceArea,
+        arrangement,
+        inclusions,
+        highlights,
+        imageCount: images.length,
+        timeWindows: timeWindows.map((slot) => ({
+          start: slot.start,
+          end: slot.end,
+        })),
+      },
+      s,
+      isEdit,
+    );
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -1335,8 +1266,10 @@ export default function ListingForm({
       setTimeWindowError("End time must be later than start time.");
       return;
     }
-    if (timeWindows.length >= 8) {
-      setTimeWindowError("You can add up to 8 window times only.");
+    if (timeWindows.length >= LISTING_LIMITS.maxTimeWindows) {
+      setTimeWindowError(
+        `You can add up to ${LISTING_LIMITS.maxTimeWindows} window times only.`,
+      );
       return;
     }
 
@@ -1442,49 +1375,48 @@ export default function ListingForm({
             <span
               className={cn(
                 "text-xs font-semibold shrink-0",
-                timeWindows.length >= 8
+                timeWindows.length >= LISTING_LIMITS.maxTimeWindows
                   ? "text-amber-600 dark:text-amber-400"
                   : "text-stone-400 dark:text-stone-500",
               )}
             >
-              {timeWindows.length}/{8}
+              {timeWindows.length}/{LISTING_LIMITS.maxTimeWindows}
             </span>
           </p>
 
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_auto_1fr_auto] sm:items-end">
             <div>
-              <StyledInput
+              <Input
                 type="time"
                 value={startTime}
                 onChange={(e) => setStartTime(e.target.value)}
+                className="text-sm"
               />
             </div>
             <span className="pb-2 text-center text-sm font-semibold text-stone-400">
               to
             </span>
             <div>
-              <StyledInput
+              <Input
                 type="time"
                 value={endTime}
                 onChange={(e) => setEndTime(e.target.value)}
+                className="text-sm"
               />
             </div>
-            <button
+            <Button
               type="button"
+              variant={'outline'}
               onClick={addTimeWindow}
-              disabled={timeWindows.length >= 8}
-              className={cn(
-                "mb-0.5 flex items-center justify-center gap-1.5 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all",
-                "border border-stone-200 text-stone-600 hover:border-stone-400 hover:bg-stone-100",
-                "dark:border-[#2a2d3e] dark:text-stone-300 dark:hover:border-stone-500 dark:hover:bg-[#252837]",
-                "disabled:cursor-not-allowed disabled:opacity-40",
-              )}
+              disabled={timeWindows.length >= LISTING_LIMITS.maxTimeWindows}
+              className="ml-2"
             >
               <Plus size={14} /> Add
-            </button>
+            </Button>
           </div>
 
           <ErrMsg msg={timeWindowError} />
+          <ErrMsg msg={errors.timeWindows} />
 
           {timeWindows.length > 0 ? (
             <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
@@ -1527,7 +1459,8 @@ export default function ListingForm({
           <StyledInput
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            maxLength={120}
+            minLength={LISTING_LIMITS.titleMinLength}
+            maxLength={LISTING_LIMITS.titleMaxLength}
             placeholder={
               type === "sell"
                 ? 'e.g. MacBook Pro M2 2023 — Space Gray 16"'
@@ -1536,12 +1469,7 @@ export default function ListingForm({
                   : "e.g. Professional Aircon Cleaning & Repair"
             }
           />
-          <div className="flex justify-between mt-1.5">
-            <ErrMsg msg={errors.title} />
-            <span className="text-xs text-stone-400 ml-auto">
-              {title.length}/120
-            </span>
-          </div>
+          <ErrMsg msg={errors.title} />
         </div>
 
         {/* Category + Price */}
@@ -1550,7 +1478,7 @@ export default function ListingForm({
             <FieldLabel required>Category</FieldLabel>
             <StyledSelect value={category} onChange={setCategory}>
               <option value="">Select a category</option>
-              {CATEGORIES[type].map((c) => (
+              {CATEGORIES.map((c) => (
                 <option key={c}>{c}</option>
               ))}
             </StyledSelect>
@@ -1559,17 +1487,30 @@ export default function ListingForm({
           <div>
             <FieldLabel required>Price</FieldLabel>
             <div className="flex gap-2">
-              <div className="relative flex-1">
-                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400 text-sm font-semibold pointer-events-none">
+              <div className="flex rounded-md shadow-xs">
+                <span className='border-input bg-background text-muted-foreground inline-flex items-center rounded-l-md border px-3 text-sm'>
                   ₱
                 </span>
-                <StyledInput
+                <Input
                   type="number"
                   value={price}
-                  onChange={(e) => setPrice(e.target.value)}
+                  onChange={(e) => {
+                    const nextValue = e.target.value;
+                    if (!nextValue) {
+                      setPrice("");
+                      return;
+                    }
+
+                    const nextNumber = Number(nextValue);
+                    if (!Number.isFinite(nextNumber)) return;
+                    if (nextNumber > LISTING_LIMITS.priceMaxValue) return;
+
+                    setPrice(nextValue);
+                  }}
                   placeholder="0"
-                  min={0}
-                  className="pl-8"
+                  min={LISTING_LIMITS.priceMinValue}
+                  max={LISTING_LIMITS.priceMaxValue}
+                  className='-ms-px rounded-l-none shadow-none h-full'
                 />
               </div>
               <StyledSelect
@@ -1582,6 +1523,7 @@ export default function ListingForm({
                 ))}
               </StyledSelect>
             </div>
+            <ErrMsg msg={errors.priceUnit} />
             <ErrMsg msg={errors.price} />
           </div>
         </div>
@@ -1597,7 +1539,10 @@ export default function ListingForm({
           </FieldLabel>
           <StyledTextarea
             value={description}
-            onChange={setDesc}
+            onChange={(nextValue) => {
+              if (nextValue.length > LISTING_LIMITS.descriptionMaxLength) return;
+              setDesc(nextValue);
+            }}
             placeholder={
               type === "sell"
                 ? "Include brand, model, specs, usage history, reason for selling, and any known issues..."
@@ -1606,8 +1551,14 @@ export default function ListingForm({
                   : "Describe your service — experience, what clients can expect, tools used, process..."
             }
             rows={6}
+            maxLength={LISTING_LIMITS.descriptionMaxLength}
           />
-          <ErrMsg msg={errors.description} />
+          <div className="flex justify-between mt-1.5">
+            <ErrMsg msg={errors.description} />
+            <span className="text-xs text-stone-400 ml-auto">
+              {description.length}/{LISTING_LIMITS.descriptionMaxLength}
+            </span>
+          </div>
           <FieldHint>
             Detailed descriptions get more inquiries and build buyer trust.
           </FieldHint>
@@ -1664,10 +1615,12 @@ export default function ListingForm({
             maxCount={MAX_INCLUSIONS}
             required
           >
-            <div>
+            <div className='relative'>
               <TagInput
                 tags={inclusions}
                 setTags={setIncl}
+                maxTags={MAX_INCLUSIONS}
+                maxLength={LISTING_LIMITS.tagMaxLength}
                 placeholder={pHolderIncludes}
               />
               <ErrMsg msg={errors.inclusions} />
@@ -1684,8 +1637,11 @@ export default function ListingForm({
               <TagInput
                 tags={highlights}
                 setTags={setHL}
+                maxTags={MAX_HIGHLIGHTS}
+                maxLength={LISTING_LIMITS.tagMaxLength}
                 placeholder={pHolderHighlights}
               />
+              <ErrMsg msg={errors.highlights} />
             </div>
           </SectionWithCount>
         </>
@@ -1709,6 +1665,8 @@ export default function ListingForm({
                 <StyledInput
                   value={minPeriod}
                   onChange={(e) => setMinPer(e.target.value)}
+                  minLength={LISTING_LIMITS.minPeriodMinLength}
+                  maxLength={LISTING_LIMITS.minPeriodMaxLength}
                   placeholder="e.g. 3 months, 1 week, daily"
                 />
                 <ErrMsg msg={errors.minPeriod} />
@@ -1718,8 +1676,10 @@ export default function ListingForm({
                 <StyledInput
                   value={deposit}
                   onChange={(e) => setDep(e.target.value)}
+                  maxLength={LISTING_LIMITS.depositMaxLength}
                   placeholder="e.g. 2 months deposit + 1 month advance"
                 />
+                <ErrMsg msg={errors.deposit} />
               </div>
             </div>
             <div>
@@ -1753,6 +1713,8 @@ export default function ListingForm({
               <TagInput
                 tags={amenities}
                 setTags={setAmen}
+                maxTags={MAX_AMENITIES}
+                maxLength={LISTING_LIMITS.tagMaxLength}
                 placeholder={pHolderIncludes}
               />
               <ErrMsg msg={errors.amenities} />
@@ -1769,8 +1731,11 @@ export default function ListingForm({
               <TagInput
                 tags={highlights}
                 setTags={setHL}
+                maxTags={MAX_HIGHLIGHTS}
+                maxLength={LISTING_LIMITS.tagMaxLength}
                 placeholder={pHolderHighlights}
               />
+              <ErrMsg msg={errors.highlights} />
             </div>
           </SectionWithCount>
         </>
@@ -1787,6 +1752,8 @@ export default function ListingForm({
               <StyledInput
                 value={turnaround}
                 onChange={(e) => setTA(e.target.value)}
+                minLength={LISTING_LIMITS.turnaroundMinLength}
+                maxLength={LISTING_LIMITS.turnaroundMaxLength}
                 placeholder="e.g. Same-day, 1–3 business days"
               />
               <ErrMsg msg={errors.turnaround} />
@@ -1796,6 +1763,7 @@ export default function ListingForm({
               <StyledInput
                 value={arrangement}
                 onChange={(e) => setArrangement(e.target.value)}
+                maxLength={LISTING_LIMITS.arrangementMaxLength}
                 placeholder="e.g. Onsite, Remote, Home-Visit"
               />
               <ErrMsg msg={errors.arrangement} />
@@ -1806,6 +1774,8 @@ export default function ListingForm({
             <StyledInput
               value={serviceArea}
               onChange={(e) => setSA(e.target.value)}
+              minLength={LISTING_LIMITS.serviceAreaMinLength}
+              maxLength={LISTING_LIMITS.serviceAreaMaxLength}
               placeholder="e.g. Around Laguna, Batangas, Manila"
             />
             <ErrMsg msg={errors.serviceArea} />
@@ -1831,6 +1801,8 @@ export default function ListingForm({
             <TagInput
               tags={inclusions}
               setTags={setIncl}
+              maxTags={MAX_INCLUSIONS}
+              maxLength={LISTING_LIMITS.tagMaxLength}
               placeholder={pHolderIncludes}
             />
             <ErrMsg msg={errors.inclusions} />
@@ -1847,8 +1819,11 @@ export default function ListingForm({
             <TagInput
               tags={highlights}
               setTags={setHL}
+              maxTags={MAX_HIGHLIGHTS}
+              maxLength={LISTING_LIMITS.tagMaxLength}
               placeholder={pHolderHighlights}
             />
+            <ErrMsg msg={errors.highlights} />
           </div>
         </SectionWithCount>
       </>
@@ -1937,6 +1912,7 @@ export default function ListingForm({
                 </option>
               ))}
             </StyledSelect>
+            <ErrMsg msg={errors.locationBrgy} />
           </div>
         </div>
       </Section>
@@ -2037,7 +2013,7 @@ export default function ListingForm({
                 type="submit"
                 disabled={submitting}
                 className={cn(
-                  "flex items-center gap-2 px-6 py-2.5 rounded-full text-sm font-bold transition-all",
+                  "flex items-center gap-2 px-6 py-2.5 rounded-full text-sm font-bold transition-all cursor-pointer",
                   cfg.btnCls,
                   "disabled:opacity-60 disabled:cursor-not-allowed",
                 )}

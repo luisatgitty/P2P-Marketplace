@@ -11,11 +11,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { CATEGORIES } from "@/types/listings";
 
 type ListingWithMeta = HomeListing;
-
-// ─── Constants ─────────────────────────────────────────────────────────────────
-const CATEGORIES = ["All Categories", "Electronics", "Clothing", "Vehicles", "Home & Living", "Real Estate", "Sports & Outdoors", "Health & Wellness", "IT & Digital", "Education", "Food & Events", "Creative", "Hobbies", "Events", "Others"];
 
 const SORT_OPTIONS = [
   { value: "recommended", label: "Recommended" },
@@ -315,6 +313,7 @@ function HomePageInner() {
             {/* Category */}
             <div className="relative min-w-35 flex-1">
               <FilterSelect value={category} onChange={setCategory}>
+                <option value="">All Categories</option>
                 {CATEGORIES.map((c) => <option key={c}>{c}</option>)}
               </FilterSelect>
               <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">

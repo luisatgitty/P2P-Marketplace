@@ -52,6 +52,17 @@ const STATUS_CONFIG: Record<ReportStatus, { cls: string; label: string }> = {
   DISMISSED: { cls: "bg-stone-100 dark:bg-stone-800 text-stone-500 dark:text-stone-400",     label: "Dismissed" },
 };
 
+const REPORT_ACTION_REASON_MAX_LENGTH = 500;
+const REPORT_ACTION_TYPES = new Set([
+  "DISMISS",
+  "BAN_LISTING",
+  "LOCK_3",
+  "LOCK_7",
+  "LOCK_30",
+  "DELETE_LISTING",
+  "PERMANENT_BAN",
+] as const);
+
 // ── Shared filter select ───────────────────────────────────────────────────────
 function FilterSelect({
   value,
@@ -189,9 +200,23 @@ export default function ReportsPage() {
 
   // ── Actions ───────────────────────────────────────────────────────────────────
   async function handleModalSubmit(id: string, action: "DISMISS" | "BAN_LISTING" | "LOCK_3" | "LOCK_7" | "LOCK_30" | "DELETE_LISTING" | "PERMANENT_BAN", reason: string) {
+    const trimmedReason = reason.trim();
+    if (!REPORT_ACTION_TYPES.has(action)) {
+      toast.error("Invalid report action selected", { position: "top-center" });
+      return;
+    }
+    if (trimmedReason.length === 0) {
+      toast.error("Reason is required", { position: "top-center" });
+      return;
+    }
+    if (trimmedReason.length > REPORT_ACTION_REASON_MAX_LENGTH) {
+      toast.error(`Reason must not exceed ${REPORT_ACTION_REASON_MAX_LENGTH} characters`, { position: "top-center" });
+      return;
+    }
+
     setActionLoadingId(id);
     try {
-      await setAdminReportAction(id, { action, reason });
+      await setAdminReportAction(id, { action, reason: trimmedReason });
       const nowIso = new Date().toISOString();
       const nextStatus = action === "DISMISS" ? "DISMISSED" : "RESOLVED";
       setReports(rs =>
@@ -201,7 +226,7 @@ export default function ReportsPage() {
                 ...r,
                 status: nextStatus,
                 action_taken: action,
-                action_reason: reason,
+                action_reason: trimmedReason,
                 resolved_at: nowIso,
                 reviewed_at: nowIso,
                 resolved_by: r.resolved_by ?? "Admin",

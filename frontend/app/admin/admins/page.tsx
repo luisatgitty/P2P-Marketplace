@@ -19,6 +19,10 @@ import {
   deleteAdminUser,
   setAdminUserActive,
 } from "@/services/adminUsersService";
+import {
+  AUTH_LIMITS,
+  validateCreateAdminInput,
+} from "@/utils/validation";
 
 // ── shadcn components ──────────────────────────────────────────────────────────
 import { Button }            from "@/components/ui/button";
@@ -106,13 +110,20 @@ function AddAdminModal({ onClose, onAdd }: AddModalProps) {
 
   async function handleSubmit() {
     setError("");
-    if (!firstName.trim())   { setError("First name is required."); return; }
-    if (!lastName.trim())    { setError("Last name is required."); return; }
-    if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      setError("Valid email is required."); return;
+    const validationError = validateCreateAdminInput({
+      firstName,
+      lastName,
+      email,
+      phone,
+      role,
+      password,
+      confirmPassword: confirm,
+    });
+    if (validationError) {
+      setError(validationError);
+      return;
     }
-    if (password.length < 8) { setError("Password must be at least 8 characters."); return; }
-    if (password !== confirm) { setError("Passwords do not match."); return; }
+
     setSaving(true);
     try {
       await onAdd({
@@ -163,10 +174,12 @@ function AddAdminModal({ onClose, onAdd }: AddModalProps) {
               </Label>
               <Input
                 value={firstName}
-                onChange={e => setFirstName(e.target.value)}
+                onChange={e => setFirstName(e.target.value.slice(0, AUTH_LIMITS.nameMaxLength))}
                 placeholder="Enter first name"
                 name="firstName"
                 autoComplete="given-name"
+                minLength={AUTH_LIMITS.nameMinLength}
+                maxLength={AUTH_LIMITS.nameMaxLength}
                 className="dark:bg-[#13151f] dark:border-[#2a2d3e]"
               />
             </div>
@@ -176,10 +189,12 @@ function AddAdminModal({ onClose, onAdd }: AddModalProps) {
               </Label>
               <Input
                 value={lastName}
-                onChange={e => setLastName(e.target.value)}
+                onChange={e => setLastName(e.target.value.slice(0, AUTH_LIMITS.nameMaxLength))}
                 placeholder="Enter last name"
                 name="lastName"
                 autoComplete="family-name"
+                minLength={AUTH_LIMITS.nameMinLength}
+                maxLength={AUTH_LIMITS.nameMaxLength}
                 className="dark:bg-[#13151f] dark:border-[#2a2d3e]"
               />
             </div>
@@ -193,10 +208,12 @@ function AddAdminModal({ onClose, onAdd }: AddModalProps) {
             <Input
               type="email"
               value={email}
-              onChange={e => setEmail(e.target.value)}
+              onChange={e => setEmail(e.target.value.slice(0, AUTH_LIMITS.emailMaxLength))}
               placeholder="Enter email address"
               name="email"
               autoComplete="email"
+              minLength={AUTH_LIMITS.emailMinLength}
+              maxLength={AUTH_LIMITS.emailMaxLength}
               className="dark:bg-[#13151f] dark:border-[#2a2d3e]"
             />
           </div>
@@ -209,10 +226,11 @@ function AddAdminModal({ onClose, onAdd }: AddModalProps) {
             <Input
               type="tel"
               value={phone}
-              onChange={e => setPhone(e.target.value)}
+              onChange={e => setPhone(e.target.value.replace(/\D/g, "").slice(0, AUTH_LIMITS.phoneLength))}
               placeholder="Enter contact number"
               name="phone"
               autoComplete="tel"
+              maxLength={AUTH_LIMITS.phoneLength}
               className="dark:bg-[#13151f] dark:border-[#2a2d3e]"
             />
           </div>
@@ -261,10 +279,12 @@ function AddAdminModal({ onClose, onAdd }: AddModalProps) {
               <Input
                 type={showPw ? "text" : "password"}
                 value={password}
-                onChange={e => setPassword(e.target.value)}
+                onChange={e => setPassword(e.target.value.slice(0, AUTH_LIMITS.passwordMaxLength))}
                 placeholder="Enter temporary password"
                 name="password"
                 autoComplete="new-password"
+                minLength={AUTH_LIMITS.passwordMinLength}
+                maxLength={AUTH_LIMITS.passwordMaxLength}
                 className="pr-10 dark:bg-[#13151f] dark:border-[#2a2d3e]"
               />
               <Button
@@ -287,10 +307,12 @@ function AddAdminModal({ onClose, onAdd }: AddModalProps) {
             <Input
               type="password"
               value={confirm}
-              onChange={e => setConfirm(e.target.value)}
+              onChange={e => setConfirm(e.target.value.slice(0, AUTH_LIMITS.passwordMaxLength))}
               placeholder="Re-enter password"
               name="confirmPassword"
               autoComplete="new-password"
+              minLength={AUTH_LIMITS.passwordMinLength}
+              maxLength={AUTH_LIMITS.passwordMaxLength}
               className="dark:bg-[#13151f] dark:border-[#2a2d3e]"
             />
           </div>

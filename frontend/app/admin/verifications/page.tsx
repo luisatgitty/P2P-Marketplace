@@ -51,6 +51,8 @@ const ID_TYPE_OPTIONS: [IdType, string][] = [
   ["acr", "ACR (Foreigners)"],
 ];
 
+const VERIFICATION_REVIEW_REASON_MAX_LENGTH = 500;
+
 interface AdminVerification {
   id:                string;
   user_id:           string;
@@ -224,7 +226,8 @@ function DetailModal({ verif, onClose, onApprove, onReject, actionLoading = fals
 
   const submittedName = `${verif.id_first_name} ${verif.id_last_name}`.trim();
   const nameMatch     = submittedName.toLowerCase() === verif.user_name.toLowerCase();
-  const hasReason = rejectReason.trim().length > 0;
+  const reasonMaxLength = 500;
+  const hasReason = rejectReason.trim().length > 0 && rejectReason.trim().length <= reasonMaxLength;
 
   const hardwarePretty = useMemo(() => {
     if (!verif.hardware_info) return null;
@@ -478,12 +481,13 @@ function DetailModal({ verif, onClose, onApprove, onReject, actionLoading = fals
                   <Textarea
                     rows={4}
                     value={rejectReason}
-                    onChange={e => setRejectReason(e.target.value)}
+                    onChange={e => setRejectReason(e.target.value.slice(0, reasonMaxLength))}
+                    maxLength={reasonMaxLength}
                     placeholder="Explain clearly why the submission is being rejected so the user can resubmit correctly…"
                     className="resize-none text-xs dark:bg-[#13151f] dark:border-[#2a2d3e] dark:text-stone-100 dark:placeholder-stone-600"
                   />
                   <p className="text-xs text-stone-400 dark:text-stone-500">
-                    This message will be shown to the applicant.
+                    This message will be shown to the applicant. {rejectReason.length} / {reasonMaxLength}
                   </p>
                 </div>
               </>
@@ -685,11 +689,21 @@ export default function VerificationsPage() {
   );
 
   async function handleApprove(id: string, reason: string) {
+    const trimmedReason = reason.trim();
+    if (trimmedReason.length === 0) {
+      toast.error("Reason is required", { position: "top-center" });
+      return;
+    }
+    if (trimmedReason.length > VERIFICATION_REVIEW_REASON_MAX_LENGTH) {
+      toast.error(`Reason must not exceed ${VERIFICATION_REVIEW_REASON_MAX_LENGTH} characters`, { position: "top-center" });
+      return;
+    }
+
     if (!window.confirm("Approve this verification request? This action cannot be changed from this table.")) return;
 
     setActionLoading(true);
     try {
-      await setAdminVerificationStatus(id, { status: "VERIFIED", reason });
+      await setAdminVerificationStatus(id, { status: "VERIFIED", reason: trimmedReason });
       const nowIso = new Date().toISOString();
       const nowDisplay = new Date(nowIso).toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" });
       setRecords(prev =>
@@ -698,7 +712,7 @@ export default function VerificationsPage() {
             ? {
                 ...v,
                 status: "VERIFIED",
-                reason,
+                reason: trimmedReason,
                 reviewed_by: v.reviewed_by ?? "Admin",
                 reviewed_at_raw: nowIso,
                 reviewed_at: nowDisplay,
@@ -717,11 +731,21 @@ export default function VerificationsPage() {
   }
 
   async function handleReject(id: string, reason: string) {
+    const trimmedReason = reason.trim();
+    if (trimmedReason.length === 0) {
+      toast.error("Reason is required", { position: "top-center" });
+      return;
+    }
+    if (trimmedReason.length > VERIFICATION_REVIEW_REASON_MAX_LENGTH) {
+      toast.error(`Reason must not exceed ${VERIFICATION_REVIEW_REASON_MAX_LENGTH} characters`, { position: "top-center" });
+      return;
+    }
+
     if (!window.confirm("Reject this verification request? This action cannot be changed from this table.")) return;
 
     setActionLoading(true);
     try {
-      await setAdminVerificationStatus(id, { status: "REJECTED", reason });
+      await setAdminVerificationStatus(id, { status: "REJECTED", reason: trimmedReason });
       const nowIso = new Date().toISOString();
       const nowDisplay = new Date(nowIso).toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" });
       setRecords(prev =>
@@ -730,7 +754,7 @@ export default function VerificationsPage() {
             ? {
                 ...v,
                 status: "REJECTED",
-                reason,
+                reason: trimmedReason,
                 reviewed_by: v.reviewed_by ?? "Admin",
                 reviewed_at_raw: nowIso,
                 reviewed_at: nowDisplay,

@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import { formatPrice } from "@/utils/string-builder";
+import { MESSAGE_MAX_LENGTH, limitMessageInputLength } from "@/utils/validation";
 
 interface OfferModalProps {
   open: boolean;
@@ -31,7 +32,7 @@ export default function OfferModal({
   onOfferAmountChange,
   note,
   onNoteChange,
-  noteLabel = "Add a message (optional)",
+  noteLabel = "Message (optional)",
   notePlaceholder = "Add context for your offer...",
   submitLabel,
   submitDisabled = false,
@@ -95,7 +96,8 @@ export default function OfferModal({
             <textarea
               rows={3}
               value={note}
-              onChange={(e) => onNoteChange(e.target.value)}
+              onChange={(e) => onNoteChange(limitMessageInputLength(e.target.value))}
+              maxLength={MESSAGE_MAX_LENGTH}
               placeholder={notePlaceholder}
               className="w-full bg-stone-50 dark:bg-[#13151f] border border-stone-200 dark:border-[#2a2d3e] rounded-xl px-3 py-2.5 text-sm text-stone-800 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-600 outline-none focus:border-stone-400 dark:focus:border-stone-500 resize-none"
             />

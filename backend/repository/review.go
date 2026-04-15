@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"p2p_marketplace/backend/config"
 	"p2p_marketplace/backend/middleware"
 	"p2p_marketplace/backend/model"
 )
@@ -114,8 +115,12 @@ func CreateListingReview(reviewerId, listingId string, rating int, comment strin
 	db := middleware.DBConn
 	var review model.ListingReviewFromDb
 
-	if rating < 1 || rating > 5 {
+	if rating < config.ReviewRatingMin || rating > config.ReviewRatingMax {
 		return review, fmt.Errorf("Rating must be between 1 and 5")
+	}
+
+	if len(strings.TrimSpace(comment)) > config.ReviewCommentMaxLength {
+		return review, fmt.Errorf("Review comment must be at most 500 characters")
 	}
 
 	reviewedUserId, err := validateBuyerCanReview(reviewerId, listingId)
@@ -190,8 +195,12 @@ func UpdateListingReview(reviewerId, listingId string, rating int, comment strin
 	db := middleware.DBConn
 	var review model.ListingReviewFromDb
 
-	if rating < 1 || rating > 5 {
+	if rating < config.ReviewRatingMin || rating > config.ReviewRatingMax {
 		return review, fmt.Errorf("Rating must be between 1 and 5")
+	}
+
+	if len(strings.TrimSpace(comment)) > config.ReviewCommentMaxLength {
+		return review, fmt.Errorf("Review comment must be at most 500 characters")
 	}
 
 	if _, err := validateBuyerCanReview(reviewerId, listingId); err != nil {

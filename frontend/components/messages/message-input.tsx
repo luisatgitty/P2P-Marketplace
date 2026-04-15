@@ -7,6 +7,7 @@ import type { ReplyPreview } from "@/types/messaging";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { MESSAGE_MAX_LENGTH, limitMessageInputLength } from "@/utils/validation";
 
 type OutgoingAttachment = {
   name: string;
@@ -292,11 +293,12 @@ return (
               ref={textareaRef}
               id="message-input"
               value={value}
-              onChange={(e) => setValue(e.target.value)}
+              onChange={(e) => setValue(limitMessageInputLength(e.target.value))}
               onKeyDown={handleKeyDown}
               placeholder={replyTo ? `Reply to ${replyTo.senderName}…` : "Type a message…"}
               disabled={disabled}
               rows={1}
+              maxLength={MESSAGE_MAX_LENGTH}
               className={cn(
                 "min-h-9 max-h-32 resize-none",
                 "bg-white dark:bg-[#1c1f2e] border border-border",

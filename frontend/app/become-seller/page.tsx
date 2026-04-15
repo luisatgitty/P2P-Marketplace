@@ -39,6 +39,13 @@ import {
   sendPhoneOTP,
   verifyPhoneOTP,
 } from "@/services/verificationService";
+import {
+  AUTH_LIMITS,
+  LISTING_LIMITS,
+  VERIFICATION_ID_TYPES,
+  VERIFICATION_LIMITS,
+  isValidName,
+} from "@/utils/validation";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 type VerifyStep = 1 | 2 | 3;
@@ -325,15 +332,103 @@ export default function BecomeSellerPage() {
     setTimeout(() => setToastMessage(null), 2600);
   }
 
+  function validateStep1(): string | null {
+    if (!agreed) return "You need to agree to the Seller Terms of Service first.";
+
+    const normalizedPhone = normalizeToLocalPhoneDigits(user?.phoneNumber);
+    if (!normalizedPhone) return "Please add a valid Philippine mobile number in your profile.";
+
+    const mobileNumber = `0${normalizedPhone}`;
+    if (mobileNumber.length !== VERIFICATION_LIMITS.mobileNumberLength) {
+      return `Mobile number must be exactly ${VERIFICATION_LIMITS.mobileNumberLength} digits.`;
+    }
+
+    const city = (user?.locationCity ?? "").trim();
+    const province = (user?.locationProv ?? "").trim();
+    const barangay = (user?.locationBrgy ?? "").trim();
+
+    if (!city || city.length < LISTING_LIMITS.locationMinLength || city.length > LISTING_LIMITS.locationMaxLength) {
+      return `Profile city must be between ${LISTING_LIMITS.locationMinLength} and ${LISTING_LIMITS.locationMaxLength} characters.`;
+    }
+    if (!province || province.length < LISTING_LIMITS.locationMinLength || province.length > LISTING_LIMITS.locationMaxLength) {
+      return `Profile province must be between ${LISTING_LIMITS.locationMinLength} and ${LISTING_LIMITS.locationMaxLength} characters.`;
+    }
+    if (!barangay || barangay.length > LISTING_LIMITS.locationMaxLength) {
+      return `Profile barangay must not exceed ${LISTING_LIMITS.locationMaxLength} characters.`;
+    }
+
+    return null;
+  }
+
   function validateStep2(): string | null {
-    if (!idType)                    return "Please select an ID type.";
-    if (!firstName.trim())          return "First name is required.";
-    if (!lastName.trim())           return "Last name is required.";
-    if (!dob)                       return "Date of birth is required.";
-    if (!idNumber.trim())           return "ID number is required.";
+    const normalizedIdType = idType.trim();
+    const normalizedFirstName = firstName.trim();
+    const normalizedLastName = lastName.trim();
+    const normalizedIdNumber = idNumber.trim();
+
+    if (!normalizedIdType) return "Please select an ID type.";
+    if (
+      normalizedIdType.length < VERIFICATION_LIMITS.idTypeMinLength ||
+      normalizedIdType.length > VERIFICATION_LIMITS.idTypeMaxLength
+    ) {
+      return `ID type must be between ${VERIFICATION_LIMITS.idTypeMinLength} and ${VERIFICATION_LIMITS.idTypeMaxLength} characters.`;
+    }
+    if (!VERIFICATION_ID_TYPES.includes(normalizedIdType as (typeof VERIFICATION_ID_TYPES)[number])) {
+      return "Invalid ID type selected.";
+    }
+
+    const firstNameError = isValidName(normalizedFirstName, "First name");
+    if (firstNameError) return firstNameError;
+
+    const lastNameError = isValidName(normalizedLastName, "Last name");
+    if (lastNameError) return lastNameError;
+
+    if (!dob.trim()) return "Date of birth is required.";
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dob)) return "Date of birth must use YYYY-MM-DD format.";
+    const parsedDob = new Date(`${dob}T00:00:00`);
+    if (Number.isNaN(parsedDob.getTime()) || parsedDob > new Date()) {
+      return "Please enter a valid date of birth.";
+    }
+    const now = new Date();
+    const minimumAllowedBirthdate = new Date(
+      now.getFullYear() - VERIFICATION_LIMITS.minimumAge,
+      now.getMonth(),
+      now.getDate(),
+    );
+    if (parsedDob > minimumAllowedBirthdate) {
+      return `You must be at least ${VERIFICATION_LIMITS.minimumAge} years old.`;
+    }
+
+    if (!normalizedIdNumber) return "ID number is required.";
+    if (normalizedIdNumber.length < VERIFICATION_LIMITS.idNumberMinLength) {
+      return `ID number must be at least ${VERIFICATION_LIMITS.idNumberMinLength} characters.`;
+    }
+    if (normalizedIdNumber.length > VERIFICATION_LIMITS.idNumberMaxLength) {
+      return `ID number must not exceed ${VERIFICATION_LIMITS.idNumberMaxLength} characters.`;
+    }
+
     if (!(idFront instanceof File)) return "Front photo of your ID is required.";
     if (!(idBack  instanceof File)) return "Back photo of your ID is required.";
     if (!(selfie  instanceof File)) return "Selfie while holding your ID is required.";
+    return null;
+  }
+
+  function validateStep3(): string | null {
+    if (!showOtp) return "Please request an OTP code first.";
+    if (!otpVerified) return "Please verify your OTP code before submitting.";
+
+    const digits = phoneNumber.replace(/\D/g, "");
+    if (digits.length !== PHONE_DIGITS) return "Please provide a valid Philippine mobile number.";
+
+    const mobileNumber = `0${digits}`;
+    if (mobileNumber.length !== VERIFICATION_LIMITS.mobileNumberLength) {
+      return `Mobile number must be exactly ${VERIFICATION_LIMITS.mobileNumberLength} digits.`;
+    }
+
+    if (!(idFront instanceof File) || !(idBack instanceof File) || !(selfie instanceof File)) {
+      return "All required verification images must be uploaded.";
+    }
+
     return null;
   }
 
@@ -405,7 +500,11 @@ export default function BecomeSellerPage() {
     if (!device.isMobile) return;
 
     if (step === 1) {
-      if (!agreed || !hasProfileSetupRequirement) return;
+      const err = validateStep1();
+      if (err) {
+        toast.error(err, { position: "top-center" });
+        return;
+      }
       setStep(2);
       return;
     }
@@ -417,12 +516,19 @@ export default function BecomeSellerPage() {
       return;
     }
 
-    // ── CHANGED: Step 3 guard now checks otpVerified instead of just otpComplete
-    if (!showOtp || !otpVerified) return;
+    const step3Error = validateStep3();
+    if (step3Error) {
+      toast.error(step3Error, { position: "top-center" });
+      return;
+    }
 
     const digits = phoneNumber.replace(/\D/g, "");
-    if (digits.length !== PHONE_DIGITS) return;
-    if (!(idFront instanceof File) || !(idBack instanceof File) || !(selfie instanceof File)) return;
+    const frontFile = idFront;
+    const backFile = idBack;
+    const selfieFile = selfie;
+    if (!(frontFile instanceof File) || !(backFile instanceof File) || !(selfieFile instanceof File)) {
+      throw new Error("Verification images are missing.");
+    }
 
     setSubmitting(true);
     try {
@@ -430,16 +536,30 @@ export default function BecomeSellerPage() {
         method: "GET",
         credentials: "include",
       });
-      if (!sessionMetaResponse.ok) throw new Error("Failed to collect session metadata.");
       const sessionMeta = (await sessionMetaResponse.json()) as {
         ipAddress?: string;
         userAgent?: string;
       };
 
+      const ipAddress = (sessionMeta.ipAddress ?? "unknown");
+      if (ipAddress.length > VERIFICATION_LIMITS.ipAddressMaxLength) {
+        ipAddress.slice(0, VERIFICATION_LIMITS.ipAddressMaxLength);
+      }
+
+      const userAgent = (sessionMeta.userAgent ?? "unknown");
+      if (userAgent.length > VERIFICATION_LIMITS.userAgentMaxLength) {
+        userAgent.slice(0, VERIFICATION_LIMITS.userAgentMaxLength);
+      }
+
+      const hardwareInfo = String(getDeviceInfo({ asJson: true }));
+      if (hardwareInfo.length > VERIFICATION_LIMITS.hardwareInfoMaxLength) {
+        hardwareInfo.slice(0, VERIFICATION_LIMITS.hardwareInfoMaxLength);
+      }
+
       const [idImageFront, idImageBack, selfieImage] = await Promise.all([
-        fileToVerificationImagePayload(idFront, "id_front"),
-        fileToVerificationImagePayload(idBack,  "id_back"),
-        fileToVerificationImagePayload(selfie,  "selfie"),
+        fileToVerificationImagePayload(frontFile, "id_front"),
+        fileToVerificationImagePayload(backFile,  "id_back"),
+        fileToVerificationImagePayload(selfieFile,  "selfie"),
       ]);
 
       await submitVerification({
@@ -449,9 +569,9 @@ export default function BecomeSellerPage() {
         idLastName:  lastName.trim(),
         idBirthdate: dob,
         mobileNumber: "0" + digits,
-        ipAddress:   (sessionMeta.ipAddress ?? "unknown").trim() || "unknown",
-        userAgent:   (sessionMeta.userAgent ?? "unknown").trim() || "unknown",
-        hardwareInfo: String(getDeviceInfo({ asJson: true })),
+        ipAddress,
+        userAgent,
+        hardwareInfo,
         idImageFront,
         idImageBack,
         selfieImage,
@@ -710,11 +830,11 @@ export default function BecomeSellerPage() {
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <Label htmlFor="firstName" className="text-[11px] font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest">First Name <span className="text-red-500">*</span></Label>
-                    <Input id="firstName" name="given-name" autoComplete="given-name" value={firstName} onChange={e => setFirstName(e.target.value)} placeholder="First name" className="dark:bg-[#13151f] dark:border-[#2a2d3e]" />
+                    <Input id="firstName" name="given-name" autoComplete="given-name" value={firstName} onChange={e => setFirstName(e.target.value)} placeholder="First name" minLength={AUTH_LIMITS.nameMinLength} maxLength={AUTH_LIMITS.nameMaxLength} className="dark:bg-[#13151f] dark:border-[#2a2d3e]" />
                   </div>
                   <div className="space-y-1.5">
                     <Label htmlFor="lastName" className="text-[11px] font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest">Last Name <span className="text-red-500">*</span></Label>
-                    <Input id="lastName" name="family-name" autoComplete="family-name" value={lastName} onChange={e => setLastName(e.target.value)} placeholder="Last name" className="dark:bg-[#13151f] dark:border-[#2a2d3e]" />
+                    <Input id="lastName" name="family-name" autoComplete="family-name" value={lastName} onChange={e => setLastName(e.target.value)} placeholder="Last name" minLength={AUTH_LIMITS.nameMinLength} maxLength={AUTH_LIMITS.nameMaxLength} className="dark:bg-[#13151f] dark:border-[#2a2d3e]" />
                   </div>
                 </div>
 
@@ -725,7 +845,7 @@ export default function BecomeSellerPage() {
                   </div>
                   <div className="space-y-1.5">
                     <Label htmlFor="idNumber" className="text-[11px] font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest">ID Number <span className="text-red-500">*</span></Label>
-                    <Input id="idNumber" value={idNumber} onChange={e => setIdNumber(e.target.value)} placeholder="1234-5678-9012" className="dark:bg-[#13151f] dark:border-[#2a2d3e] font-mono" />
+                    <Input id="idNumber" value={idNumber} onChange={e => setIdNumber(e.target.value.slice(0, VERIFICATION_LIMITS.idNumberMaxLength))} placeholder="1234-5678-9012" minLength={VERIFICATION_LIMITS.idNumberMinLength} maxLength={VERIFICATION_LIMITS.idNumberMaxLength} className="dark:bg-[#13151f] dark:border-[#2a2d3e] font-mono" />
                   </div>
                 </div>
 

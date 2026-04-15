@@ -136,36 +136,8 @@ func UpdateMeProfile(c *fiber.Ctx) error {
 		return SendErrorResponse(c, 400, "Invalid request body. Please contact support.", err)
 	}
 
-	body.FirstName = strings.TrimSpace(body.FirstName)
-	body.LastName = strings.TrimSpace(body.LastName)
-	body.Bio = strings.TrimSpace(body.Bio)
-	body.PhoneNumber = strings.TrimSpace(body.PhoneNumber)
-	body.LocationProv = strings.TrimSpace(body.LocationProv)
-	body.LocationCity = strings.TrimSpace(body.LocationCity)
-	body.LocationBrgy = strings.TrimSpace(body.LocationBrgy)
-	body.CurrentPassword = strings.TrimSpace(body.CurrentPassword)
-	body.NewPassword = strings.TrimSpace(body.NewPassword)
-
-	if len(body.FirstName) < config.NameMinLength || len(body.FirstName) > config.NameMaxLength {
-		return SendErrorResponse(c, 400, fmt.Sprintf("First name must be between %d and %d characters", config.NameMinLength, config.NameMaxLength), nil)
-	}
-	if len(body.LastName) < config.NameMinLength || len(body.LastName) > config.NameMaxLength {
-		return SendErrorResponse(c, 400, fmt.Sprintf("Last name must be between %d and %d characters", config.NameMinLength, config.NameMaxLength), nil)
-	}
-	if (body.LocationProv == "" && body.LocationCity != "") || (body.LocationProv != "" && body.LocationCity == "") {
-		return SendErrorResponse(c, 400, "Province and city/municipality must both be provided", nil)
-	}
-	if len(body.Bio) > 200 {
-		return SendErrorResponse(c, 400, "Bio must not exceed 200 characters", nil)
-	}
-
-	if body.NewPassword != "" {
-		if body.CurrentPassword == "" {
-			return SendErrorResponse(c, 400, "Current password is required to set a new password", nil)
-		}
-		if err := middleware.ValidatePasswordLength(body.NewPassword); err != nil {
-			return SendErrorResponse(c, 400, err.Error(), err)
-		}
+	if err := middleware.ValidateUpdateProfileInput(&body); err != nil {
+		return SendErrorResponse(c, 400, err.Error(), err)
 	}
 
 	if err := repository.UpdateProfile(userId, body); err != nil {
@@ -222,38 +194,8 @@ func SubmitMeVerification(c *fiber.Ctx) error {
 		return SendErrorResponse(c, 400, "Invalid request body", err)
 	}
 
-	body.IdType = strings.TrimSpace(body.IdType)
-	body.IdNumber = strings.TrimSpace(body.IdNumber)
-	body.IdFirstName = strings.TrimSpace(body.IdFirstName)
-	body.IdLastName = strings.TrimSpace(body.IdLastName)
-	body.IdBirthdate = strings.TrimSpace(body.IdBirthdate)
-	body.UserAgent = strings.TrimSpace(body.UserAgent)
-	body.IpAddress = strings.TrimSpace(body.IpAddress)
-	body.HardwareInfo = strings.TrimSpace(body.HardwareInfo)
-
-	if body.IdType == "" {
-		return SendErrorResponse(c, 400, "ID type is required", nil)
-	}
-	if body.IdNumber == "" {
-		return SendErrorResponse(c, 400, "ID number is required", nil)
-	}
-	if body.IdFirstName == "" || body.IdLastName == "" {
-		return SendErrorResponse(c, 400, "ID first and last name are required", nil)
-	}
-	if body.IdBirthdate == "" {
-		return SendErrorResponse(c, 400, "ID birthdate is required", nil)
-	}
-	if body.MobileNumber == "" {
-		return SendErrorResponse(c, 400, "Mobile number is required", nil)
-	}
-	if body.IdImageFront == nil || strings.TrimSpace(body.IdImageFront.Data) == "" {
-		return SendErrorResponse(c, 400, "ID front image is required", nil)
-	}
-	if body.IdImageBack == nil || strings.TrimSpace(body.IdImageBack.Data) == "" {
-		return SendErrorResponse(c, 400, "ID back image is required", nil)
-	}
-	if body.SelfieImage == nil || strings.TrimSpace(body.SelfieImage.Data) == "" {
-		return SendErrorResponse(c, 400, "Selfie image is required", nil)
+	if err := middleware.ValidateSubmitVerificationInput(&body); err != nil {
+		return SendErrorResponse(c, 400, err.Error(), err)
 	}
 
 	if err := repository.SubmitUserVerification(userId, body); err != nil {

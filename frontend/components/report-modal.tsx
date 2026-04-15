@@ -31,6 +31,7 @@ export function ReportModal({
 }: ReportModalProps) {
   const [reason, setReason] = useState<string | null>(null);
   const [details, setDetails] = useState("");
+  const REPORT_MAX_LENGTH = 500;
 
   useEffect(() => {
     if (!open) {
@@ -39,19 +40,9 @@ export function ReportModal({
     }
   }, [open]);
 
-  const wordCount = useMemo(() => {
-    const trimmed = details.trim();
-    if (!trimmed) return 0;
-    return trimmed.split(/\s+/).length;
-  }, [details]);
-
   const handleDetailsChange = (value: string) => {
-    const words = value.trim() ? value.trim().split(/\s+/) : [];
-    if (words.length <= 80) {
-      setDetails(value);
-    } else {
-      setDetails(words.slice(0, 80).join(" "));
-    }
+    if (value.length > REPORT_MAX_LENGTH) return;
+    else setDetails(value.slice(0, REPORT_MAX_LENGTH));
   };
 
   if (!open) return null;
@@ -84,16 +75,17 @@ export function ReportModal({
 
         <div className="mb-5">
           <label className="text-xs font-medium text-stone-500 dark:text-stone-400 mb-1.5 block">
-            Report details (max 80 words)
+            Report details
           </label>
           <textarea
             rows={4}
             value={details}
             onChange={(e) => handleDetailsChange(e.target.value)}
+            maxLength={REPORT_MAX_LENGTH}
             placeholder="Describe what happened or why this should be reviewed..."
             className="w-full bg-stone-50 dark:bg-[#13151f] border border-stone-200 dark:border-[#2a2d3e] rounded-xl px-3 py-2.5 text-sm text-stone-800 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-600 outline-none focus:border-stone-400 dark:focus:border-stone-500 resize-none"
           />
-          <p className="mt-1 text-[11px] text-stone-400 dark:text-stone-500 text-right">{wordCount}/80 words</p>
+          <p className="mt-1 text-[11px] text-stone-400 dark:text-stone-500 text-right">{details.length}/{REPORT_MAX_LENGTH}</p>
         </div>
 
         {reason ? (

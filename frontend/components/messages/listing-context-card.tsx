@@ -74,6 +74,7 @@ export default function ListingContextCard({
   const scheduleValue = String(listing.schedule ?? "").trim();
   const [ newPrice, setNewPrice ] = useState(offeredPrice);
   const isOfferChanged = Math.trunc(newPrice) !== Math.trunc(offeredPrice) || !hasTransaction;
+  const REVIEW_MAX_LENGTH = 500;
 
   useEffect(() => {
     let mounted = true;
@@ -468,14 +469,20 @@ export default function ListingContextCard({
                 <label className="text-xs font-semibold text-stone-500 dark:text-stone-400 mb-2 block">
                   Comment
                 </label>
-                <textarea
-                  rows={4}
-                  value={comment}
-                  onChange={(e) => setComment(e.target.value)}
-                  disabled={reviewSubmitting || reviewDeleting}
-                  placeholder="Share your experience with this transaction..."
-                  className="w-full bg-stone-50 dark:bg-[#13151f] border border-stone-200 dark:border-[#2a2d3e] rounded-xl px-3 py-2.5 text-sm text-stone-800 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-600 outline-none focus:border-stone-400 dark:focus:border-stone-500 resize-none disabled:opacity-60 disabled:cursor-not-allowed"
-                />
+                <div className="space-y-1">
+                  <textarea
+                    rows={4}
+                    value={comment}
+                    onChange={(e) => setComment(e.target.value.slice(0, REVIEW_MAX_LENGTH))}
+                    maxLength={REVIEW_MAX_LENGTH}
+                    disabled={reviewSubmitting || reviewDeleting}
+                    placeholder="Share your experience with this transaction..."
+                    className="w-full bg-stone-50 dark:bg-[#13151f] border border-stone-200 dark:border-[#2a2d3e] rounded-xl px-3 py-2.5 text-sm text-stone-800 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-600 outline-none focus:border-stone-400 dark:focus:border-stone-500 resize-none disabled:opacity-60 disabled:cursor-not-allowed"
+                  />
+                  <p className="text-right text-[11px] text-stone-500 dark:text-stone-400">
+                    {comment.length}/{REVIEW_MAX_LENGTH}
+                  </p>
+                </div>
               </div>
 
               <div className="flex items-center justify-between gap-2">
@@ -563,14 +570,20 @@ export default function ListingContextCard({
                 <label className="text-xs font-semibold text-stone-500 dark:text-stone-400 mb-2 block">
                   Comment
                 </label>
-                <textarea
-                  rows={4}
-                  value={comment}
-                  onChange={(e) => setComment(e.target.value)}
-                  disabled={reviewSubmitting || reviewDeleting}
-                  placeholder="Share your experience with this transaction..."
-                  className="w-full bg-stone-50 dark:bg-[#13151f] border border-stone-200 dark:border-[#2a2d3e] rounded-xl px-3 py-2.5 text-sm text-stone-800 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-600 outline-none focus:border-stone-400 dark:focus:border-stone-500 resize-none disabled:opacity-60 disabled:cursor-not-allowed"
-                />
+                <div className="space-y-1">
+                  <textarea
+                    rows={4}
+                    value={comment}
+                    onChange={(e) => setComment(e.target.value.slice(0, REVIEW_MAX_LENGTH))}
+                    maxLength={REVIEW_MAX_LENGTH}
+                    disabled={reviewSubmitting || reviewDeleting}
+                    placeholder="Share your experience with this transaction..."
+                    className="w-full bg-stone-50 dark:bg-[#13151f] border border-stone-200 dark:border-[#2a2d3e] rounded-xl px-3 py-2.5 text-sm text-stone-800 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-600 outline-none focus:border-stone-400 dark:focus:border-stone-500 resize-none disabled:opacity-60 disabled:cursor-not-allowed"
+                  />
+                  <p className="text-right text-[11px] text-stone-500 dark:text-stone-400">
+                    {comment.length}/{REVIEW_MAX_LENGTH}
+                  </p>
+                </div>
               </div>
 
               <div className="flex items-center justify-between gap-2">
@@ -620,7 +633,6 @@ export default function ListingContextCard({
         onOfferAmountChange={(value) => setNewPrice(Number.parseInt(value || "0", 10) || 0)}
         note={offerMessage}
         onNoteChange={setOfferMessage}
-        noteLabel="Add a message (optional)"
         notePlaceholder="e.g. Updated offer based on our discussion."
         submitLabel="Update Offer"
         submitDisabled={!isOfferChanged}

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Tag, Home, Wrench, ChevronRight, ShieldCheck, Zap, Users } from "lucide-react";
+import { Tag, Home, Wrench, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useUser } from "@/utils/UserContext";
 
@@ -55,12 +55,6 @@ const TYPES = [
     arrowCls:   "text-violet-500",
   },
 ] as const;
-
-const TRUST_ITEMS = [
-  { icon: Zap,        text: "Free to list — always"            },
-  { icon: ShieldCheck,text: "Verified seller badge available"  },
-  { icon: Users,      text: "Reach thousands of local buyers"  },
-];
 
 export default function CreateListingPage() {
   const { isAuth } = useUser();

@@ -252,12 +252,14 @@ func mapCondition(condition string) (string, error) {
 		return "NEW", nil
 	case "like new":
 		return "LIKE_NEW", nil
-	case "lightly used":
-		return "LIGHTLY_USED", nil
 	case "well used":
 		return "WELL_USED", nil
 	case "heavily used":
 		return "HEAVILY_USED", nil
+	case "defective":
+		return "DEFECTIVE", nil
+	case "not working":
+		return "NOT_WORKING", nil
 	default:
 		return "", fmt.Errorf("Invalid condition")
 	}

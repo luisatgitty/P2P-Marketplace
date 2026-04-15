@@ -36,3 +36,178 @@ const (
 	SessionTokenExpLength = 43
 	SessionDuration       = 7 * 24 * time.Hour
 )
+
+// ─── Profile ─────────────────────────────────────────
+const (
+	ProfilePhoneExactLength  = 11
+	ProfileBioMaxLength      = 200
+	ProfileLocationMinLength = 2
+	ProfileLocationMaxLength = 100
+)
+
+// ─── Listing ─────────────────────────────────────────
+const (
+	ListingTitleMinLength       = 5
+	ListingTitleMaxLength       = 80
+	ListingCategoryMinLength    = 2
+	ListingCategoryMaxLength    = 80
+	ListingDescriptionMinLength = 20
+	ListingDescriptionMaxLength = 2000
+	ListingLocationMinLength    = 2
+	ListingLocationMaxLength    = 100
+	ListingPriceMinValue        = 1
+	ListingPriceMaxValue        = 100000000
+	ListingMinPeriodMinLength   = 1
+	ListingMinPeriodMaxLength   = 60
+	ListingDepositMaxLength     = 60
+	ListingTurnaroundMinLength  = 2
+	ListingTurnaroundMaxLength  = 60
+	ListingServiceAreaMinLength = 2
+	ListingServiceAreaMaxLength = 60
+	ListingArrangementMaxLength = 60
+	ListingTagMinLength         = 2
+	ListingTagMaxLength         = 60
+	ListingMaxHighlights        = 10
+	ListingMaxInclusions        = 10
+	ListingMaxAmenities         = 10
+	ListingMaxImages            = 8
+	ListingMaxTimeWindows       = 8
+)
+
+var ListingCategories = []string{
+	"Agriculture & Gardening",
+	"Education",
+	"Electronics & Gadgets",
+	"Events",
+	"Fashion & Beauty",
+	"Food",
+	"Health & Wellness",
+	"Hobbies & Collectibles",
+	"Home & Living",
+	"IT & Digital",
+	"Logistics",
+	"Maintenance & Repair",
+	"Office Supplies",
+	"Pet",
+	"Professional",
+	"Space & Property",
+	"Sports & Outdoors",
+	"Tools & Equipment",
+	"Vehicles",
+}
+
+var ListingSellPriceUnits = []string{
+	"Fixed Price",
+	"Negotiable",
+	"Contact for Price",
+	"Starting Price",
+}
+
+var ListingRentPriceUnits = []string{
+	"/ hour",
+	"/ day",
+	"/ night",
+	"/ week",
+	"/ month",
+	"/ year",
+	"/ sq m",
+	"/ km",
+}
+
+var ListingServicePriceUnits = []string{
+	"/ hour",
+	"/ session",
+	"/ project",
+	"/ package",
+	"/ unit",
+	"/ sq m",
+	"/ km",
+	"/ head",
+	"Quote Required",
+}
+
+var ListingConditionOptions = []string{
+	"New",
+	"Like New",
+	"Well Used",
+	"Heavily Used",
+	"Defective",
+	"Not Working",
+}
+
+var ListingDeliveryOptions = []string{
+	"Meet-up only",
+	"Delivery available",
+	"Meet-up or Delivery",
+}
+
+// ─── Messaging ──────────────────────────────────────
+const (
+	MessageContentMaxLength = 2000
+)
+
+// ─── Review ─────────────────────────────────────────
+const (
+	ReviewRatingMin        = 1
+	ReviewRatingMax        = 5
+	ReviewCommentMaxLength = 500
+)
+
+// ─── Report ─────────────────────────────────────────
+const (
+	ReportDescriptionMaxLength = 500
+	ReportDescriptionMaxWords  = 80
+)
+
+var ReportReasons = []string{
+	"Scam / Fraud",
+	"Prohibited item",
+	"Fake / Counterfeit",
+	"Wrong category",
+	"Spam / Duplicate",
+	"Other",
+}
+
+// ─── Admin Moderation ──────────────────────────────
+const (
+	AdminReasonMaxLength = 500
+)
+
+var AdminReportActionTypes = []string{
+	"DISMISS",
+	"BAN_LISTING",
+	"LOCK_3",
+	"LOCK_7",
+	"LOCK_30",
+	"DELETE_LISTING",
+	"PERMANENT_BAN",
+}
+
+// ─── Seller Verification ───────────────────────────
+const (
+	VerificationMinAgeYears        = 18
+	VerificationIdTypeMinLength    = 3
+	VerificationIdTypeMaxLength    = 20
+	VerificationIdNumberMinLength  = 4
+	VerificationIdNumberMaxLength  = 60
+	VerificationMobileExactLength  = 11
+	VerificationUserAgentMinLength = 1
+	VerificationUserAgentMaxLength = 1024
+	VerificationIpAddressMinLength = 7
+	VerificationIpAddressMaxLength = 45
+	VerificationHardwareMinLength  = 200
+	VerificationHardwareMaxLength  = 350
+)
+
+var VerificationIdTypes = []string{
+	"philsys",
+	"postal",
+	"drivers",
+	"prc",
+	"passport",
+	"sss",
+	"gsis",
+	"hdmf",
+	"voters",
+	"acr",
+}
