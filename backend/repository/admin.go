@@ -1462,11 +1462,54 @@ func SetAdminReportAction(reportId, adminUserId, action, reason string) error {
 	return nil
 }
 
-func GetAdminVerifications() ([]model.AdminVerificationListItemFromDb, error) {
+func GetAdminVerifications(query model.AdminVerificationsQuery) ([]model.AdminVerificationListItemFromDb, int, error) {
 	db := middleware.DBConn
 	rows := make([]model.AdminVerificationListItemFromDb, 0)
+	total := 0
 
-	query := `
+	whereParts := make([]string, 0)
+	args := make([]any, 0)
+
+	search := strings.ToLower(strings.TrimSpace(query.Search))
+	if search != "" {
+		likeSearch := "%" + search + "%"
+		whereParts = append(whereParts, `
+			(
+				LOWER(COALESCE(NULLIF(TRIM(CONCAT_WS(' ', NULLIF(TRIM(u.first_name), ''), NULLIF(TRIM(u.last_name), ''))), ''), u.email, '')) LIKE ?
+				OR LOWER(COALESCE(u.email, '')) LIKE ?
+			)
+		`)
+		args = append(args, likeSearch, likeSearch)
+	}
+
+	statusFilter := strings.ToUpper(strings.TrimSpace(query.Status))
+	if statusFilter != "" && statusFilter != "ALL" {
+		whereParts = append(whereParts, "uv.verification_status::text = ?")
+		args = append(args, statusFilter)
+	}
+
+	idTypeFilter := strings.ToLower(strings.TrimSpace(query.IdType))
+	if idTypeFilter != "" && idTypeFilter != "all" {
+		whereParts = append(whereParts, "LOWER(COALESCE(uv.id_type, '')) = ?")
+		args = append(args, idTypeFilter)
+	}
+
+	whereClause := ""
+	if len(whereParts) > 0 {
+		whereClause = "WHERE " + strings.Join(whereParts, " AND ")
+	}
+
+	countQuery := `
+		SELECT COUNT(*)::int
+		FROM public.user_verifications uv
+		INNER JOIN public.users u ON u.id = uv.user_id
+		` + whereClause
+
+	if err := db.Raw(countQuery, args...).Scan(&total).Error; err != nil {
+		return nil, 0, fmt.Errorf("Failed to fetch verification count")
+	}
+
+	selectQuery := `
 		SELECT
 			uv.id::text AS id,
 			uv.user_id::text AS user_id,
@@ -1493,33 +1536,39 @@ func GetAdminVerifications() ([]model.AdminVerificationListItemFromDb, error) {
 		FROM public.user_verifications uv
 		INNER JOIN public.users u ON u.id = uv.user_id
 		LEFT JOIN public.users rev ON rev.id = uv.reviewed_by_id
+		` + whereClause + `
 		ORDER BY uv.submitted_at DESC
+		LIMIT ?
+		OFFSET ?
 	`
 
-	if err := db.Raw(query).Scan(&rows).Error; err != nil {
-		return nil, fmt.Errorf("Failed to fetch verifications")
+	selectArgs := append([]any{}, args...)
+	selectArgs = append(selectArgs, query.Limit, query.Offset)
+
+	if err := db.Raw(selectQuery, selectArgs...).Scan(&rows).Error; err != nil {
+		return nil, 0, fmt.Errorf("Failed to fetch verifications")
 	}
 
 	for i := range rows {
 		decryptedIDNumber, err := middleware.DecryptVerificationPII(rows[i].IdNumber)
 		if err != nil {
-			return nil, fmt.Errorf("Failed to decrypt verification data")
+			return nil, 0, fmt.Errorf("Failed to decrypt verification data")
 		}
 		decryptedIDFirstName, err := middleware.DecryptVerificationPII(rows[i].IdFirstName)
 		if err != nil {
-			return nil, fmt.Errorf("Failed to decrypt verification data")
+			return nil, 0, fmt.Errorf("Failed to decrypt verification data")
 		}
 		decryptedIDLastName, err := middleware.DecryptVerificationPII(rows[i].IdLastName)
 		if err != nil {
-			return nil, fmt.Errorf("Failed to decrypt verification data")
+			return nil, 0, fmt.Errorf("Failed to decrypt verification data")
 		}
 		decryptedBirthdate, err := middleware.DecryptVerificationPII(rows[i].IdBirthdate)
 		if err != nil {
-			return nil, fmt.Errorf("Failed to decrypt verification data")
+			return nil, 0, fmt.Errorf("Failed to decrypt verification data")
 		}
 		decryptedMobileNumber, err := middleware.DecryptVerificationPII(rows[i].MobileNumber)
 		if err != nil {
-			return nil, fmt.Errorf("Failed to decrypt verification data")
+			return nil, 0, fmt.Errorf("Failed to decrypt verification data")
 		}
 
 		rows[i].IdNumber = strings.TrimSpace(decryptedIDNumber)
@@ -1534,7 +1583,7 @@ func GetAdminVerifications() ([]model.AdminVerificationListItemFromDb, error) {
 		}
 	}
 
-	return rows, nil
+	return rows, total, nil
 }
 
 func SetAdminVerificationStatus(verificationId, reviewedById, status, reason string) error {

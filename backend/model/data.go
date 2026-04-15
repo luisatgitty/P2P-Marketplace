@@ -477,6 +477,14 @@ type AdminSetReportStatusBody struct {
 	Reason string `json:"reason"`
 }
 
+type AdminVerificationsQuery struct {
+	Search string
+	Status string
+	IdType string
+	Limit  int
+	Offset int
+}
+
 type AdminVerificationListItemFromDb struct {
 	Id              string     `gorm:"column:id" json:"id"`
 	UserId          string     `gorm:"column:user_id" json:"user_id"`

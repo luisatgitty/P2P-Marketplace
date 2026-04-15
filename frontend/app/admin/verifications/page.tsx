@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect, useCallback, type UIEvent } from "react";
 import {
   Search, X, CheckCircle2, XCircle, ShieldCheck, Clock,
-  Eye, AlertTriangle, IdCard, ChevronLeft, ChevronRight,
+  Eye, AlertTriangle, IdCard,
   User, Phone, Calendar, Hash, Monitor, Globe,
   Cpu, CreditCard, ChevronDown, ChevronUp, ChevronsUpDown, RotateCw, Expand,
 } from "lucide-react";
@@ -546,20 +546,33 @@ function DetailModal({ verif, onClose, onApprove, onReject, actionLoading = fals
 // ── Main page ──────────────────────────────────────────────────────────────────
 export default function VerificationsPage() {
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [idTypeFilter, setIdTypeFilter] = useState<IdType>("ALL");
   const [sort, setSort] = useState<{ field: SortField; dir: SortDir }>({ field: "submitted", dir: "desc" });
-  const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<AdminVerification | null>(null);
   const [records, setRecords] = useState<AdminVerification[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const [offset, setOffset] = useState(0);
+  const [totalCount, setTotalCount] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
-  const PER_PAGE = 8;
+  const FETCH_LIMIT = 16;
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      setDebouncedSearch(search.trim());
+    }, 250);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [search]);
 
   function toggleSort(field: SortField) {
     setSort(s => s.field === field ? { field, dir: s.dir === "asc" ? "desc" : "asc" } : { field, dir: "asc" });
-    setPage(1);
   }
 
   const mapRecord = useCallback((record: AdminVerificationRecord): AdminVerification => {
@@ -602,33 +615,47 @@ export default function VerificationsPage() {
     };
   }, []);
 
-  const loadVerifications = useCallback(async () => {
-    setLoading(true);
+  const loadVerifications = useCallback(async (reset: boolean, requestedOffset = 0) => {
+    if (reset) {
+      setLoading(true);
+    } else {
+      setLoadingMore(true);
+    }
+
+    const nextOffset = reset ? 0 : requestedOffset;
+
     try {
-      const data = await getAdminVerifications();
-      setRecords((data ?? []).map(mapRecord));
+      const payload = await getAdminVerifications({
+        search: debouncedSearch,
+        status: statusFilter,
+        idType: idTypeFilter,
+        limit: FETCH_LIMIT,
+        offset: nextOffset,
+      });
+
+      const received = (payload.verifications ?? []).map(mapRecord);
+      const nextCount = reset ? received.length : nextOffset + received.length;
+
+      setRecords((prev) => (reset ? received : [...prev, ...received]));
+      setOffset(nextCount);
+      setTotalCount(payload.total);
+      setHasMore(nextCount < payload.total);
     } catch (error) {
       const message = typeof error === "string" ? error : "Failed to load verification records";
       toast.error(message, { position: "top-center" });
     } finally {
       setLoading(false);
+      setLoadingMore(false);
       setIsRefreshing(false);
     }
-  }, [mapRecord]);
+  }, [mapRecord, debouncedSearch, statusFilter, idTypeFilter]);
 
   useEffect(() => {
-    void loadVerifications();
-  }, [loadVerifications]);
+    void loadVerifications(true, 0);
+  }, [debouncedSearch, statusFilter, idTypeFilter, loadVerifications]);
 
   const filtered = useMemo(() => {
     let data = [...records];
-    if (search)
-      data = data.filter(v =>
-        v.user_name.toLowerCase().includes(search.toLowerCase()) ||
-        v.user_email.toLowerCase().includes(search.toLowerCase()),
-      );
-    if (statusFilter !== "ALL") data = data.filter(v => v.status === statusFilter);
-    if (idTypeFilter !== "ALL") data = data.filter(v => v.id_type.toLowerCase() === idTypeFilter);
 
     data.sort((a, b) => {
       let va: string | number = "";
@@ -658,11 +685,8 @@ export default function VerificationsPage() {
     });
 
     return data;
-  }, [records, search, statusFilter, idTypeFilter, sort]);
+  }, [records, sort]);
 
-  const totalPages    = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
-  const paged         = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
-  const totalCount    = records.length;
   const pendingCount  = records.filter(r => r.status === "PENDING").length;
   const verifiedCount = records.filter(r => r.status === "VERIFIED").length;
   const rejectedCount = records.filter(r => r.status === "REJECTED").length;
@@ -772,8 +796,18 @@ export default function VerificationsPage() {
     }
   }
 
+  function handleTableScroll(event: UIEvent<HTMLDivElement>) {
+    if (loading || loadingMore || !hasMore) return;
+
+    const node = event.currentTarget;
+    const remaining = node.scrollHeight - node.scrollTop - node.clientHeight;
+    if (remaining > 120) return;
+
+    void loadVerifications(false, offset);
+  }
+
   return (
-    <div className="p-5 sm:p-6 space-y-5">
+    <div className="h-[calc(100vh)] p-5 sm:p-6 flex flex-col gap-5 min-h-0">
 
       {/* Page header */}
       <div>
@@ -805,7 +839,6 @@ export default function VerificationsPage() {
                 if (status === "ALL") return "ALL";
                 return prev === status ? "ALL" : status;
               });
-              setPage(1);
             }}
           >
             <CardContent className="text-center">
@@ -823,7 +856,7 @@ export default function VerificationsPage() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400 pointer-events-none" />
           <Input
             value={search}
-            onChange={e => { setSearch(e.target.value); setPage(1); }}
+            onChange={e => { setSearch(e.target.value); }}
             placeholder="Search by name or email…"
             className="pl-9 dark:bg-[#13151f] dark:border-[#2a2d3e]"
           />
@@ -831,12 +864,12 @@ export default function VerificationsPage() {
         <div className="flex gap-2">
           <FilterSelect
             value={idTypeFilter}
-            onChange={v => { setIdTypeFilter(v as IdType); setPage(1); }}
+            onChange={v => { setIdTypeFilter(v as IdType); }}
             options={ID_TYPE_OPTIONS}
           />
           <FilterSelect
             value={statusFilter}
-            onChange={v => { setStatusFilter(v); setPage(1); }}
+            onChange={v => { setStatusFilter(v); }}
             options={[
               ["ALL", "All Status"], ["PENDING", "Pending"],
               ["VERIFIED", "Verified"], ["REJECTED", "Rejected"],
@@ -845,7 +878,7 @@ export default function VerificationsPage() {
           {hasActiveFilters && (
             <Button
               variant="outline"
-              onClick={() => { setSearch(""); setIdTypeFilter("ALL"); setStatusFilter("ALL"); setPage(1); }}
+              onClick={() => { setSearch(""); setIdTypeFilter("ALL"); setStatusFilter("ALL"); }}
               className="hover:bg-destructive/10! text-destructive! border-destructive! focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40"
             >
               <X className="w-3 h-3" /> Clear
@@ -857,8 +890,7 @@ export default function VerificationsPage() {
           variant="outline"
           onClick={() => {
             setIsRefreshing(true);
-            setPage(1);
-            void loadVerifications();
+            void loadVerifications(true, 0);
           }}
           disabled={loading}
           className="border-sky-600 text-sky-600! hover:bg-sky-600/10 focus-visible:border-sky-600 focus-visible:ring-sky-600/20 dark:border-sky-400 dark:text-sky-400! dark:hover:bg-sky-400/10 dark:focus-visible:border-sky-400 dark:focus-visible:ring-sky-400/40"
@@ -868,9 +900,9 @@ export default function VerificationsPage() {
       </div>
 
       {/* Table */}
-      <Card className="p-0 rounded-lg dark:bg-[#1c1f2e] dark:border-[#2a2d3e] overflow-hidden">
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
+      <Card className="p-0 rounded-lg dark:bg-[#1c1f2e] dark:border-[#2a2d3e] overflow-hidden flex-1 min-h-0">
+        <CardContent className="p-0 h-full min-h-0 flex flex-col">
+          <div className="overflow-auto h-full" onScroll={handleTableScroll}>
             <Table>
               <TableHeader>
                 <TableRow className="border-stone-200 dark:border-[#2a2d3e] bg-stone-50 dark:bg-[#13151f] hover:bg-stone-50 dark:hover:bg-[#13151f]">
@@ -886,20 +918,20 @@ export default function VerificationsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {loading ? (
+                {loading && filtered.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={9} className="py-16 text-center text-sm text-stone-400 dark:text-stone-500">
                       Loading verification requests...
                     </TableCell>
                   </TableRow>
-                ) : paged.length === 0 ? (
+                ) : filtered.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={9} className="py-16 text-center text-sm text-stone-400 dark:text-stone-500">
                       No verification requests found.
                     </TableCell>
                   </TableRow>
                 ) : (
-                  paged.map(verif => {
+                  filtered.map(verif => {
                     const sc         = STATUS_CONFIG[verif.status];
                     const StatusIcon = sc.Icon;
                     return (
@@ -988,49 +1020,29 @@ export default function VerificationsPage() {
                     );
                   })
                 )}
+
+                {loadingMore && (
+                  <TableRow>
+                    <TableCell colSpan={9} className="py-4 text-center text-sm text-stone-400 dark:text-stone-500">
+                      Loading more verification requests...
+                    </TableCell>
+                  </TableRow>
+                )}
+
+                {!hasMore && filtered.length > 0 && (
+                  <TableRow>
+                    <TableCell colSpan={9} className="py-4 text-center text-xs text-stone-400 dark:text-stone-500">
+                      End of verification results.
+                    </TableCell>
+                  </TableRow>
+                )}
               </TableBody>
             </Table>
           </div>
 
-          {/* Pagination */}
           <Separator className="dark:bg-[#2a2d3e]" />
-          <div className="flex items-center justify-between px-4 py-3">
-            <p className="text-sm text-stone-400 dark:text-stone-500">
-              Page {page} of {totalPages} · {filtered.length} result{filtered.length !== 1 ? "s" : ""}
-            </p>
-            <div className="flex items-center gap-1.5">
-              <Button
-                variant="outline" size="sm"
-                onClick={() => setPage(p => Math.max(1, p - 1))}
-                disabled={page === 1}
-                className="h-8 w-8 p-0 rounded-lg dark:border-[#2a2d3e] dark:text-stone-300 dark:hover:bg-[#252837]"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </Button>
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map(n => (
-                <Button
-                  key={n}
-                  variant={page === n ? "default" : "ghost"} size="sm"
-                  onClick={() => setPage(n)}
-                  className={cn(
-                    "h-8 w-8 p-0 rounded-lg text-sm font-bold",
-                    page === n
-                      ? "bg-[#1e2433] text-white hover:bg-[#2a3650]"
-                      : "text-stone-500 dark:text-stone-400 dark:hover:bg-[#252837]",
-                  )}
-                >
-                  {n}
-                </Button>
-              ))}
-              <Button
-                variant="outline" size="sm"
-                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                disabled={page === totalPages}
-                className="h-8 w-8 p-0 rounded-lg dark:border-[#2a2d3e] dark:text-stone-300 dark:hover:bg-[#252837]"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </Button>
-            </div>
+          <div className="px-4 py-3 text-sm text-stone-400 dark:text-stone-500">
+            Showing {filtered.length.toLocaleString()} of {totalCount.toLocaleString()} result{totalCount !== 1 ? "s" : ""}
           </div>
         </CardContent>
       </Card>
