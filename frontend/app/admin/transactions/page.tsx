@@ -155,7 +155,7 @@ export default function TransactionsPage() {
   const [offset, setOffset] = useState(0);
   const [totalCount, setTotalCount] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const FETCH_LIMIT = 20;
+  const FETCH_LIMIT = 16;
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
@@ -282,22 +282,22 @@ export default function TransactionsPage() {
 
   // ── Render ────────────────────────────────────────────────────────────────────
   return (
-    <div className="h-[calc(100vh-4rem)] p-5 sm:p-6 flex flex-col gap-5 min-h-0">
+    <div className="h-[calc(100vh)] p-5 sm:p-6 flex flex-col gap-5 min-h-0">
 
       {/* ── Page header ── */}
-      <div>
+      {/* <div>
         <h2 className="text-xl font-extrabold text-stone-900 dark:text-stone-50">
           Transactions
         </h2>
         <p className="text-sm text-stone-500 dark:text-stone-400 mt-0.5">
           Monitor all listing transactions across selling, renting, and service listings.
         </p>
-      </div>
+      </div> */}
 
       {/* ── Summary cards — clickable to filter by status ── */}
       <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
         {[
-          { label: "Total Transactions",     count: totalCount,     status: "ALL",       color: "text-stone-700 dark:text-stone-200", bg: "bg-stone-100 dark:bg-[#13151f]",     border: "border-stone-200 dark:border-[#2a2d3e]", Icon: Handshake   },
+          { label: "Total",     count: totalCount,     status: "ALL",       color: "text-stone-700 dark:text-stone-200", bg: "bg-stone-100 dark:bg-[#13151f]",     border: "border-stone-200 dark:border-[#2a2d3e]", Icon: Handshake   },
           { label: "Pending",   count: pendingCount,   status: "PENDING",   color: "text-amber-600 dark:text-amber-400", bg: "bg-amber-50 dark:bg-amber-950/20",  border: "border-amber-200 dark:border-amber-800",  Icon: Clock       },
           { label: "Confirmed", count: confirmedCount, status: "CONFIRMED", color: "text-blue-600 dark:text-blue-400",   bg: "bg-blue-50 dark:bg-blue-950/20",    border: "border-blue-200 dark:border-blue-800",    Icon: Handshake   },
           { label: "Completed", count: completedCount, status: "COMPLETED", color: "text-teal-600 dark:text-teal-400",   bg: "bg-teal-50 dark:bg-teal-950/20",    border: "border-teal-200 dark:border-teal-800",    Icon: CheckCircle2 },
@@ -306,7 +306,7 @@ export default function TransactionsPage() {
           <Card
             key={label}
             className={cn(
-              "rounded-lg cursor-pointer hover:shadow-sm transition-all border",
+              "p-4 rounded-md cursor-pointer hover:shadow-sm transition-all border",
               bg, border,
               statusFilter === status && "ring-2 ring-offset-1 ring-current",
             )}
@@ -318,7 +318,7 @@ export default function TransactionsPage() {
             }}
           >
             <CardContent className="text-center">
-              <Icon className={cn("w-5 h-5 mx-auto mb-1.5", color)} />
+              {/* <Icon className={cn("w-5 h-5 mx-auto mb-1.5", color)} /> */}
               <p className={cn("text-xl font-extrabold", color)}>{count}</p>
               <p className="text-sm text-stone-500 dark:text-stone-400 mt-0.5">{label}</p>
             </CardContent>
