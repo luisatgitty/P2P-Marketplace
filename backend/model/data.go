@@ -250,6 +250,8 @@ type ListingsFilter struct {
 	PriceMin  *int
 	PriceMax  *int
 	Sort      string
+	Limit     int
+	Offset    int
 }
 
 type AdminDashboardStatsFromDb struct {

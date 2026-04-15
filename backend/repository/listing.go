@@ -1231,27 +1231,12 @@ func RemoveBookmark(userId, listingId string) error {
 	return nil
 }
 
-func GetAllListings(excludeUserId string, filter model.ListingsFilter) ([]model.HomeListingFromDb, error) {
+func GetAllListings(excludeUserId string, filter model.ListingsFilter) ([]model.HomeListingFromDb, int, error) {
 	db := middleware.DBConn
 	listings := make([]model.HomeListingFromDb, 0)
+	total := 0
 
-	baseQuery := `
-		SELECT
-			l.id,
-			l.title,
-			l.price,
-			COALESCE(l.price_unit, '') AS price_unit,
-			LOWER(l.listing_type::text) AS type,
-			LOWER(l.status::text) AS status,
-			COALESCE(c.name, 'Others') AS category,
-			COALESCE(lsd.condition::text, '') AS condition,
-			COALESCE(l.location_city, '') AS location_city,
-			COALESCE(l.location_province, '') AS location_province,
-			l.created_at,
-			COALESCE(li.image_url, '') AS image_url,
-			TRIM(BOTH ' ' FROM CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, ''))) AS seller_name,
-			COALESCE(rv.avg_rating, 5.0) AS seller_rating,
-			(u.verification_status = 'VERIFIED') AS seller_is_pro
+	baseFromWhere := `
 		FROM public.listings l
 		INNER JOIN public.users u ON u.id = l.user_id
 		LEFT JOIN public.categories c ON c.id = l.category_id
@@ -1274,30 +1259,31 @@ func GetAllListings(excludeUserId string, filter model.ListingsFilter) ([]model.
 			AND (u.account_locked_until IS NULL OR u.account_locked_until <= now())
 	`
 
-	query := baseQuery
 	args := make([]any, 0)
 	addArg := func(value any) string {
 		args = append(args, value)
 		return fmt.Sprintf("$%d", len(args))
 	}
 
+	whereSuffix := ""
+
 	if strings.TrimSpace(excludeUserId) != "" {
-		query += "\n\t\t\tAND l.user_id <> " + addArg(excludeUserId)
+		whereSuffix += "\n\t\t\tAND l.user_id <> " + addArg(excludeUserId)
 	}
 
 	listingType := strings.ToLower(strings.TrimSpace(filter.Type))
 	if listingType != "" && listingType != "all" {
-		query += "\n\t\t\tAND LOWER(l.listing_type::text) = " + addArg(listingType)
+		whereSuffix += "\n\t\t\tAND LOWER(l.listing_type::text) = " + addArg(listingType)
 	}
 
 	keyword := strings.ToLower(strings.TrimSpace(filter.Keyword))
 	if keyword != "" {
-		query += "\n\t\t\tAND LOWER(l.title) LIKE " + addArg("%"+keyword+"%")
+		whereSuffix += "\n\t\t\tAND LOWER(l.title) LIKE " + addArg("%"+keyword+"%")
 	}
 
 	category := strings.ToLower(strings.TrimSpace(filter.Category))
 	if category != "" && category != "all categories" {
-		query += "\n\t\t\tAND LOWER(COALESCE(c.name, 'Others')) = " + addArg(category)
+		whereSuffix += "\n\t\t\tAND LOWER(COALESCE(c.name, 'Others')) = " + addArg(category)
 	}
 
 	conditionRaw := strings.TrimSpace(filter.Condition)
@@ -1317,45 +1303,76 @@ func GetAllListings(excludeUserId string, filter model.ListingsFilter) ([]model.
 		}
 
 		if conditionDbValue != "" {
-			query += "\n\t\t\tAND COALESCE(lsd.condition::text, '') = " + addArg(conditionDbValue)
+			whereSuffix += "\n\t\t\tAND COALESCE(lsd.condition::text, '') = " + addArg(conditionDbValue)
 		}
 	}
 
 	province := strings.ToLower(strings.TrimSpace(filter.Province))
 	if province != "" && province != "province" {
-		query += "\n\t\t\tAND LOWER(COALESCE(l.location_province, '')) = " + addArg(province)
+		whereSuffix += "\n\t\t\tAND LOWER(COALESCE(l.location_province, '')) = " + addArg(province)
 	}
 
 	city := strings.ToLower(strings.TrimSpace(filter.City))
 	if city != "" && city != "city/municipality" {
-		query += "\n\t\t\tAND LOWER(COALESCE(l.location_city, '')) = " + addArg(city)
+		whereSuffix += "\n\t\t\tAND LOWER(COALESCE(l.location_city, '')) = " + addArg(city)
 	}
 
 	if filter.PriceMin != nil {
-		query += "\n\t\t\tAND l.price >= " + addArg(*filter.PriceMin)
+		whereSuffix += "\n\t\t\tAND l.price >= " + addArg(*filter.PriceMin)
 	}
 
 	if filter.PriceMax != nil {
-		query += "\n\t\t\tAND l.price <= " + addArg(*filter.PriceMax)
+		whereSuffix += "\n\t\t\tAND l.price <= " + addArg(*filter.PriceMax)
 	}
 
-	orderBy := "l.created_at DESC"
+	countQuery := "SELECT COUNT(*)::int " + baseFromWhere + whereSuffix
+	if err := db.Raw(countQuery, args...).Scan(&total).Error; err != nil {
+		return nil, 0, fmt.Errorf("Failed to retrieve listing count")
+	}
+
+	selectQuery := `
+		SELECT
+			l.id,
+			l.title,
+			l.price,
+			COALESCE(l.price_unit, '') AS price_unit,
+			LOWER(l.listing_type::text) AS type,
+			LOWER(l.status::text) AS status,
+			COALESCE(c.name, 'Others') AS category,
+			COALESCE(lsd.condition::text, '') AS condition,
+			COALESCE(l.location_city, '') AS location_city,
+			COALESCE(l.location_province, '') AS location_province,
+			l.created_at,
+			COALESCE(li.image_url, '') AS image_url,
+			TRIM(BOTH ' ' FROM CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, ''))) AS seller_name,
+			COALESCE(rv.avg_rating, 5.0) AS seller_rating,
+			(u.verification_status = 'VERIFIED') AS seller_is_pro
+	` + baseFromWhere + whereSuffix
+
+	orderBy := "l.created_at DESC, l.id DESC"
 	switch strings.ToLower(strings.TrimSpace(filter.Sort)) {
 	case "latest":
-		orderBy = "l.created_at DESC"
+		orderBy = "l.created_at DESC, l.id DESC"
 	case "cheapest":
-		orderBy = "l.price ASC, l.created_at DESC"
+		orderBy = "l.price ASC, l.created_at DESC, l.id DESC"
 	case "expensive":
-		orderBy = "l.price DESC, l.created_at DESC"
+		orderBy = "l.price DESC, l.created_at DESC, l.id DESC"
 	case "top-rated":
-		orderBy = "COALESCE(rv.avg_rating, 0) DESC, l.created_at DESC"
+		orderBy = "COALESCE(rv.avg_rating, 0) DESC, l.created_at DESC, l.id DESC"
+	}
+	selectQuery += "\n\t\tORDER BY " + orderBy
+
+	selectArgs := append([]any{}, args...)
+	limitPlaceholder := fmt.Sprintf("$%d", len(selectArgs)+1)
+	selectArgs = append(selectArgs, filter.Limit)
+	offsetPlaceholder := fmt.Sprintf("$%d", len(selectArgs)+1)
+	selectArgs = append(selectArgs, filter.Offset)
+
+	selectQuery += "\n\t\tLIMIT " + limitPlaceholder + "\n\t\tOFFSET " + offsetPlaceholder
+
+	if err := db.Raw(selectQuery, selectArgs...).Scan(&listings).Error; err != nil {
+		return nil, 0, fmt.Errorf("Failed to retrieve listings")
 	}
 
-	query += "\n\t\tORDER BY " + orderBy
-
-	if err := db.Raw(query, args...).Scan(&listings).Error; err != nil {
-		return nil, fmt.Errorf("Failed to retrieve listings")
-	}
-
-	return listings, nil
+	return listings, total, nil
 }

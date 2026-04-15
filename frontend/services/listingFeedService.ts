@@ -16,9 +16,18 @@ export type HomeListingsQuery = {
   priceMin?: string;
   priceMax?: string;
   sort?: string;
+  limit?: number;
+  offset?: number;
 };
 
-export async function getHomeListings(query: HomeListingsQuery = {}): Promise<HomeListing[]> {
+export type HomeListingsResponse = {
+  listings: HomeListing[];
+  total: number;
+  limit: number;
+  offset: number;
+};
+
+export async function getHomeListings(query: HomeListingsQuery = {}): Promise<HomeListingsResponse> {
   try {
     const params = new URLSearchParams();
 
@@ -32,6 +41,8 @@ export async function getHomeListings(query: HomeListingsQuery = {}): Promise<Ho
       ["priceMin", query.priceMin],
       ["priceMax", query.priceMax],
       ["sort", query.sort],
+      ["limit", typeof query.limit === "number" ? String(query.limit) : undefined],
+      ["offset", typeof query.offset === "number" ? String(query.offset) : undefined],
     ];
 
     for (const [key, value] of entries) {
@@ -54,7 +65,12 @@ export async function getHomeListings(query: HomeListingsQuery = {}): Promise<Ho
       throw parsedJson?.data?.message || "Failed to fetch listings.";
     }
 
-    return (parsedJson?.data?.listings ?? []) as HomeListing[];
+    return {
+      listings: (parsedJson?.data?.listings ?? []) as HomeListing[],
+      total: Number(parsedJson?.data?.total ?? 0),
+      limit: Number(parsedJson?.data?.limit ?? query.limit ?? 0),
+      offset: Number(parsedJson?.data?.offset ?? query.offset ?? 0),
+    };
   } catch {
     throw "An unexpected error occurred. Please try again later.";
   }
