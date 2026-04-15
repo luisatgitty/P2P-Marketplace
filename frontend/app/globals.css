@@ -85,7 +85,7 @@
 
 /* ── Dark mode tokens ── */
 .dark {
-  --background: #0f1117;
+  --background: #111827;
   --foreground: #e8eaf0;
   --card: #1c1f2e;
   --card-foreground: #e8eaf0;
@@ -137,7 +137,7 @@
 ═══════════════════════════════════════ */
 
 /* Page backgrounds */
-.dark body                 { background-color: #0b0f1a; color: #e8eaf0; }
+.dark body                 { background-color: #111827; color: #e8eaf0; }
 body                       { background-color: #faf6f0; }
 
 /* shadcn Button in dark mode */

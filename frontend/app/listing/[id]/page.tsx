@@ -252,7 +252,7 @@ export default function ListingDetailPage() {
 
   if (!listing) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-stone-100 dark:bg-[#0f1117]">
+      <div className="min-h-screen flex items-center justify-center bg-stone-100 dark:bg-[#111827]">
         <div className="text-center">
           <p className="text-5xl mb-4">🔍</p>
           <p className="text-stone-600 dark:text-stone-400 font-medium">Listing not found</p>
@@ -521,7 +521,7 @@ export default function ListingDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-stone-100 dark:bg-[#0f1117]">
+    <div className="min-h-screen bg-stone-100 dark:bg-[#111827]">
 
       {/* ── Breadcrumb ── */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-5 pb-3">
