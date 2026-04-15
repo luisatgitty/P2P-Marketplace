@@ -162,6 +162,7 @@ var ReportReasons = []string{
 
 // ─── Seller Verification ───────────────────────────
 const (
+	VerificationMinAgeYears        = 18
 	VerificationIdTypeMinLength    = 3
 	VerificationIdTypeMaxLength    = 20
 	VerificationIdNumberMinLength  = 4

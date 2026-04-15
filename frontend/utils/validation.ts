@@ -55,6 +55,7 @@ export const LISTING_LIMITS = {
 } as const;
 
 export const VERIFICATION_LIMITS = {
+  minimumAge: 18,
   idTypeMinLength: 3,
   idTypeMaxLength: 20,
   idNumberMinLength: 4,

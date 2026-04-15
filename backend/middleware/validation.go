@@ -228,6 +228,10 @@ func ValidateSubmitVerificationInput(body *model.SubmitVerificationBody) error {
 	if birthdate.After(time.Now()) {
 		return fmt.Errorf("Birthdate cannot be in the future")
 	}
+	minimumAllowedBirthdate := time.Now().AddDate(-config.VerificationMinAgeYears, 0, 0)
+	if birthdate.After(minimumAllowedBirthdate) {
+		return fmt.Errorf("User must be at least %d years old", config.VerificationMinAgeYears)
+	}
 
 	if body.MobileNumber == "" {
 		return fmt.Errorf("Mobile number is required")

@@ -389,6 +389,15 @@ export default function BecomeSellerPage() {
     if (Number.isNaN(parsedDob.getTime()) || parsedDob > new Date()) {
       return "Please enter a valid date of birth.";
     }
+    const now = new Date();
+    const minimumAllowedBirthdate = new Date(
+      now.getFullYear() - VERIFICATION_LIMITS.minimumAge,
+      now.getMonth(),
+      now.getDate(),
+    );
+    if (parsedDob > minimumAllowedBirthdate) {
+      return `You must be at least ${VERIFICATION_LIMITS.minimumAge} years old.`;
+    }
 
     if (!normalizedIdNumber) return "ID number is required.";
     if (normalizedIdNumber.length < VERIFICATION_LIMITS.idNumberMinLength) {
