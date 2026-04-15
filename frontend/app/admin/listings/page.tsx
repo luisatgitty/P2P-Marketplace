@@ -611,8 +611,8 @@ export default function ListingsPage() {
                                 variant="ghost"
                                 size="icon"
                                 type="button"
-                                title={listing.status === "BANNED" ? "Set to unavailable" : "Shadow ban listing"}
-                                aria-label={listing.status === "BANNED" ? "Set to unavailable" : "Shadow ban listing"}
+                                title={listing.status === "BANNED" ? "Unban" : "Shadow Ban 3 Days"}
+                                aria-label={listing.status === "BANNED" ? "Unban" : "Shadow Ban 3 Days"}
                                 onClick={() => handleToggleVisibility(listing.id, listing.status)}
                                 disabled={actionLoadingListingId === listing.id}
                                 className="w-7 h-7 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/20 hover:text-amber-700 disabled:opacity-50"

@@ -18,6 +18,8 @@ import {
   Trash2,
   RotateCw,
   X,
+  CircleDashed,
+  Ban,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -275,21 +277,33 @@ export default function UsersPage() {
   async function handleToggleActive(id: string) {
     const target = users.find(u => u.id === id);
     if (!target) return;
-    if (target.is_active && !window.confirm("Deactivate this user account?")) return;
-    if (!target.is_active && !window.confirm("Activate this user account?")) return;
-    const nextIsActive = !target.is_active;
+    const isCurrentlyBanned = !!(target.account_locked_until && new Date(target.account_locked_until) > new Date());
+    if (!isCurrentlyBanned && !window.confirm("Ban this user for 3 days?")) return;
+    if (isCurrentlyBanned && !window.confirm("Unban this user account?")) return;
+
+    const nextIsActive = isCurrentlyBanned;
+    const nowIso = new Date().toISOString();
+    const lockUntilIso = new Date(Date.now() + (3 * 24 * 60 * 60 * 1000)).toISOString();
+    const actor = getCurrentAdminSnapshot();
+
     setActionLoadingUserId(id);
     try {
       await setAdminUserActive(id, nextIsActive);
-      const updatedAtPlaceholder = new Date().toISOString();
       setUsers((prev) =>
         prev.map((user) =>
           user.id === id
-            ? { ...user, is_active: nextIsActive, updated_at: updatedAtPlaceholder }
+            ? {
+                ...user,
+                is_active: nextIsActive,
+                account_locked_until: nextIsActive ? null : lockUntilIso,
+                deleted_by_name: nextIsActive ? "" : (actor?.fullName || user.deleted_by_name || ""),
+                deleted_by_email: nextIsActive ? "" : (actor?.email || user.deleted_by_email || ""),
+                updated_at: nowIso,
+              }
             : user
         )
       );
-      toast.success(`User ${nextIsActive ? "activated" : "deactivated"} successfully`, { position: "top-center" });
+      toast.success(`User ${nextIsActive ? "unbanned" : "banned for 3 days"} successfully`, { position: "top-center" });
     } catch (err) {
       const message = typeof err === "string" ? err : "Failed to update user status";
       toast.error(message, { position: "top-center" });
@@ -648,15 +662,15 @@ export default function UsersPage() {
                                 variant="ghost"
                                 size="icon"
                                 type="button"
-                                title={user.is_active ? "Deactivate" : "Activate"}
-                                aria-label={user.is_active ? "Deactivate" : "Activate"}
+                                title={user.account_locked_until && new Date(user.account_locked_until) > new Date() ? "Unban" : "Ban 3 Days"}
+                                aria-label={user.account_locked_until && new Date(user.account_locked_until) > new Date() ? "Unban" : "Ban 3 Days"}
                                 onClick={() => handleToggleActive(user.id)}
                                 disabled={actionLoadingUserId === user.id}
                                 className="w-7 h-7 hover:bg-stone-100 dark:hover:bg-[#252837] disabled:opacity-50"
                               >
-                                {user.is_active
-                                  ? <UserX     className="w-4 h-4 text-amber-500 hover:text-amber-800" />
-                                  : <UserCheck className="w-4 h-4 text-teal-500 hover:text-teal-800"  />
+                                {user.account_locked_until && new Date(user.account_locked_until) > new Date()
+                                  ? <Ban     className="w-4 h-4 text-amber-500 hover:text-amber-800" />
+                                  : <CircleDashed className="w-4 h-4 text-teal-500 hover:text-teal-800" />
                                 }
                               </Button>
 
@@ -665,8 +679,8 @@ export default function UsersPage() {
                                 variant="ghost"
                                 size="icon"
                                 type="button"
-                                title="Delete user"
-                                aria-label="Delete user"
+                                title="Delete User"
+                                aria-label="Delete User"
                                 onClick={() => handleDelete(user.id)}
                                 disabled={actionLoadingUserId === user.id}
                                 className="w-7 h-7 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 hover:text-red-600 disabled:opacity-50"

@@ -260,19 +260,35 @@ func SetAdminUserActive(userId string, isActive bool, actorUserId string) error 
 		}
 	}
 
+	applyUserBanFields := strings.EqualFold(strings.TrimSpace(targetRole), "USER")
+	var lockUntil any
+	if applyUserBanFields && !isActive {
+		lockUntil = time.Now().AddDate(0, 0, 3)
+	}
+
 	updateQuery := `
 		UPDATE public.users
 		SET
 			is_active = $1,
 			updated_at = now(),
 			failed_login_attempts = CASE WHEN $1 THEN 0 ELSE failed_login_attempts END,
-			account_locked_until = CASE WHEN $1 THEN NULL ELSE account_locked_until END
+			account_locked_until = CASE
+				WHEN $3 AND $1 = FALSE THEN $5
+				WHEN $3 AND $1 = TRUE THEN NULL
+				WHEN $1 THEN NULL
+				ELSE account_locked_until
+			END,
+			deleted_by_id = CASE
+				WHEN $3 AND $1 = FALSE THEN $4
+				WHEN $3 AND $1 = TRUE THEN NULL
+				ELSE deleted_by_id
+			END
 		WHERE id = $2
 			AND deleted_at IS NULL
 			AND role IN ('USER', 'ADMIN', 'SUPER_ADMIN')
 	`
 
-	result := db.Exec(updateQuery, isActive, userId)
+	result := db.Exec(updateQuery, isActive, userId, applyUserBanFields, actorUserId, lockUntil)
 	if result.Error != nil {
 		return fmt.Errorf("Failed to update user status")
 	}
@@ -285,8 +301,6 @@ func SetAdminUserActive(userId string, isActive bool, actorUserId string) error 
 			return fmt.Errorf("Failed to revoke user sessions")
 		}
 	}
-
-	_ = actorUserId
 
 	return nil
 }

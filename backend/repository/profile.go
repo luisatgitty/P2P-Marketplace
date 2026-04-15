@@ -508,10 +508,12 @@ func DeactivateAccount(userId string) error {
 			is_active = FALSE,
 			failed_login_attempts = 0,
 			account_locked_until = NULL,
-			updated_at = $1
+			updated_at = $1,
+			deleted_at = $1,
+			deleted_by_id = $3
 		WHERE id = $2
 	`
-	result := tx.Exec(deactivateQuery, time.Now(), userId)
+	result := tx.Exec(deactivateQuery, time.Now(), userId, userId)
 	if result.Error != nil {
 		tx.Rollback()
 		return fmt.Errorf("Failed to deactivate account")
