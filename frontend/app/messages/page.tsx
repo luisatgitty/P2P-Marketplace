@@ -2,8 +2,8 @@ import { MessageSquare } from "lucide-react";
 
 export default function MessagesPage() {
   return (
-    <div className="flex-1 flex flex-col items-center justify-center gap-4 bg-stone-50 dark:bg-[#0f1117] p-8 text-center">
-      <div className="w-16 h-16 rounded-2xl bg-white dark:bg-[#1c1f2e] border border-border shadow-sm flex items-center justify-center">
+    <div className="flex-1 flex flex-col items-center justify-center gap-4 bg-[#faf6f0] dark:bg-[#0b0f1a] p-8 text-center">
+      <div className="w-16 h-16 rounded-2xl bg-white/80 dark:bg-[#1c1f2e] border border-border shadow-sm flex items-center justify-center">
         <MessageSquare size={28} className="text-stone-300 dark:text-stone-600" />
       </div>
       <div>
