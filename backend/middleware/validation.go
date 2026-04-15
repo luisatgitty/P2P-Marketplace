@@ -343,6 +343,48 @@ func ValidateSubmitVerificationInput(body *model.SubmitVerificationBody) error {
 	return nil
 }
 
+func ValidateCreateAdminInput(body *model.AdminCreateAdminBody) error {
+	body.FirstName = strings.TrimSpace(body.FirstName)
+	body.LastName = strings.TrimSpace(body.LastName)
+	body.Email = strings.TrimSpace(body.Email)
+	body.Phone = strings.TrimSpace(body.Phone)
+	body.Role = strings.ToUpper(strings.TrimSpace(body.Role))
+	body.Password = strings.TrimSpace(body.Password)
+
+	if err := validateUserName(body.FirstName, "First name"); err != nil {
+		return err
+	}
+	if err := validateUserName(body.LastName, "Last name"); err != nil {
+		return err
+	}
+	if err := ValidateEmail(body.Email); err != nil {
+		return err
+	}
+	if err := ValidatePasswordLength(body.Password); err != nil {
+		return err
+	}
+
+	if body.Phone != "" {
+		if len(body.Phone) != config.ProfilePhoneExactLength {
+			return fmt.Errorf("Phone number must be exactly %d digits", config.ProfilePhoneExactLength)
+		}
+		if !strings.HasPrefix(body.Phone, "09") {
+			return fmt.Errorf("Phone number must start with 09")
+		}
+		for _, ch := range body.Phone {
+			if !unicode.IsDigit(ch) {
+				return fmt.Errorf("Phone number must contain numbers only")
+			}
+		}
+	}
+
+	if body.Role != "ADMIN" && body.Role != "SUPER_ADMIN" {
+		return fmt.Errorf("Invalid role")
+	}
+
+	return nil
+}
+
 func ValidateCreateListingInput(body *model.CreateListingBody, isEdit bool) error {
 	body.Type = strings.TrimSpace(body.Type)
 	body.Type = strings.ToLower(body.Type)

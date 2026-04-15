@@ -397,29 +397,15 @@ func CreateAdminAccount(body model.AdminCreateAdminBody) (model.AdminAccountList
 	db := middleware.DBConn
 	created := model.AdminAccountListItemFromDb{}
 
-	userInput := model.UserFromBody{
-		FirstName: body.FirstName,
-		LastName:  body.LastName,
-		Email:     body.Email,
-		Password:  body.Password,
-	}
-	if err := middleware.ValidateSignUpInput(&userInput); err != nil {
-		return created, err
-	}
-	if err := middleware.ValidatePasswordLength(userInput.Password); err != nil {
+	if err := middleware.ValidateCreateAdminInput(&body); err != nil {
 		return created, err
 	}
 
-	role := strings.ToUpper(strings.TrimSpace(body.Role))
-	if role != "ADMIN" && role != "SUPER_ADMIN" {
-		return created, fmt.Errorf("Invalid role")
-	}
-
-	if err := IsUserExist(userInput.Email); err != nil {
+	if err := IsUserExist(body.Email); err != nil {
 		return created, err
 	}
 
-	hashedPassword := middleware.HashPassword(userInput.Password)
+	hashedPassword := middleware.HashPassword(body.Password)
 
 	insertQuery := `
 		INSERT INTO public.users (
@@ -454,9 +440,9 @@ func CreateAdminAccount(body model.AdminCreateAdminBody) (model.AdminAccountList
 			''::text AS deleted_by_email
 	`
 
-	if err := db.Raw(insertQuery, userInput.FirstName, userInput.LastName, userInput.Email, strings.TrimSpace(body.Phone), hashedPassword, role).Scan(&created).Error; err != nil {
+	if err := db.Raw(insertQuery, body.FirstName, body.LastName, body.Email, body.Phone, hashedPassword, body.Role).Scan(&created).Error; err != nil {
 		if strings.Contains(strings.ToLower(err.Error()), "duplicate") || strings.Contains(strings.ToLower(err.Error()), "unique") {
-			return created, fmt.Errorf("User with email %s already exists", userInput.Email)
+			return created, fmt.Errorf("User with email %s already exists", body.Email)
 		}
 		return created, fmt.Errorf("Failed to create admin account")
 	}
