@@ -157,7 +157,7 @@ export default function ListingsPage() {
   const [totalCount, setTotalCount] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [actionLoadingListingId, setActionLoadingListingId] = useState<string | null>(null);
-  const FETCH_LIMIT = 8;
+  const FETCH_LIMIT = 16;
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
@@ -349,7 +349,7 @@ export default function ListingsPage() {
 
   // ── Render ────────────────────────────────────────────────────────────────────
   return (
-    <div className="h-[calc(109vh-4rem)] p-5 sm:p-6 flex flex-col gap-5 min-h-0">
+    <div className="h-[calc(100vh)] p-5 sm:p-6 flex flex-col gap-5 min-h-0">
 
       {/* ── Page header ── */}
       {/* <div>
@@ -364,7 +364,7 @@ export default function ListingsPage() {
       {/* ── Summary cards — clickable to filter by status ── */}
       <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
         {[
-          { label: "Total Listings", count: totalCount,     status: "ALL",         color: "text-stone-700 dark:text-stone-200", bg: "bg-stone-100 dark:bg-[#13151f]",       border: "border-stone-200 dark:border-[#2a2d3e]",   Icon: ShoppingBag   },
+          { label: "Total", count: totalCount,     status: "ALL",         color: "text-stone-700 dark:text-stone-200", bg: "bg-stone-100 dark:bg-[#13151f]",       border: "border-stone-200 dark:border-[#2a2d3e]",   Icon: ShoppingBag   },
           { label: "Available",   count: availableCount,   status: "AVAILABLE",   color: "text-teal-600 dark:text-teal-400",   bg: "bg-teal-50 dark:bg-teal-950/20",      border: "border-teal-200 dark:border-teal-800",      Icon: CheckCircle2  },
           { label: "Unavailable", count: unavailableCount, status: "UNAVAILABLE", color: "text-amber-600 dark:text-amber-400", bg: "bg-amber-50 dark:bg-amber-950/20",    border: "border-amber-200 dark:border-amber-800",    Icon: AlertTriangle },
           { label: "Sold",        count: soldCount,        status: "SOLD",        color: "text-stone-600 dark:text-stone-300", bg: "bg-stone-100 dark:bg-stone-800",        border: "border-stone-200 dark:border-stone-700",    Icon: ShoppingBag   },
@@ -374,7 +374,7 @@ export default function ListingsPage() {
           <Card
             key={label}
             className={cn(
-              "p-4 rounded-lg cursor-pointer hover:shadow-sm transition-all border",
+              "p-4 rounded-md cursor-pointer hover:shadow-sm transition-all border",
               bg, border,
               statusFilter === status && "ring-2 ring-offset-1 ring-current",
             )}
