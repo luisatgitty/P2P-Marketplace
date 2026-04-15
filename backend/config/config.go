@@ -168,6 +168,21 @@ var ReportReasons = []string{
 	"Other",
 }
 
+// ─── Admin Moderation ──────────────────────────────
+const (
+	AdminReasonMaxLength = 500
+)
+
+var AdminReportActionTypes = []string{
+	"DISMISS",
+	"BAN_LISTING",
+	"LOCK_3",
+	"LOCK_7",
+	"LOCK_30",
+	"DELETE_LISTING",
+	"PERMANENT_BAN",
+}
+
 // ─── Seller Verification ───────────────────────────
 const (
 	VerificationMinAgeYears        = 18

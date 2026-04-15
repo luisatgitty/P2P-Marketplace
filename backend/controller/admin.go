@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"p2p_marketplace/backend/config"
 	"p2p_marketplace/backend/model"
 	"p2p_marketplace/backend/repository"
 
@@ -354,6 +355,20 @@ func SetAdminReportStatus(c *fiber.Ctx) error {
 		if reason == "" {
 			return SendErrorResponse(c, 400, "Reason is required", nil)
 		}
+		if len(reason) > config.AdminReasonMaxLength {
+			return SendErrorResponse(c, 400, fmt.Sprintf("Reason must not exceed %d characters", config.AdminReasonMaxLength), nil)
+		}
+
+		actionAllowed := false
+		for _, allowedAction := range config.AdminReportActionTypes {
+			if normalizedAction == allowedAction {
+				actionAllowed = true
+				break
+			}
+		}
+		if !actionAllowed {
+			return SendErrorResponse(c, 400, "Invalid report action", nil)
+		}
 
 		if err := repository.SetAdminReportAction(reportId, adminUserId, normalizedAction, reason); err != nil {
 			if strings.EqualFold(err.Error(), "Report not found") {
@@ -432,6 +447,9 @@ func SetAdminVerificationStatus(c *fiber.Ctx) error {
 	}
 	if reason == "" {
 		return SendErrorResponse(c, 400, "Reason is required", nil)
+	}
+	if len(reason) > config.AdminReasonMaxLength {
+		return SendErrorResponse(c, 400, fmt.Sprintf("Reason must not exceed %d characters", config.AdminReasonMaxLength), nil)
 	}
 
 	if err := repository.SetAdminVerificationStatus(verificationId, reviewedById, normalizedStatus, reason); err != nil {

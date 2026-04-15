@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"p2p_marketplace/backend/config"
 	"p2p_marketplace/backend/middleware"
 	"p2p_marketplace/backend/model"
 )
@@ -975,7 +976,21 @@ func SetAdminReportStatus(reportId, reviewedById, status string) error {
 func SetAdminReportAction(reportId, adminUserId, action, reason string) error {
 	db := middleware.DBConn
 
-	normalizedAction := strings.ToUpper(strings.TrimSpace(action))
+	requestAction := strings.ToUpper(strings.TrimSpace(action))
+	allowedRequestAction := map[string]bool{
+		"DISMISS":        true,
+		"BAN_LISTING":    true,
+		"DELETE_LISTING": true,
+		"LOCK_3":         true,
+		"LOCK_7":         true,
+		"LOCK_30":        true,
+		"PERMANENT_BAN":  true,
+	}
+	if !allowedRequestAction[requestAction] {
+		return fmt.Errorf("Invalid report action")
+	}
+
+	normalizedAction := requestAction
 	if normalizedAction == "BAN_LISTING" {
 		normalizedAction = "HIDE_LISTING"
 	}
@@ -983,18 +998,8 @@ func SetAdminReportAction(reportId, adminUserId, action, reason string) error {
 	if trimmedReason == "" {
 		return fmt.Errorf("Reason is required")
 	}
-
-	allowed := map[string]bool{
-		"DISMISS":        true,
-		"HIDE_LISTING":   true,
-		"DELETE_LISTING": true,
-		"LOCK_3":         true,
-		"LOCK_7":         true,
-		"LOCK_30":        true,
-		"PERMANENT_BAN":  true,
-	}
-	if !allowed[normalizedAction] {
-		return fmt.Errorf("Invalid report action")
+	if len(trimmedReason) > config.AdminReasonMaxLength {
+		return fmt.Errorf("Reason must not exceed %d characters", config.AdminReasonMaxLength)
 	}
 
 	tx := db.Begin()
@@ -1316,6 +1321,10 @@ func SetAdminVerificationStatus(verificationId, reviewedById, status, reason str
 	if trimmedReason == "" {
 		tx.Rollback()
 		return fmt.Errorf("Reason is required")
+	}
+	if len(trimmedReason) > config.AdminReasonMaxLength {
+		tx.Rollback()
+		return fmt.Errorf("Reason must not exceed %d characters", config.AdminReasonMaxLength)
 	}
 
 	var verificationRow struct {
