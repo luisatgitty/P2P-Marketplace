@@ -247,7 +247,7 @@ func ValidateUpdateProfileInput(body *model.UpdateProfileBody) error {
 		if body.CurrentPassword == "" {
 			return fmt.Errorf("Current password is required to set a new password")
 		}
-		if err := ValidatePasswordLength(body.NewPassword); err != nil {
+		if err := ValidatePasswordComplexity(body.NewPassword); err != nil {
 			return err
 		}
 	}
