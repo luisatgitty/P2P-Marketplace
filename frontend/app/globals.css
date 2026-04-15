@@ -85,7 +85,7 @@
 
 /* ── Dark mode tokens ── */
 .dark {
-  --background: #0f1117;
+  --background: #111827;
   --foreground: #e8eaf0;
   --card: #1c1f2e;
   --card-foreground: #e8eaf0;
@@ -125,6 +125,9 @@
   body {
     @apply bg-background text-foreground;
     transition: background-color 0.2s ease, color 0.2s ease;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
   }
 }
 
@@ -134,7 +137,8 @@
 ═══════════════════════════════════════ */
 
 /* Page backgrounds */
-.dark body                 { background-color: #0f1117; color: #e8eaf0; }
+.dark body                 { background-color: #111827; color: #e8eaf0; }
+body                       { background-color: #faf6f0; }
 
 /* shadcn Button in dark mode */
 .dark [data-slot="button"][data-variant="outline"] {
@@ -215,10 +219,10 @@
     @apply text-stone-500 dark:text-stone-400 hover:bg-stone-200 dark:hover:bg-white/10 hover:text-stone-700 dark:hover:text-white;
   }
 }
+
 /* ═══════════════════════════════════════
    HERO — Floating Orb Glow (Amber + Blue)
 ═══════════════════════════════════════ */
-
 .orb {
   position: absolute;
   border-radius: 50%;
@@ -270,4 +274,39 @@
   background: rgba(30, 64, 175, 0.45);
   top: -80px; right: -80px;
   animation: floatBlue 7s ease-in-out infinite;
+}
+
+/* ═══════════════════════════════════════
+   GLOSSY SYSTEM
+═══════════════════════════════════════ */
+/* Light mode glass */
+.glass {
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 0.5px solid rgba(255, 255, 255, 0.7);
+}
+
+/* Dark mode glass */
+.dark .glass {
+  background: rgba(15, 20, 35, 0.55);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 0.5px solid rgba(255, 255, 255, 0.07);
+}
+
+/* Glossy card — drop-in replacement for plain cards */
+.card-glass {
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 0.5px solid rgba(255, 255, 255, 0.75);
+  border-radius: var(--radius);
+}
+
+.dark .card-glass {
+  background: rgba(20, 26, 45, 0.6);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 0.5px solid rgba(255, 255, 255, 0.06);
 }

@@ -486,7 +486,7 @@ export default function BecomeSellerPage() {
   // ── Terminal states ────────────────────────────────────────────────────────
   if (verificationState === "verified") {
     return (
-      <div className="min-h-screen bg-stone-100 dark:bg-[#0f1117] py-8 px-4 sm:px-6 flex items-center justify-center">
+      <div className="min-h-screen bg-stone-100 dark:bg-[#111827] py-8 px-4 sm:px-6 flex items-center justify-center">
         <Card className="w-full max-w-md dark:bg-[#1c1f2e] dark:border-[#2a2d3e]">
           <CardContent className="p-8 text-center">
             <Crown className="w-10 h-10 text-amber-500 mx-auto mb-3" />
@@ -507,7 +507,7 @@ export default function BecomeSellerPage() {
 
   if (verificationState === "pending" || submitted) {
     return (
-      <div className="min-h-screen bg-stone-100 dark:bg-[#0f1117] py-8 px-4 sm:px-6 flex items-center justify-center">
+      <div className="min-h-screen bg-stone-100 dark:bg-[#111827] py-8 px-4 sm:px-6 flex items-center justify-center">
         <Card className="w-full max-w-md dark:bg-[#1c1f2e] dark:border-[#2a2d3e]">
           <CardContent className="p-8 text-center">
             <Hourglass className="w-10 h-10 text-amber-500 mx-auto mb-3" />
@@ -528,7 +528,7 @@ export default function BecomeSellerPage() {
 
   // ── Multi-step form ────────────────────────────────────────────────────────
   return (
-    <div className="bg-stone-100 dark:bg-[#0f1117] py-8 px-4 sm:px-6">
+    <div className="bg-stone-100 dark:bg-[#111827] py-8 px-4 sm:px-6">
       <div className="max-w-2xl mx-auto">
         <Card className="overflow-hidden dark:bg-[#1c1f2e] dark:border-[#2a2d3e] shadow-sm py-0">
 

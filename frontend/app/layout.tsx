@@ -35,7 +35,9 @@ export default function RootLayout({ children }:
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <UserProvider>
             <AppChrome slot="top" />
-            {children}
+            <main className="flex-1">
+              {children}
+            </main>
             <Toaster />
             <AppChrome slot="bottom" />
           </UserProvider>

@@ -29,7 +29,7 @@ function ConversationShell({ children }: { children: React.ReactNode }) {
   const canShowInput = Boolean(conversation && conversation.canSendMessage !== false && !isListingBlocked);
 
   return (
-    <div className="flex flex-col h-full overflow-hidden bg-white dark:bg-[#0f1117]">
+    <div className="flex flex-col h-full overflow-hidden bg-[#faf6f0] dark:bg-[#0b0f1a]">
       {conversation ? (
         <>
           <ChatHeader conversation={conversation} onDelete={onDelete} onMarkedComplete={onMarkedComplete} />
@@ -82,7 +82,7 @@ export default function MessagesLayout({ children }: { children: React.ReactNode
 
   return (
     <MessageShellProvider>
-    <div className="h-[calc(100vh-60px)] flex overflow-hidden bg-background">
+    <div className="h-[calc(100vh-60px)] flex overflow-hidden bg-[#faf6f0] dark:bg-[#0b0f1a]">
 
       {/* ══════════════════════════════════════════════
           LEFT — vertical tab sidebar (md+)
@@ -105,7 +105,7 @@ export default function MessagesLayout({ children }: { children: React.ReactNode
       ══════════════════════════════════════════════ */}
       <div
         className={cn(
-          "flex flex-col border-r border-border bg-white dark:bg-[#1c1f2e] shrink-0",
+          "flex flex-col border-r border-border bg-[#faf6f0] dark:bg-[#1c1f2e] shrink-0",
           // Width
           "w-full md:w-80",
           // Mobile visibility
@@ -148,7 +148,7 @@ export default function MessagesLayout({ children }: { children: React.ReactNode
         aria-label="Message categories"
         className={cn(
           "md:hidden fixed bottom-0 inset-x-0 z-40",
-          "bg-white dark:bg-[#1c1f2e] border-t border-border",
+          "bg-[#faf6f0] dark:bg-[#1c1f2e] border-t border-border",
           // Add padding for iOS home indicator
           "pb-safe"
         )}
