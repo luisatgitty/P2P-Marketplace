@@ -425,21 +425,23 @@ function DetailModal({ verif, onClose, onApprove, onReject, actionLoading = fals
               )}
             </div>
 
-            {/* ── Existing reason ── */}``
-            <>
-              <Separator className="dark:bg-[#2a2d3e]" />
-              <div className="rounded-xl bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 p-3.5 space-y-1.5">
-                <SectionLabel>Reason</SectionLabel>
-                <p className="text-sm text-red-600 dark:text-red-400 leading-relaxed">
-                  {verif.reason}
-                </p>
-                {verif.reviewed_by && (
-                  <p className="text-xs text-red-400 dark:text-red-500 mt-1">
-                    By {verif.reviewed_by} · {verif.reviewed_at}
+            {/* ── Existing reason ── */}
+            {verif.reason && (
+              <>
+                <Separator className="dark:bg-[#2a2d3e]" />
+                <div className="rounded-xl bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 p-3.5 space-y-1.5">
+                  <SectionLabel>Reason</SectionLabel>
+                  <p className="text-sm text-red-600 dark:text-red-400 leading-relaxed">
+                    {verif.reason}
                   </p>
-                )}
-              </div>
-            </>
+                  {verif.reviewed_by && (
+                    <p className="text-xs text-red-400 dark:text-red-500 mt-1">
+                      By {verif.reviewed_by} · {verif.reviewed_at}
+                    </p>
+                  )}
+                </div>
+              </>
+            )}
           </div>
 
           {/* ════ RIGHT — ID images + reject input ════ */}
@@ -810,14 +812,14 @@ export default function VerificationsPage() {
     <div className="h-[calc(100vh)] p-5 sm:p-6 flex flex-col gap-5 min-h-0">
 
       {/* Page header */}
-      <div>
+      {/* <div>
         <h2 className="text-xl font-extrabold text-stone-900 dark:text-stone-50">
           User Verifications
         </h2>
         <p className="text-sm text-stone-500 dark:text-stone-400 mt-0.5">
           Review submitted identity documents and approve or reject seller verification requests
         </p>
-      </div>
+      </div> */}
 
       {/* Summary cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -830,7 +832,7 @@ export default function VerificationsPage() {
           <Card
             key={label}
             className={cn(
-              "rounded-lg cursor-pointer hover:shadow-sm transition-all border",
+              "p-4 rounded-md cursor-pointer hover:shadow-sm transition-all border",
               bg, border,
               statusFilter === status && "ring-2 ring-offset-1 ring-current",
             )}
@@ -842,7 +844,7 @@ export default function VerificationsPage() {
             }}
           >
             <CardContent className="text-center">
-              <Icon className={cn("w-5 h-5 mx-auto mb-1.5", color)} />
+              {/* <Icon className={cn("w-5 h-5 mx-auto mb-1.5", color)} /> */}
               <p className={cn("text-xl font-extrabold", color)}>{count}</p>
               <p className="text-sm text-stone-500 dark:text-stone-400 mt-0.5">{label}</p>
             </CardContent>
