@@ -2,6 +2,7 @@ package controller
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"p2p_marketplace/backend/config"
@@ -101,13 +102,45 @@ func GetAdminUsers(c *fiber.Ctx) error {
 		return authErr
 	}
 
-	users, err := repository.GetAdminUsers()
+	limit := 20
+	if rawLimit := strings.TrimSpace(c.Query("limit")); rawLimit != "" {
+		parsedLimit, parseErr := strconv.Atoi(rawLimit)
+		if parseErr != nil || parsedLimit <= 0 {
+			return SendErrorResponse(c, 400, "Invalid limit query parameter", parseErr)
+		}
+		if parsedLimit > 100 {
+			parsedLimit = 100
+		}
+		limit = parsedLimit
+	}
+
+	offset := 0
+	if rawOffset := strings.TrimSpace(c.Query("offset")); rawOffset != "" {
+		parsedOffset, parseErr := strconv.Atoi(rawOffset)
+		if parseErr != nil || parsedOffset < 0 {
+			return SendErrorResponse(c, 400, "Invalid offset query parameter", parseErr)
+		}
+		offset = parsedOffset
+	}
+
+	query := model.AdminUsersQuery{
+		Search:   strings.TrimSpace(c.Query("search")),
+		Status:   strings.TrimSpace(c.Query("status")),
+		Verified: strings.TrimSpace(c.Query("verified")),
+		Limit:    limit,
+		Offset:   offset,
+	}
+
+	users, total, err := repository.GetAdminUsers(query)
 	if err != nil {
 		return SendErrorResponse(c, 500, err.Error(), err)
 	}
 
 	return SendSuccessResponse(c, 200, "Users fetched successfully", map[string]any{
-		"users": users,
+		"users":  users,
+		"total":  total,
+		"limit":  limit,
+		"offset": offset,
 	})
 }
 
@@ -216,7 +249,37 @@ func GetAdminListings(c *fiber.Ctx) error {
 		return authErr
 	}
 
-	listings, err := repository.GetAdminListings()
+	limit := 20
+	if rawLimit := strings.TrimSpace(c.Query("limit")); rawLimit != "" {
+		parsedLimit, parseErr := strconv.Atoi(rawLimit)
+		if parseErr != nil || parsedLimit <= 0 {
+			return SendErrorResponse(c, 400, "Invalid limit query parameter", parseErr)
+		}
+		if parsedLimit > 100 {
+			parsedLimit = 100
+		}
+		limit = parsedLimit
+	}
+
+	offset := 0
+	if rawOffset := strings.TrimSpace(c.Query("offset")); rawOffset != "" {
+		parsedOffset, parseErr := strconv.Atoi(rawOffset)
+		if parseErr != nil || parsedOffset < 0 {
+			return SendErrorResponse(c, 400, "Invalid offset query parameter", parseErr)
+		}
+		offset = parsedOffset
+	}
+
+	query := model.AdminListingsQuery{
+		Search:   strings.TrimSpace(c.Query("search")),
+		Type:     strings.TrimSpace(c.Query("type")),
+		Status:   strings.TrimSpace(c.Query("status")),
+		Category: strings.TrimSpace(c.Query("category")),
+		Limit:    limit,
+		Offset:   offset,
+	}
+
+	listings, total, err := repository.GetAdminListings(query)
 	if err != nil {
 		return SendErrorResponse(c, 500, err.Error(), err)
 	}
@@ -229,6 +292,9 @@ func GetAdminListings(c *fiber.Ctx) error {
 
 	return SendSuccessResponse(c, 200, "Listings fetched successfully", map[string]any{
 		"listings": listings,
+		"total":    total,
+		"limit":    limit,
+		"offset":   offset,
 	})
 }
 
@@ -238,7 +304,36 @@ func GetAdminTransactions(c *fiber.Ctx) error {
 		return authErr
 	}
 
-	transactions, err := repository.GetAdminTransactions()
+	limit := 20
+	if rawLimit := strings.TrimSpace(c.Query("limit")); rawLimit != "" {
+		parsedLimit, parseErr := strconv.Atoi(rawLimit)
+		if parseErr != nil || parsedLimit <= 0 {
+			return SendErrorResponse(c, 400, "Invalid limit query parameter", parseErr)
+		}
+		if parsedLimit > 100 {
+			parsedLimit = 100
+		}
+		limit = parsedLimit
+	}
+
+	offset := 0
+	if rawOffset := strings.TrimSpace(c.Query("offset")); rawOffset != "" {
+		parsedOffset, parseErr := strconv.Atoi(rawOffset)
+		if parseErr != nil || parsedOffset < 0 {
+			return SendErrorResponse(c, 400, "Invalid offset query parameter", parseErr)
+		}
+		offset = parsedOffset
+	}
+
+	query := model.AdminTransactionsQuery{
+		Search: strings.TrimSpace(c.Query("search")),
+		Type:   strings.TrimSpace(c.Query("type")),
+		Status: strings.TrimSpace(c.Query("status")),
+		Limit:  limit,
+		Offset: offset,
+	}
+
+	transactions, total, err := repository.GetAdminTransactions(query)
 	if err != nil {
 		return SendErrorResponse(c, 500, err.Error(), err)
 	}
@@ -252,6 +347,9 @@ func GetAdminTransactions(c *fiber.Ctx) error {
 
 	return SendSuccessResponse(c, 200, "Transactions fetched successfully", map[string]any{
 		"transactions": transactions,
+		"total":        total,
+		"limit":        limit,
+		"offset":       offset,
 	})
 }
 
@@ -316,7 +414,36 @@ func GetAdminReports(c *fiber.Ctx) error {
 		return authErr
 	}
 
-	reports, err := repository.GetAdminReports()
+	limit := 20
+	if rawLimit := strings.TrimSpace(c.Query("limit")); rawLimit != "" {
+		parsedLimit, parseErr := strconv.Atoi(rawLimit)
+		if parseErr != nil || parsedLimit <= 0 {
+			return SendErrorResponse(c, 400, "Invalid limit query parameter", parseErr)
+		}
+		if parsedLimit > 100 {
+			parsedLimit = 100
+		}
+		limit = parsedLimit
+	}
+
+	offset := 0
+	if rawOffset := strings.TrimSpace(c.Query("offset")); rawOffset != "" {
+		parsedOffset, parseErr := strconv.Atoi(rawOffset)
+		if parseErr != nil || parsedOffset < 0 {
+			return SendErrorResponse(c, 400, "Invalid offset query parameter", parseErr)
+		}
+		offset = parsedOffset
+	}
+
+	query := model.AdminReportsQuery{
+		Search: strings.TrimSpace(c.Query("search")),
+		Status: strings.TrimSpace(c.Query("status")),
+		Reason: strings.TrimSpace(c.Query("reason")),
+		Limit:  limit,
+		Offset: offset,
+	}
+
+	reports, total, err := repository.GetAdminReports(query)
 	if err != nil {
 		return SendErrorResponse(c, 500, err.Error(), err)
 	}
@@ -330,6 +457,9 @@ func GetAdminReports(c *fiber.Ctx) error {
 
 	return SendSuccessResponse(c, 200, "Reports fetched successfully", map[string]any{
 		"reports": reports,
+		"total":   total,
+		"limit":   limit,
+		"offset":  offset,
 	})
 }
 
@@ -413,13 +543,45 @@ func GetAdminVerifications(c *fiber.Ctx) error {
 		return authErr
 	}
 
-	verifications, err := repository.GetAdminVerifications()
+	limit := 20
+	if rawLimit := strings.TrimSpace(c.Query("limit")); rawLimit != "" {
+		parsedLimit, parseErr := strconv.Atoi(rawLimit)
+		if parseErr != nil || parsedLimit <= 0 {
+			return SendErrorResponse(c, 400, "Invalid limit query parameter", parseErr)
+		}
+		if parsedLimit > 100 {
+			parsedLimit = 100
+		}
+		limit = parsedLimit
+	}
+
+	offset := 0
+	if rawOffset := strings.TrimSpace(c.Query("offset")); rawOffset != "" {
+		parsedOffset, parseErr := strconv.Atoi(rawOffset)
+		if parseErr != nil || parsedOffset < 0 {
+			return SendErrorResponse(c, 400, "Invalid offset query parameter", parseErr)
+		}
+		offset = parsedOffset
+	}
+
+	query := model.AdminVerificationsQuery{
+		Search: strings.TrimSpace(c.Query("search")),
+		Status: strings.TrimSpace(c.Query("status")),
+		IdType: strings.TrimSpace(c.Query("idType")),
+		Limit:  limit,
+		Offset: offset,
+	}
+
+	verifications, total, err := repository.GetAdminVerifications(query)
 	if err != nil {
 		return SendErrorResponse(c, 500, err.Error(), err)
 	}
 
 	return SendSuccessResponse(c, 200, "Verifications fetched successfully", map[string]any{
 		"verifications": verifications,
+		"total":         total,
+		"limit":         limit,
+		"offset":        offset,
 	})
 }
 
@@ -478,13 +640,45 @@ func GetAdminAccounts(c *fiber.Ctx) error {
 		return authErr
 	}
 
-	admins, err := repository.GetAdminAccounts()
+	limit := 20
+	if rawLimit := strings.TrimSpace(c.Query("limit")); rawLimit != "" {
+		parsedLimit, parseErr := strconv.Atoi(rawLimit)
+		if parseErr != nil || parsedLimit <= 0 {
+			return SendErrorResponse(c, 400, "Invalid limit query parameter", parseErr)
+		}
+		if parsedLimit > 100 {
+			parsedLimit = 100
+		}
+		limit = parsedLimit
+	}
+
+	offset := 0
+	if rawOffset := strings.TrimSpace(c.Query("offset")); rawOffset != "" {
+		parsedOffset, parseErr := strconv.Atoi(rawOffset)
+		if parseErr != nil || parsedOffset < 0 {
+			return SendErrorResponse(c, 400, "Invalid offset query parameter", parseErr)
+		}
+		offset = parsedOffset
+	}
+
+	query := model.AdminAccountsQuery{
+		Search: strings.TrimSpace(c.Query("search")),
+		Role:   strings.TrimSpace(c.Query("role")),
+		Status: strings.TrimSpace(c.Query("status")),
+		Limit:  limit,
+		Offset: offset,
+	}
+
+	admins, total, err := repository.GetAdminAccounts(query)
 	if err != nil {
 		return SendErrorResponse(c, 500, err.Error(), err)
 	}
 
 	return SendSuccessResponse(c, 200, "Admin accounts fetched successfully", map[string]any{
 		"admins": admins,
+		"total":  total,
+		"limit":  limit,
+		"offset": offset,
 	})
 }
 

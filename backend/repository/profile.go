@@ -508,10 +508,12 @@ func DeactivateAccount(userId string) error {
 			is_active = FALSE,
 			failed_login_attempts = 0,
 			account_locked_until = NULL,
-			updated_at = $1
+			updated_at = $1,
+			deleted_at = $1,
+			deleted_by_id = $3
 		WHERE id = $2
 	`
-	result := tx.Exec(deactivateQuery, time.Now(), userId)
+	result := tx.Exec(deactivateQuery, time.Now(), userId, userId)
 	if result.Error != nil {
 		tx.Rollback()
 		return fmt.Errorf("Failed to deactivate account")
@@ -546,10 +548,34 @@ func SubmitUserVerification(userId string, body model.SubmitVerificationBody) er
 		}
 	}()
 
-	birthdate, err := time.Parse("2006-01-02", strings.TrimSpace(body.IdBirthdate))
+	encryptedIDNumber, err := middleware.EncryptVerificationPII(body.IdNumber)
 	if err != nil {
 		tx.Rollback()
-		return fmt.Errorf("Invalid birthdate format")
+		return err
+	}
+
+	encryptedIDFirstName, err := middleware.EncryptVerificationPII(body.IdFirstName)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	encryptedIDLastName, err := middleware.EncryptVerificationPII(body.IdLastName)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	encryptedBirthdate, err := middleware.EncryptVerificationPII(body.IdBirthdate)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	encryptedMobileNumber, err := middleware.EncryptVerificationPII(body.MobileNumber)
+	if err != nil {
+		tx.Rollback()
+		return err
 	}
 
 	frontURL, err := saveVerificationImageTx(tx, userId, body.IdImageFront, "id-front")
@@ -600,11 +626,11 @@ func SubmitUserVerification(userId string, body model.SubmitVerificationBody) er
 		insertQuery,
 		userId,
 		strings.TrimSpace(body.IdType),
-		strings.TrimSpace(body.IdNumber),
-		strings.TrimSpace(body.IdFirstName),
-		strings.TrimSpace(body.IdLastName),
-		birthdate,
-		body.MobileNumber,
+		encryptedIDNumber,
+		encryptedIDFirstName,
+		encryptedIDLastName,
+		encryptedBirthdate,
+		encryptedMobileNumber,
 		frontURL,
 		backURL,
 		selfieURL,

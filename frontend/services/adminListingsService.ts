@@ -20,9 +20,34 @@ export type AdminListingRecord = {
   deleted_at: string | null;
 };
 
-export async function getAdminListings(): Promise<AdminListingRecord[]> {
+export type AdminListingsQuery = {
+  search?: string;
+  type?: string;
+  status?: string;
+  category?: string;
+  limit?: number;
+  offset?: number;
+};
+
+export type AdminListingsResponse = {
+  listings: AdminListingRecord[];
+  total: number;
+  limit: number;
+  offset: number;
+};
+
+export async function getAdminListings(query?: AdminListingsQuery): Promise<AdminListingsResponse> {
   try {
-    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/listings`, {
+    const params = new URLSearchParams();
+    if (query?.search) params.set("search", query.search);
+    if (query?.type) params.set("type", query.type);
+    if (query?.status) params.set("status", query.status);
+    if (query?.category) params.set("category", query.category);
+    if (typeof query?.limit === "number") params.set("limit", String(query.limit));
+    if (typeof query?.offset === "number") params.set("offset", String(query.offset));
+
+    const querySuffix = params.toString() ? `?${params.toString()}` : "";
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/listings${querySuffix}`, {
       method: "GET",
       credentials: "include",
     });
@@ -32,7 +57,12 @@ export async function getAdminListings(): Promise<AdminListingRecord[]> {
       throw parsedJson?.data?.message || "Failed to fetch listings.";
     }
 
-    return (parsedJson?.data?.listings ?? []) as AdminListingRecord[];
+    return {
+      listings: (parsedJson?.data?.listings ?? []) as AdminListingRecord[],
+      total: Number(parsedJson?.data?.total ?? 0),
+      limit: Number(parsedJson?.data?.limit ?? query?.limit ?? 0),
+      offset: Number(parsedJson?.data?.offset ?? query?.offset ?? 0),
+    };
   } catch {
     throw "An unexpected error occurred. Please try again later.";
   }

@@ -323,6 +323,14 @@ type AdminUserListItemFromDb struct {
 	Location           string     `gorm:"column:location" json:"location"`
 }
 
+type AdminUsersQuery struct {
+	Search   string
+	Status   string
+	Verified string
+	Limit    int
+	Offset   int
+}
+
 type AdminSetUserActiveBody struct {
 	IsActive *bool `json:"isActive"`
 }
@@ -342,6 +350,14 @@ type AdminAccountListItemFromDb struct {
 	DeletedAt       *time.Time `gorm:"column:deleted_at" json:"deleted_at"`
 	DeletedByName   string     `gorm:"column:deleted_by_name" json:"deleted_by_name"`
 	DeletedByEmail  string     `gorm:"column:deleted_by_email" json:"deleted_by_email"`
+}
+
+type AdminAccountsQuery struct {
+	Search string
+	Role   string
+	Status string
+	Limit  int
+	Offset int
 }
 
 type AdminCreateAdminBody struct {
@@ -373,6 +389,31 @@ type AdminListingListItemFromDb struct {
 	UpdatedAt        time.Time  `gorm:"column:updated_at" json:"updated_at"`
 	BannedUntil      *time.Time `gorm:"column:banned_until" json:"banned_until"`
 	DeletedAt        *time.Time `gorm:"column:deleted_at" json:"deleted_at"`
+}
+
+type AdminListingsQuery struct {
+	Search   string
+	Type     string
+	Status   string
+	Category string
+	Limit    int
+	Offset   int
+}
+
+type AdminTransactionsQuery struct {
+	Search string
+	Type   string
+	Status string
+	Limit  int
+	Offset int
+}
+
+type AdminReportsQuery struct {
+	Search string
+	Status string
+	Reason string
+	Limit  int
+	Offset int
 }
 
 type AdminTransactionListItemFromDb struct {
@@ -444,6 +485,14 @@ type AdminSetReportStatusBody struct {
 	Reason string `json:"reason"`
 }
 
+type AdminVerificationsQuery struct {
+	Search string
+	Status string
+	IdType string
+	Limit  int
+	Offset int
+}
+
 type AdminVerificationListItemFromDb struct {
 	Id              string     `gorm:"column:id" json:"id"`
 	UserId          string     `gorm:"column:user_id" json:"user_id"`
@@ -452,7 +501,7 @@ type AdminVerificationListItemFromDb struct {
 	ProfileImageURL string     `gorm:"column:profile_image_url" json:"profile_image_url"`
 	IdFirstName     string     `gorm:"column:id_first_name" json:"id_first_name"`
 	IdLastName      string     `gorm:"column:id_last_name" json:"id_last_name"`
-	IdBirthdate     time.Time  `gorm:"column:id_birthdate" json:"id_birthdate"`
+	IdBirthdate     string     `gorm:"column:id_birthdate" json:"id_birthdate"`
 	MobileNumber    string     `gorm:"column:mobile_number" json:"mobile_number"`
 	IdType          string     `gorm:"column:id_type" json:"id_type"`
 	IdNumber        string     `gorm:"column:id_number" json:"id_number"`

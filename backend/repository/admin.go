@@ -168,11 +168,51 @@ func GetAdminListingTypeBreakdown() ([]model.AdminListingTypeBreakdownItem, int,
 	return items, total, nil
 }
 
-func GetAdminUsers() ([]model.AdminUserListItemFromDb, error) {
+func GetAdminUsers(query model.AdminUsersQuery) ([]model.AdminUserListItemFromDb, int, error) {
 	db := middleware.DBConn
 	users := make([]model.AdminUserListItemFromDb, 0)
+	total := 0
 
-	query := `
+	whereParts := []string{"u.role = 'USER'"}
+	args := make([]any, 0)
+
+	search := strings.ToLower(strings.TrimSpace(query.Search))
+	if search != "" {
+		likeSearch := "%" + search + "%"
+		whereParts = append(whereParts, `
+			(
+				LOWER(TRIM(CONCAT_WS(' ', NULLIF(TRIM(u.first_name), ''), NULLIF(TRIM(u.last_name), '')))) LIKE ?
+				OR LOWER(COALESCE(u.email, '')) LIKE ?
+			)
+		`)
+		args = append(args, likeSearch, likeSearch)
+	}
+
+	verified := strings.ToUpper(strings.TrimSpace(query.Verified))
+	if verified != "" && verified != "ALL" {
+		whereParts = append(whereParts, "u.verification_status::text = ?")
+		args = append(args, verified)
+	}
+
+	status := strings.ToUpper(strings.TrimSpace(query.Status))
+	if status == "ACTIVE" {
+		whereParts = append(whereParts, "u.is_active = TRUE")
+	} else if status == "INACTIVE" {
+		whereParts = append(whereParts, "u.is_active = FALSE")
+	}
+
+	whereClause := "WHERE " + strings.Join(whereParts, " AND ")
+
+	countQuery := `
+		SELECT COUNT(*)::int
+		FROM public.users u
+		` + whereClause
+
+	if err := db.Raw(countQuery, args...).Scan(&total).Error; err != nil {
+		return nil, 0, fmt.Errorf("Failed to fetch user count")
+	}
+
+	selectQuery := `
 		SELECT
 			u.id::text AS id,
 			u.first_name,
@@ -214,15 +254,20 @@ func GetAdminUsers() ([]model.AdminUserListItemFromDb, error) {
 			INNER JOIN public.listings l ON l.id = lt.listing_id
 			GROUP BY l.user_id
 		) ot ON ot.owner_id = u.id
-		WHERE u.role = 'USER'
+		` + whereClause + `
 		ORDER BY u.created_at DESC
+		LIMIT ?
+		OFFSET ?
 	`
 
-	if err := db.Raw(query).Scan(&users).Error; err != nil {
-		return nil, fmt.Errorf("Failed to fetch users")
+	selectArgs := append([]any{}, args...)
+	selectArgs = append(selectArgs, query.Limit, query.Offset)
+
+	if err := db.Raw(selectQuery, selectArgs...).Scan(&users).Error; err != nil {
+		return nil, 0, fmt.Errorf("Failed to fetch users")
 	}
 
-	return users, nil
+	return users, total, nil
 }
 
 func SetAdminUserActive(userId string, isActive bool, actorUserId string) error {
@@ -260,19 +305,35 @@ func SetAdminUserActive(userId string, isActive bool, actorUserId string) error 
 		}
 	}
 
+	applyUserBanFields := strings.EqualFold(strings.TrimSpace(targetRole), "USER")
+	var lockUntil any
+	if applyUserBanFields && !isActive {
+		lockUntil = time.Now().AddDate(0, 0, 3)
+	}
+
 	updateQuery := `
 		UPDATE public.users
 		SET
 			is_active = $1,
 			updated_at = now(),
 			failed_login_attempts = CASE WHEN $1 THEN 0 ELSE failed_login_attempts END,
-			account_locked_until = CASE WHEN $1 THEN NULL ELSE account_locked_until END
+			account_locked_until = CASE
+				WHEN $3 AND $1 = FALSE THEN $5
+				WHEN $3 AND $1 = TRUE THEN NULL
+				WHEN $1 THEN NULL
+				ELSE account_locked_until
+			END,
+			deleted_by_id = CASE
+				WHEN $3 AND $1 = FALSE THEN $4
+				WHEN $3 AND $1 = TRUE THEN NULL
+				ELSE deleted_by_id
+			END
 		WHERE id = $2
 			AND deleted_at IS NULL
 			AND role IN ('USER', 'ADMIN', 'SUPER_ADMIN')
 	`
 
-	result := db.Exec(updateQuery, isActive, userId)
+	result := db.Exec(updateQuery, isActive, userId, applyUserBanFields, actorUserId, lockUntil)
 	if result.Error != nil {
 		return fmt.Errorf("Failed to update user status")
 	}
@@ -285,8 +346,6 @@ func SetAdminUserActive(userId string, isActive bool, actorUserId string) error 
 			return fmt.Errorf("Failed to revoke user sessions")
 		}
 	}
-
-	_ = actorUserId
 
 	return nil
 }
@@ -353,11 +412,56 @@ func DeleteAdminUser(userId string, actorUserId string) error {
 	return nil
 }
 
-func GetAdminAccounts() ([]model.AdminAccountListItemFromDb, error) {
+func GetAdminAccounts(query model.AdminAccountsQuery) ([]model.AdminAccountListItemFromDb, int, error) {
 	db := middleware.DBConn
 	admins := make([]model.AdminAccountListItemFromDb, 0)
+	total := 0
 
-	query := `
+	whereParts := []string{"u.role IN ('ADMIN', 'SUPER_ADMIN')"}
+	args := make([]any, 0)
+
+	search := strings.ToLower(strings.TrimSpace(query.Search))
+	if search != "" {
+		likeSearch := "%" + search + "%"
+		whereParts = append(whereParts, `
+			(
+				LOWER(COALESCE(u.first_name, '')) LIKE ?
+				OR LOWER(COALESCE(u.last_name, '')) LIKE ?
+				OR LOWER(COALESCE(u.email, '')) LIKE ?
+				OR LOWER(TRIM(CONCAT_WS(' ', COALESCE(u.first_name, ''), COALESCE(u.last_name, '')))) LIKE ?
+			)
+		`)
+		args = append(args, likeSearch, likeSearch, likeSearch, likeSearch)
+	}
+
+	roleFilter := strings.ToUpper(strings.TrimSpace(query.Role))
+	if roleFilter != "" && roleFilter != "ALL" {
+		whereParts = append(whereParts, "u.role::text = ?")
+		args = append(args, roleFilter)
+	}
+
+	statusFilter := strings.ToUpper(strings.TrimSpace(query.Status))
+	if statusFilter == "ACTIVE" {
+		whereParts = append(whereParts, "u.deleted_at IS NULL AND u.is_active = TRUE")
+	} else if statusFilter == "INACTIVE" {
+		whereParts = append(whereParts, "u.deleted_at IS NULL AND u.is_active = FALSE")
+	} else if statusFilter == "DELETED" {
+		whereParts = append(whereParts, "u.deleted_at IS NOT NULL")
+	}
+
+	whereClause := "WHERE " + strings.Join(whereParts, " AND ")
+
+	countQuery := `
+		SELECT COUNT(*)::int
+		FROM public.users u
+		LEFT JOIN public.users du ON du.id = u.deleted_by_id
+		` + whereClause
+
+	if err := db.Raw(countQuery, args...).Scan(&total).Error; err != nil {
+		return nil, 0, fmt.Errorf("Failed to fetch admin account count")
+	}
+
+	selectQuery := `
 		SELECT
 			u.id::text AS id,
 			u.first_name,
@@ -375,22 +479,27 @@ func GetAdminAccounts() ([]model.AdminAccountListItemFromDb, error) {
 			COALESCE(du.email, '') AS deleted_by_email
 		FROM public.users u
 		LEFT JOIN public.users du ON du.id = u.deleted_by_id
-		WHERE u.role IN ('ADMIN', 'SUPER_ADMIN')
+		` + whereClause + `
 		ORDER BY
 			CASE WHEN u.deleted_at IS NULL THEN 0 ELSE 1 END ASC,
 			CASE WHEN u.role = 'SUPER_ADMIN' THEN 0 ELSE 1 END ASC,
 			u.created_at ASC
+		LIMIT ?
+		OFFSET ?
 	`
 
-	if err := db.Raw(query).Scan(&admins).Error; err != nil {
-		return nil, fmt.Errorf("Failed to fetch admin accounts")
+	selectArgs := append([]any{}, args...)
+	selectArgs = append(selectArgs, query.Limit, query.Offset)
+
+	if err := db.Raw(selectQuery, selectArgs...).Scan(&admins).Error; err != nil {
+		return nil, 0, fmt.Errorf("Failed to fetch admin accounts")
 	}
 
 	for i := range admins {
 		admins[i].Role = strings.ToUpper(strings.TrimSpace(admins[i].Role))
 	}
 
-	return admins, nil
+	return admins, total, nil
 }
 
 func CreateAdminAccount(body model.AdminCreateAdminBody) (model.AdminAccountListItemFromDb, error) {
@@ -573,11 +682,61 @@ func SetAdminAccountActive(userId string, isActive bool) error {
 	return nil
 }
 
-func GetAdminListings() ([]model.AdminListingListItemFromDb, error) {
+func GetAdminListings(query model.AdminListingsQuery) ([]model.AdminListingListItemFromDb, int, error) {
 	db := middleware.DBConn
 	listings := make([]model.AdminListingListItemFromDb, 0)
+	total := 0
 
-	query := `
+	whereParts := make([]string, 0)
+	args := make([]any, 0)
+
+	search := strings.ToLower(strings.TrimSpace(query.Search))
+	if search != "" {
+		likeSearch := "%" + search + "%"
+		whereParts = append(whereParts, `
+			(
+				LOWER(l.title) LIKE ?
+				OR LOWER(COALESCE(NULLIF(TRIM(CONCAT_WS(' ', NULLIF(TRIM(u.first_name), ''), NULLIF(TRIM(u.last_name), ''))), ''), u.email, '')) LIKE ?
+			)
+		`)
+		args = append(args, likeSearch, likeSearch)
+	}
+
+	typeFilter := strings.ToUpper(strings.TrimSpace(query.Type))
+	if typeFilter != "" && typeFilter != "ALL" {
+		whereParts = append(whereParts, "l.listing_type::text = ?")
+		args = append(args, typeFilter)
+	}
+
+	statusFilter := strings.ToUpper(strings.TrimSpace(query.Status))
+	if statusFilter != "" && statusFilter != "ALL" {
+		whereParts = append(whereParts, "l.status::text = ?")
+		args = append(args, statusFilter)
+	}
+
+	categoryFilter := strings.ToLower(strings.TrimSpace(query.Category))
+	if categoryFilter != "" && categoryFilter != "all" {
+		whereParts = append(whereParts, "LOWER(COALESCE(c.name, 'Others')) = ?")
+		args = append(args, categoryFilter)
+	}
+
+	whereClause := ""
+	if len(whereParts) > 0 {
+		whereClause = "WHERE " + strings.Join(whereParts, " AND ")
+	}
+
+	countQuery := `
+		SELECT COUNT(*)::int
+		FROM public.listings l
+		LEFT JOIN public.categories c ON c.id = l.category_id
+		LEFT JOIN public.users u ON u.id = l.user_id
+		` + whereClause
+
+	if err := db.Raw(countQuery, args...).Scan(&total).Error; err != nil {
+		return nil, 0, fmt.Errorf("Failed to fetch listing count")
+	}
+
+	selectQuery := `
 		SELECT
 			l.id::text AS id,
 			l.title,
@@ -622,11 +781,17 @@ func GetAdminListings() ([]model.AdminListingListItemFromDb, error) {
 			ORDER BY is_primary DESC, id ASC
 			LIMIT 1
 		) li ON TRUE
+		` + whereClause + `
 		ORDER BY l.created_at DESC
+		LIMIT ?
+		OFFSET ?
 	`
 
-	if err := db.Raw(query).Scan(&listings).Error; err != nil {
-		return nil, fmt.Errorf("Failed to fetch listings")
+	selectArgs := append([]any{}, args...)
+	selectArgs = append(selectArgs, query.Limit, query.Offset)
+
+	if err := db.Raw(selectQuery, selectArgs...).Scan(&listings).Error; err != nil {
+		return nil, 0, fmt.Errorf("Failed to fetch listings")
 	}
 
 	for i := range listings {
@@ -640,7 +805,7 @@ func GetAdminListings() ([]model.AdminListingListItemFromDb, error) {
 		}
 	}
 
-	return listings, nil
+	return listings, total, nil
 }
 
 func ToggleAdminListingVisibility(listingId string) (string, error) {
@@ -709,11 +874,57 @@ func applyListingVisibilityStatus(listingId, nextStatus string) error {
 	return nil
 }
 
-func GetAdminTransactions() ([]model.AdminTransactionListItemFromDb, error) {
+func GetAdminTransactions(query model.AdminTransactionsQuery) ([]model.AdminTransactionListItemFromDb, int, error) {
 	db := middleware.DBConn
 	transactions := make([]model.AdminTransactionListItemFromDb, 0)
+	total := 0
 
-	query := `
+	whereParts := make([]string, 0)
+	args := make([]any, 0)
+
+	search := strings.ToLower(strings.TrimSpace(query.Search))
+	if search != "" {
+		likeSearch := "%" + search + "%"
+		whereParts = append(whereParts, `
+			(
+				LOWER(COALESCE(l.title, '')) LIKE ?
+				OR LOWER(COALESCE(NULLIF(TRIM(CONCAT_WS(' ', NULLIF(TRIM(buyer.first_name), ''), NULLIF(TRIM(buyer.last_name), ''))), ''), buyer.email, '')) LIKE ?
+				OR LOWER(COALESCE(NULLIF(TRIM(CONCAT_WS(' ', NULLIF(TRIM(owner.first_name), ''), NULLIF(TRIM(owner.last_name), ''))), ''), owner.email, '')) LIKE ?
+			)
+		`)
+		args = append(args, likeSearch, likeSearch, likeSearch)
+	}
+
+	typeFilter := strings.ToUpper(strings.TrimSpace(query.Type))
+	if typeFilter != "" && typeFilter != "ALL" {
+		whereParts = append(whereParts, "l.listing_type::text = ?")
+		args = append(args, typeFilter)
+	}
+
+	statusFilter := strings.ToUpper(strings.TrimSpace(query.Status))
+	if statusFilter != "" && statusFilter != "ALL" {
+		whereParts = append(whereParts, "lt.status::text = ?")
+		args = append(args, statusFilter)
+	}
+
+	whereClause := ""
+	if len(whereParts) > 0 {
+		whereClause = "WHERE " + strings.Join(whereParts, " AND ")
+	}
+
+	countQuery := `
+		SELECT COUNT(*)::int
+		FROM public.listing_transactions lt
+		JOIN public.listings l ON l.id = lt.listing_id
+		JOIN public.users buyer ON buyer.id = lt.client_id
+		JOIN public.users owner ON owner.id = l.user_id
+		` + whereClause
+
+	if err := db.Raw(countQuery, args...).Scan(&total).Error; err != nil {
+		return nil, 0, fmt.Errorf("Failed to fetch transaction count")
+	}
+
+	selectQuery := `
 		SELECT
 			lt.id::text AS id,
 			l.id::text AS listing_id,
@@ -759,11 +970,17 @@ func GetAdminTransactions() ([]model.AdminTransactionListItemFromDb, error) {
 			ORDER BY is_primary DESC, id ASC
 			LIMIT 1
 		) li ON TRUE
+		` + whereClause + `
 		ORDER BY lt.created_at DESC
+		LIMIT ?
+		OFFSET ?
 	`
 
-	if err := db.Raw(query).Scan(&transactions).Error; err != nil {
-		return nil, fmt.Errorf("Failed to fetch transactions")
+	selectArgs := append([]any{}, args...)
+	selectArgs = append(selectArgs, query.Limit, query.Offset)
+
+	if err := db.Raw(selectQuery, selectArgs...).Scan(&transactions).Error; err != nil {
+		return nil, 0, fmt.Errorf("Failed to fetch transactions")
 	}
 
 	for i := range transactions {
@@ -777,7 +994,7 @@ func GetAdminTransactions() ([]model.AdminTransactionListItemFromDb, error) {
 		}
 	}
 
-	return transactions, nil
+	return transactions, total, nil
 }
 
 func DeleteAdminListing(listingId string) error {
@@ -845,11 +1062,64 @@ func DeleteAdminListing(listingId string) error {
 	return nil
 }
 
-func GetAdminReports() ([]model.AdminReportListItemFromDb, error) {
+func GetAdminReports(query model.AdminReportsQuery) ([]model.AdminReportListItemFromDb, int, error) {
 	db := middleware.DBConn
 	reports := make([]model.AdminReportListItemFromDb, 0)
+	total := 0
 
-	query := `
+	whereParts := make([]string, 0)
+	args := make([]any, 0)
+
+	search := strings.ToLower(strings.TrimSpace(query.Search))
+	if search != "" {
+		likeSearch := "%" + search + "%"
+		whereParts = append(whereParts, `
+			(
+				LOWER(COALESCE(NULLIF(TRIM(CONCAT_WS(' ', NULLIF(TRIM(rep.first_name), ''), NULLIF(TRIM(rep.last_name), ''))), ''), rep.email, '')) LIKE ?
+				OR LOWER(COALESCE(NULLIF(TRIM(CONCAT_WS(' ', NULLIF(TRIM(owner.first_name), ''), NULLIF(TRIM(owner.last_name), ''))), ''), owner.email, '')) LIKE ?
+				OR LOWER(
+					CASE
+						WHEN r.reported_listing_id IS NOT NULL THEN COALESCE(l.title, 'Unknown Listing')
+						ELSE COALESCE(NULLIF(TRIM(CONCAT_WS(' ', NULLIF(TRIM(ru.first_name), ''), NULLIF(TRIM(ru.last_name), ''))), ''), ru.email, 'Unknown User')
+					END
+				) LIKE ?
+				OR LOWER(COALESCE(r.reason, '')) LIKE ?
+			)
+		`)
+		args = append(args, likeSearch, likeSearch, likeSearch, likeSearch)
+	}
+
+	statusFilter := strings.ToUpper(strings.TrimSpace(query.Status))
+	if statusFilter != "" && statusFilter != "ALL" {
+		whereParts = append(whereParts, "r.status::text = ?")
+		args = append(args, statusFilter)
+	}
+
+	reasonFilter := strings.TrimSpace(query.Reason)
+	if reasonFilter != "" && !strings.EqualFold(reasonFilter, "ALL") {
+		whereParts = append(whereParts, "r.reason = ?")
+		args = append(args, reasonFilter)
+	}
+
+	whereClause := ""
+	if len(whereParts) > 0 {
+		whereClause = "WHERE " + strings.Join(whereParts, " AND ")
+	}
+
+	countQuery := `
+		SELECT COUNT(*)::int
+		FROM public.reports r
+		LEFT JOIN public.users rep ON rep.id = r.reporter_id
+		LEFT JOIN public.listings l ON l.id = r.reported_listing_id
+		LEFT JOIN public.users owner ON owner.id = l.user_id
+		LEFT JOIN public.users ru ON ru.id = r.reported_user_id
+		` + whereClause
+
+	if err := db.Raw(countQuery, args...).Scan(&total).Error; err != nil {
+		return nil, 0, fmt.Errorf("Failed to fetch report count")
+	}
+
+	selectQuery := `
 		SELECT
 			r.id::text AS id,
 			COALESCE(r.reporter_id::text, '') AS reporter_id,
@@ -904,11 +1174,17 @@ func GetAdminReports() ([]model.AdminReportListItemFromDb, error) {
 		LEFT JOIN public.users ru ON ru.id = r.reported_user_id
 		LEFT JOIN public.users rev ON rev.id = r.reviewed_by_id
 		LEFT JOIN public.users res ON res.id = r.resolved_by_id
+		` + whereClause + `
 		ORDER BY r.created_at DESC
+		LIMIT ?
+		OFFSET ?
 	`
 
-	if err := db.Raw(query).Scan(&reports).Error; err != nil {
-		return nil, fmt.Errorf("Failed to fetch reports")
+	selectArgs := append([]any{}, args...)
+	selectArgs = append(selectArgs, query.Limit, query.Offset)
+
+	if err := db.Raw(selectQuery, selectArgs...).Scan(&reports).Error; err != nil {
+		return nil, 0, fmt.Errorf("Failed to fetch reports")
 	}
 
 	for i := range reports {
@@ -929,7 +1205,7 @@ func GetAdminReports() ([]model.AdminReportListItemFromDb, error) {
 		}
 	}
 
-	return reports, nil
+	return reports, total, nil
 }
 
 func SetAdminReportStatus(reportId, reviewedById, status string) error {
@@ -1236,11 +1512,54 @@ func SetAdminReportAction(reportId, adminUserId, action, reason string) error {
 	return nil
 }
 
-func GetAdminVerifications() ([]model.AdminVerificationListItemFromDb, error) {
+func GetAdminVerifications(query model.AdminVerificationsQuery) ([]model.AdminVerificationListItemFromDb, int, error) {
 	db := middleware.DBConn
 	rows := make([]model.AdminVerificationListItemFromDb, 0)
+	total := 0
 
-	query := `
+	whereParts := make([]string, 0)
+	args := make([]any, 0)
+
+	search := strings.ToLower(strings.TrimSpace(query.Search))
+	if search != "" {
+		likeSearch := "%" + search + "%"
+		whereParts = append(whereParts, `
+			(
+				LOWER(COALESCE(NULLIF(TRIM(CONCAT_WS(' ', NULLIF(TRIM(u.first_name), ''), NULLIF(TRIM(u.last_name), ''))), ''), u.email, '')) LIKE ?
+				OR LOWER(COALESCE(u.email, '')) LIKE ?
+			)
+		`)
+		args = append(args, likeSearch, likeSearch)
+	}
+
+	statusFilter := strings.ToUpper(strings.TrimSpace(query.Status))
+	if statusFilter != "" && statusFilter != "ALL" {
+		whereParts = append(whereParts, "uv.verification_status::text = ?")
+		args = append(args, statusFilter)
+	}
+
+	idTypeFilter := strings.ToLower(strings.TrimSpace(query.IdType))
+	if idTypeFilter != "" && idTypeFilter != "all" {
+		whereParts = append(whereParts, "LOWER(COALESCE(uv.id_type, '')) = ?")
+		args = append(args, idTypeFilter)
+	}
+
+	whereClause := ""
+	if len(whereParts) > 0 {
+		whereClause = "WHERE " + strings.Join(whereParts, " AND ")
+	}
+
+	countQuery := `
+		SELECT COUNT(*)::int
+		FROM public.user_verifications uv
+		INNER JOIN public.users u ON u.id = uv.user_id
+		` + whereClause
+
+	if err := db.Raw(countQuery, args...).Scan(&total).Error; err != nil {
+		return nil, 0, fmt.Errorf("Failed to fetch verification count")
+	}
+
+	selectQuery := `
 		SELECT
 			uv.id::text AS id,
 			uv.user_id::text AS user_id,
@@ -1267,21 +1586,54 @@ func GetAdminVerifications() ([]model.AdminVerificationListItemFromDb, error) {
 		FROM public.user_verifications uv
 		INNER JOIN public.users u ON u.id = uv.user_id
 		LEFT JOIN public.users rev ON rev.id = uv.reviewed_by_id
+		` + whereClause + `
 		ORDER BY uv.submitted_at DESC
+		LIMIT ?
+		OFFSET ?
 	`
 
-	if err := db.Raw(query).Scan(&rows).Error; err != nil {
-		return nil, fmt.Errorf("Failed to fetch verifications")
+	selectArgs := append([]any{}, args...)
+	selectArgs = append(selectArgs, query.Limit, query.Offset)
+
+	if err := db.Raw(selectQuery, selectArgs...).Scan(&rows).Error; err != nil {
+		return nil, 0, fmt.Errorf("Failed to fetch verifications")
 	}
 
 	for i := range rows {
+		decryptedIDNumber, err := middleware.DecryptVerificationPII(rows[i].IdNumber)
+		if err != nil {
+			return nil, 0, fmt.Errorf("Failed to decrypt verification data")
+		}
+		decryptedIDFirstName, err := middleware.DecryptVerificationPII(rows[i].IdFirstName)
+		if err != nil {
+			return nil, 0, fmt.Errorf("Failed to decrypt verification data")
+		}
+		decryptedIDLastName, err := middleware.DecryptVerificationPII(rows[i].IdLastName)
+		if err != nil {
+			return nil, 0, fmt.Errorf("Failed to decrypt verification data")
+		}
+		decryptedBirthdate, err := middleware.DecryptVerificationPII(rows[i].IdBirthdate)
+		if err != nil {
+			return nil, 0, fmt.Errorf("Failed to decrypt verification data")
+		}
+		decryptedMobileNumber, err := middleware.DecryptVerificationPII(rows[i].MobileNumber)
+		if err != nil {
+			return nil, 0, fmt.Errorf("Failed to decrypt verification data")
+		}
+
+		rows[i].IdNumber = strings.TrimSpace(decryptedIDNumber)
+		rows[i].IdFirstName = strings.TrimSpace(decryptedIDFirstName)
+		rows[i].IdLastName = strings.TrimSpace(decryptedIDLastName)
+		rows[i].IdBirthdate = strings.TrimSpace(decryptedBirthdate)
+		rows[i].MobileNumber = strings.TrimSpace(decryptedMobileNumber)
+
 		rows[i].Status = strings.ToUpper(strings.TrimSpace(rows[i].Status))
 		if strings.TrimSpace(rows[i].UserName) == "" {
 			rows[i].UserName = strings.TrimSpace(rows[i].IdFirstName + " " + rows[i].IdLastName)
 		}
 	}
 
-	return rows, nil
+	return rows, total, nil
 }
 
 func SetAdminVerificationStatus(verificationId, reviewedById, status, reason string) error {

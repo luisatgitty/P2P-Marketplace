@@ -234,7 +234,7 @@ export default function BecomeSellerPage() {
   const [phoneNumber,   setPhoneNumber]   = useState("");
   const [otpValue,      setOtpValue]      = useState("");
   const [resendSeconds, setResendSeconds] = useState(RESEND_SECONDS);
-  const [canResend,     setCanResend]     = useState(false);
+  const [canResend,     setCanResend]     = useState(true);
   const [resendKey,     setResendKey]     = useState(0);
   const hasPrefilledPhone = useRef(false);
 

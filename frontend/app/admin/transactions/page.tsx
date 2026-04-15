@@ -1,14 +1,12 @@
 "use client";
 
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect, useCallback, type UIEvent } from "react";
 import {
   Search,
   Clock,
   ChevronUp,
   ChevronDown,
   ChevronsUpDown,
-  ChevronLeft,
-  ChevronRight,
   CheckCircle2,
   XCircle,
   Handshake,
@@ -146,52 +144,77 @@ function FilterSelect({
 // ── Main page ──────────────────────────────────────────────────────────────────
 export default function TransactionsPage() {
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("ALL");
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [sort, setSort] = useState<{ field: SortField; dir: SortDir }>({ field: "createdAt", dir: "desc" });
-  const [page, setPage] = useState(1);
   const [transactions, setTransactions] = useState<AdminTransaction[]>([]);
   const [loadingTransactions, setLoadingTransactions] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const [offset, setOffset] = useState(0);
+  const [totalCount, setTotalCount] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const PER_PAGE = 8;
+  const FETCH_LIMIT = 16;
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      setDebouncedSearch(search.trim());
+    }, 250);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [search]);
 
   // ── Load ──────────────────────────────────────────────────────────────────────
-  const loadTransactions = useCallback(async () => {
-    setLoadingTransactions(true);
+  const loadTransactions = useCallback(async (reset: boolean, requestedOffset = 0) => {
+    if (reset) {
+      setLoadingTransactions(true);
+    } else {
+      setLoadingMore(true);
+    }
+
+    const nextOffset = reset ? 0 : requestedOffset;
+
     try {
-      const data = await getAdminTransactions();
-      setTransactions((data ?? []) as AdminTransaction[]);
+      const payload = await getAdminTransactions({
+        search: debouncedSearch,
+        type: typeFilter,
+        status: statusFilter,
+        limit: FETCH_LIMIT,
+        offset: nextOffset,
+      });
+
+      const received = (payload.transactions ?? []) as AdminTransaction[];
+      const nextCount = reset ? received.length : nextOffset + received.length;
+
+      setTransactions((prev) => (reset ? received : [...prev, ...received]));
+      setOffset(nextCount);
+      setTotalCount(payload.total);
+      setHasMore(nextCount < payload.total);
     } catch (err) {
       const message = typeof err === "string" ? err : "Failed to load transactions";
       toast.error(message, { position: "top-center" });
     } finally {
       setLoadingTransactions(false);
+      setLoadingMore(false);
       setIsRefreshing(false);
     }
-  }, []);
+  }, [debouncedSearch, typeFilter, statusFilter]);
 
   useEffect(() => {
-    void loadTransactions();
-  }, [loadTransactions]);
+    void loadTransactions(true, 0);
+  }, [debouncedSearch, typeFilter, statusFilter, loadTransactions]);
 
   // ── Sort ──────────────────────────────────────────────────────────────────────
   function toggleSort(field: SortField) {
     setSort(s => s.field === field ? { field, dir: s.dir === "asc" ? "desc" : "asc" } : { field, dir: "desc" });
-    setPage(1);
   }
 
-  // ── Filter + sort + paginate ──────────────────────────────────────────────────
+  // ── Sort loaded chunk ─────────────────────────────────────────────────────────
   const filtered = useMemo(() => {
     let data = [...transactions];
-    const searchLower = search.trim().toLowerCase();
-    if (search)
-      data = data.filter(tx =>
-        tx.listing_title.toLowerCase().includes(searchLower)
-        || tx.client_full_name.toLowerCase().includes(searchLower)
-        || tx.owner_full_name.toLowerCase().includes(searchLower),
-      );
-    if (typeFilter !== "ALL") data = data.filter(tx => tx.listing_type === typeFilter);
-    if (statusFilter !== "ALL") data = data.filter(tx => tx.status === statusFilter);
     data.sort((a, b) => {
       let va: string | number = 0;
       let vb: string | number = 0;
@@ -225,16 +248,22 @@ export default function TransactionsPage() {
         : Number(vb) - Number(va);
     });
     return data;
-  }, [transactions, search, typeFilter, statusFilter, sort]);
+  }, [transactions, sort]);
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
-  const paged      = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
-
-  const totalCount     = transactions.length;
   const pendingCount   = transactions.filter(tx => tx.status === "PENDING").length;
   const confirmedCount = transactions.filter(tx => tx.status === "CONFIRMED").length;
   const completedCount = transactions.filter(tx => tx.status === "COMPLETED").length;
   const cancelledCount = transactions.filter(tx => tx.status === "CANCELLED").length;
+
+  function handleTableScroll(event: UIEvent<HTMLDivElement>) {
+    if (loadingTransactions || loadingMore || !hasMore) return;
+
+    const node = event.currentTarget;
+    const remaining = node.scrollHeight - node.scrollTop - node.clientHeight;
+    if (remaining > 120) return;
+
+    void loadTransactions(false, offset);
+  }
 
   const hasActiveFilters = search || typeFilter !== "ALL" || statusFilter !== "ALL";
 
@@ -253,22 +282,22 @@ export default function TransactionsPage() {
 
   // ── Render ────────────────────────────────────────────────────────────────────
   return (
-    <div className="p-5 sm:p-6 space-y-5">
+    <div className="h-[calc(100vh)] p-5 sm:p-6 flex flex-col gap-5 min-h-0">
 
       {/* ── Page header ── */}
-      <div>
+      {/* <div>
         <h2 className="text-xl font-extrabold text-stone-900 dark:text-stone-50">
           Transactions
         </h2>
         <p className="text-sm text-stone-500 dark:text-stone-400 mt-0.5">
           Monitor all listing transactions across selling, renting, and service listings.
         </p>
-      </div>
+      </div> */}
 
       {/* ── Summary cards — clickable to filter by status ── */}
       <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
         {[
-          { label: "Total Transactions",     count: totalCount,     status: "ALL",       color: "text-stone-700 dark:text-stone-200", bg: "bg-stone-100 dark:bg-[#13151f]",     border: "border-stone-200 dark:border-[#2a2d3e]", Icon: Handshake   },
+          { label: "Total",     count: totalCount,     status: "ALL",       color: "text-stone-700 dark:text-stone-200", bg: "bg-stone-100 dark:bg-[#13151f]",     border: "border-stone-200 dark:border-[#2a2d3e]", Icon: Handshake   },
           { label: "Pending",   count: pendingCount,   status: "PENDING",   color: "text-amber-600 dark:text-amber-400", bg: "bg-amber-50 dark:bg-amber-950/20",  border: "border-amber-200 dark:border-amber-800",  Icon: Clock       },
           { label: "Confirmed", count: confirmedCount, status: "CONFIRMED", color: "text-blue-600 dark:text-blue-400",   bg: "bg-blue-50 dark:bg-blue-950/20",    border: "border-blue-200 dark:border-blue-800",    Icon: Handshake   },
           { label: "Completed", count: completedCount, status: "COMPLETED", color: "text-teal-600 dark:text-teal-400",   bg: "bg-teal-50 dark:bg-teal-950/20",    border: "border-teal-200 dark:border-teal-800",    Icon: CheckCircle2 },
@@ -277,7 +306,7 @@ export default function TransactionsPage() {
           <Card
             key={label}
             className={cn(
-              "rounded-lg cursor-pointer hover:shadow-sm transition-all border",
+              "p-4 rounded-md cursor-pointer hover:shadow-sm transition-all border",
               bg, border,
               statusFilter === status && "ring-2 ring-offset-1 ring-current",
             )}
@@ -286,11 +315,10 @@ export default function TransactionsPage() {
                 if (status === "ALL") return "ALL";
                 return prev === status ? "ALL" : status;
               });
-              setPage(1);
             }}
           >
             <CardContent className="text-center">
-              <Icon className={cn("w-5 h-5 mx-auto mb-1.5", color)} />
+              {/* <Icon className={cn("w-5 h-5 mx-auto mb-1.5", color)} /> */}
               <p className={cn("text-xl font-extrabold", color)}>{count}</p>
               <p className="text-sm text-stone-500 dark:text-stone-400 mt-0.5">{label}</p>
             </CardContent>
@@ -306,7 +334,7 @@ export default function TransactionsPage() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400 pointer-events-none" />
           <Input
             value={search}
-            onChange={e => { setSearch(e.target.value); setPage(1); }}
+            onChange={e => { setSearch(e.target.value); }}
             placeholder="Search listing, client, or owner…"
             className="pl-9 dark:bg-[#13151f] dark:border-[#2a2d3e]"
           />
@@ -316,7 +344,7 @@ export default function TransactionsPage() {
         <div className="flex gap-2 flex-wrap">
           <FilterSelect
             value={typeFilter}
-            onChange={v => { setTypeFilter(v); setPage(1); }}
+            onChange={v => { setTypeFilter(v); }}
             options={[
               ["ALL", "All Types"],
               ["SELL", "For Sale"],
@@ -326,7 +354,7 @@ export default function TransactionsPage() {
           />
           <FilterSelect
             value={statusFilter}
-            onChange={v => { setStatusFilter(v); setPage(1); }}
+            onChange={v => { setStatusFilter(v); }}
             options={[
               ["ALL", "All Status"],
               ["PENDING", "Pending"],
@@ -343,7 +371,6 @@ export default function TransactionsPage() {
               onClick={() => {
                 setSearch(""); setTypeFilter("ALL");
                 setStatusFilter("ALL");
-                setPage(1);
               }}
               className="hover:bg-destructive/10! text-destructive! border-destructive! focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40"
             >
@@ -357,8 +384,7 @@ export default function TransactionsPage() {
           variant="outline"
           onClick={() => {
             setIsRefreshing(true);
-            setPage(1);
-            void loadTransactions();
+            void loadTransactions(true, 0);
           }}
           disabled={loadingTransactions}
           className="border-sky-600 text-sky-600! hover:bg-sky-600/10 focus-visible:border-sky-600 focus-visible:ring-sky-600/20 dark:border-sky-400 dark:text-sky-400! dark:hover:bg-sky-400/10 dark:focus-visible:border-sky-400 dark:focus-visible:ring-sky-400/40"
@@ -368,9 +394,9 @@ export default function TransactionsPage() {
       </div>
 
       {/* ── Table ── */}
-      <Card className="p-0 rounded-lg dark:bg-[#1c1f2e] dark:border-[#2a2d3e] overflow-hidden">
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
+      <Card className="p-0 rounded-lg dark:bg-[#1c1f2e] dark:border-[#2a2d3e] overflow-hidden flex-1 min-h-0">
+        <CardContent className="p-0 h-full min-h-0 flex flex-col">
+          <div className="overflow-auto h-full" onScroll={handleTableScroll}>
             <Table>
               <TableHeader>
                 <TableRow className="border-stone-200 dark:border-[#2a2d3e] bg-stone-50 dark:bg-[#13151f] hover:bg-stone-50 dark:hover:bg-[#13151f]">
@@ -391,20 +417,20 @@ export default function TransactionsPage() {
               </TableHeader>
 
               <TableBody>
-                {loadingTransactions ? (
+                {loadingTransactions && filtered.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={9} className="py-16 text-center text-sm text-stone-400 dark:text-stone-500">
                       Loading transactions...
                     </TableCell>
                   </TableRow>
-                ) : paged.length === 0 ? (
+                ) : filtered.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={9} className="py-16 text-center text-sm text-stone-400 dark:text-stone-500">
                       No transactions match the current filters.
                     </TableCell>
                   </TableRow>
                 ) : (
-                  paged.map(transaction => {
+                  filtered.map(transaction => {
                     const typeConfig = TYPE_CONFIG[transaction.listing_type];
                     const TypeIcon = typeConfig.Icon;
                     return (
@@ -547,54 +573,29 @@ export default function TransactionsPage() {
                     );
                   })
                 )}
+
+                {loadingMore && (
+                  <TableRow>
+                    <TableCell colSpan={9} className="py-4 text-center text-sm text-stone-400 dark:text-stone-500">
+                      Loading more transactions...
+                    </TableCell>
+                  </TableRow>
+                )}
+
+                {!hasMore && filtered.length > 0 && (
+                  <TableRow>
+                    <TableCell colSpan={9} className="py-4 text-center text-xs text-stone-400 dark:text-stone-500">
+                      End of transaction results.
+                    </TableCell>
+                  </TableRow>
+                )}
               </TableBody>
             </Table>
           </div>
 
-          {/* ── Pagination ── */}
           <Separator className="dark:bg-[#2a2d3e]" />
-          <div className="flex items-center justify-between px-4 py-3">
-            <p className="text-sm text-stone-400 dark:text-stone-500">
-              Page {page} of {totalPages} · {filtered.length} result{filtered.length !== 1 ? "s" : ""}
-            </p>
-            <div className="flex items-center gap-1.5">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPage(p => Math.max(1, p - 1))}
-                disabled={page === 1}
-                className="h-8 w-8 p-0 rounded-lg dark:border-[#2a2d3e] dark:text-stone-300 dark:hover:bg-[#252837]"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </Button>
-
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map(n => (
-                <Button
-                  key={n}
-                  variant={page === n ? "default" : "ghost"}
-                  size="sm"
-                  onClick={() => setPage(n)}
-                  className={cn(
-                    "h-8 w-8 p-0 rounded-lg text-sm font-bold",
-                    page === n
-                      ? "bg-[#1e2433] text-white hover:bg-[#2a3650]"
-                      : "text-stone-500 dark:text-stone-400 dark:hover:bg-[#252837]",
-                  )}
-                >
-                  {n}
-                </Button>
-              ))}
-
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                disabled={page === totalPages}
-                className="h-8 w-8 p-0 rounded-lg dark:border-[#2a2d3e] dark:text-stone-300 dark:hover:bg-[#252837]"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </Button>
-            </div>
+          <div className="px-4 py-3 text-sm text-stone-400 dark:text-stone-500">
+            Showing {filtered.length.toLocaleString()} of {totalCount.toLocaleString()} result{totalCount !== 1 ? "s" : ""}
           </div>
         </CardContent>
       </Card>
