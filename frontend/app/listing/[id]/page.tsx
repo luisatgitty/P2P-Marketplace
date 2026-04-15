@@ -659,6 +659,20 @@ export default function ListingDetailPage() {
                   </div>
                 </div>
               )}
+
+              {isSell && extra.inclusions && extra.inclusions.filter(Boolean).length > 0 && (
+                <div className="mt-4 pt-4 border-t border-stone-100 dark:border-[#2a2d3e]">
+                  <h3 className="text-xs font-semibold text-stone-500 dark:text-stone-400 uppercase tracking-widest mb-3">What&apos;s Included</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-2 gap-x-6">
+                    {extra.inclusions.filter(Boolean).map((item) => (
+                      <div key={item} className="flex items-start gap-2 text-sm text-stone-700 dark:text-stone-200">
+                        <CheckCircle className="w-4 h-4 text-teal-500 shrink-0 mt-0.5" />
+                        {item}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* ── Type-specific info cards ── */}
