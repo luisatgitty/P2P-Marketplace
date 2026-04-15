@@ -371,7 +371,7 @@ export default function AdminsPage() {
   const [isRefreshing,         setIsRefreshing]         = useState(false);
   const [removingId,           setRemovingId]           = useState<string | null>(null);
   const [actionLoadingUserId, setActionLoadingUserId] = useState<string | null>(null);
-  const FETCH_LIMIT = 16;
+  const FETCH_LIMIT = 12;
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
@@ -618,9 +618,9 @@ export default function AdminsPage() {
         <Button
           type="button"
           onClick={() => setShowAdd(true)}
-          className="gap-2 rounded-full bg-[#1e2433] hover:bg-[#2a3650] text-white font-medium shrink-0"
+          className="gap-2 bg-[#1e2433] hover:bg-[#2a3650] text-white font-medium shrink-0"
         >
-          <Plus className="w-4 h-4" /> Add New Admin
+          <Plus className="w-4 h-4" /> Admin
         </Button>
       </div>
 
@@ -662,7 +662,7 @@ export default function AdminsPage() {
           <Card
             key={label}
             className={cn(
-              "rounded-lg cursor-pointer hover:shadow-sm transition-all border",
+              "p-4 rounded-md cursor-pointer hover:shadow-sm transition-all border",
               bg,
               border,
               roleFilter === role && "ring-2 ring-offset-1 ring-current",
@@ -994,8 +994,9 @@ export default function AdminsPage() {
       {/* ── Security notice ── */}
       <div className="bg-stone-50 dark:bg-[#13151f] border border-stone-200 dark:border-[#2a2d3e] rounded-lg p-4 text-sm text-stone-500 dark:text-stone-400 leading-relaxed">
         <strong className="font-bold text-stone-700 dark:text-stone-300">Admin Account Policy: </strong>
-        Admin accounts have access to sensitive user data and platform controls. Only create accounts for trusted personnel.
-        Removed accounts are permanently deleted. All admin actions are logged for accountability.
+        Admin accounts have access to sensitive user data and platform controls.
+        Only create accounts for trusted personnel.
+        All admin actions are logged for accountability.
       </div>
 
       {/* ── Modal ── */}
