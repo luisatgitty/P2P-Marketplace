@@ -30,9 +30,32 @@ export type AdminTransactionRecord = {
   created_at: string;
 };
 
-export async function getAdminTransactions(): Promise<AdminTransactionRecord[]> {
+export type AdminTransactionsQuery = {
+  search?: string;
+  type?: string;
+  status?: string;
+  limit?: number;
+  offset?: number;
+};
+
+export type AdminTransactionsResponse = {
+  transactions: AdminTransactionRecord[];
+  total: number;
+  limit: number;
+  offset: number;
+};
+
+export async function getAdminTransactions(query?: AdminTransactionsQuery): Promise<AdminTransactionsResponse> {
   try {
-    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/transactions`, {
+    const params = new URLSearchParams();
+    if (query?.search) params.set("search", query.search);
+    if (query?.type) params.set("type", query.type);
+    if (query?.status) params.set("status", query.status);
+    if (typeof query?.limit === "number") params.set("limit", String(query.limit));
+    if (typeof query?.offset === "number") params.set("offset", String(query.offset));
+
+    const querySuffix = params.toString() ? `?${params.toString()}` : "";
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/transactions${querySuffix}`, {
       method: "GET",
       credentials: "include",
     });
@@ -42,7 +65,12 @@ export async function getAdminTransactions(): Promise<AdminTransactionRecord[]> 
       throw parsedJson?.data?.message || "Failed to fetch transactions.";
     }
 
-    return (parsedJson?.data?.transactions ?? []) as AdminTransactionRecord[];
+    return {
+      transactions: (parsedJson?.data?.transactions ?? []) as AdminTransactionRecord[],
+      total: Number(parsedJson?.data?.total ?? 0),
+      limit: Number(parsedJson?.data?.limit ?? query?.limit ?? 0),
+      offset: Number(parsedJson?.data?.offset ?? query?.offset ?? 0),
+    };
   } catch {
     throw "An unexpected error occurred. Please try again later.";
   }

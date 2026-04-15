@@ -824,11 +824,57 @@ func applyListingVisibilityStatus(listingId, nextStatus string) error {
 	return nil
 }
 
-func GetAdminTransactions() ([]model.AdminTransactionListItemFromDb, error) {
+func GetAdminTransactions(query model.AdminTransactionsQuery) ([]model.AdminTransactionListItemFromDb, int, error) {
 	db := middleware.DBConn
 	transactions := make([]model.AdminTransactionListItemFromDb, 0)
+	total := 0
 
-	query := `
+	whereParts := make([]string, 0)
+	args := make([]any, 0)
+
+	search := strings.ToLower(strings.TrimSpace(query.Search))
+	if search != "" {
+		likeSearch := "%" + search + "%"
+		whereParts = append(whereParts, `
+			(
+				LOWER(COALESCE(l.title, '')) LIKE ?
+				OR LOWER(COALESCE(NULLIF(TRIM(CONCAT_WS(' ', NULLIF(TRIM(buyer.first_name), ''), NULLIF(TRIM(buyer.last_name), ''))), ''), buyer.email, '')) LIKE ?
+				OR LOWER(COALESCE(NULLIF(TRIM(CONCAT_WS(' ', NULLIF(TRIM(owner.first_name), ''), NULLIF(TRIM(owner.last_name), ''))), ''), owner.email, '')) LIKE ?
+			)
+		`)
+		args = append(args, likeSearch, likeSearch, likeSearch)
+	}
+
+	typeFilter := strings.ToUpper(strings.TrimSpace(query.Type))
+	if typeFilter != "" && typeFilter != "ALL" {
+		whereParts = append(whereParts, "l.listing_type::text = ?")
+		args = append(args, typeFilter)
+	}
+
+	statusFilter := strings.ToUpper(strings.TrimSpace(query.Status))
+	if statusFilter != "" && statusFilter != "ALL" {
+		whereParts = append(whereParts, "lt.status::text = ?")
+		args = append(args, statusFilter)
+	}
+
+	whereClause := ""
+	if len(whereParts) > 0 {
+		whereClause = "WHERE " + strings.Join(whereParts, " AND ")
+	}
+
+	countQuery := `
+		SELECT COUNT(*)::int
+		FROM public.listing_transactions lt
+		JOIN public.listings l ON l.id = lt.listing_id
+		JOIN public.users buyer ON buyer.id = lt.client_id
+		JOIN public.users owner ON owner.id = l.user_id
+		` + whereClause
+
+	if err := db.Raw(countQuery, args...).Scan(&total).Error; err != nil {
+		return nil, 0, fmt.Errorf("Failed to fetch transaction count")
+	}
+
+	selectQuery := `
 		SELECT
 			lt.id::text AS id,
 			l.id::text AS listing_id,
@@ -874,11 +920,17 @@ func GetAdminTransactions() ([]model.AdminTransactionListItemFromDb, error) {
 			ORDER BY is_primary DESC, id ASC
 			LIMIT 1
 		) li ON TRUE
+		` + whereClause + `
 		ORDER BY lt.created_at DESC
+		LIMIT ?
+		OFFSET ?
 	`
 
-	if err := db.Raw(query).Scan(&transactions).Error; err != nil {
-		return nil, fmt.Errorf("Failed to fetch transactions")
+	selectArgs := append([]any{}, args...)
+	selectArgs = append(selectArgs, query.Limit, query.Offset)
+
+	if err := db.Raw(selectQuery, selectArgs...).Scan(&transactions).Error; err != nil {
+		return nil, 0, fmt.Errorf("Failed to fetch transactions")
 	}
 
 	for i := range transactions {
@@ -892,7 +944,7 @@ func GetAdminTransactions() ([]model.AdminTransactionListItemFromDb, error) {
 		}
 	}
 
-	return transactions, nil
+	return transactions, total, nil
 }
 
 func DeleteAdminListing(listingId string) error {

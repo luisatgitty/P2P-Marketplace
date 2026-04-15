@@ -392,6 +392,14 @@ type AdminListingsQuery struct {
 	Offset   int
 }
 
+type AdminTransactionsQuery struct {
+	Search string
+	Type   string
+	Status string
+	Limit  int
+	Offset int
+}
+
 type AdminTransactionListItemFromDb struct {
 	Id                    string     `gorm:"column:id" json:"id"`
 	ListingId             string     `gorm:"column:listing_id" json:"listing_id"`
