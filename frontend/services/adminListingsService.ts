@@ -18,6 +18,7 @@ export type AdminListingRecord = {
   updated_at: string;
   banned_until: string | null;
   deleted_at: string | null;
+  action_by_id: string;
 };
 
 export type AdminListingsQuery = {

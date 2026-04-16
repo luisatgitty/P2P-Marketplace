@@ -756,7 +756,8 @@ func GetAdminListings(query model.AdminListingsQuery) ([]model.AdminListingListI
 			l.created_at AS created,
 			l.updated_at AS updated_at,
 			l.banned_until AS banned_until,
-			l.deleted_at AS deleted_at
+			l.deleted_at AS deleted_at,
+			COALESCE(l.action_by_id::text, '') AS action_by_id
 		FROM public.listings l
 		LEFT JOIN public.categories c ON c.id = l.category_id
 		LEFT JOIN public.users u ON u.id = l.user_id

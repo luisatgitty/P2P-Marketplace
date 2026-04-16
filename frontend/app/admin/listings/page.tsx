@@ -68,6 +68,7 @@ interface AdminListing {
   updated_at: string;
   banned_until: string | null;
   deleted_at: string | null;
+  action_by_id: string;
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -495,6 +496,9 @@ export default function ListingsPage() {
                   <SortableTH label="Updated" field="updated" />
                   <SortableTH label="Banned Until" field="bannedUntil" />
                   <SortableTH label="Deleted At" field="deletedAt" />
+                  <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest whitespace-nowrap">
+                    Action By ID
+                  </TableHead>
                   <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest text-right">
                     Actions
                   </TableHead>
@@ -504,13 +508,13 @@ export default function ListingsPage() {
               <TableBody>
                 {loadingListings && filtered.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={13} className="py-16 text-center text-sm text-stone-400 dark:text-stone-500">
+                    <TableCell colSpan={14} className="py-16 text-center text-sm text-stone-400 dark:text-stone-500">
                       Loading listings…
                     </TableCell>
                   </TableRow>
                 ) : filtered.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={13} className="py-16 text-center text-sm text-stone-400 dark:text-stone-500">
+                    <TableCell colSpan={14} className="py-16 text-center text-sm text-stone-400 dark:text-stone-500">
                       No listings match the current filters.
                     </TableCell>
                   </TableRow>
@@ -630,6 +634,11 @@ export default function ListingsPage() {
                           {formatDateTime(listing.deleted_at)}
                         </TableCell>
 
+                        {/* Action By ID */}
+                        <TableCell className="py-3.5 text-xs text-stone-500 dark:text-stone-400 whitespace-nowrap">
+                          {listing.action_by_id || "—"}
+                        </TableCell>
+
                         {/* Actions */}
                         <TableCell className="py-3.5">
                           <div className="flex items-center justify-end gap-1">
@@ -671,7 +680,7 @@ export default function ListingsPage() {
 
                 {loadingMore && (
                   <TableRow>
-                    <TableCell colSpan={13} className="py-4 text-center text-sm text-stone-400 dark:text-stone-500">
+                    <TableCell colSpan={14} className="py-4 text-center text-sm text-stone-400 dark:text-stone-500">
                       Loading more listings…
                     </TableCell>
                   </TableRow>
@@ -679,7 +688,7 @@ export default function ListingsPage() {
 
                 {!hasMore && filtered.length > 0 && (
                   <TableRow>
-                    <TableCell colSpan={13} className="py-4 text-center text-xs text-stone-400 dark:text-stone-500">
+                    <TableCell colSpan={14} className="py-4 text-center text-xs text-stone-400 dark:text-stone-500">
                       End of listing results.
                     </TableCell>
                   </TableRow>
