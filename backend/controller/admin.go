@@ -354,7 +354,7 @@ func GetAdminTransactions(c *fiber.Ctx) error {
 }
 
 func DeleteAdminListing(c *fiber.Ctx) error {
-	_, authErr := requireAdmin(c)
+	adminUserId, authErr := requireAdmin(c)
 	if authErr != nil {
 		return authErr
 	}
@@ -364,7 +364,7 @@ func DeleteAdminListing(c *fiber.Ctx) error {
 		return SendErrorResponse(c, 400, "Listing ID is required", nil)
 	}
 
-	if err := repository.DeleteAdminListing(targetListingId); err != nil {
+	if err := repository.DeleteAdminListing(targetListingId, adminUserId); err != nil {
 		if strings.EqualFold(err.Error(), "Listing not found") {
 			return SendErrorResponse(c, 404, err.Error(), err)
 		}
@@ -378,7 +378,7 @@ func DeleteAdminListing(c *fiber.Ctx) error {
 }
 
 func ToggleAdminListingVisibility(c *fiber.Ctx) error {
-	_, authErr := requireAdmin(c)
+	adminUserId, authErr := requireAdmin(c)
 	if authErr != nil {
 		return authErr
 	}
@@ -388,7 +388,7 @@ func ToggleAdminListingVisibility(c *fiber.Ctx) error {
 		return SendErrorResponse(c, 400, "Listing ID is required", nil)
 	}
 
-	nextStatus, err := repository.ToggleAdminListingVisibility(targetListingId)
+	nextStatus, err := repository.ToggleAdminListingVisibility(targetListingId, adminUserId)
 	if err != nil {
 		if strings.EqualFold(err.Error(), "Listing not found") {
 			return SendErrorResponse(c, 404, err.Error(), err)

@@ -808,7 +808,7 @@ func GetAdminListings(query model.AdminListingsQuery) ([]model.AdminListingListI
 	return listings, total, nil
 }
 
-func ToggleAdminListingVisibility(listingId string) (string, error) {
+func ToggleAdminListingVisibility(listingId, actorUserId string) (string, error) {
 	normalized, err := getListingStatusById(listingId)
 	if err != nil {
 		return "", err
@@ -826,7 +826,7 @@ func ToggleAdminListingVisibility(listingId string) (string, error) {
 		nextStatus = "UNAVAILABLE"
 	}
 
-	if err := applyListingVisibilityStatus(listingId, nextStatus); err != nil {
+	if err := applyListingVisibilityStatus(listingId, nextStatus, actorUserId); err != nil {
 		return "", err
 	}
 
@@ -853,7 +853,7 @@ func getListingStatusById(listingId string) (string, error) {
 	return strings.ToUpper(strings.TrimSpace(currentStatus)), nil
 }
 
-func applyListingVisibilityStatus(listingId, nextStatus string) error {
+func applyListingVisibilityStatus(listingId, nextStatus, actorUserId string) error {
 	db := middleware.DBConn
 
 	updateResult := db.Exec(`
@@ -861,9 +861,10 @@ func applyListingVisibilityStatus(listingId, nextStatus string) error {
 		SET
 			status = $1::listing_status,
 			banned_until = CASE WHEN $1 = 'BANNED' THEN now() + INTERVAL '3 days' ELSE NULL END,
+			action_by_id = $3,
 			updated_at = now()
 		WHERE id = $2
-	`, nextStatus, listingId)
+	`, nextStatus, listingId, actorUserId)
 	if updateResult.Error != nil {
 		return fmt.Errorf("Failed to update listing visibility")
 	}
@@ -997,7 +998,7 @@ func GetAdminTransactions(query model.AdminTransactionsQuery) ([]model.AdminTran
 	return transactions, total, nil
 }
 
-func DeleteAdminListing(listingId string) error {
+func DeleteAdminListing(listingId, actorUserId string) error {
 	db := middleware.DBConn
 	tx := db.Begin()
 	if tx.Error != nil {
@@ -1031,9 +1032,10 @@ func DeleteAdminListing(listingId string) error {
 		SET
 			status = 'DELETED'::listing_status,
 			deleted_at = now(),
+			action_by_id = $2,
 			updated_at = now()
 		WHERE id = $1
-	`, listingId)
+	`, listingId, actorUserId)
 	if result.Error != nil {
 		tx.Rollback()
 		return fmt.Errorf("Failed to delete listing")
@@ -1353,9 +1355,10 @@ func SetAdminReportAction(reportId, adminUserId, action, reason string) error {
 			SET
 				status = 'BANNED'::listing_status,
 				banned_until = now() + INTERVAL '1 day',
+				action_by_id = $2,
 				updated_at = now()
 			WHERE id = $1
-		`, targetListingId)
+		`, targetListingId, adminUserId)
 		if updateListingResult.Error != nil {
 			tx.Rollback()
 			return fmt.Errorf("Failed to shadow ban listing")
@@ -1372,9 +1375,10 @@ func SetAdminReportAction(reportId, adminUserId, action, reason string) error {
 			SET
 				status = 'DELETED'::listing_status,
 				deleted_at = now(),
+				action_by_id = $2,
 				updated_at = now()
 			WHERE id = $1
-		`, targetListingId)
+		`, targetListingId, adminUserId)
 		if updateListingResult.Error != nil {
 			tx.Rollback()
 			return fmt.Errorf("Failed to delete listing")

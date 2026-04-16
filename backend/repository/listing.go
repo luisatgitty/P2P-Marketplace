@@ -785,7 +785,7 @@ func DeleteListing(userId, listingId string) error {
 		return fmt.Errorf("Sold listings can no longer be removed")
 	}
 
-	return DeleteAdminListing(listingId)
+	return DeleteAdminListing(listingId, userId)
 }
 
 func ToggleListingVisibility(userId, listingId string) (string, error) {
@@ -821,7 +821,7 @@ func ToggleListingVisibility(userId, listingId string) (string, error) {
 		nextStatus = "AVAILABLE"
 	}
 
-	if err := applyListingVisibilityStatus(listingId, nextStatus); err != nil {
+	if err := applyListingVisibilityStatus(listingId, nextStatus, userId); err != nil {
 		return "", err
 	}
 
