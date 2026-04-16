@@ -37,6 +37,17 @@ const (
 	SessionDuration       = 7 * 24 * time.Hour
 )
 
+// ─── API Rate Limiter ─────────────────────────────────
+const (
+	RateLimitPublicMax           = 120
+	RateLimitPublicWindow        = 1 * time.Minute
+	RateLimitStrictPublicMax     = 20
+	RateLimitStrictPublicWindow  = 1 * time.Minute
+	RateLimitAuthenticatedMax    = 240
+	RateLimitAuthenticatedWindow = 1 * time.Minute
+	RateLimitExceededMessage     = "Too many requests. Please try again later."
+)
+
 // ─── Profile ─────────────────────────────────────────
 const (
 	ProfilePhoneExactLength  = 11
