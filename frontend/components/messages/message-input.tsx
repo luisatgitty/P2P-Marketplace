@@ -196,7 +196,7 @@ export default function MessageInput({
   };
 
 return (
-  <div className="px-3 pt-3 pb-5 border-t border-border bg-[#faf6f0] dark:bg-[#1c1f2e] shrink-0">
+  <div className="px-3 pt-3 pb-4">
 
     {/* ── Reply banner ───────────────────────────────────────────────── */}
     {replyTo && (
@@ -224,7 +224,7 @@ return (
     )}
 
     {/* ── Input row ──────────────────────────────────────────────────── */}
-    <div className="bg-white dark:bg-[#1c1f2e] border border-border rounded-2xl px-1 py-1 bg-[#faf6f0] dark:bg-[#1c1f2e]">
+    <div>
 
         {/* ── Attachment staging area ─────────────────────────────────── */}
         {stagedMedia.length > 0 && (

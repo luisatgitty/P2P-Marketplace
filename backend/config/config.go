@@ -155,6 +155,8 @@ var ListingDeliveryOptions = []string{
 // ─── Messaging ──────────────────────────────────────
 const (
 	MessageContentMaxLength = 2000
+	MessagePageDefaultLimit = 20
+	MessagePageMaxLimit     = 100
 )
 
 // ─── Review ─────────────────────────────────────────
