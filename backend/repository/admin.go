@@ -233,8 +233,8 @@ func GetAdminUsers(query model.AdminUsersQuery) ([]model.AdminUserListItemFromDb
 			u.created_at AS joined,
 			u.updated_at,
 			u.deleted_at,
-			COALESCE(NULLIF(TRIM(CONCAT_WS(' ', NULLIF(TRIM(du.first_name), ''), NULLIF(TRIM(du.last_name), ''))), ''), '') AS deleted_by_name,
-			COALESCE(du.email, '') AS deleted_by_email,
+			COALESCE(NULLIF(TRIM(CONCAT_WS(' ', NULLIF(TRIM(du.first_name), ''), NULLIF(TRIM(du.last_name), ''))), ''), '') AS action_by_name,
+			COALESCE(du.email, '') AS action_by_email,
 			TRIM(BOTH ', ' FROM CONCAT_WS(', ', NULLIF(TRIM(u.location_barangay), ''), NULLIF(TRIM(u.location_city), ''), NULLIF(TRIM(u.location_province), ''))) AS location
 		FROM public.users u
 		LEFT JOIN public.users du ON du.id = u.action_by_id
