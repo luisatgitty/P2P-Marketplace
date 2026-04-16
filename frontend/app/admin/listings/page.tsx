@@ -68,7 +68,7 @@ interface AdminListing {
   updated_at: string;
   banned_until: string | null;
   deleted_at: string | null;
-  action_by_id: string;
+  action_by_name: string;
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -81,6 +81,30 @@ function formatDateTime(value?: string | null): string {
     day:   "2-digit",
     year:  "numeric",
   });
+}
+
+function getCurrentAdminDisplayName(): string {
+  if (typeof window === "undefined") return "";
+
+  try {
+    const rawUser = localStorage.getItem("auth_user");
+    if (!rawUser) return "";
+
+    const parsed = JSON.parse(rawUser) as {
+      firstName?: string;
+      lastName?: string;
+      email?: string;
+    };
+
+    const firstName = (parsed?.firstName ?? "").trim();
+    const lastName = (parsed?.lastName ?? "").trim();
+    const fullName = `${firstName} ${lastName}`.trim();
+
+    if (fullName) return fullName;
+    return (parsed?.email ?? "").trim();
+  } catch {
+    return "";
+  }
 }
 
 const TYPE_CONFIG: Record<ListingType, { label: string; cls: string; Icon: React.ElementType }> = {
@@ -257,6 +281,7 @@ export default function ListingsPage() {
     try {
       const updated = await deleteAdminListing(id);
       const deletedAtPlaceholder = new Date().toISOString();
+      const actionByNamePlaceholder = getCurrentAdminDisplayName();
       setListings((prev) =>
         prev.map((listing) =>
           listing.id === id
@@ -264,6 +289,7 @@ export default function ListingsPage() {
                 ...listing,
                 status: updated.status,
                 deleted_at: deletedAtPlaceholder,
+                action_by_name: actionByNamePlaceholder,
               }
             : listing
         )
@@ -297,6 +323,7 @@ export default function ListingsPage() {
       const nextBannedUntil = updated.status === "BANNED"
         ? new Date(Date.now() + (3 * 24 * 60 * 60 * 1000)).toISOString()
         : null;
+      const actionByNamePlaceholder = getCurrentAdminDisplayName();
 
       setListings((prev) =>
         prev.map((listing) =>
@@ -305,6 +332,7 @@ export default function ListingsPage() {
                 ...listing,
                 status: updated.status as ListingStatus,
                 banned_until: nextBannedUntil,
+                action_by_name: actionByNamePlaceholder || listing.action_by_name,
               }
             : listing
         )
@@ -497,7 +525,7 @@ export default function ListingsPage() {
                   <SortableTH label="Banned Until" field="bannedUntil" />
                   <SortableTH label="Deleted At" field="deletedAt" />
                   <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest whitespace-nowrap">
-                    Action By ID
+                    Action By
                   </TableHead>
                   <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest text-right">
                     Actions
@@ -634,9 +662,11 @@ export default function ListingsPage() {
                           {formatDateTime(listing.deleted_at)}
                         </TableCell>
 
-                        {/* Action By ID */}
+                        {/* Action By */}
                         <TableCell className="py-3.5 text-xs text-stone-500 dark:text-stone-400 whitespace-nowrap">
-                          {listing.action_by_id || "—"}
+                          <p className="text-sm font-medium text-stone-700 dark:text-stone-200">
+                            {listing.action_by_name || "—"}
+                          </p>
                         </TableCell>
 
                         {/* Actions */}

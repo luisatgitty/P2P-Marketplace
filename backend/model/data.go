@@ -391,7 +391,7 @@ type AdminListingListItemFromDb struct {
 	UpdatedAt        time.Time  `gorm:"column:updated_at" json:"updated_at"`
 	BannedUntil      *time.Time `gorm:"column:banned_until" json:"banned_until"`
 	DeletedAt        *time.Time `gorm:"column:deleted_at" json:"deleted_at"`
-	ActionById       string     `gorm:"column:action_by_id" json:"action_by_id"`
+	ActionByName     string     `gorm:"column:action_by_name" json:"action_by_name"`
 }
 
 type AdminListingsQuery struct {
