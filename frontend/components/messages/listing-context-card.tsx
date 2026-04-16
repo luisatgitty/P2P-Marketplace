@@ -287,7 +287,7 @@ export default function ListingContextCard({
     <>
       <div
         data-listing-context-card="true"
-        className="h-16 mx-3 my-2 flex items-center gap-3 px-2 py-2 rounded-xl bg-stone-50 dark:bg-[#13151f] border border-border shrink-0"
+        className="h-16 mx-5 my-2 flex items-center gap-3 px-2 py-2 rounded-xl bg-stone-50 dark:bg-[#13151f] border border-border shrink-0"
       >
         {/* Listing primary image */}
         <ImageLink

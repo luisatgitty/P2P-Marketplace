@@ -68,6 +68,7 @@ interface AdminListing {
   updated_at: string;
   banned_until: string | null;
   deleted_at: string | null;
+  action_by_name: string;
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -80,6 +81,30 @@ function formatDateTime(value?: string | null): string {
     day:   "2-digit",
     year:  "numeric",
   });
+}
+
+function getCurrentAdminDisplayName(): string {
+  if (typeof window === "undefined") return "";
+
+  try {
+    const rawUser = localStorage.getItem("auth_user");
+    if (!rawUser) return "";
+
+    const parsed = JSON.parse(rawUser) as {
+      firstName?: string;
+      lastName?: string;
+      email?: string;
+    };
+
+    const firstName = (parsed?.firstName ?? "").trim();
+    const lastName = (parsed?.lastName ?? "").trim();
+    const fullName = `${firstName} ${lastName}`.trim();
+
+    if (fullName) return fullName;
+    return (parsed?.email ?? "").trim();
+  } catch {
+    return "";
+  }
 }
 
 const TYPE_CONFIG: Record<ListingType, { label: string; cls: string; Icon: React.ElementType }> = {
@@ -256,6 +281,7 @@ export default function ListingsPage() {
     try {
       const updated = await deleteAdminListing(id);
       const deletedAtPlaceholder = new Date().toISOString();
+      const actionByNamePlaceholder = getCurrentAdminDisplayName();
       setListings((prev) =>
         prev.map((listing) =>
           listing.id === id
@@ -263,6 +289,7 @@ export default function ListingsPage() {
                 ...listing,
                 status: updated.status,
                 deleted_at: deletedAtPlaceholder,
+                action_by_name: actionByNamePlaceholder,
               }
             : listing
         )
@@ -296,6 +323,7 @@ export default function ListingsPage() {
       const nextBannedUntil = updated.status === "BANNED"
         ? new Date(Date.now() + (3 * 24 * 60 * 60 * 1000)).toISOString()
         : null;
+      const actionByNamePlaceholder = getCurrentAdminDisplayName();
 
       setListings((prev) =>
         prev.map((listing) =>
@@ -304,6 +332,7 @@ export default function ListingsPage() {
                 ...listing,
                 status: updated.status as ListingStatus,
                 banned_until: nextBannedUntil,
+                action_by_name: actionByNamePlaceholder || listing.action_by_name,
               }
             : listing
         )
@@ -495,6 +524,9 @@ export default function ListingsPage() {
                   <SortableTH label="Updated" field="updated" />
                   <SortableTH label="Banned Until" field="bannedUntil" />
                   <SortableTH label="Deleted At" field="deletedAt" />
+                  <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest whitespace-nowrap">
+                    Action By
+                  </TableHead>
                   <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest text-right">
                     Actions
                   </TableHead>
@@ -504,13 +536,13 @@ export default function ListingsPage() {
               <TableBody>
                 {loadingListings && filtered.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={13} className="py-16 text-center text-sm text-stone-400 dark:text-stone-500">
+                    <TableCell colSpan={14} className="py-16 text-center text-sm text-stone-400 dark:text-stone-500">
                       Loading listings…
                     </TableCell>
                   </TableRow>
                 ) : filtered.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={13} className="py-16 text-center text-sm text-stone-400 dark:text-stone-500">
+                    <TableCell colSpan={14} className="py-16 text-center text-sm text-stone-400 dark:text-stone-500">
                       No listings match the current filters.
                     </TableCell>
                   </TableRow>
@@ -630,6 +662,13 @@ export default function ListingsPage() {
                           {formatDateTime(listing.deleted_at)}
                         </TableCell>
 
+                        {/* Action By */}
+                        <TableCell className="py-3.5 text-xs text-stone-500 dark:text-stone-400 whitespace-nowrap">
+                          <p className="text-sm font-medium text-stone-700 dark:text-stone-200">
+                            {listing.action_by_name || "—"}
+                          </p>
+                        </TableCell>
+
                         {/* Actions */}
                         <TableCell className="py-3.5">
                           <div className="flex items-center justify-end gap-1">
@@ -671,7 +710,7 @@ export default function ListingsPage() {
 
                 {loadingMore && (
                   <TableRow>
-                    <TableCell colSpan={13} className="py-4 text-center text-sm text-stone-400 dark:text-stone-500">
+                    <TableCell colSpan={14} className="py-4 text-center text-sm text-stone-400 dark:text-stone-500">
                       Loading more listings…
                     </TableCell>
                   </TableRow>
@@ -679,7 +718,7 @@ export default function ListingsPage() {
 
                 {!hasMore && filtered.length > 0 && (
                   <TableRow>
-                    <TableCell colSpan={13} className="py-4 text-center text-xs text-stone-400 dark:text-stone-500">
+                    <TableCell colSpan={14} className="py-4 text-center text-xs text-stone-400 dark:text-stone-500">
                       End of listing results.
                     </TableCell>
                   </TableRow>

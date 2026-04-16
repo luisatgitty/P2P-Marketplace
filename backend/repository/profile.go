@@ -510,7 +510,7 @@ func DeactivateAccount(userId string) error {
 			account_locked_until = NULL,
 			updated_at = $1,
 			deleted_at = $1,
-			deleted_by_id = $3
+			action_by_id = $3
 		WHERE id = $2
 	`
 	result := tx.Exec(deactivateQuery, time.Now(), userId, userId)

@@ -563,6 +563,27 @@ func DeleteListingReview(c *fiber.Ctx) error {
 func GetListings(c *fiber.Ctx) error {
 	userId := getOptionalUserIdFromSession(c)
 
+	limit := 25
+	if rawLimit := strings.TrimSpace(c.Query("limit")); rawLimit != "" {
+		parsedLimit, parseErr := strconv.Atoi(rawLimit)
+		if parseErr != nil || parsedLimit <= 0 {
+			return SendErrorResponse(c, 400, "limit must be a valid positive number", parseErr)
+		}
+		if parsedLimit > 100 {
+			parsedLimit = 100
+		}
+		limit = parsedLimit
+	}
+
+	offset := 0
+	if rawOffset := strings.TrimSpace(c.Query("offset")); rawOffset != "" {
+		parsedOffset, parseErr := strconv.Atoi(rawOffset)
+		if parseErr != nil || parsedOffset < 0 {
+			return SendErrorResponse(c, 400, "offset must be a valid non-negative number", parseErr)
+		}
+		offset = parsedOffset
+	}
+
 	parseOptionalInt := func(raw string) (*int, error) {
 		trimmed := strings.TrimSpace(raw)
 		if trimmed == "" {
@@ -607,9 +628,11 @@ func GetListings(c *fiber.Ctx) error {
 		PriceMin:  priceMin,
 		PriceMax:  priceMax,
 		Sort:      strings.TrimSpace(c.Query("sort")),
+		Limit:     limit,
+		Offset:    offset,
 	}
 
-	listings, err := repository.GetAllListings(userId, filters)
+	listings, total, err := repository.GetAllListings(userId, filters)
 	if err != nil {
 		return SendErrorResponse(c, 500, err.Error(), err)
 	}
@@ -641,6 +664,9 @@ func GetListings(c *fiber.Ctx) error {
 
 	return SendSuccessResponse(c, 200, "Listings fetched successfully", map[string]any{
 		"listings": items,
+		"total":    total,
+		"limit":    limit,
+		"offset":   offset,
 	})
 }
 

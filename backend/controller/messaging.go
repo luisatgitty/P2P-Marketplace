@@ -3,6 +3,7 @@ package controller
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -274,12 +275,33 @@ func GetMessages(c *fiber.Ctx) error {
 		return SendErrorResponse(c, 400, "Conversation ID is required", nil)
 	}
 
+	limit := config.MessagePageDefaultLimit
+	if rawLimit := strings.TrimSpace(c.Query("limit")); rawLimit != "" {
+		parsedLimit, parseErr := strconv.Atoi(rawLimit)
+		if parseErr != nil || parsedLimit <= 0 {
+			return SendErrorResponse(c, 400, "Limit must be a positive integer", parseErr)
+		}
+		if parsedLimit > config.MessagePageMaxLimit {
+			parsedLimit = config.MessagePageMaxLimit
+		}
+		limit = parsedLimit
+	}
+
+	offset := 0
+	if rawOffset := strings.TrimSpace(c.Query("offset")); rawOffset != "" {
+		parsedOffset, parseErr := strconv.Atoi(rawOffset)
+		if parseErr != nil || parsedOffset < 0 {
+			return SendErrorResponse(c, 400, "Offset must be a non-negative integer", parseErr)
+		}
+		offset = parsedOffset
+	}
+
 	userId, err := getAuthenticatedUserId(c)
 	if err != nil {
 		return SendErrorResponse(c, 401, err.Error(), nil)
 	}
 
-	rows, attRows, reactRows, err := repository.GetMessagesByConversation(userId, conversationId)
+	rows, attRows, reactRows, total, err := repository.GetMessagesByConversation(userId, conversationId, limit, offset)
 	if err != nil {
 		return SendErrorResponse(c, 500, err.Error(), err)
 	}
@@ -345,7 +367,12 @@ func GetMessages(c *fiber.Ctx) error {
 		messages = append(messages, item)
 	}
 
-	return SendSuccessResponse(c, 200, "Messages fetched successfully", map[string]any{"messages": messages})
+	return SendSuccessResponse(c, 200, "Messages fetched successfully", map[string]any{
+		"messages": messages,
+		"total":    total,
+		"limit":    limit,
+		"offset":   offset,
+	})
 }
 
 func CreateConversationFromListing(c *fiber.Ctx) error {

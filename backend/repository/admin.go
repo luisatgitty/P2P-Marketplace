@@ -233,11 +233,11 @@ func GetAdminUsers(query model.AdminUsersQuery) ([]model.AdminUserListItemFromDb
 			u.created_at AS joined,
 			u.updated_at,
 			u.deleted_at,
-			COALESCE(NULLIF(TRIM(CONCAT_WS(' ', NULLIF(TRIM(du.first_name), ''), NULLIF(TRIM(du.last_name), ''))), ''), '') AS deleted_by_name,
-			COALESCE(du.email, '') AS deleted_by_email,
+			COALESCE(NULLIF(TRIM(CONCAT_WS(' ', NULLIF(TRIM(du.first_name), ''), NULLIF(TRIM(du.last_name), ''))), ''), '') AS action_by_name,
+			COALESCE(du.email, '') AS action_by_email,
 			TRIM(BOTH ', ' FROM CONCAT_WS(', ', NULLIF(TRIM(u.location_barangay), ''), NULLIF(TRIM(u.location_city), ''), NULLIF(TRIM(u.location_province), ''))) AS location
 		FROM public.users u
-		LEFT JOIN public.users du ON du.id = u.deleted_by_id
+		LEFT JOIN public.users du ON du.id = u.action_by_id
 		LEFT JOIN (
 			SELECT user_id, COUNT(*)::int AS listings
 			FROM public.listings
@@ -323,10 +323,10 @@ func SetAdminUserActive(userId string, isActive bool, actorUserId string) error 
 				WHEN $1 THEN NULL
 				ELSE account_locked_until
 			END,
-			deleted_by_id = CASE
+			action_by_id = CASE
 				WHEN $3 AND $1 = FALSE THEN $4
 				WHEN $3 AND $1 = TRUE THEN NULL
-				ELSE deleted_by_id
+				ELSE action_by_id
 			END
 		WHERE id = $2
 			AND deleted_at IS NULL
@@ -390,7 +390,7 @@ func DeleteAdminUser(userId string, actorUserId string) error {
 			is_active = FALSE,
 			deleted_at = $1,
 			updated_at = $1,
-			deleted_by_id = $2
+			action_by_id = $2
 		WHERE id = $3
 			AND deleted_at IS NULL
 			AND role IN ('USER', 'ADMIN', 'SUPER_ADMIN')
@@ -454,7 +454,7 @@ func GetAdminAccounts(query model.AdminAccountsQuery) ([]model.AdminAccountListI
 	countQuery := `
 		SELECT COUNT(*)::int
 		FROM public.users u
-		LEFT JOIN public.users du ON du.id = u.deleted_by_id
+		LEFT JOIN public.users du ON du.id = u.action_by_id
 		` + whereClause
 
 	if err := db.Raw(countQuery, args...).Scan(&total).Error; err != nil {
@@ -478,7 +478,7 @@ func GetAdminAccounts(query model.AdminAccountsQuery) ([]model.AdminAccountListI
 			COALESCE(NULLIF(TRIM(CONCAT_WS(' ', NULLIF(TRIM(du.first_name), ''), NULLIF(TRIM(du.last_name), ''))), ''), '') AS deleted_by_name,
 			COALESCE(du.email, '') AS deleted_by_email
 		FROM public.users u
-		LEFT JOIN public.users du ON du.id = u.deleted_by_id
+		LEFT JOIN public.users du ON du.id = u.action_by_id
 		` + whereClause + `
 		ORDER BY
 			CASE WHEN u.deleted_at IS NULL THEN 0 ELSE 1 END ASC,
@@ -756,10 +756,12 @@ func GetAdminListings(query model.AdminListingsQuery) ([]model.AdminListingListI
 			l.created_at AS created,
 			l.updated_at AS updated_at,
 			l.banned_until AS banned_until,
-			l.deleted_at AS deleted_at
+			l.deleted_at AS deleted_at,
+			COALESCE(NULLIF(TRIM(CONCAT_WS(' ', NULLIF(TRIM(au.first_name), ''), NULLIF(TRIM(au.last_name), ''))), ''), COALESCE(au.email, ''), '') AS action_by_name
 		FROM public.listings l
 		LEFT JOIN public.categories c ON c.id = l.category_id
 		LEFT JOIN public.users u ON u.id = l.user_id
+		LEFT JOIN public.users au ON au.id = l.action_by_id
 		LEFT JOIN (
 			SELECT
 				listing_id,
@@ -808,7 +810,7 @@ func GetAdminListings(query model.AdminListingsQuery) ([]model.AdminListingListI
 	return listings, total, nil
 }
 
-func ToggleAdminListingVisibility(listingId string) (string, error) {
+func ToggleAdminListingVisibility(listingId, actorUserId string) (string, error) {
 	normalized, err := getListingStatusById(listingId)
 	if err != nil {
 		return "", err
@@ -826,7 +828,7 @@ func ToggleAdminListingVisibility(listingId string) (string, error) {
 		nextStatus = "UNAVAILABLE"
 	}
 
-	if err := applyListingVisibilityStatus(listingId, nextStatus); err != nil {
+	if err := applyListingVisibilityStatus(listingId, nextStatus, actorUserId); err != nil {
 		return "", err
 	}
 
@@ -853,7 +855,7 @@ func getListingStatusById(listingId string) (string, error) {
 	return strings.ToUpper(strings.TrimSpace(currentStatus)), nil
 }
 
-func applyListingVisibilityStatus(listingId, nextStatus string) error {
+func applyListingVisibilityStatus(listingId, nextStatus, actorUserId string) error {
 	db := middleware.DBConn
 
 	updateResult := db.Exec(`
@@ -861,9 +863,10 @@ func applyListingVisibilityStatus(listingId, nextStatus string) error {
 		SET
 			status = $1::listing_status,
 			banned_until = CASE WHEN $1 = 'BANNED' THEN now() + INTERVAL '3 days' ELSE NULL END,
+			action_by_id = $3,
 			updated_at = now()
 		WHERE id = $2
-	`, nextStatus, listingId)
+	`, nextStatus, listingId, actorUserId)
 	if updateResult.Error != nil {
 		return fmt.Errorf("Failed to update listing visibility")
 	}
@@ -997,7 +1000,7 @@ func GetAdminTransactions(query model.AdminTransactionsQuery) ([]model.AdminTran
 	return transactions, total, nil
 }
 
-func DeleteAdminListing(listingId string) error {
+func DeleteAdminListing(listingId, actorUserId string) error {
 	db := middleware.DBConn
 	tx := db.Begin()
 	if tx.Error != nil {
@@ -1031,9 +1034,10 @@ func DeleteAdminListing(listingId string) error {
 		SET
 			status = 'DELETED'::listing_status,
 			deleted_at = now(),
+			action_by_id = $2,
 			updated_at = now()
 		WHERE id = $1
-	`, listingId)
+	`, listingId, actorUserId)
 	if result.Error != nil {
 		tx.Rollback()
 		return fmt.Errorf("Failed to delete listing")
@@ -1353,9 +1357,10 @@ func SetAdminReportAction(reportId, adminUserId, action, reason string) error {
 			SET
 				status = 'BANNED'::listing_status,
 				banned_until = now() + INTERVAL '1 day',
+				action_by_id = $2,
 				updated_at = now()
 			WHERE id = $1
-		`, targetListingId)
+		`, targetListingId, adminUserId)
 		if updateListingResult.Error != nil {
 			tx.Rollback()
 			return fmt.Errorf("Failed to shadow ban listing")
@@ -1372,9 +1377,10 @@ func SetAdminReportAction(reportId, adminUserId, action, reason string) error {
 			SET
 				status = 'DELETED'::listing_status,
 				deleted_at = now(),
+				action_by_id = $2,
 				updated_at = now()
 			WHERE id = $1
-		`, targetListingId)
+		`, targetListingId, adminUserId)
 		if updateListingResult.Error != nil {
 			tx.Rollback()
 			return fmt.Errorf("Failed to delete listing")

@@ -250,6 +250,8 @@ type ListingsFilter struct {
 	PriceMin  *int
 	PriceMax  *int
 	Sort      string
+	Limit     int
+	Offset    int
 }
 
 type AdminDashboardStatsFromDb struct {
@@ -318,8 +320,8 @@ type AdminUserListItemFromDb struct {
 	Joined             time.Time  `gorm:"column:joined" json:"joined"`
 	UpdatedAt          time.Time  `gorm:"column:updated_at" json:"updated_at"`
 	DeletedAt          *time.Time `gorm:"column:deleted_at" json:"deleted_at"`
-	DeletedByName      string     `gorm:"column:deleted_by_name" json:"deleted_by_name"`
-	DeletedByEmail     string     `gorm:"column:deleted_by_email" json:"deleted_by_email"`
+	ActionByName       string     `gorm:"column:action_by_name" json:"action_by_name"`
+	ActionByEmail      string     `gorm:"column:action_by_email" json:"action_by_email"`
 	Location           string     `gorm:"column:location" json:"location"`
 }
 
@@ -389,6 +391,7 @@ type AdminListingListItemFromDb struct {
 	UpdatedAt        time.Time  `gorm:"column:updated_at" json:"updated_at"`
 	BannedUntil      *time.Time `gorm:"column:banned_until" json:"banned_until"`
 	DeletedAt        *time.Time `gorm:"column:deleted_at" json:"deleted_at"`
+	ActionByName     string     `gorm:"column:action_by_name" json:"action_by_name"`
 }
 
 type AdminListingsQuery struct {

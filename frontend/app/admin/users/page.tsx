@@ -67,8 +67,8 @@ interface AdminUser {
   joined:            string;
   updated_at:        string;
   deleted_at:        string | null;
-  deleted_by_name:   string;
-  deleted_by_email:  string;
+  action_by_name:    string;
+  action_by_email:   string;
   location:          string;
 }
 
@@ -315,8 +315,8 @@ export default function UsersPage() {
                 ...user,
                 is_active: nextIsActive,
                 account_locked_until: nextIsActive ? null : lockUntilIso,
-                deleted_by_name: nextIsActive ? "" : (actor?.fullName || user.deleted_by_name || ""),
-                deleted_by_email: nextIsActive ? "" : (actor?.email || user.deleted_by_email || ""),
+                action_by_name: nextIsActive ? "" : (actor?.fullName || user.action_by_name || ""),
+                action_by_email: nextIsActive ? "" : (actor?.email || user.action_by_email || ""),
                 updated_at: nowIso,
               }
             : user
@@ -346,8 +346,8 @@ export default function UsersPage() {
                 is_active: false,
                 deleted_at: nowIso,
                 updated_at: nowIso,
-                deleted_by_name: actor?.fullName || user.deleted_by_name || "",
-                deleted_by_email: actor?.email || user.deleted_by_email || "",
+                action_by_name: actor?.fullName || user.action_by_name || "",
+                action_by_email: actor?.email || user.action_by_email || "",
               }
             : user
         )
@@ -524,6 +524,9 @@ export default function UsersPage() {
                   <SortableTH label="Last Login"   field="last_login"   />
                   <SortableTH label="Updated" field="updated" />
                   <SortableTH label="Deleted" field="deleted" />
+                  <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest whitespace-nowrap">
+                    Action By
+                  </TableHead>
                   <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest text-right">
                     Actions
                   </TableHead>
@@ -533,13 +536,13 @@ export default function UsersPage() {
               <TableBody>
                 {loadingUsers && filtered.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={14} className="py-16 text-center text-sm text-stone-400 dark:text-stone-500">
+                    <TableCell colSpan={15} className="py-16 text-center text-sm text-stone-400 dark:text-stone-500">
                       Loading users…
                     </TableCell>
                   </TableRow>
                 ) : filtered.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={14} className="py-16 text-center text-sm text-stone-400 dark:text-stone-500">
+                    <TableCell colSpan={15} className="py-16 text-center text-sm text-stone-400 dark:text-stone-500">
                       No users match the current filters.
                     </TableCell>
                   </TableRow>
@@ -666,14 +669,21 @@ export default function UsersPage() {
                       <TableCell className="py-3.5 text-sm text-stone-500 dark:text-stone-400 whitespace-nowrap">
                         {(user.deleted_at)
                           ? (
-                            <div className="leading-tight">
-                              <p className="text-sm font-medium text-stone-700 dark:text-stone-200">
-                                {user.deleted_by_name || "—"}
-                              </p>
-                              <p className="text-xs">
-                                {user.deleted_at ? formatDate(user.deleted_at) : <span className="text-stone-300 dark:text-stone-600">—</span>}
-                              </p>
-                            </div>
+                            <p className="text-sm font-medium text-stone-700 dark:text-stone-200">
+                              {formatDate(user.deleted_at)}
+                            </p>
+                          )
+                          : <span className="text-stone-300 dark:text-stone-600">—</span>
+                        }
+                      </TableCell>
+
+                      {/* Action By */}
+                      <TableCell className="py-3.5 text-sm text-stone-500 dark:text-stone-400 whitespace-nowrap">
+                        {user.action_by_name
+                          ? (
+                            <p className="text-sm font-medium text-stone-700 dark:text-stone-200">
+                              {user.action_by_name || "—"}
+                            </p>
                           )
                           : <span className="text-stone-300 dark:text-stone-600">—</span>
                         }
@@ -724,7 +734,7 @@ export default function UsersPage() {
 
                 {loadingMore && (
                   <TableRow>
-                    <TableCell colSpan={14} className="py-4 text-center text-sm text-stone-400 dark:text-stone-500">
+                    <TableCell colSpan={15} className="py-4 text-center text-sm text-stone-400 dark:text-stone-500">
                       Loading more users…
                     </TableCell>
                   </TableRow>
@@ -732,7 +742,7 @@ export default function UsersPage() {
 
                 {!hasMore && filtered.length > 0 && (
                   <TableRow>
-                    <TableCell colSpan={14} className="py-4 text-center text-xs text-stone-400 dark:text-stone-500">
+                    <TableCell colSpan={15} className="py-4 text-center text-xs text-stone-400 dark:text-stone-500">
                       End of user results.
                     </TableCell>
                   </TableRow>
