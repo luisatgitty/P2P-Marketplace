@@ -237,7 +237,7 @@ func GetAdminUsers(query model.AdminUsersQuery) ([]model.AdminUserListItemFromDb
 			COALESCE(du.email, '') AS deleted_by_email,
 			TRIM(BOTH ', ' FROM CONCAT_WS(', ', NULLIF(TRIM(u.location_barangay), ''), NULLIF(TRIM(u.location_city), ''), NULLIF(TRIM(u.location_province), ''))) AS location
 		FROM public.users u
-		LEFT JOIN public.users du ON du.id = u.deleted_by_id
+		LEFT JOIN public.users du ON du.id = u.action_by_id
 		LEFT JOIN (
 			SELECT user_id, COUNT(*)::int AS listings
 			FROM public.listings
@@ -323,10 +323,10 @@ func SetAdminUserActive(userId string, isActive bool, actorUserId string) error 
 				WHEN $1 THEN NULL
 				ELSE account_locked_until
 			END,
-			deleted_by_id = CASE
+			action_by_id = CASE
 				WHEN $3 AND $1 = FALSE THEN $4
 				WHEN $3 AND $1 = TRUE THEN NULL
-				ELSE deleted_by_id
+				ELSE action_by_id
 			END
 		WHERE id = $2
 			AND deleted_at IS NULL
@@ -390,7 +390,7 @@ func DeleteAdminUser(userId string, actorUserId string) error {
 			is_active = FALSE,
 			deleted_at = $1,
 			updated_at = $1,
-			deleted_by_id = $2
+			action_by_id = $2
 		WHERE id = $3
 			AND deleted_at IS NULL
 			AND role IN ('USER', 'ADMIN', 'SUPER_ADMIN')
@@ -454,7 +454,7 @@ func GetAdminAccounts(query model.AdminAccountsQuery) ([]model.AdminAccountListI
 	countQuery := `
 		SELECT COUNT(*)::int
 		FROM public.users u
-		LEFT JOIN public.users du ON du.id = u.deleted_by_id
+		LEFT JOIN public.users du ON du.id = u.action_by_id
 		` + whereClause
 
 	if err := db.Raw(countQuery, args...).Scan(&total).Error; err != nil {
@@ -478,7 +478,7 @@ func GetAdminAccounts(query model.AdminAccountsQuery) ([]model.AdminAccountListI
 			COALESCE(NULLIF(TRIM(CONCAT_WS(' ', NULLIF(TRIM(du.first_name), ''), NULLIF(TRIM(du.last_name), ''))), ''), '') AS deleted_by_name,
 			COALESCE(du.email, '') AS deleted_by_email
 		FROM public.users u
-		LEFT JOIN public.users du ON du.id = u.deleted_by_id
+		LEFT JOIN public.users du ON du.id = u.action_by_id
 		` + whereClause + `
 		ORDER BY
 			CASE WHEN u.deleted_at IS NULL THEN 0 ELSE 1 END ASC,
