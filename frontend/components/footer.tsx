@@ -49,8 +49,10 @@ export default function Footer() {
   }
 
   return (
-    <footer className="bg-[#161d2b] px-4 sm:px-6 lg:px-8 py-6 mt-auto">
-      <div className="max-w-7xl mx-auto">
+    <footer className="relative bg-[#161d2b] px-4 sm:px-6 lg:px-8 py-6 mt-auto overflow-hidden">
+      <div className="orb orb-amber-footer" />
+      <div className="orb orb-blue-footer" />
+      <div className="max-w-7xl mx-auto relative z-10">
         <div className="flex flex-col gap-4">
           <div>
             <div className="flex items-center gap-2 mb-3">

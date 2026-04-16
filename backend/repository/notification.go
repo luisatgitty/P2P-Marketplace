@@ -2,6 +2,9 @@ package repository
 
 import (
 	"fmt"
+	"strings"
+
+	"gorm.io/gorm"
 
 	"p2p_marketplace/backend/middleware"
 	"p2p_marketplace/backend/model"
@@ -61,6 +64,115 @@ func MarkNotificationRead(userId, notificationId string) error {
 	}
 	if result.RowsAffected == 0 {
 		return fmt.Errorf("Notification not found")
+	}
+
+	return nil
+}
+
+func InsertVerificationNotificationTx(tx *gorm.DB, userId, status, reason string) error {
+	normalizedStatus := strings.ToUpper(strings.TrimSpace(status))
+	trimmedReason := strings.TrimSpace(reason)
+
+	message := "Your verification request has been updated."
+	switch normalizedStatus {
+	case "VERIFIED":
+		message = "Your verification request has been approved."
+	case "REJECTED":
+		message = "Your verification request was rejected."
+		if trimmedReason != "" {
+			message = fmt.Sprintf("Your verification request was rejected. Reason: %s.", trimmedReason)
+		}
+	}
+
+	if err := tx.Exec(`
+		INSERT INTO public.notifications (user_id, type, message, link)
+		VALUES ($1, 'VERIFICATION', $2, '/profile')
+	`, userId, message).Error; err != nil {
+		return fmt.Errorf("Failed to create verification notification")
+	}
+
+	return nil
+}
+
+func InsertReportNotificationTx(tx *gorm.DB, userId, message, link string) error {
+	trimmedMessage := strings.TrimSpace(message)
+	if trimmedMessage == "" {
+		return fmt.Errorf("Notification message is required")
+	}
+
+	trimmedLink := strings.TrimSpace(link)
+	if trimmedLink == "" {
+		trimmedLink = "/notifications"
+	}
+
+	if err := tx.Exec(`
+		INSERT INTO public.notifications (user_id, type, message, link)
+		VALUES ($1, 'REPORT', $2, $3)
+	`, userId, trimmedMessage, trimmedLink).Error; err != nil {
+		return fmt.Errorf("Failed to create report notification")
+	}
+
+	return nil
+}
+
+func InsertReviewNotificationTx(tx *gorm.DB, userId, message, link string) error {
+	trimmedMessage := strings.TrimSpace(message)
+	if trimmedMessage == "" {
+		trimmedMessage = "You received a new review on your listing."
+	}
+
+	trimmedLink := strings.TrimSpace(link)
+	if trimmedLink == "" {
+		trimmedLink = "/"
+	}
+
+	if err := tx.Exec(`
+		INSERT INTO public.notifications (user_id, type, message, link)
+		VALUES ($1, 'REVIEW', $2, $3)
+	`, userId, trimmedMessage, trimmedLink).Error; err != nil {
+		return fmt.Errorf("Failed to create review notification")
+	}
+
+	return nil
+}
+
+func InsertTransactionNotificationTx(tx *gorm.DB, userId, message, link string) error {
+	trimmedMessage := strings.TrimSpace(message)
+	if trimmedMessage == "" {
+		trimmedMessage = "A transaction has been updated."
+	}
+
+	trimmedLink := strings.TrimSpace(link)
+	if trimmedLink == "" {
+		trimmedLink = "/messages"
+	}
+
+	if err := tx.Exec(`
+		INSERT INTO public.notifications (user_id, type, message, link)
+		VALUES ($1, 'TRANSACTION', $2, $3)
+	`, userId, trimmedMessage, trimmedLink).Error; err != nil {
+		return fmt.Errorf("Failed to create transaction notification")
+	}
+
+	return nil
+}
+
+func InsertListingNotificationTx(tx *gorm.DB, userId, message, link string) error {
+	trimmedMessage := strings.TrimSpace(message)
+	if trimmedMessage == "" {
+		trimmedMessage = "A listing update requires your attention."
+	}
+
+	trimmedLink := strings.TrimSpace(link)
+	if trimmedLink == "" {
+		trimmedLink = "/"
+	}
+
+	if err := tx.Exec(`
+		INSERT INTO public.notifications (user_id, type, message, link)
+		VALUES ($1, 'LISTING', $2, $3)
+	`, userId, trimmedMessage, trimmedLink).Error; err != nil {
+		return fmt.Errorf("Failed to create listing notification")
 	}
 
 	return nil

@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"p2p_marketplace/backend/config"
 	"p2p_marketplace/backend/middleware"
 	"p2p_marketplace/backend/model"
 )
@@ -167,11 +168,51 @@ func GetAdminListingTypeBreakdown() ([]model.AdminListingTypeBreakdownItem, int,
 	return items, total, nil
 }
 
-func GetAdminUsers() ([]model.AdminUserListItemFromDb, error) {
+func GetAdminUsers(query model.AdminUsersQuery) ([]model.AdminUserListItemFromDb, int, error) {
 	db := middleware.DBConn
 	users := make([]model.AdminUserListItemFromDb, 0)
+	total := 0
 
-	query := `
+	whereParts := []string{"u.role = 'USER'"}
+	args := make([]any, 0)
+
+	search := strings.ToLower(strings.TrimSpace(query.Search))
+	if search != "" {
+		likeSearch := "%" + search + "%"
+		whereParts = append(whereParts, `
+			(
+				LOWER(TRIM(CONCAT_WS(' ', NULLIF(TRIM(u.first_name), ''), NULLIF(TRIM(u.last_name), '')))) LIKE ?
+				OR LOWER(COALESCE(u.email, '')) LIKE ?
+			)
+		`)
+		args = append(args, likeSearch, likeSearch)
+	}
+
+	verified := strings.ToUpper(strings.TrimSpace(query.Verified))
+	if verified != "" && verified != "ALL" {
+		whereParts = append(whereParts, "u.verification_status::text = ?")
+		args = append(args, verified)
+	}
+
+	status := strings.ToUpper(strings.TrimSpace(query.Status))
+	if status == "ACTIVE" {
+		whereParts = append(whereParts, "u.is_active = TRUE")
+	} else if status == "INACTIVE" {
+		whereParts = append(whereParts, "u.is_active = FALSE")
+	}
+
+	whereClause := "WHERE " + strings.Join(whereParts, " AND ")
+
+	countQuery := `
+		SELECT COUNT(*)::int
+		FROM public.users u
+		` + whereClause
+
+	if err := db.Raw(countQuery, args...).Scan(&total).Error; err != nil {
+		return nil, 0, fmt.Errorf("Failed to fetch user count")
+	}
+
+	selectQuery := `
 		SELECT
 			u.id::text AS id,
 			u.first_name,
@@ -192,11 +233,11 @@ func GetAdminUsers() ([]model.AdminUserListItemFromDb, error) {
 			u.created_at AS joined,
 			u.updated_at,
 			u.deleted_at,
-			COALESCE(NULLIF(TRIM(CONCAT_WS(' ', NULLIF(TRIM(du.first_name), ''), NULLIF(TRIM(du.last_name), ''))), ''), '') AS deleted_by_name,
-			COALESCE(du.email, '') AS deleted_by_email,
+			COALESCE(NULLIF(TRIM(CONCAT_WS(' ', NULLIF(TRIM(du.first_name), ''), NULLIF(TRIM(du.last_name), ''))), ''), '') AS action_by_name,
+			COALESCE(du.email, '') AS action_by_email,
 			TRIM(BOTH ', ' FROM CONCAT_WS(', ', NULLIF(TRIM(u.location_barangay), ''), NULLIF(TRIM(u.location_city), ''), NULLIF(TRIM(u.location_province), ''))) AS location
 		FROM public.users u
-		LEFT JOIN public.users du ON du.id = u.deleted_by_id
+		LEFT JOIN public.users du ON du.id = u.action_by_id
 		LEFT JOIN (
 			SELECT user_id, COUNT(*)::int AS listings
 			FROM public.listings
@@ -213,15 +254,20 @@ func GetAdminUsers() ([]model.AdminUserListItemFromDb, error) {
 			INNER JOIN public.listings l ON l.id = lt.listing_id
 			GROUP BY l.user_id
 		) ot ON ot.owner_id = u.id
-		WHERE u.role = 'USER'
+		` + whereClause + `
 		ORDER BY u.created_at DESC
+		LIMIT ?
+		OFFSET ?
 	`
 
-	if err := db.Raw(query).Scan(&users).Error; err != nil {
-		return nil, fmt.Errorf("Failed to fetch users")
+	selectArgs := append([]any{}, args...)
+	selectArgs = append(selectArgs, query.Limit, query.Offset)
+
+	if err := db.Raw(selectQuery, selectArgs...).Scan(&users).Error; err != nil {
+		return nil, 0, fmt.Errorf("Failed to fetch users")
 	}
 
-	return users, nil
+	return users, total, nil
 }
 
 func SetAdminUserActive(userId string, isActive bool, actorUserId string) error {
@@ -259,19 +305,35 @@ func SetAdminUserActive(userId string, isActive bool, actorUserId string) error 
 		}
 	}
 
+	applyUserBanFields := strings.EqualFold(strings.TrimSpace(targetRole), "USER")
+	var lockUntil any
+	if applyUserBanFields && !isActive {
+		lockUntil = time.Now().AddDate(0, 0, 3)
+	}
+
 	updateQuery := `
 		UPDATE public.users
 		SET
 			is_active = $1,
 			updated_at = now(),
 			failed_login_attempts = CASE WHEN $1 THEN 0 ELSE failed_login_attempts END,
-			account_locked_until = CASE WHEN $1 THEN NULL ELSE account_locked_until END
+			account_locked_until = CASE
+				WHEN $3 AND $1 = FALSE THEN $5
+				WHEN $3 AND $1 = TRUE THEN NULL
+				WHEN $1 THEN NULL
+				ELSE account_locked_until
+			END,
+			action_by_id = CASE
+				WHEN $3 AND $1 = FALSE THEN $4
+				WHEN $3 AND $1 = TRUE THEN NULL
+				ELSE action_by_id
+			END
 		WHERE id = $2
 			AND deleted_at IS NULL
 			AND role IN ('USER', 'ADMIN', 'SUPER_ADMIN')
 	`
 
-	result := db.Exec(updateQuery, isActive, userId)
+	result := db.Exec(updateQuery, isActive, userId, applyUserBanFields, actorUserId, lockUntil)
 	if result.Error != nil {
 		return fmt.Errorf("Failed to update user status")
 	}
@@ -284,8 +346,6 @@ func SetAdminUserActive(userId string, isActive bool, actorUserId string) error 
 			return fmt.Errorf("Failed to revoke user sessions")
 		}
 	}
-
-	_ = actorUserId
 
 	return nil
 }
@@ -330,7 +390,7 @@ func DeleteAdminUser(userId string, actorUserId string) error {
 			is_active = FALSE,
 			deleted_at = $1,
 			updated_at = $1,
-			deleted_by_id = $2
+			action_by_id = $2
 		WHERE id = $3
 			AND deleted_at IS NULL
 			AND role IN ('USER', 'ADMIN', 'SUPER_ADMIN')
@@ -352,11 +412,56 @@ func DeleteAdminUser(userId string, actorUserId string) error {
 	return nil
 }
 
-func GetAdminAccounts() ([]model.AdminAccountListItemFromDb, error) {
+func GetAdminAccounts(query model.AdminAccountsQuery) ([]model.AdminAccountListItemFromDb, int, error) {
 	db := middleware.DBConn
 	admins := make([]model.AdminAccountListItemFromDb, 0)
+	total := 0
 
-	query := `
+	whereParts := []string{"u.role IN ('ADMIN', 'SUPER_ADMIN')"}
+	args := make([]any, 0)
+
+	search := strings.ToLower(strings.TrimSpace(query.Search))
+	if search != "" {
+		likeSearch := "%" + search + "%"
+		whereParts = append(whereParts, `
+			(
+				LOWER(COALESCE(u.first_name, '')) LIKE ?
+				OR LOWER(COALESCE(u.last_name, '')) LIKE ?
+				OR LOWER(COALESCE(u.email, '')) LIKE ?
+				OR LOWER(TRIM(CONCAT_WS(' ', COALESCE(u.first_name, ''), COALESCE(u.last_name, '')))) LIKE ?
+			)
+		`)
+		args = append(args, likeSearch, likeSearch, likeSearch, likeSearch)
+	}
+
+	roleFilter := strings.ToUpper(strings.TrimSpace(query.Role))
+	if roleFilter != "" && roleFilter != "ALL" {
+		whereParts = append(whereParts, "u.role::text = ?")
+		args = append(args, roleFilter)
+	}
+
+	statusFilter := strings.ToUpper(strings.TrimSpace(query.Status))
+	if statusFilter == "ACTIVE" {
+		whereParts = append(whereParts, "u.deleted_at IS NULL AND u.is_active = TRUE")
+	} else if statusFilter == "INACTIVE" {
+		whereParts = append(whereParts, "u.deleted_at IS NULL AND u.is_active = FALSE")
+	} else if statusFilter == "DELETED" {
+		whereParts = append(whereParts, "u.deleted_at IS NOT NULL")
+	}
+
+	whereClause := "WHERE " + strings.Join(whereParts, " AND ")
+
+	countQuery := `
+		SELECT COUNT(*)::int
+		FROM public.users u
+		LEFT JOIN public.users du ON du.id = u.action_by_id
+		` + whereClause
+
+	if err := db.Raw(countQuery, args...).Scan(&total).Error; err != nil {
+		return nil, 0, fmt.Errorf("Failed to fetch admin account count")
+	}
+
+	selectQuery := `
 		SELECT
 			u.id::text AS id,
 			u.first_name,
@@ -373,52 +478,43 @@ func GetAdminAccounts() ([]model.AdminAccountListItemFromDb, error) {
 			COALESCE(NULLIF(TRIM(CONCAT_WS(' ', NULLIF(TRIM(du.first_name), ''), NULLIF(TRIM(du.last_name), ''))), ''), '') AS deleted_by_name,
 			COALESCE(du.email, '') AS deleted_by_email
 		FROM public.users u
-		LEFT JOIN public.users du ON du.id = u.deleted_by_id
-		WHERE u.role IN ('ADMIN', 'SUPER_ADMIN')
+		LEFT JOIN public.users du ON du.id = u.action_by_id
+		` + whereClause + `
 		ORDER BY
 			CASE WHEN u.deleted_at IS NULL THEN 0 ELSE 1 END ASC,
 			CASE WHEN u.role = 'SUPER_ADMIN' THEN 0 ELSE 1 END ASC,
 			u.created_at ASC
+		LIMIT ?
+		OFFSET ?
 	`
 
-	if err := db.Raw(query).Scan(&admins).Error; err != nil {
-		return nil, fmt.Errorf("Failed to fetch admin accounts")
+	selectArgs := append([]any{}, args...)
+	selectArgs = append(selectArgs, query.Limit, query.Offset)
+
+	if err := db.Raw(selectQuery, selectArgs...).Scan(&admins).Error; err != nil {
+		return nil, 0, fmt.Errorf("Failed to fetch admin accounts")
 	}
 
 	for i := range admins {
 		admins[i].Role = strings.ToUpper(strings.TrimSpace(admins[i].Role))
 	}
 
-	return admins, nil
+	return admins, total, nil
 }
 
 func CreateAdminAccount(body model.AdminCreateAdminBody) (model.AdminAccountListItemFromDb, error) {
 	db := middleware.DBConn
 	created := model.AdminAccountListItemFromDb{}
 
-	userInput := model.UserFromBody{
-		FirstName: body.FirstName,
-		LastName:  body.LastName,
-		Email:     body.Email,
-		Password:  body.Password,
-	}
-	if err := middleware.ValidateSignUpInput(&userInput); err != nil {
-		return created, err
-	}
-	if err := middleware.ValidatePasswordLength(userInput.Password); err != nil {
+	if err := middleware.ValidateCreateAdminInput(&body); err != nil {
 		return created, err
 	}
 
-	role := strings.ToUpper(strings.TrimSpace(body.Role))
-	if role != "ADMIN" && role != "SUPER_ADMIN" {
-		return created, fmt.Errorf("Invalid role")
-	}
-
-	if err := IsUserExist(userInput.Email); err != nil {
+	if err := IsUserExist(body.Email); err != nil {
 		return created, err
 	}
 
-	hashedPassword := middleware.HashPassword(userInput.Password)
+	hashedPassword := middleware.HashPassword(body.Password)
 
 	insertQuery := `
 		INSERT INTO public.users (
@@ -453,9 +549,9 @@ func CreateAdminAccount(body model.AdminCreateAdminBody) (model.AdminAccountList
 			''::text AS deleted_by_email
 	`
 
-	if err := db.Raw(insertQuery, userInput.FirstName, userInput.LastName, userInput.Email, strings.TrimSpace(body.Phone), hashedPassword, role).Scan(&created).Error; err != nil {
+	if err := db.Raw(insertQuery, body.FirstName, body.LastName, body.Email, body.Phone, hashedPassword, body.Role).Scan(&created).Error; err != nil {
 		if strings.Contains(strings.ToLower(err.Error()), "duplicate") || strings.Contains(strings.ToLower(err.Error()), "unique") {
-			return created, fmt.Errorf("User with email %s already exists", userInput.Email)
+			return created, fmt.Errorf("User with email %s already exists", body.Email)
 		}
 		return created, fmt.Errorf("Failed to create admin account")
 	}
@@ -586,11 +682,61 @@ func SetAdminAccountActive(userId string, isActive bool) error {
 	return nil
 }
 
-func GetAdminListings() ([]model.AdminListingListItemFromDb, error) {
+func GetAdminListings(query model.AdminListingsQuery) ([]model.AdminListingListItemFromDb, int, error) {
 	db := middleware.DBConn
 	listings := make([]model.AdminListingListItemFromDb, 0)
+	total := 0
 
-	query := `
+	whereParts := make([]string, 0)
+	args := make([]any, 0)
+
+	search := strings.ToLower(strings.TrimSpace(query.Search))
+	if search != "" {
+		likeSearch := "%" + search + "%"
+		whereParts = append(whereParts, `
+			(
+				LOWER(l.title) LIKE ?
+				OR LOWER(COALESCE(NULLIF(TRIM(CONCAT_WS(' ', NULLIF(TRIM(u.first_name), ''), NULLIF(TRIM(u.last_name), ''))), ''), u.email, '')) LIKE ?
+			)
+		`)
+		args = append(args, likeSearch, likeSearch)
+	}
+
+	typeFilter := strings.ToUpper(strings.TrimSpace(query.Type))
+	if typeFilter != "" && typeFilter != "ALL" {
+		whereParts = append(whereParts, "l.listing_type::text = ?")
+		args = append(args, typeFilter)
+	}
+
+	statusFilter := strings.ToUpper(strings.TrimSpace(query.Status))
+	if statusFilter != "" && statusFilter != "ALL" {
+		whereParts = append(whereParts, "l.status::text = ?")
+		args = append(args, statusFilter)
+	}
+
+	categoryFilter := strings.ToLower(strings.TrimSpace(query.Category))
+	if categoryFilter != "" && categoryFilter != "all" {
+		whereParts = append(whereParts, "LOWER(COALESCE(c.name, 'Others')) = ?")
+		args = append(args, categoryFilter)
+	}
+
+	whereClause := ""
+	if len(whereParts) > 0 {
+		whereClause = "WHERE " + strings.Join(whereParts, " AND ")
+	}
+
+	countQuery := `
+		SELECT COUNT(*)::int
+		FROM public.listings l
+		LEFT JOIN public.categories c ON c.id = l.category_id
+		LEFT JOIN public.users u ON u.id = l.user_id
+		` + whereClause
+
+	if err := db.Raw(countQuery, args...).Scan(&total).Error; err != nil {
+		return nil, 0, fmt.Errorf("Failed to fetch listing count")
+	}
+
+	selectQuery := `
 		SELECT
 			l.id::text AS id,
 			l.title,
@@ -610,10 +756,12 @@ func GetAdminListings() ([]model.AdminListingListItemFromDb, error) {
 			l.created_at AS created,
 			l.updated_at AS updated_at,
 			l.banned_until AS banned_until,
-			l.deleted_at AS deleted_at
+			l.deleted_at AS deleted_at,
+			COALESCE(NULLIF(TRIM(CONCAT_WS(' ', NULLIF(TRIM(au.first_name), ''), NULLIF(TRIM(au.last_name), ''))), ''), COALESCE(au.email, ''), '') AS action_by_name
 		FROM public.listings l
 		LEFT JOIN public.categories c ON c.id = l.category_id
 		LEFT JOIN public.users u ON u.id = l.user_id
+		LEFT JOIN public.users au ON au.id = l.action_by_id
 		LEFT JOIN (
 			SELECT
 				listing_id,
@@ -635,11 +783,17 @@ func GetAdminListings() ([]model.AdminListingListItemFromDb, error) {
 			ORDER BY is_primary DESC, id ASC
 			LIMIT 1
 		) li ON TRUE
+		` + whereClause + `
 		ORDER BY l.created_at DESC
+		LIMIT ?
+		OFFSET ?
 	`
 
-	if err := db.Raw(query).Scan(&listings).Error; err != nil {
-		return nil, fmt.Errorf("Failed to fetch listings")
+	selectArgs := append([]any{}, args...)
+	selectArgs = append(selectArgs, query.Limit, query.Offset)
+
+	if err := db.Raw(selectQuery, selectArgs...).Scan(&listings).Error; err != nil {
+		return nil, 0, fmt.Errorf("Failed to fetch listings")
 	}
 
 	for i := range listings {
@@ -653,10 +807,10 @@ func GetAdminListings() ([]model.AdminListingListItemFromDb, error) {
 		}
 	}
 
-	return listings, nil
+	return listings, total, nil
 }
 
-func ToggleAdminListingVisibility(listingId string) (string, error) {
+func ToggleAdminListingVisibility(listingId, actorUserId string) (string, error) {
 	normalized, err := getListingStatusById(listingId)
 	if err != nil {
 		return "", err
@@ -674,7 +828,7 @@ func ToggleAdminListingVisibility(listingId string) (string, error) {
 		nextStatus = "UNAVAILABLE"
 	}
 
-	if err := applyListingVisibilityStatus(listingId, nextStatus); err != nil {
+	if err := applyListingVisibilityStatus(listingId, nextStatus, actorUserId); err != nil {
 		return "", err
 	}
 
@@ -701,7 +855,7 @@ func getListingStatusById(listingId string) (string, error) {
 	return strings.ToUpper(strings.TrimSpace(currentStatus)), nil
 }
 
-func applyListingVisibilityStatus(listingId, nextStatus string) error {
+func applyListingVisibilityStatus(listingId, nextStatus, actorUserId string) error {
 	db := middleware.DBConn
 
 	updateResult := db.Exec(`
@@ -709,9 +863,10 @@ func applyListingVisibilityStatus(listingId, nextStatus string) error {
 		SET
 			status = $1::listing_status,
 			banned_until = CASE WHEN $1 = 'BANNED' THEN now() + INTERVAL '3 days' ELSE NULL END,
+			action_by_id = $3,
 			updated_at = now()
 		WHERE id = $2
-	`, nextStatus, listingId)
+	`, nextStatus, listingId, actorUserId)
 	if updateResult.Error != nil {
 		return fmt.Errorf("Failed to update listing visibility")
 	}
@@ -722,11 +877,57 @@ func applyListingVisibilityStatus(listingId, nextStatus string) error {
 	return nil
 }
 
-func GetAdminTransactions() ([]model.AdminTransactionListItemFromDb, error) {
+func GetAdminTransactions(query model.AdminTransactionsQuery) ([]model.AdminTransactionListItemFromDb, int, error) {
 	db := middleware.DBConn
 	transactions := make([]model.AdminTransactionListItemFromDb, 0)
+	total := 0
 
-	query := `
+	whereParts := make([]string, 0)
+	args := make([]any, 0)
+
+	search := strings.ToLower(strings.TrimSpace(query.Search))
+	if search != "" {
+		likeSearch := "%" + search + "%"
+		whereParts = append(whereParts, `
+			(
+				LOWER(COALESCE(l.title, '')) LIKE ?
+				OR LOWER(COALESCE(NULLIF(TRIM(CONCAT_WS(' ', NULLIF(TRIM(buyer.first_name), ''), NULLIF(TRIM(buyer.last_name), ''))), ''), buyer.email, '')) LIKE ?
+				OR LOWER(COALESCE(NULLIF(TRIM(CONCAT_WS(' ', NULLIF(TRIM(owner.first_name), ''), NULLIF(TRIM(owner.last_name), ''))), ''), owner.email, '')) LIKE ?
+			)
+		`)
+		args = append(args, likeSearch, likeSearch, likeSearch)
+	}
+
+	typeFilter := strings.ToUpper(strings.TrimSpace(query.Type))
+	if typeFilter != "" && typeFilter != "ALL" {
+		whereParts = append(whereParts, "l.listing_type::text = ?")
+		args = append(args, typeFilter)
+	}
+
+	statusFilter := strings.ToUpper(strings.TrimSpace(query.Status))
+	if statusFilter != "" && statusFilter != "ALL" {
+		whereParts = append(whereParts, "lt.status::text = ?")
+		args = append(args, statusFilter)
+	}
+
+	whereClause := ""
+	if len(whereParts) > 0 {
+		whereClause = "WHERE " + strings.Join(whereParts, " AND ")
+	}
+
+	countQuery := `
+		SELECT COUNT(*)::int
+		FROM public.listing_transactions lt
+		JOIN public.listings l ON l.id = lt.listing_id
+		JOIN public.users buyer ON buyer.id = lt.client_id
+		JOIN public.users owner ON owner.id = l.user_id
+		` + whereClause
+
+	if err := db.Raw(countQuery, args...).Scan(&total).Error; err != nil {
+		return nil, 0, fmt.Errorf("Failed to fetch transaction count")
+	}
+
+	selectQuery := `
 		SELECT
 			lt.id::text AS id,
 			l.id::text AS listing_id,
@@ -772,11 +973,17 @@ func GetAdminTransactions() ([]model.AdminTransactionListItemFromDb, error) {
 			ORDER BY is_primary DESC, id ASC
 			LIMIT 1
 		) li ON TRUE
+		` + whereClause + `
 		ORDER BY lt.created_at DESC
+		LIMIT ?
+		OFFSET ?
 	`
 
-	if err := db.Raw(query).Scan(&transactions).Error; err != nil {
-		return nil, fmt.Errorf("Failed to fetch transactions")
+	selectArgs := append([]any{}, args...)
+	selectArgs = append(selectArgs, query.Limit, query.Offset)
+
+	if err := db.Raw(selectQuery, selectArgs...).Scan(&transactions).Error; err != nil {
+		return nil, 0, fmt.Errorf("Failed to fetch transactions")
 	}
 
 	for i := range transactions {
@@ -790,34 +997,133 @@ func GetAdminTransactions() ([]model.AdminTransactionListItemFromDb, error) {
 		}
 	}
 
-	return transactions, nil
+	return transactions, total, nil
 }
 
-func DeleteAdminListing(listingId string) error {
+func DeleteAdminListing(listingId, actorUserId string) error {
 	db := middleware.DBConn
-	result := db.Exec(`
+	tx := db.Begin()
+	if tx.Error != nil {
+		return tx.Error
+	}
+
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	var ownerId string
+	ownerResult := tx.Raw(`
+		SELECT user_id::text
+		FROM public.listings
+		WHERE id = $1
+		LIMIT 1
+	`, listingId).Scan(&ownerId)
+	if ownerResult.Error != nil {
+		tx.Rollback()
+		return fmt.Errorf("Failed to validate listing")
+	}
+	if ownerResult.RowsAffected == 0 {
+		tx.Rollback()
+		return fmt.Errorf("Listing not found")
+	}
+
+	result := tx.Exec(`
 		UPDATE public.listings
 		SET
 			status = 'DELETED'::listing_status,
 			deleted_at = now(),
+			action_by_id = $2,
 			updated_at = now()
 		WHERE id = $1
-	`, listingId)
+	`, listingId, actorUserId)
 	if result.Error != nil {
+		tx.Rollback()
 		return fmt.Errorf("Failed to delete listing")
 	}
 	if result.RowsAffected == 0 {
+		tx.Rollback()
 		return fmt.Errorf("Listing not found")
+	}
+
+	if strings.TrimSpace(ownerId) != "" {
+		if err := InsertListingNotificationTx(
+			tx,
+			strings.TrimSpace(ownerId),
+			"Your listing was removed by an administrator.",
+			"/listing/"+strings.TrimSpace(listingId),
+		); err != nil {
+			tx.Rollback()
+			return err
+		}
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		return err
 	}
 
 	return nil
 }
 
-func GetAdminReports() ([]model.AdminReportListItemFromDb, error) {
+func GetAdminReports(query model.AdminReportsQuery) ([]model.AdminReportListItemFromDb, int, error) {
 	db := middleware.DBConn
 	reports := make([]model.AdminReportListItemFromDb, 0)
+	total := 0
 
-	query := `
+	whereParts := make([]string, 0)
+	args := make([]any, 0)
+
+	search := strings.ToLower(strings.TrimSpace(query.Search))
+	if search != "" {
+		likeSearch := "%" + search + "%"
+		whereParts = append(whereParts, `
+			(
+				LOWER(COALESCE(NULLIF(TRIM(CONCAT_WS(' ', NULLIF(TRIM(rep.first_name), ''), NULLIF(TRIM(rep.last_name), ''))), ''), rep.email, '')) LIKE ?
+				OR LOWER(COALESCE(NULLIF(TRIM(CONCAT_WS(' ', NULLIF(TRIM(owner.first_name), ''), NULLIF(TRIM(owner.last_name), ''))), ''), owner.email, '')) LIKE ?
+				OR LOWER(
+					CASE
+						WHEN r.reported_listing_id IS NOT NULL THEN COALESCE(l.title, 'Unknown Listing')
+						ELSE COALESCE(NULLIF(TRIM(CONCAT_WS(' ', NULLIF(TRIM(ru.first_name), ''), NULLIF(TRIM(ru.last_name), ''))), ''), ru.email, 'Unknown User')
+					END
+				) LIKE ?
+				OR LOWER(COALESCE(r.reason, '')) LIKE ?
+			)
+		`)
+		args = append(args, likeSearch, likeSearch, likeSearch, likeSearch)
+	}
+
+	statusFilter := strings.ToUpper(strings.TrimSpace(query.Status))
+	if statusFilter != "" && statusFilter != "ALL" {
+		whereParts = append(whereParts, "r.status::text = ?")
+		args = append(args, statusFilter)
+	}
+
+	reasonFilter := strings.TrimSpace(query.Reason)
+	if reasonFilter != "" && !strings.EqualFold(reasonFilter, "ALL") {
+		whereParts = append(whereParts, "r.reason = ?")
+		args = append(args, reasonFilter)
+	}
+
+	whereClause := ""
+	if len(whereParts) > 0 {
+		whereClause = "WHERE " + strings.Join(whereParts, " AND ")
+	}
+
+	countQuery := `
+		SELECT COUNT(*)::int
+		FROM public.reports r
+		LEFT JOIN public.users rep ON rep.id = r.reporter_id
+		LEFT JOIN public.listings l ON l.id = r.reported_listing_id
+		LEFT JOIN public.users owner ON owner.id = l.user_id
+		LEFT JOIN public.users ru ON ru.id = r.reported_user_id
+		` + whereClause
+
+	if err := db.Raw(countQuery, args...).Scan(&total).Error; err != nil {
+		return nil, 0, fmt.Errorf("Failed to fetch report count")
+	}
+
+	selectQuery := `
 		SELECT
 			r.id::text AS id,
 			COALESCE(r.reporter_id::text, '') AS reporter_id,
@@ -872,11 +1178,17 @@ func GetAdminReports() ([]model.AdminReportListItemFromDb, error) {
 		LEFT JOIN public.users ru ON ru.id = r.reported_user_id
 		LEFT JOIN public.users rev ON rev.id = r.reviewed_by_id
 		LEFT JOIN public.users res ON res.id = r.resolved_by_id
+		` + whereClause + `
 		ORDER BY r.created_at DESC
+		LIMIT ?
+		OFFSET ?
 	`
 
-	if err := db.Raw(query).Scan(&reports).Error; err != nil {
-		return nil, fmt.Errorf("Failed to fetch reports")
+	selectArgs := append([]any{}, args...)
+	selectArgs = append(selectArgs, query.Limit, query.Offset)
+
+	if err := db.Raw(selectQuery, selectArgs...).Scan(&reports).Error; err != nil {
+		return nil, 0, fmt.Errorf("Failed to fetch reports")
 	}
 
 	for i := range reports {
@@ -897,7 +1209,7 @@ func GetAdminReports() ([]model.AdminReportListItemFromDb, error) {
 		}
 	}
 
-	return reports, nil
+	return reports, total, nil
 }
 
 func SetAdminReportStatus(reportId, reviewedById, status string) error {
@@ -930,7 +1242,21 @@ func SetAdminReportStatus(reportId, reviewedById, status string) error {
 func SetAdminReportAction(reportId, adminUserId, action, reason string) error {
 	db := middleware.DBConn
 
-	normalizedAction := strings.ToUpper(strings.TrimSpace(action))
+	requestAction := strings.ToUpper(strings.TrimSpace(action))
+	allowedRequestAction := map[string]bool{
+		"DISMISS":        true,
+		"BAN_LISTING":    true,
+		"DELETE_LISTING": true,
+		"LOCK_3":         true,
+		"LOCK_7":         true,
+		"LOCK_30":        true,
+		"PERMANENT_BAN":  true,
+	}
+	if !allowedRequestAction[requestAction] {
+		return fmt.Errorf("Invalid report action")
+	}
+
+	normalizedAction := requestAction
 	if normalizedAction == "BAN_LISTING" {
 		normalizedAction = "HIDE_LISTING"
 	}
@@ -938,18 +1264,8 @@ func SetAdminReportAction(reportId, adminUserId, action, reason string) error {
 	if trimmedReason == "" {
 		return fmt.Errorf("Reason is required")
 	}
-
-	allowed := map[string]bool{
-		"DISMISS":        true,
-		"HIDE_LISTING":   true,
-		"DELETE_LISTING": true,
-		"LOCK_3":         true,
-		"LOCK_7":         true,
-		"LOCK_30":        true,
-		"PERMANENT_BAN":  true,
-	}
-	if !allowed[normalizedAction] {
-		return fmt.Errorf("Invalid report action")
+	if len(trimmedReason) > config.AdminReasonMaxLength {
+		return fmt.Errorf("Reason must not exceed %d characters", config.AdminReasonMaxLength)
 	}
 
 	tx := db.Begin()
@@ -967,6 +1283,7 @@ func SetAdminReportAction(reportId, adminUserId, action, reason string) error {
 		ReportedUserId    *string `gorm:"column:reported_user_id"`
 		ReportedListingId *string `gorm:"column:reported_listing_id"`
 		ListingOwnerId    *string `gorm:"column:listing_owner_id"`
+		ReportReason      string  `gorm:"column:report_reason"`
 		Status            string  `gorm:"column:status"`
 	}
 
@@ -976,6 +1293,7 @@ func SetAdminReportAction(reportId, adminUserId, action, reason string) error {
 			r.reported_user_id::text AS reported_user_id,
 			r.reported_listing_id::text AS reported_listing_id,
 			l.user_id::text AS listing_owner_id,
+			COALESCE(NULLIF(TRIM(r.reason), ''), 'Policy violation') AS report_reason,
 			r.status::text AS status
 		FROM public.reports r
 		LEFT JOIN public.listings l ON l.id = r.reported_listing_id
@@ -1012,6 +1330,10 @@ func SetAdminReportAction(reportId, adminUserId, action, reason string) error {
 	if targetListingId != "" {
 		reportLink = "/listing/" + targetListingId
 	}
+	reportReason := strings.TrimSpace(target.ReportReason)
+	if reportReason == "" {
+		reportReason = "Policy violation"
+	}
 
 	effectiveAction := normalizedAction
 	now := time.Now()
@@ -1035,9 +1357,10 @@ func SetAdminReportAction(reportId, adminUserId, action, reason string) error {
 			SET
 				status = 'BANNED'::listing_status,
 				banned_until = now() + INTERVAL '1 day',
+				action_by_id = $2,
 				updated_at = now()
 			WHERE id = $1
-		`, targetListingId)
+		`, targetListingId, adminUserId)
 		if updateListingResult.Error != nil {
 			tx.Rollback()
 			return fmt.Errorf("Failed to shadow ban listing")
@@ -1054,9 +1377,10 @@ func SetAdminReportAction(reportId, adminUserId, action, reason string) error {
 			SET
 				status = 'DELETED'::listing_status,
 				deleted_at = now(),
+				action_by_id = $2,
 				updated_at = now()
 			WHERE id = $1
-		`, targetListingId)
+		`, targetListingId, adminUserId)
 		if updateListingResult.Error != nil {
 			tx.Rollback()
 			return fmt.Errorf("Failed to delete listing")
@@ -1067,10 +1391,7 @@ func SetAdminReportAction(reportId, adminUserId, action, reason string) error {
 		}
 
 		if targetUserId != "" {
-			if err := tx.Exec(`
-				INSERT INTO public.notifications (user_id, type, message, link)
-				VALUES ($1, 'REPORT_ACTION', $2, $3)
-			`, targetUserId, "Your listing was removed after moderator review.", reportLink).Error; err != nil {
+			if err := InsertReportNotificationTx(tx, targetUserId, fmt.Sprintf("Your listing was removed due to %s.", reportReason), reportLink); err != nil {
 				tx.Rollback()
 				return fmt.Errorf("Failed to notify listing owner")
 			}
@@ -1095,9 +1416,10 @@ func SetAdminReportAction(reportId, adminUserId, action, reason string) error {
 			effectiveAction = "PERMANENT_BAN"
 		} else {
 			lockDays := 3
-			if effectiveAction == "LOCK_7" {
+			switch effectiveAction {
+			case "LOCK_7":
 				lockDays = 7
-			} else if effectiveAction == "LOCK_30" {
+			case "LOCK_30":
 				lockDays = 30
 			}
 			lockUntil := now.Add(time.Duration(lockDays) * 24 * time.Hour)
@@ -1124,10 +1446,7 @@ func SetAdminReportAction(reportId, adminUserId, action, reason string) error {
 				return fmt.Errorf("Failed to revoke user sessions")
 			}
 
-			if err := tx.Exec(`
-				INSERT INTO public.notifications (user_id, type, message, link)
-				VALUES ($1, 'REPORT_ACTION', $2, $3)
-			`, targetUserId, fmt.Sprintf("Your account has been temporarily locked for %d day(s) after moderator review.", lockDays), reportLink).Error; err != nil {
+			if err := InsertReportNotificationTx(tx, targetUserId, fmt.Sprintf("Your account has been temporarily locked for %d day(s) due to %s.", lockDays, reportReason), reportLink); err != nil {
 				tx.Rollback()
 				return fmt.Errorf("Failed to notify locked user")
 			}
@@ -1159,10 +1478,7 @@ func SetAdminReportAction(reportId, adminUserId, action, reason string) error {
 			return fmt.Errorf("Failed to revoke user sessions")
 		}
 
-		if err := tx.Exec(`
-			INSERT INTO public.notifications (user_id, type, message, link)
-			VALUES ($1, 'REPORT_ACTION', $2, $3)
-		`, targetUserId, "Your account has been permanently banned after moderator review.", reportLink).Error; err != nil {
+		if err := InsertReportNotificationTx(tx, targetUserId, fmt.Sprintf("Your account has been permanently banned due to %s.", reportReason), reportLink); err != nil {
 			tx.Rollback()
 			return fmt.Errorf("Failed to notify banned user")
 		}
@@ -1202,11 +1518,54 @@ func SetAdminReportAction(reportId, adminUserId, action, reason string) error {
 	return nil
 }
 
-func GetAdminVerifications() ([]model.AdminVerificationListItemFromDb, error) {
+func GetAdminVerifications(query model.AdminVerificationsQuery) ([]model.AdminVerificationListItemFromDb, int, error) {
 	db := middleware.DBConn
 	rows := make([]model.AdminVerificationListItemFromDb, 0)
+	total := 0
 
-	query := `
+	whereParts := make([]string, 0)
+	args := make([]any, 0)
+
+	search := strings.ToLower(strings.TrimSpace(query.Search))
+	if search != "" {
+		likeSearch := "%" + search + "%"
+		whereParts = append(whereParts, `
+			(
+				LOWER(COALESCE(NULLIF(TRIM(CONCAT_WS(' ', NULLIF(TRIM(u.first_name), ''), NULLIF(TRIM(u.last_name), ''))), ''), u.email, '')) LIKE ?
+				OR LOWER(COALESCE(u.email, '')) LIKE ?
+			)
+		`)
+		args = append(args, likeSearch, likeSearch)
+	}
+
+	statusFilter := strings.ToUpper(strings.TrimSpace(query.Status))
+	if statusFilter != "" && statusFilter != "ALL" {
+		whereParts = append(whereParts, "uv.verification_status::text = ?")
+		args = append(args, statusFilter)
+	}
+
+	idTypeFilter := strings.ToLower(strings.TrimSpace(query.IdType))
+	if idTypeFilter != "" && idTypeFilter != "all" {
+		whereParts = append(whereParts, "LOWER(COALESCE(uv.id_type, '')) = ?")
+		args = append(args, idTypeFilter)
+	}
+
+	whereClause := ""
+	if len(whereParts) > 0 {
+		whereClause = "WHERE " + strings.Join(whereParts, " AND ")
+	}
+
+	countQuery := `
+		SELECT COUNT(*)::int
+		FROM public.user_verifications uv
+		INNER JOIN public.users u ON u.id = uv.user_id
+		` + whereClause
+
+	if err := db.Raw(countQuery, args...).Scan(&total).Error; err != nil {
+		return nil, 0, fmt.Errorf("Failed to fetch verification count")
+	}
+
+	selectQuery := `
 		SELECT
 			uv.id::text AS id,
 			uv.user_id::text AS user_id,
@@ -1233,21 +1592,54 @@ func GetAdminVerifications() ([]model.AdminVerificationListItemFromDb, error) {
 		FROM public.user_verifications uv
 		INNER JOIN public.users u ON u.id = uv.user_id
 		LEFT JOIN public.users rev ON rev.id = uv.reviewed_by_id
+		` + whereClause + `
 		ORDER BY uv.submitted_at DESC
+		LIMIT ?
+		OFFSET ?
 	`
 
-	if err := db.Raw(query).Scan(&rows).Error; err != nil {
-		return nil, fmt.Errorf("Failed to fetch verifications")
+	selectArgs := append([]any{}, args...)
+	selectArgs = append(selectArgs, query.Limit, query.Offset)
+
+	if err := db.Raw(selectQuery, selectArgs...).Scan(&rows).Error; err != nil {
+		return nil, 0, fmt.Errorf("Failed to fetch verifications")
 	}
 
 	for i := range rows {
+		decryptedIDNumber, err := middleware.DecryptVerificationPII(rows[i].IdNumber)
+		if err != nil {
+			return nil, 0, fmt.Errorf("Failed to decrypt verification data")
+		}
+		decryptedIDFirstName, err := middleware.DecryptVerificationPII(rows[i].IdFirstName)
+		if err != nil {
+			return nil, 0, fmt.Errorf("Failed to decrypt verification data")
+		}
+		decryptedIDLastName, err := middleware.DecryptVerificationPII(rows[i].IdLastName)
+		if err != nil {
+			return nil, 0, fmt.Errorf("Failed to decrypt verification data")
+		}
+		decryptedBirthdate, err := middleware.DecryptVerificationPII(rows[i].IdBirthdate)
+		if err != nil {
+			return nil, 0, fmt.Errorf("Failed to decrypt verification data")
+		}
+		decryptedMobileNumber, err := middleware.DecryptVerificationPII(rows[i].MobileNumber)
+		if err != nil {
+			return nil, 0, fmt.Errorf("Failed to decrypt verification data")
+		}
+
+		rows[i].IdNumber = strings.TrimSpace(decryptedIDNumber)
+		rows[i].IdFirstName = strings.TrimSpace(decryptedIDFirstName)
+		rows[i].IdLastName = strings.TrimSpace(decryptedIDLastName)
+		rows[i].IdBirthdate = strings.TrimSpace(decryptedBirthdate)
+		rows[i].MobileNumber = strings.TrimSpace(decryptedMobileNumber)
+
 		rows[i].Status = strings.ToUpper(strings.TrimSpace(rows[i].Status))
 		if strings.TrimSpace(rows[i].UserName) == "" {
 			rows[i].UserName = strings.TrimSpace(rows[i].IdFirstName + " " + rows[i].IdLastName)
 		}
 	}
 
-	return rows, nil
+	return rows, total, nil
 }
 
 func SetAdminVerificationStatus(verificationId, reviewedById, status, reason string) error {
@@ -1273,6 +1665,10 @@ func SetAdminVerificationStatus(verificationId, reviewedById, status, reason str
 	if trimmedReason == "" {
 		tx.Rollback()
 		return fmt.Errorf("Reason is required")
+	}
+	if len(trimmedReason) > config.AdminReasonMaxLength {
+		tx.Rollback()
+		return fmt.Errorf("Reason must not exceed %d characters", config.AdminReasonMaxLength)
 	}
 
 	var verificationRow struct {
@@ -1331,6 +1727,11 @@ func SetAdminVerificationStatus(verificationId, reviewedById, status, reason str
 	`, normalizedStatus, verificationRow.UserID).Error; err != nil {
 		tx.Rollback()
 		return fmt.Errorf("Failed to update user verification status")
+	}
+
+	if err := InsertVerificationNotificationTx(tx, verificationRow.UserID, normalizedStatus, trimmedReason); err != nil {
+		tx.Rollback()
+		return err
 	}
 
 	if err := tx.Commit().Error; err != nil {

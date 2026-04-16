@@ -252,7 +252,7 @@ export default function ListingDetailPage() {
 
   if (!listing) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-stone-100 dark:bg-[#0f1117]">
+      <div className="min-h-screen flex items-center justify-center bg-stone-100 dark:bg-[#111827]">
         <div className="text-center">
           <p className="text-5xl mb-4">🔍</p>
           <p className="text-stone-600 dark:text-stone-400 font-medium">Listing not found</p>
@@ -521,7 +521,7 @@ export default function ListingDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-stone-100 dark:bg-[#0f1117]">
+    <div className="min-h-screen bg-stone-100 dark:bg-[#111827]">
 
       {/* ── Breadcrumb ── */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-5 pb-3">
@@ -551,10 +551,10 @@ export default function ListingDetailPage() {
 
             {/* ── Image gallery ── */}
             <div className="bg-white dark:bg-[#1c1f2e] rounded-2xl border border-stone-200 dark:border-[#2a2d3e] overflow-hidden shadow-sm">
-              <div className="relative aspect-16/10 bg-stone-100 dark:bg-[#13151f] overflow-hidden group">
+              <div className="relative aspect-video overflow-hidden group">
                 <SafeImage
                   src={images[imgIdx] ?? listing.imageUrl}
-                  type="cover"
+                  type="listing"
                   alt={`Photo ${imgIdx + 1} of ${images.length}`}
                   fill
                 />
@@ -626,7 +626,7 @@ export default function ListingDetailPage() {
                     <button key={i} onClick={() => setImgIdx(i)}
                       className={cn(
                         "relative shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 transition-all",
-                        i === imgIdx ? "border-stone-800 dark:border-stone-300" : "border-transparent opacity-60 hover:opacity-100"
+                        i === imgIdx ? "border-slate-800 dark:border-stone-300" : "border-transparent opacity-60 hover:opacity-100"
                       )}>
                       <SafeImage
                         src={img}
@@ -654,6 +654,20 @@ export default function ListingDetailPage() {
                       <div key={f} className="flex items-center gap-2 text-sm text-stone-700 dark:text-stone-200">
                         <CheckCircle className="w-4 h-4 text-teal-500 shrink-0" />
                         {f}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {isSell && extra.inclusions && extra.inclusions.filter(Boolean).length > 0 && (
+                <div className="mt-4 pt-4 border-t border-stone-100 dark:border-[#2a2d3e]">
+                  <h3 className="text-xs font-semibold text-stone-500 dark:text-stone-400 uppercase tracking-widest mb-3">What&apos;s Included</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-2 gap-x-6">
+                    {extra.inclusions.filter(Boolean).map((item) => (
+                      <div key={item} className="flex items-start gap-2 text-sm text-stone-700 dark:text-stone-200">
+                        <CheckCircle className="w-4 h-4 text-teal-500 shrink-0 mt-0.5" />
+                        {item}
                       </div>
                     ))}
                   </div>
@@ -921,7 +935,6 @@ export default function ListingDetailPage() {
         onOfferAmountChange={setOfferAmt}
         note={offerMessage}
         onNoteChange={setOfferMessage}
-        noteLabel="Add a message (optional)"
         notePlaceholder="e.g. Can we meet up in SM Calamba on Saturday?"
         submitLabel="Send Offer"
         submitting={submittingOffer}

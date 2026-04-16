@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"p2p_marketplace/backend/config"
 	"p2p_marketplace/backend/middleware"
 	"p2p_marketplace/backend/model"
 
@@ -283,26 +284,15 @@ func GetConversationById(userId, conversationId string) (model.ConversationFromD
 	return row, nil
 }
 
-func GetMessagesByConversation(userId, conversationId string) ([]model.MessageFromDb, []model.MessageAttachmentFromDb, []model.MessageReactionFromDb, error) {
+func GetMessagesByConversation(userId, conversationId string, limit, offset int) ([]model.MessageFromDb, []model.MessageAttachmentFromDb, []model.MessageReactionFromDb, int, error) {
 	db := middleware.DBConn
 	messages := make([]model.MessageFromDb, 0)
 	attachments := make([]model.MessageAttachmentFromDb, 0)
 	reactions := make([]model.MessageReactionFromDb, 0)
+	total := 0
 
-	msgQuery := `
-		SELECT
-			m.id,
-			m.conversation_id,
-			m.sender_id,
-			COALESCE(m.content, '') AS content,
-			m.status::text AS status,
-			m.is_edited,
-			m.is_unsent,
-			m.created_at,
-			COALESCE(rm.id::text, '') AS reply_message_id,
-			COALESCE(rm.sender_id::text, '') AS reply_sender_id,
-			COALESCE(CONCAT(ru.first_name, ' ', ru.last_name), '') AS reply_sender_name,
-			COALESCE(rm.content, '') AS reply_content
+	countQuery := `
+		SELECT COUNT(*)
 		FROM public.messages m
 		JOIN public.conversation_members cm
 			ON cm.conversation_id = m.conversation_id
@@ -311,20 +301,82 @@ func GetMessagesByConversation(userId, conversationId string) ([]model.MessageFr
 		LEFT JOIN public.message_deletions md
 			ON md.message_id = m.id
 			AND md.user_id = $1
-		LEFT JOIN public.messages rm
-			ON rm.id = m.reply_to_message_id
-		LEFT JOIN public.users ru
-			ON ru.id = rm.sender_id
 		WHERE m.conversation_id = $2
 			AND md.id IS NULL
-		ORDER BY m.created_at ASC
 	`
 
-	if err := db.Raw(msgQuery, userId, conversationId).Scan(&messages).Error; err != nil {
-		return nil, nil, nil, fmt.Errorf("Failed to load messages")
+	if err := db.Raw(countQuery, userId, conversationId).Scan(&total).Error; err != nil {
+		return nil, nil, nil, 0, fmt.Errorf("Failed to count messages")
+	}
+
+	msgQuery := `
+		WITH paged_messages AS (
+			SELECT
+				m.id,
+				m.conversation_id,
+				m.sender_id,
+				COALESCE(m.receiver_id::text, '') AS receiver_id,
+				COALESCE(m.content, '') AS content,
+				m.status::text AS status,
+				m.is_edited,
+				m.is_unsent,
+				m.created_at,
+				m.reply_to_message_id
+			FROM public.messages m
+			JOIN public.conversation_members cm
+				ON cm.conversation_id = m.conversation_id
+				AND cm.user_id = $1
+				AND cm.deleted_at IS NULL
+			LEFT JOIN public.message_deletions md
+				ON md.message_id = m.id
+				AND md.user_id = $1
+			WHERE m.conversation_id = $2
+				AND md.id IS NULL
+			ORDER BY m.created_at DESC, m.id DESC
+			LIMIT $3 OFFSET $4
+		)
+		SELECT
+			pm.id,
+			pm.conversation_id,
+			pm.sender_id,
+			pm.receiver_id,
+			pm.content,
+			pm.status,
+			pm.is_edited,
+			pm.is_unsent,
+			pm.created_at,
+			COALESCE(rm.id::text, '') AS reply_message_id,
+			COALESCE(rm.sender_id::text, '') AS reply_sender_id,
+			COALESCE(CONCAT(ru.first_name, ' ', ru.last_name), '') AS reply_sender_name,
+			COALESCE(rm.content, '') AS reply_content
+		FROM paged_messages pm
+		LEFT JOIN public.messages rm
+			ON rm.id = pm.reply_to_message_id
+		LEFT JOIN public.users ru
+			ON ru.id = rm.sender_id
+		ORDER BY pm.created_at ASC, pm.id ASC
+	`
+
+	if err := db.Raw(msgQuery, userId, conversationId, limit, offset).Scan(&messages).Error; err != nil {
+		return nil, nil, nil, 0, fmt.Errorf("Failed to load messages")
 	}
 
 	attQuery := `
+		WITH paged_message_ids AS (
+			SELECT m.id
+			FROM public.messages m
+			JOIN public.conversation_members cm
+				ON cm.conversation_id = m.conversation_id
+				AND cm.user_id = $1
+				AND cm.deleted_at IS NULL
+			LEFT JOIN public.message_deletions md
+				ON md.message_id = m.id
+				AND md.user_id = $1
+			WHERE m.conversation_id = $2
+				AND md.id IS NULL
+			ORDER BY m.created_at DESC, m.id DESC
+			LIMIT $3 OFFSET $4
+		)
 		SELECT
 			a.id,
 			a.message_id,
@@ -333,41 +385,46 @@ func GetMessagesByConversation(userId, conversationId string) ([]model.MessageFr
 			COALESCE(a.file_name, '') AS file_name,
 			COALESCE(a.file_size, 0) AS file_size
 		FROM public.message_attachments a
-		JOIN public.messages m
-			ON m.id = a.message_id
-		LEFT JOIN public.message_deletions md
-			ON md.message_id = m.id
-			AND md.user_id = $1
-		WHERE m.conversation_id = $2
-			AND md.id IS NULL
+		JOIN paged_message_ids pm
+			ON pm.id = a.message_id
 		ORDER BY a.sort_order ASC, a.created_at ASC
 	`
 
-	if err := db.Raw(attQuery, userId, conversationId).Scan(&attachments).Error; err != nil {
-		return nil, nil, nil, fmt.Errorf("Failed to load message attachments")
+	if err := db.Raw(attQuery, userId, conversationId, limit, offset).Scan(&attachments).Error; err != nil {
+		return nil, nil, nil, 0, fmt.Errorf("Failed to load message attachments")
 	}
 
 	reactQuery := `
+		WITH paged_message_ids AS (
+			SELECT m.id
+			FROM public.messages m
+			JOIN public.conversation_members cm
+				ON cm.conversation_id = m.conversation_id
+				AND cm.user_id = $1
+				AND cm.deleted_at IS NULL
+			LEFT JOIN public.message_deletions md
+				ON md.message_id = m.id
+				AND md.user_id = $1
+			WHERE m.conversation_id = $2
+				AND md.id IS NULL
+			ORDER BY m.created_at DESC, m.id DESC
+			LIMIT $3 OFFSET $4
+		)
 		SELECT
 			r.message_id,
 			r.user_id,
 			r.reaction::text AS reaction
 		FROM public.message_reactions r
-		JOIN public.messages m
-			ON m.id = r.message_id
-		LEFT JOIN public.message_deletions md
-			ON md.message_id = m.id
-			AND md.user_id = $1
-		WHERE m.conversation_id = $2
-			AND md.id IS NULL
+		JOIN paged_message_ids pm
+			ON pm.id = r.message_id
 		ORDER BY r.created_at ASC
 	`
 
-	if err := db.Raw(reactQuery, userId, conversationId).Scan(&reactions).Error; err != nil {
-		return nil, nil, nil, fmt.Errorf("Failed to load message reactions")
+	if err := db.Raw(reactQuery, userId, conversationId, limit, offset).Scan(&reactions).Error; err != nil {
+		return nil, nil, nil, 0, fmt.Errorf("Failed to load message reactions")
 	}
 
-	return messages, attachments, reactions, nil
+	return messages, attachments, reactions, total, nil
 }
 
 func MarkConversationRead(userId, conversationId string) (string, error) {
@@ -570,6 +627,9 @@ func CreateMessage(userId, conversationId, content, replyToMessageId string, att
 	trimmed := strings.TrimSpace(content)
 	if trimmed == "" && len(attachments) == 0 {
 		return created, fmt.Errorf("Message content is required")
+	}
+	if len(trimmed) > config.MessageContentMaxLength {
+		return created, fmt.Errorf("Message content must not exceed %d characters", config.MessageContentMaxLength)
 	}
 
 	tx := db.Begin()
@@ -888,6 +948,9 @@ func EditMessageContent(userId, conversationId, messageId, content string) error
 	trimmed := strings.TrimSpace(content)
 	if trimmed == "" {
 		return fmt.Errorf("Message content is required")
+	}
+	if len(trimmed) > config.MessageContentMaxLength {
+		return fmt.Errorf("Message content must not exceed %d characters", config.MessageContentMaxLength)
 	}
 
 	updateQuery := `
@@ -1859,6 +1922,10 @@ func formatAmountWithCommas(amount int) string {
 
 func insertConversationMessageTx(tx *gorm.DB, conversationId, senderId, receiverId, content string) (model.MessageFromDb, error) {
 	var created model.MessageFromDb
+	trimmedContent := strings.TrimSpace(content)
+	if len(trimmedContent) > config.MessageContentMaxLength {
+		return created, fmt.Errorf("Message content must not exceed %d characters", config.MessageContentMaxLength)
+	}
 
 	insertQuery := `
 		INSERT INTO public.messages (
@@ -1881,7 +1948,7 @@ func insertConversationMessageTx(tx *gorm.DB, conversationId, senderId, receiver
 		RETURNING id, conversation_id, sender_id, receiver_id, COALESCE(content, '') AS content, status::text AS status, is_edited, is_unsent, created_at
 	`
 
-	if err := tx.Raw(insertQuery, conversationId, senderId, receiverId, strings.TrimSpace(content)).Scan(&created).Error; err != nil {
+	if err := tx.Raw(insertQuery, conversationId, senderId, receiverId, trimmedContent).Scan(&created).Error; err != nil {
 		return created, fmt.Errorf("Failed to send offer message")
 	}
 

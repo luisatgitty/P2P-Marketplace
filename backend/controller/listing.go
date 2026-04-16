@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"p2p_marketplace/backend/config"
 	"p2p_marketplace/backend/middleware"
 	"p2p_marketplace/backend/model"
 	"p2p_marketplace/backend/repository"
@@ -25,26 +26,8 @@ func CreateListing(c *fiber.Ctx) error {
 		return SendErrorResponse(c, 401, "User is not authenticated", nil)
 	}
 
-	if strings.TrimSpace(body.Type) == "" {
-		return SendErrorResponse(c, 400, "Listing type is required", nil)
-	}
-	if strings.TrimSpace(body.Title) == "" {
-		return SendErrorResponse(c, 400, "Title is required", nil)
-	}
-	if strings.TrimSpace(body.Category) == "" {
-		return SendErrorResponse(c, 400, "Category is required", nil)
-	}
-	if body.Price <= 0 {
-		return SendErrorResponse(c, 400, "Price must be greater than 0", nil)
-	}
-	if strings.TrimSpace(body.Description) == "" {
-		return SendErrorResponse(c, 400, "Description is required", nil)
-	}
-	if strings.TrimSpace(body.LocationCity) == "" || strings.TrimSpace(body.LocationProv) == "" {
-		return SendErrorResponse(c, 400, "City and province are required", nil)
-	}
-	if len(body.Images) == 0 {
-		return SendErrorResponse(c, 400, "At least one image is required", nil)
+	if err := middleware.ValidateCreateListingInput(&body, false); err != nil {
+		return SendErrorResponse(c, 400, err.Error(), err)
 	}
 
 	listingId, err := repository.CreateListing(userId, body)
@@ -135,23 +118,8 @@ func UpdateListing(c *fiber.Ctx) error {
 		return SendErrorResponse(c, 401, "User is not authenticated", nil)
 	}
 
-	if strings.TrimSpace(body.Type) == "" {
-		return SendErrorResponse(c, 400, "Listing type is required", nil)
-	}
-	if strings.TrimSpace(body.Title) == "" {
-		return SendErrorResponse(c, 400, "Title is required", nil)
-	}
-	if strings.TrimSpace(body.Category) == "" {
-		return SendErrorResponse(c, 400, "Category is required", nil)
-	}
-	if body.Price <= 0 {
-		return SendErrorResponse(c, 400, "Price must be greater than 0", nil)
-	}
-	if strings.TrimSpace(body.Description) == "" {
-		return SendErrorResponse(c, 400, "Description is required", nil)
-	}
-	if strings.TrimSpace(body.LocationCity) == "" || strings.TrimSpace(body.LocationProv) == "" {
-		return SendErrorResponse(c, 400, "City and province are required", nil)
+	if err := middleware.ValidateCreateListingInput(&body, true); err != nil {
+		return SendErrorResponse(c, 400, err.Error(), err)
 	}
 
 	if err := repository.UpdateListing(userId, listingId, body); err != nil {
@@ -442,12 +410,29 @@ func ReportListing(c *fiber.Ctx) error {
 		return SendErrorResponse(c, 400, "Report reason is required", nil)
 	}
 
-	descriptionWords := strings.Fields(strings.TrimSpace(body.Description))
-	if len(descriptionWords) > 80 {
+	trimmedReason := strings.TrimSpace(body.Reason)
+	reasonAllowed := false
+	for _, allowedReason := range config.ReportReasons {
+		if trimmedReason == allowedReason {
+			reasonAllowed = true
+			break
+		}
+	}
+	if !reasonAllowed {
+		return SendErrorResponse(c, 400, "Invalid report reason", nil)
+	}
+
+	trimmedDescription := strings.TrimSpace(body.Description)
+	if len(trimmedDescription) > config.ReportDescriptionMaxLength {
+		return SendErrorResponse(c, 400, "Report details must be at most 500 characters", nil)
+	}
+
+	descriptionWords := strings.Fields(trimmedDescription)
+	if len(descriptionWords) > config.ReportDescriptionMaxWords {
 		return SendErrorResponse(c, 400, "Report details must be at most 80 words", nil)
 	}
 
-	reportId, err := repository.CreateListingReport(userId, listingId, body.ReportedUserId, body.Reason, body.Description)
+	reportId, err := repository.CreateListingReport(userId, listingId, body.ReportedUserId, trimmedReason, trimmedDescription)
 	if err != nil {
 		return SendErrorResponse(c, 400, err.Error(), err)
 	}
@@ -499,8 +484,12 @@ func CreateListingReview(c *fiber.Ctx) error {
 		return SendErrorResponse(c, 400, "Invalid request body. Please contact support.", err)
 	}
 
-	if body.Rating < 1 || body.Rating > 5 {
+	if body.Rating < config.ReviewRatingMin || body.Rating > config.ReviewRatingMax {
 		return SendErrorResponse(c, 400, "Rating must be between 1 and 5", nil)
+	}
+
+	if len(strings.TrimSpace(body.Comment)) > config.ReviewCommentMaxLength {
+		return SendErrorResponse(c, 400, "Review comment must be at most 500 characters", nil)
 	}
 
 	review, err := repository.CreateListingReview(userId, listingId, body.Rating, body.Comment)
@@ -531,8 +520,12 @@ func UpdateListingReview(c *fiber.Ctx) error {
 		return SendErrorResponse(c, 400, "Invalid request body. Please contact support.", err)
 	}
 
-	if body.Rating < 1 || body.Rating > 5 {
+	if body.Rating < config.ReviewRatingMin || body.Rating > config.ReviewRatingMax {
 		return SendErrorResponse(c, 400, "Rating must be between 1 and 5", nil)
+	}
+
+	if len(strings.TrimSpace(body.Comment)) > config.ReviewCommentMaxLength {
+		return SendErrorResponse(c, 400, "Review comment must be at most 500 characters", nil)
 	}
 
 	review, err := repository.UpdateListingReview(userId, listingId, body.Rating, body.Comment)
@@ -569,6 +562,27 @@ func DeleteListingReview(c *fiber.Ctx) error {
 
 func GetListings(c *fiber.Ctx) error {
 	userId := getOptionalUserIdFromSession(c)
+
+	limit := 25
+	if rawLimit := strings.TrimSpace(c.Query("limit")); rawLimit != "" {
+		parsedLimit, parseErr := strconv.Atoi(rawLimit)
+		if parseErr != nil || parsedLimit <= 0 {
+			return SendErrorResponse(c, 400, "limit must be a valid positive number", parseErr)
+		}
+		if parsedLimit > 100 {
+			parsedLimit = 100
+		}
+		limit = parsedLimit
+	}
+
+	offset := 0
+	if rawOffset := strings.TrimSpace(c.Query("offset")); rawOffset != "" {
+		parsedOffset, parseErr := strconv.Atoi(rawOffset)
+		if parseErr != nil || parsedOffset < 0 {
+			return SendErrorResponse(c, 400, "offset must be a valid non-negative number", parseErr)
+		}
+		offset = parsedOffset
+	}
 
 	parseOptionalInt := func(raw string) (*int, error) {
 		trimmed := strings.TrimSpace(raw)
@@ -614,9 +628,11 @@ func GetListings(c *fiber.Ctx) error {
 		PriceMin:  priceMin,
 		PriceMax:  priceMax,
 		Sort:      strings.TrimSpace(c.Query("sort")),
+		Limit:     limit,
+		Offset:    offset,
 	}
 
-	listings, err := repository.GetAllListings(userId, filters)
+	listings, total, err := repository.GetAllListings(userId, filters)
 	if err != nil {
 		return SendErrorResponse(c, 500, err.Error(), err)
 	}
@@ -648,6 +664,9 @@ func GetListings(c *fiber.Ctx) error {
 
 	return SendSuccessResponse(c, 200, "Listings fetched successfully", map[string]any{
 		"listings": items,
+		"total":    total,
+		"limit":    limit,
+		"offset":   offset,
 	})
 }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect, useCallback, type UIEvent } from "react";
 import {
   Search,
   AlertTriangle,
@@ -9,8 +9,6 @@ import {
   ChevronUp,
   ChevronDown,
   ChevronsUpDown,
-  ChevronLeft,
-  ChevronRight,
   Trash2,
   Ban,
   CircleDashed,
@@ -70,6 +68,7 @@ interface AdminListing {
   updated_at: string;
   banned_until: string | null;
   deleted_at: string | null;
+  action_by_name: string;
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -82,6 +81,30 @@ function formatDateTime(value?: string | null): string {
     day:   "2-digit",
     year:  "numeric",
   });
+}
+
+function getCurrentAdminDisplayName(): string {
+  if (typeof window === "undefined") return "";
+
+  try {
+    const rawUser = localStorage.getItem("auth_user");
+    if (!rawUser) return "";
+
+    const parsed = JSON.parse(rawUser) as {
+      firstName?: string;
+      lastName?: string;
+      email?: string;
+    };
+
+    const firstName = (parsed?.firstName ?? "").trim();
+    const lastName = (parsed?.lastName ?? "").trim();
+    const fullName = `${firstName} ${lastName}`.trim();
+
+    if (fullName) return fullName;
+    return (parsed?.email ?? "").trim();
+  } catch {
+    return "";
+  }
 }
 
 const TYPE_CONFIG: Record<ListingType, { label: string; cls: string; Icon: React.ElementType }> = {
@@ -146,35 +169,71 @@ function FilterSelect({
 // ── Main page ──────────────────────────────────────────────────────────────────
 export default function ListingsPage() {
   const [search,         setSearch]         = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [typeFilter,     setTypeFilter]     = useState("ALL");
   const [statusFilter,   setStatusFilter]   = useState("ALL");
   const [categoryFilter, setCategoryFilter] = useState("ALL");
   const [sort,           setSort]           = useState<{ field: SortField; dir: SortDir }>({ field: "created", dir: "desc" });
-  const [page,           setPage]           = useState(1);
   const [listings,       setListings]       = useState<AdminListing[]>([]);
   const [loadingListings,setLoadingListings]= useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const [offset, setOffset] = useState(0);
+  const [totalCount, setTotalCount] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [actionLoadingListingId, setActionLoadingListingId] = useState<string | null>(null);
-  const PER_PAGE = 8;
+  const FETCH_LIMIT = 16;
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      setDebouncedSearch(search.trim());
+    }, 250);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [search]);
 
   // ── Load ──────────────────────────────────────────────────────────────────────
-  const loadListings = useCallback(async () => {
-    setLoadingListings(true);
+  const loadListings = useCallback(async (reset: boolean, requestedOffset = 0) => {
+    if (reset) {
+      setLoadingListings(true);
+    } else {
+      setLoadingMore(true);
+    }
+
+    const nextOffset = reset ? 0 : requestedOffset;
+
     try {
-      const data = await getAdminListings();
-      setListings((data ?? []) as AdminListingRecord[]);
+      const payload = await getAdminListings({
+        search: debouncedSearch,
+        type: typeFilter,
+        status: statusFilter,
+        category: categoryFilter,
+        limit: FETCH_LIMIT,
+        offset: nextOffset,
+      });
+
+      const received = (payload.listings ?? []) as AdminListingRecord[];
+      const nextCount = reset ? received.length : nextOffset + received.length;
+
+      setListings((prev) => (reset ? received : [...prev, ...received]));
+      setOffset(nextCount);
+      setTotalCount(payload.total);
+      setHasMore(nextCount < payload.total);
     } catch (err) {
       const message = typeof err === "string" ? err : "Failed to load listings";
       toast.error(message, { position: "top-center" });
     } finally {
       setLoadingListings(false);
+      setLoadingMore(false);
       setIsRefreshing(false);
     }
-  }, []);
+  }, [debouncedSearch, typeFilter, statusFilter, categoryFilter]);
 
   useEffect(() => {
-    void loadListings();
-  }, [loadListings]);
+    void loadListings(true, 0);
+  }, [debouncedSearch, typeFilter, statusFilter, categoryFilter, loadListings]);
 
   // ── Dynamic category options ──────────────────────────────────────────────────
   const categoryOptions = useMemo(() => {
@@ -186,20 +245,11 @@ export default function ListingsPage() {
   // ── Sort ──────────────────────────────────────────────────────────────────────
   function toggleSort(field: SortField) {
     setSort(s => s.field === field ? { field, dir: s.dir === "asc" ? "desc" : "asc" } : { field, dir: "desc" });
-    setPage(1);
   }
 
-  // ── Filter + sort + paginate ──────────────────────────────────────────────────
+  // ── Sort loaded chunk ─────────────────────────────────────────────────────────
   const filtered = useMemo(() => {
     let data = [...listings];
-    if (search)
-      data = data.filter(l =>
-        l.title.toLowerCase().includes(search.toLowerCase()) ||
-        l.seller.toLowerCase().includes(search.toLowerCase()),
-      );
-    if (typeFilter     !== "ALL") data = data.filter(l => l.type     === typeFilter);
-    if (statusFilter   !== "ALL") data = data.filter(l => l.status   === statusFilter);
-    if (categoryFilter !== "ALL") data = data.filter(l => l.category === categoryFilter);
     data.sort((a, b) => {
       let va: any, vb: any;
       if      (sort.field === "title")  { va = a.title;  vb = b.title;  }
@@ -216,12 +266,8 @@ export default function ListingsPage() {
       return sort.dir === "asc" ? (va > vb ? 1 : -1) : va < vb ? 1 : -1;
     });
     return data;
-  }, [listings, search, typeFilter, statusFilter, categoryFilter, sort]);
+  }, [listings, sort]);
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
-  const paged      = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
-
-  const totalCount       = listings.length;
   const availableCount   = listings.filter(l => l.status === "AVAILABLE").length;
   const unavailableCount = listings.filter(l => l.status === "UNAVAILABLE").length;
   const soldCount        = listings.filter(l => l.status === "SOLD").length;
@@ -235,6 +281,7 @@ export default function ListingsPage() {
     try {
       const updated = await deleteAdminListing(id);
       const deletedAtPlaceholder = new Date().toISOString();
+      const actionByNamePlaceholder = getCurrentAdminDisplayName();
       setListings((prev) =>
         prev.map((listing) =>
           listing.id === id
@@ -242,6 +289,7 @@ export default function ListingsPage() {
                 ...listing,
                 status: updated.status,
                 deleted_at: deletedAtPlaceholder,
+                action_by_name: actionByNamePlaceholder,
               }
             : listing
         )
@@ -275,6 +323,7 @@ export default function ListingsPage() {
       const nextBannedUntil = updated.status === "BANNED"
         ? new Date(Date.now() + (3 * 24 * 60 * 60 * 1000)).toISOString()
         : null;
+      const actionByNamePlaceholder = getCurrentAdminDisplayName();
 
       setListings((prev) =>
         prev.map((listing) =>
@@ -283,6 +332,7 @@ export default function ListingsPage() {
                 ...listing,
                 status: updated.status as ListingStatus,
                 banned_until: nextBannedUntil,
+                action_by_name: actionByNamePlaceholder || listing.action_by_name,
               }
             : listing
         )
@@ -299,6 +349,16 @@ export default function ListingsPage() {
     } finally {
       setActionLoadingListingId(null);
     }
+  }
+
+  function handleTableScroll(event: UIEvent<HTMLDivElement>) {
+    if (loadingListings || loadingMore || !hasMore) return;
+
+    const node = event.currentTarget;
+    const remaining = node.scrollHeight - node.scrollTop - node.clientHeight;
+    if (remaining > 120) return;
+
+    void loadListings(false, offset);
   }
 
   const hasActiveFilters = search || typeFilter !== "ALL" || statusFilter !== "ALL" || categoryFilter !== "ALL";
@@ -318,22 +378,22 @@ export default function ListingsPage() {
 
   // ── Render ────────────────────────────────────────────────────────────────────
   return (
-    <div className="p-5 sm:p-6 space-y-5">
+    <div className="h-[calc(100vh)] p-5 sm:p-6 flex flex-col gap-5 min-h-0">
 
       {/* ── Page header ── */}
-      <div>
+      {/* <div>
         <h2 className="text-xl font-extrabold text-stone-900 dark:text-stone-50">
           Listings
         </h2>
         <p className="text-sm text-stone-500 dark:text-stone-400 mt-0.5">
           View, search, and manage all marketplace listings
         </p>
-      </div>
+      </div> */}
 
       {/* ── Summary cards — clickable to filter by status ── */}
       <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
         {[
-          { label: "Total Listings", count: totalCount,     status: "ALL",         color: "text-stone-700 dark:text-stone-200", bg: "bg-stone-100 dark:bg-[#13151f]",       border: "border-stone-200 dark:border-[#2a2d3e]",   Icon: ShoppingBag   },
+          { label: "Total", count: totalCount,     status: "ALL",         color: "text-stone-700 dark:text-stone-200", bg: "bg-stone-100 dark:bg-[#13151f]",       border: "border-stone-200 dark:border-[#2a2d3e]",   Icon: ShoppingBag   },
           { label: "Available",   count: availableCount,   status: "AVAILABLE",   color: "text-teal-600 dark:text-teal-400",   bg: "bg-teal-50 dark:bg-teal-950/20",      border: "border-teal-200 dark:border-teal-800",      Icon: CheckCircle2  },
           { label: "Unavailable", count: unavailableCount, status: "UNAVAILABLE", color: "text-amber-600 dark:text-amber-400", bg: "bg-amber-50 dark:bg-amber-950/20",    border: "border-amber-200 dark:border-amber-800",    Icon: AlertTriangle },
           { label: "Sold",        count: soldCount,        status: "SOLD",        color: "text-stone-600 dark:text-stone-300", bg: "bg-stone-100 dark:bg-stone-800",        border: "border-stone-200 dark:border-stone-700",    Icon: ShoppingBag   },
@@ -343,7 +403,7 @@ export default function ListingsPage() {
           <Card
             key={label}
             className={cn(
-              "rounded-lg cursor-pointer hover:shadow-sm transition-all border",
+              "p-4 rounded-md cursor-pointer hover:shadow-sm transition-all border",
               bg, border,
               statusFilter === status && "ring-2 ring-offset-1 ring-current",
             )}
@@ -352,11 +412,10 @@ export default function ListingsPage() {
                 if (status === "ALL") return "ALL";
                 return prev === status ? "ALL" : status;
               });
-              setPage(1);
             }}
           >
             <CardContent className="text-center">
-              <Icon className={cn("w-5 h-5 mx-auto mb-1.5", color)} />
+              {/* <Icon className={cn("w-5 h-5 mx-auto mb-1.5", color)} /> */}
               <p className={cn("text-xl font-extrabold", color)}>{count}</p>
               <p className="text-sm text-stone-500 dark:text-stone-400 mt-0.5">{label}</p>
             </CardContent>
@@ -372,7 +431,7 @@ export default function ListingsPage() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400 pointer-events-none" />
           <Input
             value={search}
-            onChange={e => { setSearch(e.target.value); setPage(1); }}
+            onChange={e => { setSearch(e.target.value); }}
             placeholder="Search by title or seller…"
             className="pl-9 dark:bg-[#13151f] dark:border-[#2a2d3e]"
           />
@@ -382,7 +441,7 @@ export default function ListingsPage() {
         <div className="flex gap-2 flex-wrap">
           <FilterSelect
             value={typeFilter}
-            onChange={v => { setTypeFilter(v); setPage(1); }}
+            onChange={v => { setTypeFilter(v); }}
             options={[
               ["ALL",     "All Types"],
               ["SELL",    "For Sale" ],
@@ -392,7 +451,7 @@ export default function ListingsPage() {
           />
           <FilterSelect
             value={categoryFilter}
-            onChange={v => { setCategoryFilter(v); setPage(1); }}
+            onChange={v => { setCategoryFilter(v); }}
             options={[
               ["ALL", "All Categories"],
               ...categoryOptions.map(c => [c, c] as [string, string]),
@@ -400,7 +459,7 @@ export default function ListingsPage() {
           />
           <FilterSelect
             value={statusFilter}
-            onChange={v => { setStatusFilter(v); setPage(1); }}
+            onChange={v => { setStatusFilter(v); }}
             options={[
               ["ALL",       "All Status" ],
               ["AVAILABLE", "Available"  ],
@@ -418,7 +477,6 @@ export default function ListingsPage() {
               onClick={() => {
                 setSearch(""); setTypeFilter("ALL");
                 setStatusFilter("ALL"); setCategoryFilter("ALL");
-                setPage(1);
               }}
               className="hover:bg-destructive/10! text-destructive! border-destructive! focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40"
             >
@@ -432,8 +490,7 @@ export default function ListingsPage() {
           variant="outline"
           onClick={() => {
             setIsRefreshing(true);
-            setPage(1);
-            void loadListings();
+            void loadListings(true);
           }}
           disabled={loadingListings}
           className="border-sky-600 text-sky-600! hover:bg-sky-600/10 focus-visible:border-sky-600 focus-visible:ring-sky-600/20 dark:border-sky-400 dark:text-sky-400! dark:hover:bg-sky-400/10 dark:focus-visible:border-sky-400 dark:focus-visible:ring-sky-400/40"
@@ -443,9 +500,9 @@ export default function ListingsPage() {
       </div>
 
       {/* ── Table ── */}
-      <Card className="p-0 rounded-lg dark:bg-[#1c1f2e] dark:border-[#2a2d3e] overflow-hidden">
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
+      <Card className="p-0 rounded-md dark:bg-[#1c1f2e] dark:border-[#2a2d3e] overflow-hidden flex-1 min-h-0">
+        <CardContent className="p-0 h-full min-h-0 flex flex-col">
+          <div className="overflow-auto h-full" onScroll={handleTableScroll}>
             <Table>
               <TableHeader>
                 <TableRow className="border-stone-200 dark:border-[#2a2d3e] bg-stone-50 dark:bg-[#13151f] hover:bg-stone-50 dark:hover:bg-[#13151f]">
@@ -467,6 +524,9 @@ export default function ListingsPage() {
                   <SortableTH label="Updated" field="updated" />
                   <SortableTH label="Banned Until" field="bannedUntil" />
                   <SortableTH label="Deleted At" field="deletedAt" />
+                  <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest whitespace-nowrap">
+                    Action By
+                  </TableHead>
                   <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest text-right">
                     Actions
                   </TableHead>
@@ -474,20 +534,20 @@ export default function ListingsPage() {
               </TableHeader>
 
               <TableBody>
-                {loadingListings ? (
+                {loadingListings && filtered.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={13} className="py-16 text-center text-sm text-stone-400 dark:text-stone-500">
+                    <TableCell colSpan={14} className="py-16 text-center text-sm text-stone-400 dark:text-stone-500">
                       Loading listings…
                     </TableCell>
                   </TableRow>
-                ) : paged.length === 0 ? (
+                ) : filtered.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={13} className="py-16 text-center text-sm text-stone-400 dark:text-stone-500">
+                    <TableCell colSpan={14} className="py-16 text-center text-sm text-stone-400 dark:text-stone-500">
                       No listings match the current filters.
                     </TableCell>
                   </TableRow>
                 ) : (
-                  paged.map(listing => {
+                  filtered.map(listing => {
                     const tc   = TYPE_CONFIG[listing.type];
                     const Icon = tc.Icon;
                     return (
@@ -602,6 +662,13 @@ export default function ListingsPage() {
                           {formatDateTime(listing.deleted_at)}
                         </TableCell>
 
+                        {/* Action By */}
+                        <TableCell className="py-3.5 text-xs text-stone-500 dark:text-stone-400 whitespace-nowrap">
+                          <p className="text-sm font-medium text-stone-700 dark:text-stone-200">
+                            {listing.action_by_name || "—"}
+                          </p>
+                        </TableCell>
+
                         {/* Actions */}
                         <TableCell className="py-3.5">
                           <div className="flex items-center justify-end gap-1">
@@ -611,8 +678,8 @@ export default function ListingsPage() {
                                 variant="ghost"
                                 size="icon"
                                 type="button"
-                                title={listing.status === "BANNED" ? "Set to unavailable" : "Shadow ban listing"}
-                                aria-label={listing.status === "BANNED" ? "Set to unavailable" : "Shadow ban listing"}
+                                title={listing.status === "BANNED" ? "Unban" : "Shadow Ban 3 Days"}
+                                aria-label={listing.status === "BANNED" ? "Unban" : "Shadow Ban 3 Days"}
                                 onClick={() => handleToggleVisibility(listing.id, listing.status)}
                                 disabled={actionLoadingListingId === listing.id}
                                 className="w-7 h-7 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/20 hover:text-amber-700 disabled:opacity-50"
@@ -640,54 +707,29 @@ export default function ListingsPage() {
                     );
                   })
                 )}
+
+                {loadingMore && (
+                  <TableRow>
+                    <TableCell colSpan={14} className="py-4 text-center text-sm text-stone-400 dark:text-stone-500">
+                      Loading more listings…
+                    </TableCell>
+                  </TableRow>
+                )}
+
+                {!hasMore && filtered.length > 0 && (
+                  <TableRow>
+                    <TableCell colSpan={14} className="py-4 text-center text-xs text-stone-400 dark:text-stone-500">
+                      End of listing results.
+                    </TableCell>
+                  </TableRow>
+                )}
               </TableBody>
             </Table>
           </div>
 
-          {/* ── Pagination ── */}
           <Separator className="dark:bg-[#2a2d3e]" />
-          <div className="flex items-center justify-between px-4 py-3">
-            <p className="text-sm text-stone-400 dark:text-stone-500">
-              Page {page} of {totalPages} · {filtered.length} result{filtered.length !== 1 ? "s" : ""}
-            </p>
-            <div className="flex items-center gap-1.5">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPage(p => Math.max(1, p - 1))}
-                disabled={page === 1}
-                className="h-8 w-8 p-0 rounded-lg dark:border-[#2a2d3e] dark:text-stone-300 dark:hover:bg-[#252837]"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </Button>
-
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map(n => (
-                <Button
-                  key={n}
-                  variant={page === n ? "default" : "ghost"}
-                  size="sm"
-                  onClick={() => setPage(n)}
-                  className={cn(
-                    "h-8 w-8 p-0 rounded-lg text-sm font-bold",
-                    page === n
-                      ? "bg-[#1e2433] text-white hover:bg-[#2a3650]"
-                      : "text-stone-500 dark:text-stone-400 dark:hover:bg-[#252837]",
-                  )}
-                >
-                  {n}
-                </Button>
-              ))}
-
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                disabled={page === totalPages}
-                className="h-8 w-8 p-0 rounded-lg dark:border-[#2a2d3e] dark:text-stone-300 dark:hover:bg-[#252837]"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </Button>
-            </div>
+          <div className="px-4 py-3 text-sm text-stone-400 dark:text-stone-500">
+            Showing {filtered.length.toLocaleString()} of {totalCount.toLocaleString()} result{totalCount !== 1 ? "s" : ""}
           </div>
         </CardContent>
       </Card>

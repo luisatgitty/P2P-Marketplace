@@ -35,6 +35,7 @@ import { cn } from "@/lib/utils";
 import { SafeImage } from "@/components/ui/safe-image";
 import { ImageLink } from "@/components/image-link";
 import { formatPrice } from "@/utils/string-builder";
+import { AUTH_LIMITS, isValidName } from "@/utils/validation";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type VerificationState = "unverified" | "pending" | "verified" | "rejected";
@@ -67,7 +68,7 @@ function normalizeEditableProfile(form: EditableProfileSnapshot): EditableProfil
     firstName: form.firstName.trim(),
     lastName: form.lastName.trim(),
     bio: form.bio.trim(),
-    phone: form.phone.trim(),
+    phone: form.phone.replace(/\D/g, "").slice(0, AUTH_LIMITS.phoneLength),
     locationProv: form.locationProv.trim(),
     locationCity: form.locationCity.trim(),
     locationBrgy: form.locationBrgy.trim(),
@@ -624,6 +625,55 @@ export default function ProfilePage() {
     : ["listings", "bookmarks", "reviews"];
 
   async function handleSave() {
+    const firstNameError = isValidName(form.firstName.trim(), "First name");
+    if (firstNameError) {
+      showErrorToast(firstNameError);
+      return;
+    }
+
+    const lastNameError = isValidName(form.lastName.trim(), "Last name");
+    if (lastNameError) {
+      showErrorToast(lastNameError);
+      return;
+    }
+
+    if (form.bio.trim().length > AUTH_LIMITS.profileBioMaxLength) {
+      showErrorToast(`Bio must not exceed ${AUTH_LIMITS.profileBioMaxLength} characters`);
+      return;
+    }
+
+    const normalizedPhone = form.phone.replace(/\D/g, "").slice(0, AUTH_LIMITS.phoneLength);
+    if (normalizedPhone !== "") {
+      if (normalizedPhone.length !== AUTH_LIMITS.phoneLength) {
+        showErrorToast(`Phone number must be exactly ${AUTH_LIMITS.phoneLength} digits`);
+        return;
+      }
+      if (!normalizedPhone.startsWith("09")) {
+        showErrorToast("Phone number must start with 09");
+        return;
+      }
+    }
+
+    if (form.currentPassword.length > AUTH_LIMITS.passwordMaxLength) {
+      showErrorToast(`Current password must not exceed ${AUTH_LIMITS.passwordMaxLength} characters`);
+      return;
+    }
+
+    if (form.newPassword.length > AUTH_LIMITS.passwordMaxLength) {
+      showErrorToast(`New password must not exceed ${AUTH_LIMITS.passwordMaxLength} characters`);
+      return;
+    }
+
+    if (form.confirmPassword.length > AUTH_LIMITS.passwordMaxLength) {
+      showErrorToast(`Confirm password must not exceed ${AUTH_LIMITS.passwordMaxLength} characters`);
+      return;
+    }
+
+    if (form.newPassword && form.newPassword.length < AUTH_LIMITS.passwordMinLength) {
+      showErrorToast(`New password must be at least ${AUTH_LIMITS.passwordMinLength} characters`);
+      return;
+    }
+
     if (form.newPassword && form.newPassword !== form.confirmPassword) {
       showErrorToast("New password and confirm password do not match");
       return;
@@ -713,7 +763,6 @@ export default function ProfilePage() {
     }
   }
 
-  const initials = `${profileUser?.firstName?.[0] ?? ""}${profileUser?.lastName?.[0] ?? ""}`.toUpperCase() || "?";
   const fullName = profileUser ? `${profileUser.firstName} ${profileUser.lastName}` : "—";
   const locationText = [profileUser?.locationCity, profileUser?.locationProv].filter(Boolean).join(", ") || "Location not set";
   const memberSinceText = formatMemberSince(profileUser?.createdAt);
@@ -775,14 +824,14 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="min-h-fit bg-stone-100 dark:bg-[#0f1117]">
+    <div className="min-h-fit bg-[#faf6f0] dark:bg-[#111827]">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
 
         {/* ── Profile header card ── */}
         <div className="bg-white dark:bg-[#1c1f2e] rounded-2xl border border-stone-200 dark:border-[#2a2d3e] shadow-sm overflow-hidden mb-4">
 
           {/* Cover photo */}
-          <div className={cn("relative h-32 bg-linear-to-r from-[#1e2433] via-[#2a3650] to-[#1a2a3a] overflow-hidden group", !isViewingExternalProfile && "cursor-pointer")} onClick={() => !isViewingExternalProfile && cover.trigger()}>
+          <div className={cn("relative aspect-7/1 bg-linear-to-r from-[#1a0e00] via-[#1a2235] to-[#0b0f1a] overflow-hidden group", !isViewingExternalProfile && "cursor-pointer")} onClick={() => !isViewingExternalProfile && cover.trigger()}>
             {cover.src
               ? <SafeImage
                 src={cover.src}
@@ -839,7 +888,7 @@ export default function ProfilePage() {
                     alt={`${fullName}'s profile photo`}
                     width={80}
                     height={80}
-                    className="w-20 h-20 border-4 border-white dark:border-[#1c1f2e] overflow-hidden shadow-md bg-[#1e2a40] flex items-center justify-center"
+                    className="w-20 h-20 border-4 border-white dark:border-slate-900 overflow-hidden shadow-md flex items-center justify-center"
                   />
                   {isProfileOnline && (
                     <span className="absolute bottom-1.5 right-1.5 w-4 h-4 rounded-full bg-emerald-500 border-3 border-white dark:border-[#1c1f2e]" />
@@ -908,12 +957,14 @@ export default function ProfilePage() {
               <h1 className="text-xl font-bold text-stone-900 dark:text-stone-100">{fullName}</h1>
               <VerificationBadge verified={verificationState === "verified"} size={16} />
             </div>
-            <p className="text-xs text-stone-400 dark:text-stone-500 mb-3">{memberSinceText}</p>
+            <p className="text-sm text-stone-400 dark:text-stone-500 mb-3">{profileUser?.bio}</p>
 
             {/* Meta row */}
             <div className="flex flex-wrap gap-x-5 gap-y-1.5">
               <span className="flex items-center gap-1.5 text-xs text-stone-500 dark:text-stone-400"><MapPin className="w-3.5 h-3.5 text-stone-400 dark:text-stone-500" /> {locationText}</span>
               {!isViewingExternalProfile && <span className="flex items-center gap-1.5 text-xs text-stone-500 dark:text-stone-400"><Mail className="w-3.5 h-3.5 text-stone-400 dark:text-stone-500" /> {profileUser?.email}</span>}
+
+              <span className="flex items-center gap-1.5 text-xs text-stone-500 dark:text-stone-400"><Calendar className="w-3.5 h-3.5 text-stone-400 dark:text-stone-500" /> {memberSinceText}</span>
               <span className="flex items-center gap-1.5 text-xs text-stone-500 dark:text-stone-400"><Calendar className="w-3.5 h-3.5 text-stone-400 dark:text-stone-500" /> {lastActiveText}</span>
               <span className="flex items-center gap-1.5 text-xs text-stone-500 dark:text-stone-400"><Star className={cn("w-3.5 h-3.5", hasOverallRating ? "fill-amber-400 text-amber-400" : "text-stone-400 dark:text-stone-500")} /> {overallRatingText}</span>
             </div>
@@ -928,14 +979,15 @@ export default function ProfilePage() {
             </div>
             <div className="px-6 py-5">
               <div className="grid grid-cols-2 gap-4">
-                <div><label className={lbl}>First Name</label><Input value={form.firstName} onChange={(e) => setForm({ ...form, firstName: e.target.value })} /></div>
-                <div><label className={lbl}>Last Name</label><Input value={form.lastName} onChange={(e) => setForm({ ...form, lastName: e.target.value })} /></div>
+                <div><label className={lbl}>First Name</label><Input value={form.firstName} onChange={(e) => setForm({ ...form, firstName: e.target.value.slice(0, AUTH_LIMITS.nameMaxLength) })} minLength={AUTH_LIMITS.nameMinLength} maxLength={AUTH_LIMITS.nameMaxLength} /></div>
+                <div><label className={lbl}>Last Name</label><Input value={form.lastName} onChange={(e) => setForm({ ...form, lastName: e.target.value.slice(0, AUTH_LIMITS.nameMaxLength) })} minLength={AUTH_LIMITS.nameMinLength} maxLength={AUTH_LIMITS.nameMaxLength} /></div>
                 <div className="col-span-2">
                   <label className={lbl}>Bio</label>
-                  <textarea rows={3} value={form.bio} onChange={(e) => setForm({ ...form, bio: e.target.value })}
+                  <textarea rows={3} value={form.bio} onChange={(e) => setForm({ ...form, bio: e.target.value.slice(0, AUTH_LIMITS.profileBioMaxLength) })}
+                    maxLength={AUTH_LIMITS.profileBioMaxLength}
                     placeholder="Tell buyers and sellers a bit about yourself…"
                     className="w-full bg-stone-50 dark:bg-[#13151f] border border-stone-200 dark:border-[#2a2d3e] rounded-lg px-3 py-2 text-sm text-stone-800 dark:text-stone-200 placeholder-stone-400 dark:placeholder-stone-600 outline-none focus:border-stone-400 dark:focus:border-stone-500 resize-none" />
-                  <p className="text-xs text-stone-400 dark:text-stone-500 mt-1">{form.bio.length} / 200</p>
+                  <p className="text-xs text-stone-400 dark:text-stone-500 mt-1">{form.bio.length} / {AUTH_LIMITS.profileBioMaxLength}</p>
                 </div>
                 <div>
                   <label className={lbl}>Phone Number</label>
@@ -943,11 +995,12 @@ export default function ProfilePage() {
                     id="phoneNumber"
                     name="phoneNumber"
                     value={form.phone}
-                    onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                    onChange={(e) => setForm({ ...form, phone: e.target.value.replace(/\D/g, "").slice(0, AUTH_LIMITS.phoneLength) })}
                     placeholder="09XX XXX XXXX"
                     type="tel"
                     autoComplete="tel-national"
                     inputMode="tel"
+                    maxLength={AUTH_LIMITS.phoneLength}
                   />
                 </div>
                 <div>
@@ -1005,8 +1058,10 @@ export default function ProfilePage() {
                         <Input
                           type={showCurrentPassword ? "text" : "password"}
                           value={form.currentPassword}
-                          onChange={(e) => setForm({ ...form, currentPassword: e.target.value })}
+                          onChange={(e) => setForm({ ...form, currentPassword: e.target.value.slice(0, AUTH_LIMITS.passwordMaxLength) })}
                           placeholder="Required if changing"
+                          maxLength={AUTH_LIMITS.passwordMaxLength}
+                          className="pr-9"
                         />
                         <button
                           type="button"
@@ -1023,8 +1078,10 @@ export default function ProfilePage() {
                         <Input
                           type={showNewPassword ? "text" : "password"}
                           value={form.newPassword}
-                          onChange={(e) => setForm({ ...form, newPassword: e.target.value })}
+                          onChange={(e) => setForm({ ...form, newPassword: e.target.value.slice(0, AUTH_LIMITS.passwordMaxLength) })}
                           placeholder="Leave blank to keep"
+                          maxLength={AUTH_LIMITS.passwordMaxLength}
+                          className="pr-9"
                         />
                         <button
                           type="button"
@@ -1040,8 +1097,9 @@ export default function ProfilePage() {
                       <Input
                         type={showConfirmPassword ? "text" : "password"}
                         value={form.confirmPassword}
-                        onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })}
+                        onChange={(e) => setForm({ ...form, confirmPassword: e.target.value.slice(0, AUTH_LIMITS.passwordMaxLength) })}
                         placeholder="Repeat new password"
+                        maxLength={AUTH_LIMITS.passwordMaxLength}
                       />
                     </div>
                   </div>

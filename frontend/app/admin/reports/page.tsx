@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useState, type UIEvent } from "react";
 import {
   Search,
   X,
@@ -11,8 +11,6 @@ import {
   ChevronUp,
   ChevronDown,
   ChevronsUpDown,
-  ChevronLeft,
-  ChevronRight,
   Eye,
   RotateCw,
 } from "lucide-react";
@@ -52,6 +50,17 @@ const STATUS_CONFIG: Record<ReportStatus, { cls: string; label: string }> = {
   DISMISSED: { cls: "bg-stone-100 dark:bg-stone-800 text-stone-500 dark:text-stone-400",     label: "Dismissed" },
 };
 
+const REPORT_ACTION_REASON_MAX_LENGTH = 500;
+const REPORT_ACTION_TYPES = new Set([
+  "DISMISS",
+  "BAN_LISTING",
+  "LOCK_3",
+  "LOCK_7",
+  "LOCK_30",
+  "DELETE_LISTING",
+  "PERMANENT_BAN",
+] as const);
+
 // ── Shared filter select ───────────────────────────────────────────────────────
 function FilterSelect({
   value,
@@ -84,53 +93,79 @@ function FilterSelect({
 
 // ── Main page ──────────────────────────────────────────────────────────────────
 export default function ReportsPage() {
-  const [search,         setSearch]         = useState("");
-  const [statusFilter,   setStatusFilter]   = useState("ALL");
-  const [reasonFilter,   setReasonFilter]   = useState("ALL");
-  const [sort,           setSort]           = useState<{ field: SortField; dir: SortDir }>({ field: "submitted", dir: "desc" });
-  const [page,           setPage]           = useState(1);
-  const [reports,        setReports]        = useState<AdminReport[]>(REPORTS);
-  const [loadingReports, setLoadingReports] = useState(true);
-  const [isRefreshing,   setIsRefreshing]   = useState(false);
-  const [actionLoadingId,setActionLoadingId]= useState<string | null>(null);
-  const [resolving,      setResolving]      = useState<AdminReport | null>(null);
-  const PER_PAGE = 8;
+  const [search,          setSearch]          = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [statusFilter,    setStatusFilter]    = useState("ALL");
+  const [reasonFilter,    setReasonFilter]    = useState("ALL");
+  const [sort,            setSort]            = useState<{ field: SortField; dir: SortDir }>({ field: "submitted", dir: "desc" });
+  const [reports,         setReports]         = useState<AdminReport[]>(REPORTS);
+  const [loadingReports,  setLoadingReports]  = useState(true);
+  const [loadingMore,     setLoadingMore]     = useState(false);
+  const [hasMore,         setHasMore]         = useState(true);
+  const [offset,          setOffset]          = useState(0);
+  const [totalCount,      setTotalCount]      = useState(0);
+  const [isRefreshing,    setIsRefreshing]    = useState(false);
+  const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
+  const [resolving,       setResolving]       = useState<AdminReport | null>(null);
+  const FETCH_LIMIT = 16;
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      setDebouncedSearch(search.trim());
+    }, 250);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [search]);
 
   function toggleSort(field: SortField) {
     setSort(s => s.field === field ? { field, dir: s.dir === "asc" ? "desc" : "asc" } : { field, dir: "asc" });
-    setPage(1);
   }
 
   // ── Load ──────────────────────────────────────────────────────────────────────
-  const loadReports = useCallback(async () => {
-    setLoadingReports(true);
+  const loadReports = useCallback(async (reset: boolean, requestedOffset = 0) => {
+    if (reset) {
+      setLoadingReports(true);
+    } else {
+      setLoadingMore(true);
+    }
+
+    const nextOffset = reset ? 0 : requestedOffset;
+
     try {
-      const data = await getAdminReports();
-      setReports((data ?? []) as AdminReport[]);
+      const payload = await getAdminReports({
+        search: debouncedSearch,
+        status: statusFilter,
+        reason: reasonFilter,
+        limit: FETCH_LIMIT,
+        offset: nextOffset,
+      });
+
+      const received = (payload.reports ?? []) as AdminReport[];
+      const nextCount = reset ? received.length : nextOffset + received.length;
+
+      setReports((prev) => (reset ? received : [...prev, ...received]));
+      setOffset(nextCount);
+      setTotalCount(payload.total);
+      setHasMore(nextCount < payload.total);
     } catch (err) {
       const message = typeof err === "string" ? err : "Failed to load reports";
       toast.error(message, { position: "top-center" });
     } finally {
       setLoadingReports(false);
+      setLoadingMore(false);
       setIsRefreshing(false);
     }
-  }, []);
+  }, [debouncedSearch, statusFilter, reasonFilter]);
 
   useEffect(() => {
-    void loadReports();
-  }, [loadReports]);
+    void loadReports(true, 0);
+  }, [debouncedSearch, statusFilter, reasonFilter, loadReports]);
 
-  // ── Filter + paginate ─────────────────────────────────────────────────────────
+  // ── Sort loaded chunk ──────────────────────────────────────────────────────────
   const filtered = useMemo(() => {
     let data = [...reports];
-    if (search)
-      data = data.filter(r =>
-        r.reporter.toLowerCase().includes(search.toLowerCase()) ||
-        r.target_name.toLowerCase().includes(search.toLowerCase()) ||
-        r.reason.toLowerCase().includes(search.toLowerCase()),
-      );
-    if (statusFilter !== "ALL") data = data.filter(r => r.status === statusFilter);
-    if (reasonFilter !== "ALL") data = data.filter(r => r.reason === reasonFilter);
 
     data.sort((a, b) => {
       let va: string | number = "";
@@ -163,7 +198,7 @@ export default function ReportsPage() {
     });
 
     return data;
-  }, [reports, search, statusFilter, reasonFilter, sort]);
+  }, [reports, sort]);
 
   const reasonOptions = useMemo(() => {
     const uniqueReasons = Array.from(new Set(reports.map(r => r.reason).filter(Boolean)));
@@ -171,10 +206,6 @@ export default function ReportsPage() {
     return uniqueReasons;
   }, [reports]);
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
-  const paged      = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
-
-  const totalCount     = reports.length;
   const pendingCount   = reports.filter(r => r.status === "PENDING").length;
   const resolvedCount  = reports.filter(r => r.status === "RESOLVED").length;
   const dismissedCount = reports.filter(r => r.status === "DISMISSED").length;
@@ -189,9 +220,23 @@ export default function ReportsPage() {
 
   // ── Actions ───────────────────────────────────────────────────────────────────
   async function handleModalSubmit(id: string, action: "DISMISS" | "BAN_LISTING" | "LOCK_3" | "LOCK_7" | "LOCK_30" | "DELETE_LISTING" | "PERMANENT_BAN", reason: string) {
+    const trimmedReason = reason.trim();
+    if (!REPORT_ACTION_TYPES.has(action)) {
+      toast.error("Invalid report action selected", { position: "top-center" });
+      return;
+    }
+    if (trimmedReason.length === 0) {
+      toast.error("Reason is required", { position: "top-center" });
+      return;
+    }
+    if (trimmedReason.length > REPORT_ACTION_REASON_MAX_LENGTH) {
+      toast.error(`Reason must not exceed ${REPORT_ACTION_REASON_MAX_LENGTH} characters`, { position: "top-center" });
+      return;
+    }
+
     setActionLoadingId(id);
     try {
-      await setAdminReportAction(id, { action, reason });
+      await setAdminReportAction(id, { action, reason: trimmedReason });
       const nowIso = new Date().toISOString();
       const nextStatus = action === "DISMISS" ? "DISMISSED" : "RESOLVED";
       setReports(rs =>
@@ -201,7 +246,7 @@ export default function ReportsPage() {
                 ...r,
                 status: nextStatus,
                 action_taken: action,
-                action_reason: reason,
+                action_reason: trimmedReason,
                 resolved_at: nowIso,
                 reviewed_at: nowIso,
                 resolved_by: r.resolved_by ?? "Admin",
@@ -221,6 +266,16 @@ export default function ReportsPage() {
     } finally {
       setActionLoadingId(null);
     }
+  }
+
+  function handleTableScroll(event: UIEvent<HTMLDivElement>) {
+    if (loadingReports || loadingMore || !hasMore) return;
+
+    const node = event.currentTarget;
+    const remaining = node.scrollHeight - node.scrollTop - node.clientHeight;
+    if (remaining > 120) return;
+
+    void loadReports(false, offset);
   }
 
   const hasActiveFilters = search || statusFilter !== "ALL" || reasonFilter !== "ALL";
@@ -247,22 +302,22 @@ export default function ReportsPage() {
 
   // ── Render ────────────────────────────────────────────────────────────────────
   return (
-    <div className="p-5 sm:p-6 space-y-5">
+    <div className="h-[calc(100vh)] p-5 sm:p-6 flex flex-col gap-5 min-h-0">
 
       {/* ── Page header ── */}
-      <div>
+      {/* <div>
         <h2 className="text-xl font-extrabold text-stone-900 dark:text-stone-50">
           Reports
         </h2>
         <p className="text-sm text-stone-500 dark:text-stone-400 mt-0.5">
           Review and act on user-submitted reports
         </p>
-      </div>
+      </div> */}
 
       {/* ── Summary cards — clickable to filter by status ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {[
-          { label: "Total Reports", count: totalCount,     status: "ALL",       color: "text-stone-700 dark:text-stone-200", bg: "bg-stone-100 dark:bg-[#13151f]",     border: "border-stone-200 dark:border-[#2a2d3e]", Icon: Flag         },
+          { label: "Total", count: totalCount,     status: "ALL",       color: "text-stone-700 dark:text-stone-200", bg: "bg-stone-100 dark:bg-[#13151f]",     border: "border-stone-200 dark:border-[#2a2d3e]", Icon: Flag         },
           { label: "Pending",       count: pendingCount,   status: "PENDING",   color: "text-amber-600 dark:text-amber-400", bg: "bg-amber-50 dark:bg-amber-950/20",  border: "border-amber-200 dark:border-amber-800",  Icon: AlertTriangle },
           { label: "Resolved",      count: resolvedCount,  status: "RESOLVED",  color: "text-teal-600 dark:text-teal-400",   bg: "bg-teal-50 dark:bg-teal-950/20",    border: "border-teal-200 dark:border-teal-800",    Icon: CheckCircle2  },
           { label: "Dismissed",     count: dismissedCount, status: "DISMISSED", color: "text-stone-500 dark:text-stone-400", bg: "bg-stone-50 dark:bg-[#13151f]",     border: "border-stone-200 dark:border-[#2a2d3e]", Icon: XCircle       },
@@ -270,7 +325,7 @@ export default function ReportsPage() {
           <Card
             key={label}
             className={cn(
-              "rounded-lg cursor-pointer hover:shadow-sm transition-all border",
+              "p-4 rounded-md cursor-pointer hover:shadow-sm transition-all border",
               bg, border,
               statusFilter === status && "ring-2 ring-offset-1 ring-current",
             )}
@@ -279,11 +334,10 @@ export default function ReportsPage() {
                 if (status === "ALL") return "ALL";
                 return prev === status ? "ALL" : status;
               });
-              setPage(1);
             }}
           >
             <CardContent className="text-center">
-              <Icon className={cn("w-5 h-5 mx-auto mb-1.5", color)} />
+              {/* <Icon className={cn("w-5 h-5 mx-auto mb-1.5", color)} /> */}
               <p className={cn("text-xl font-extrabold", color)}>{count}</p>
               <p className="text-sm text-stone-500 dark:text-stone-400 mt-0.5">{label}</p>
             </CardContent>
@@ -299,7 +353,7 @@ export default function ReportsPage() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400 pointer-events-none" />
           <Input
             value={search}
-            onChange={e => { setSearch(e.target.value); setPage(1); }}
+            onChange={e => { setSearch(e.target.value); }}
             placeholder="Search reporter, listing, or reason…"
             className="pl-9 dark:bg-[#13151f] dark:border-[#2a2d3e]"
           />
@@ -309,7 +363,7 @@ export default function ReportsPage() {
           {/* Reason filter */}
           <FilterSelect
             value={reasonFilter}
-            onChange={v => { setReasonFilter(v); setPage(1); }}
+            onChange={v => { setReasonFilter(v); }}
             options={[
               ["ALL", "All Reasons"],
               ...reasonOptions.map(reason => [reason, reason] as [string, string]),
@@ -319,7 +373,7 @@ export default function ReportsPage() {
           {/* Status filter */}
           <FilterSelect
             value={statusFilter}
-            onChange={v => { setStatusFilter(v); setPage(1); }}
+            onChange={v => { setStatusFilter(v); }}
             options={[
               ["ALL",       "All Status" ],
               ["PENDING",   "Pending"    ],
@@ -332,7 +386,7 @@ export default function ReportsPage() {
           {hasActiveFilters && (
             <Button
               variant="outline"
-              onClick={() => { setSearch(""); setReasonFilter("ALL"); setStatusFilter("ALL"); setPage(1); }}
+              onClick={() => { setSearch(""); setReasonFilter("ALL"); setStatusFilter("ALL"); }}
               className="hover:bg-destructive/10! text-destructive! border-destructive! focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40"
             >
               <X className="w-3 h-3" /> Clear
@@ -345,8 +399,7 @@ export default function ReportsPage() {
           variant="outline"
           onClick={() => {
             setIsRefreshing(true);
-            setPage(1);
-            void loadReports();
+            void loadReports(true, 0);
           }}
           disabled={loadingReports}
           className="border-sky-600 text-sky-600! hover:bg-sky-600/10 focus-visible:border-sky-600 focus-visible:ring-sky-600/20 dark:border-sky-400 dark:text-sky-400! dark:hover:bg-sky-400/10 dark:focus-visible:border-sky-400 dark:focus-visible:ring-sky-400/40"
@@ -356,10 +409,10 @@ export default function ReportsPage() {
       </div>
 
       {/* ── Table ── */}
-      <div className="relative">
-        <Card className="p-0 rounded-lg dark:bg-[#1c1f2e] dark:border-[#2a2d3e] overflow-hidden">
-          <CardContent className="p-0">
-            <div className="overflow-x-auto">
+      <div className="relative flex-1 min-h-0">
+        <Card className="p-0 rounded-lg dark:bg-[#1c1f2e] dark:border-[#2a2d3e] overflow-hidden h-full min-h-0">
+          <CardContent className="p-0 h-full min-h-0 flex flex-col">
+            <div className="overflow-auto h-full" onScroll={handleTableScroll}>
               <Table>
                 <TableHeader>
                   <TableRow className="border-stone-200 dark:border-[#2a2d3e] bg-stone-50 dark:bg-[#13151f] hover:bg-stone-50 dark:hover:bg-[#13151f]">
@@ -384,20 +437,20 @@ export default function ReportsPage() {
                 </TableHeader>
 
                 <TableBody>
-                  {loadingReports ? (
+                  {loadingReports && filtered.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={9} className="py-16 text-center text-sm text-stone-400 dark:text-stone-500">
                         Loading reports…
                       </TableCell>
                     </TableRow>
-                  ) : paged.length === 0 ? (
+                  ) : filtered.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={9} className="py-16 text-center text-sm text-stone-400 dark:text-stone-500">
                         No reports match the current filters.
                       </TableCell>
                     </TableRow>
                   ) : (
-                    paged.map(report => (
+                    filtered.map(report => (
                       <Fragment key={report.id}>
                         {/* ── Main row ── */}
                         <TableRow className="border-stone-100 dark:border-[#2a2d3e] hover:bg-stone-50 dark:hover:bg-[#252837] transition-colors">
@@ -533,54 +586,29 @@ export default function ReportsPage() {
                       </Fragment>
                     ))
                   )}
+
+                  {loadingMore && (
+                    <TableRow>
+                      <TableCell colSpan={9} className="py-4 text-center text-sm text-stone-400 dark:text-stone-500">
+                        Loading more reports…
+                      </TableCell>
+                    </TableRow>
+                  )}
+
+                  {!hasMore && filtered.length > 0 && (
+                    <TableRow>
+                      <TableCell colSpan={9} className="py-4 text-center text-xs text-stone-400 dark:text-stone-500">
+                        End of report results.
+                      </TableCell>
+                    </TableRow>
+                  )}
                 </TableBody>
               </Table>
             </div>
 
-            {/* ── Pagination ── */}
             <Separator className="dark:bg-[#2a2d3e]" />
-            <div className="flex items-center justify-between px-4 py-3">
-              <p className="text-sm text-stone-400 dark:text-stone-500">
-                Page {page} of {totalPages} · {filtered.length} result{filtered.length !== 1 ? "s" : ""}
-              </p>
-              <div className="flex items-center gap-1.5">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setPage(p => Math.max(1, p - 1))}
-                  disabled={page === 1}
-                  className="h-8 w-8 p-0 rounded-lg dark:border-[#2a2d3e] dark:text-stone-300 dark:hover:bg-[#252837]"
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                </Button>
-
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map(n => (
-                  <Button
-                    key={n}
-                    variant={page === n ? "default" : "ghost"}
-                    size="sm"
-                    onClick={() => setPage(n)}
-                    className={cn(
-                      "h-8 w-8 p-0 rounded-lg text-sm font-bold",
-                      page === n
-                        ? "bg-[#1e2433] text-white hover:bg-[#2a3650]"
-                        : "text-stone-500 dark:text-stone-400 dark:hover:bg-[#252837]",
-                    )}
-                  >
-                    {n}
-                  </Button>
-                ))}
-
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                  disabled={page === totalPages}
-                  className="h-8 w-8 p-0 rounded-lg dark:border-[#2a2d3e] dark:text-stone-300 dark:hover:bg-[#252837]"
-                >
-                  <ChevronRight className="w-4 h-4" />
-                </Button>
-              </div>
+            <div className="px-4 py-3 text-sm text-stone-400 dark:text-stone-500">
+              Showing {filtered.length.toLocaleString()} of {totalCount.toLocaleString()} result{totalCount !== 1 ? "s" : ""}
             </div>
           </CardContent>
         </Card>

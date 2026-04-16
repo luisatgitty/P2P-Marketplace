@@ -54,13 +54,13 @@ export interface ProfilePayload {
 }
 
 export interface UpdateProfilePayload {
-  firstName: string;
-  lastName: string;
-  phoneNumber: string;
-  bio: string;
-  locationProv: string;
-  locationCity: string;
-  locationBrgy: string;
+  firstName?: string;
+  lastName?: string;
+  phoneNumber?: string;
+  bio?: string;
+  locationProv?: string;
+  locationCity?: string;
+  locationBrgy?: string;
   currentPassword?: string;
   newPassword?: string;
   profileImage?: {

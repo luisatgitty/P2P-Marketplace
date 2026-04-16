@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo, useLayoutEffect } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner"
 import type { PostCardProps } from "@/components/post-card";
-import type { Conversation, Message, MessageAttachment, ReactionType, ReplyPreview } from "@/types/messaging";
+import type { Conversation, Message, ReactionType, ReplyPreview } from "@/types/messaging";
 import { MediaViewerModal } from "@/components/media-viewer-modal";
 import { getListingDetailById } from "@/services/listingDetailService";
 import {
@@ -54,6 +54,8 @@ function getSystemActionLabel(content?: string): string | null {
 }
 
 const DRAFT_CONVERSATION_ID = "new";
+const MESSAGE_PAGE_SIZE = 20;
+const LOAD_OLDER_SCROLL_THRESHOLD = 96;
 
 function splitSellerName(fullName: string): { firstName: string; lastName: string } {
   const parts = fullName.trim().split(/\s+/).filter(Boolean);
@@ -187,6 +189,8 @@ export default function ConversationPage() {
   const [conversation, setConversation] = useState<Conversation | null>(null);
   const [messages,     setMessages]     = useState<Message[]>([]);
   const [loading,      setLoading]      = useState(true);
+  const [loadingOlder, setLoadingOlder] = useState(false);
+  const [hasOlderMessages, setHasOlderMessages] = useState(false);
   const [sending,      setSending]      = useState(false);
 
   // ── Reply state ──────────────────────────────────────────────────────────
@@ -196,16 +200,52 @@ export default function ConversationPage() {
   const [editTarget, setEditTarget] = useState<{ id: string; content: string } | null>(null);
   const [mediaViewerIndex, setMediaViewerIndex] = useState<number | null>(null);
   const [animatedReadMarkerId, setAnimatedReadMarkerId] = useState<string | null>(null);
+  const messagesContainerRef = useRef<HTMLDivElement | null>(null);
+  const shouldScrollToBottomRef = useRef(false);
+  const restoreScrollRef = useRef<{ previousHeight: number; previousTop: number } | null>(null);
+  const bottomAnchorTimersRef = useRef<number[]>([]);
+
+  const loadedMessageCount = messages.length;
+
+  const clearBottomAnchorTimers = useCallback(() => {
+    if (bottomAnchorTimersRef.current.length === 0) return;
+    bottomAnchorTimersRef.current.forEach((timerId) => window.clearTimeout(timerId));
+    bottomAnchorTimersRef.current = [];
+  }, []);
+
+  const forceScrollToBottom = useCallback(() => {
+    const container = messagesContainerRef.current;
+    if (!container) return;
+    container.scrollTop = container.scrollHeight;
+  }, []);
+
+  const queueReliableBottomAnchor = useCallback(() => {
+    clearBottomAnchorTimers();
+
+    // Run multiple passes to handle delayed layout shifts (images/media sizing).
+    forceScrollToBottom();
+    requestAnimationFrame(() => forceScrollToBottom());
+    requestAnimationFrame(() => requestAnimationFrame(() => forceScrollToBottom()));
+
+    const timerA = window.setTimeout(() => forceScrollToBottom(), 90);
+    const timerB = window.setTimeout(() => forceScrollToBottom(), 220);
+    bottomAnchorTimersRef.current = [timerA, timerB];
+  }, [clearBottomAnchorTimers, forceScrollToBottom]);
 
   const load = useCallback(async () => {
     if (!conversationId) return;
     setLoading(true);
     setMessages([]);
+    setHasOlderMessages(false);
+    setLoadingOlder(false);
+    shouldScrollToBottomRef.current = false;
+    restoreScrollRef.current = null;
     try {
       if (isDraftConversation) {
         if (!draftListingId) {
           setConversation(null);
           setMessages([]);
+          setHasOlderMessages(false);
           return;
         }
 
@@ -219,19 +259,25 @@ export default function ConversationPage() {
         const listingPayload = await getListingDetailById(draftListingId);
         setConversation(toDraftConversation(listingPayload.listing));
         setMessages([]);
+        setHasOlderMessages(false);
         return;
       }
 
-      const [conv, msgs] = await Promise.all([
+      const [conv, messagesPage] = await Promise.all([
         getConversation(conversationId),
-        getMessages(conversationId),
+        getMessages(conversationId, { limit: MESSAGE_PAGE_SIZE, offset: 0 }),
       ]);
       setConversation(conv);
-      setMessages(msgs);
-      await markConversationRead(conversationId);
+      setMessages(messagesPage.messages);
+      setHasOlderMessages(messagesPage.messages.length < messagesPage.total);
+      shouldScrollToBottomRef.current = true;
+      if (conv) {
+        await markConversationRead(conversationId);
+      }
     } catch {
       setConversation(null);
       setMessages([]);
+      setHasOlderMessages(false);
     } finally {
       setLoading(false);
     }
@@ -264,6 +310,99 @@ export default function ConversationPage() {
     return mine ?? "";
   }, [conversation?.otherParticipant?.id, currentUserId, messages]);
 
+  const reloadLatestMessageSlice = useCallback(async (scrollToBottom = false) => {
+    if (isDraftConversation || !conversationId) return;
+
+    const latestLimit = Math.max(MESSAGE_PAGE_SIZE, loadedMessageCount);
+    const page = await getMessages(conversationId, { limit: latestLimit, offset: 0 });
+
+    if (scrollToBottom) {
+      shouldScrollToBottomRef.current = true;
+    }
+
+    setMessages(page.messages);
+    setHasOlderMessages(page.messages.length < page.total);
+  }, [conversationId, isDraftConversation, loadedMessageCount]);
+
+  const loadOlderMessages = useCallback(async () => {
+    if (loading || loadingOlder || !hasOlderMessages || isDraftConversation || !conversationId) {
+      return;
+    }
+
+    const container = messagesContainerRef.current;
+    if (container) {
+      restoreScrollRef.current = {
+        previousHeight: container.scrollHeight,
+        previousTop: container.scrollTop,
+      };
+    }
+
+    setLoadingOlder(true);
+    try {
+      const page = await getMessages(conversationId, {
+        limit: MESSAGE_PAGE_SIZE,
+        offset: loadedMessageCount,
+      });
+
+      if (page.messages.length === 0) {
+        restoreScrollRef.current = null;
+        setHasOlderMessages(false);
+        return;
+      }
+
+      const existingIds = new Set(messages.map((item) => item.id));
+      const olderChunk = page.messages.filter((item) => !existingIds.has(item.id));
+
+      if (olderChunk.length > 0) {
+        setMessages((prev) => [...olderChunk, ...prev]);
+      } else {
+        restoreScrollRef.current = null;
+      }
+
+      const nextLoadedCount = loadedMessageCount + page.messages.length;
+      setHasOlderMessages(nextLoadedCount < page.total);
+    } finally {
+      setLoadingOlder(false);
+    }
+  }, [conversationId, hasOlderMessages, isDraftConversation, loadedMessageCount, loading, loadingOlder, messages]);
+
+  const handleMessagesScroll = useCallback(() => {
+    const container = messagesContainerRef.current;
+    if (!container || loading || loadingOlder || !hasOlderMessages) {
+      return;
+    }
+
+    if (container.scrollTop <= LOAD_OLDER_SCROLL_THRESHOLD) {
+      void loadOlderMessages();
+    }
+  }, [hasOlderMessages, loadOlderMessages, loading, loadingOlder]);
+
+  useLayoutEffect(() => {
+    if (loading) return;
+
+    const container = messagesContainerRef.current;
+    if (!container) return;
+
+    if (restoreScrollRef.current) {
+      const { previousHeight, previousTop } = restoreScrollRef.current;
+      restoreScrollRef.current = null;
+      const nextHeight = container.scrollHeight;
+      container.scrollTop = Math.max(0, nextHeight - previousHeight + previousTop);
+      return;
+    }
+
+    if (shouldScrollToBottomRef.current) {
+      shouldScrollToBottomRef.current = false;
+      queueReliableBottomAnchor();
+    }
+  }, [loading, messages, queueReliableBottomAnchor]);
+
+  useEffect(() => {
+    return () => {
+      clearBottomAnchorTimers();
+    };
+  }, [clearBottomAnchorTimers]);
+
   useEffect(() => {
     if (isDraftConversation || !conversationId) return;
 
@@ -271,8 +410,7 @@ export default function ConversationPage() {
       const custom = evt as CustomEvent<{ conversationId?: string }>;
       if (custom.detail?.conversationId !== conversationId) return;
 
-      const freshMessages = await getMessages(conversationId);
-      setMessages(freshMessages);
+      await reloadLatestMessageSlice(true);
       const freshConversation = await getConversation(conversationId);
       if (freshConversation) {
         setConversation(freshConversation);
@@ -282,7 +420,7 @@ export default function ConversationPage() {
 
     window.addEventListener("realtime:message", onRealtimeMessage as EventListener);
     return () => window.removeEventListener("realtime:message", onRealtimeMessage as EventListener);
-  }, [conversationId, isDraftConversation]);
+  }, [conversationId, isDraftConversation, reloadLatestMessageSlice]);
 
   useEffect(() => {
     if (isDraftConversation || !conversationId) return;
@@ -291,8 +429,7 @@ export default function ConversationPage() {
       const custom = evt as CustomEvent<{ conversationId?: string }>;
       if (custom.detail?.conversationId !== conversationId) return;
 
-      const freshMessages = await getMessages(conversationId);
-      setMessages(freshMessages);
+      await reloadLatestMessageSlice();
     };
 
     const onRealtimeStatus = (evt: Event) => {
@@ -405,15 +542,14 @@ export default function ConversationPage() {
       const custom = evt as CustomEvent<{ conversationId?: string }>;
       if (custom.detail?.conversationId !== conversationId) return;
 
-      const [freshConversation, freshMessages] = await Promise.all([
+      const [freshConversation] = await Promise.all([
         getConversation(conversationId),
-        getMessages(conversationId),
+        reloadLatestMessageSlice(),
       ]);
 
       if (freshConversation) {
         setConversation(freshConversation);
       }
-      setMessages(freshMessages);
     };
 
     window.addEventListener("realtime:reaction", onRealtimeReaction as EventListener);
@@ -433,7 +569,7 @@ export default function ConversationPage() {
       window.removeEventListener("realtime:listing-status", onRealtimeListingStatus as EventListener);
       window.removeEventListener("realtime:deal-updated", onRealtimeDealUpdated as EventListener);
     };
-  }, [conversationId, effectiveCurrentUserId, isDraftConversation]);
+  }, [conversationId, effectiveCurrentUserId, isDraftConversation, reloadLatestMessageSlice]);
 
   useEffect(() => {
     const onPresenceUpdate = (evt: Event) => {
@@ -499,6 +635,7 @@ export default function ConversationPage() {
       }
 
       const newMsg = await sendMessage(targetConversationId, content, attachments, replyTo);
+      shouldScrollToBottomRef.current = true;
       setMessages((prev) => [...prev, newMsg]);
       setReplyTo(null);
     } catch (err) {
@@ -591,17 +728,16 @@ export default function ConversationPage() {
   const handleOfferUpdated = useCallback(async () => {
     if (isDraftConversation || !conversationId) return;
 
-    const [freshConversation, freshMessages] = await Promise.all([
+    const [freshConversation] = await Promise.all([
       getConversation(conversationId),
-      getMessages(conversationId),
+      reloadLatestMessageSlice(),
     ]);
 
     if (freshConversation) {
       setConversation(freshConversation);
     }
-    setMessages(freshMessages);
     await markConversationRead(conversationId);
-  }, [conversationId, isDraftConversation]);
+  }, [conversationId, isDraftConversation, reloadLatestMessageSlice]);
 
   const handleMarkedComplete = useCallback(async () => {
     await handleOfferUpdated();
@@ -695,83 +831,97 @@ export default function ConversationPage() {
       )}
 
       {!loading && (
-        <div key={conversationId} className="h-full overflow-y-auto no-scroll px-4 pt-24 pb-3 flex flex-col-reverse animate-in fade-in duration-500">
-          {messages.length === 0 && (
-            <div className="flex flex-col items-center justify-center gap-2 text-center h-full my-auto">
-              <p className="text-xs text-stone-400 dark:text-stone-600">No messages yet. Say hello!</p>
-            </div>
-          )}
+        <div
+          key={conversationId}
+          ref={messagesContainerRef}
+          onScroll={handleMessagesScroll}
+          className="h-full overflow-y-auto px-4 pt-24 pb-3 animate-in fade-in duration-500"
+        >
+          <div className="min-h-full flex flex-col">
+            {loadingOlder && (
+              <div className="py-2 text-center text-[11px] text-stone-400 dark:text-stone-500">
+                Loading older messages...
+              </div>
+            )}
 
-          {[...messages].reverse().map((msg, reversedIndex) => {
-            const originalIndex = messages.length - 1 - reversedIndex;
-            const prev = messages[originalIndex - 1];
-            const next = messages[originalIndex + 1];
-            const actionLabel = getSystemActionLabel(msg.content);
+            <div className="mt-auto">
+              {messages.length === 0 && (
+                <div className="flex flex-col items-center justify-center gap-2 text-center py-8">
+                  <p className="text-xs text-stone-400 dark:text-stone-600">No messages yet. Say hello!</p>
+                </div>
+              )}
 
-            const showDate = !prev || !isSameDay(prev.createdAt, msg.createdAt);
-            const showTime =
-              !next ||
-              next.senderId !== msg.senderId ||
-              new Date(next.createdAt).getTime() - new Date(msg.createdAt).getTime() > 60_000;
+              {messages.map((msg, index) => {
+                const prev = messages[index - 1];
+                const next = messages[index + 1];
+                const actionLabel = getSystemActionLabel(msg.content);
 
-            return (
-              <div key={msg.id}>
-                {showDate && (
-                  <div className="flex items-center gap-3 my-4">
-                    <div className="flex-1 h-px bg-border" />
-                    <span className="text-[11px] font-medium text-stone-400 dark:text-stone-500 px-2">
-                      {formatDateSeparator(msg.createdAt)}
-                    </span>
-                    <div className="flex-1 h-px bg-border" />
-                  </div>
-                )}
+                const showDate = !prev || !isSameDay(prev.createdAt, msg.createdAt);
+                const showTime =
+                  !next ||
+                  next.senderId !== msg.senderId ||
+                  new Date(next.createdAt).getTime() - new Date(msg.createdAt).getTime() > 60_000;
 
-                {actionLabel ? (
-                  <div className="flex justify-center my-1.5">
-                    <span className="text-[11px] text-stone-400 dark:text-stone-500 bg-stone-100 dark:bg-[#1c1f2e] border border-border rounded-full px-3 py-1">
-                      {actionLabel}
-                    </span>
-                  </div>
-                ) : (
-                  <MessageBubble
-                    message={msg}
-                    currentUserId={effectiveCurrentUserId}
-                    showTime={showTime}
-                    otherName={otherName}
-                    onReply={handleReply}
-                    onReact={handleReact}
-                    onEdit={handleEdit}
-                    onDelete={handleDelete}
-                    onOpenMediaViewer={handleOpenMediaViewer}
-                  />
-                )}
+                return (
+                  <div key={msg.id}>
+                    {showDate && (
+                      <div className="flex items-center gap-3 my-4">
+                        <div className="flex-1 h-px bg-border" />
+                        <span className="text-[11px] font-medium text-stone-400 dark:text-stone-500 px-2">
+                          {formatDateSeparator(msg.createdAt)}
+                        </span>
+                        <div className="flex-1 h-px bg-border" />
+                      </div>
+                    )}
 
-                {!actionLabel && msg.senderId === effectiveCurrentUserId && conversation.otherLastReadMessageId === msg.id && (
-                  <div className="flex justify-end pr-1 mt-0.5">
-                    {conversation.otherParticipant.profileImageUrl ? (
-                      <img
-                        src={conversation.otherParticipant.profileImageUrl}
-                        alt={`${conversation.otherParticipant.firstName} read receipt`}
-                        className={cn(
-                          "w-3.5 h-3.5 rounded-full object-cover border border-border",
-                          animatedReadMarkerId === msg.id && "animate-read-drop"
-                        )}
-                      />
+                    {actionLabel ? (
+                      <div className="flex justify-center my-1.5">
+                        <span className="text-[11px] text-stone-400 dark:text-stone-500 bg-stone-100 dark:bg-[#1c1f2e] border border-border rounded-full px-3 py-1">
+                          {actionLabel}
+                        </span>
+                      </div>
                     ) : (
-                      <span
-                        className={cn(
-                          "w-3.5 h-3.5 rounded-full border border-border bg-stone-200 dark:bg-stone-700 text-[8px] font-bold text-stone-700 dark:text-stone-100 inline-flex items-center justify-center",
-                          animatedReadMarkerId === msg.id && "animate-read-drop"
+                      <MessageBubble
+                        message={msg}
+                        currentUserId={effectiveCurrentUserId}
+                        showTime={showTime}
+                        otherName={otherName}
+                        onReply={handleReply}
+                        onReact={handleReact}
+                        onEdit={handleEdit}
+                        onDelete={handleDelete}
+                        onOpenMediaViewer={handleOpenMediaViewer}
+                      />
+                    )}
+
+                    {!actionLabel && msg.senderId === effectiveCurrentUserId && conversation.otherLastReadMessageId === msg.id && (
+                      <div className="flex justify-end pr-1 mt-0.5">
+                        {conversation.otherParticipant.profileImageUrl ? (
+                          <img
+                            src={conversation.otherParticipant.profileImageUrl}
+                            alt={`${conversation.otherParticipant.firstName} read receipt`}
+                            className={cn(
+                              "w-3.5 h-3.5 rounded-full object-cover border border-border",
+                              animatedReadMarkerId === msg.id && "animate-read-drop"
+                            )}
+                          />
+                        ) : (
+                          <span
+                            className={cn(
+                              "w-3.5 h-3.5 rounded-full border border-border bg-stone-200 dark:bg-stone-700 text-[8px] font-bold text-stone-700 dark:text-stone-100 inline-flex items-center justify-center",
+                              animatedReadMarkerId === msg.id && "animate-read-drop"
+                            )}
+                          >
+                            {conversation.otherParticipant.firstName.charAt(0).toUpperCase()}
+                          </span>
                         )}
-                      >
-                        {conversation.otherParticipant.firstName.charAt(0).toUpperCase()}
-                      </span>
+                      </div>
                     )}
                   </div>
-                )}
-              </div>
-            );
-          })}
+                );
+              })}
+            </div>
+          </div>
         </div>
       )}
 

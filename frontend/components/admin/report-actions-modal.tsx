@@ -171,15 +171,18 @@ export default function ReportActionsModal({ report, onClose, onSubmit }: Report
   const visibleActionOptions = isSoldListing
     ? ACTION_OPTIONS.filter((option) => option.value !== "BAN_LISTING")
     : ACTION_OPTIONS;
-  const canSubmit    = selectedAction !== null && reason.trim().length > 0;
+  const reasonMaxLength = 500;
+  const trimmedReason = reason.trim();
+  const isValidAction = selectedAction !== null && visibleActionOptions.some((option) => option.value === selectedAction);
+  const canSubmit = isValidAction && trimmedReason.length > 0 && trimmedReason.length <= reasonMaxLength;
 
   const selectedOpt  = visibleActionOptions.find(a => a.value === selectedAction) ?? null;
 
   async function handleSubmit() {
-    if (!selectedAction || !reason.trim()) return;
+    if (!isValidAction || trimmedReason.length === 0 || trimmedReason.length > reasonMaxLength) return;
     setSubmitting(true);
     try {
-      await onSubmit(report.id, selectedAction, reason.trim());
+      await onSubmit(report.id, selectedAction, trimmedReason);
       onClose();
     } finally {
       setSubmitting(false);
@@ -478,18 +481,22 @@ export default function ReportActionsModal({ report, onClose, onSubmit }: Report
                   <Textarea
                     rows={isPending ? 4 : 3}
                     value={reason}
-                    onChange={e => isPending && setReason(e.target.value)}
+                    onChange={e => isPending && setReason(e.target.value.slice(0, reasonMaxLength))}
                     readOnly={!isPending}
                     placeholder={
                       isPending
                         ? "Describe the reason for this action. This will be visible to the reported user if applicable…"
                         : undefined
                     }
+                    maxLength={reasonMaxLength}
                     className={cn(
                       "resize-none text-xs dark:bg-[#13151f] dark:border-[#2a2d3e] dark:text-stone-100 dark:placeholder-stone-600",
                       !isPending && "cursor-default opacity-75",
                     )}
                   />
+                  <p className="text-xs text-stone-400 dark:text-stone-500">
+                    {reason.length} / {reasonMaxLength}
+                  </p>
                 </div>
                 </>
               ) : (

@@ -8,6 +8,7 @@ import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui
 import { Input } from "@/components/ui/input";
 import { Banner, Container } from "@/components/auth/auth-container";
 import { sendPostRequest } from "@/services/authService";
+import { AUTH_LIMITS, validateForgotPasswordInput } from "@/utils/validation";
 import Link from "next/link";
 
 export default function ForgotPasswordPage() {
@@ -17,6 +18,13 @@ export default function ForgotPasswordPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    const validationError = validateForgotPasswordInput(email);
+    if (validationError) {
+      toast.error(validationError, { position: "top-center" });
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -62,6 +70,8 @@ export default function ForgotPasswordPage() {
                     placeholder="m@example.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
+                    minLength={AUTH_LIMITS.emailMinLength}
+                    maxLength={AUTH_LIMITS.emailMaxLength}
                     required
                   />
                 </Field>

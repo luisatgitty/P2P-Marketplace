@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Tag, Home, Wrench, ChevronRight, ShieldCheck, Zap, Users } from "lucide-react";
+import { Tag, Home, Wrench, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useUser } from "@/utils/UserContext";
 
@@ -56,12 +56,6 @@ const TYPES = [
   },
 ] as const;
 
-const TRUST_ITEMS = [
-  { icon: Zap,        text: "Free to list — always"            },
-  { icon: ShieldCheck,text: "Verified seller badge available"  },
-  { icon: Users,      text: "Reach thousands of local buyers"  },
-];
-
 export default function CreateListingPage() {
   const { isAuth } = useUser();
   
@@ -69,7 +63,7 @@ export default function CreateListingPage() {
   if (!isAuth) return null;
 
   return (
-    <div className="min-h-fit bg-stone-50 dark:bg-[#111827]">
+    <div className="min-h-fit bg-[#faf6f0] dark:bg-[#111827]">
 
       {/* ── Header band ──────────────────────────────────────────────────────── */}
       <div className="bg-[#1a2235] border-b border-white/10">
@@ -95,7 +89,7 @@ export default function CreateListingPage() {
               href={`/create/${t.slug}`}
               className={cn(
                 "group relative flex flex-col rounded-2xl border-2 border-stone-200 dark:border-white/10",
-                "bg-white dark:bg-[#1e2a3a] p-5 sm:p-6",
+                "bg-white/80 dark:bg-[#1c1f2e] p-5 sm:p-6",
                 "transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5",
                 t.borderHover,
                 t.ringFocus,

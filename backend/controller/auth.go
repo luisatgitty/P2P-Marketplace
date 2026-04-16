@@ -5,7 +5,6 @@ import (
 	"strings"
 	"time"
 
-	"p2p_marketplace/backend/config"
 	"p2p_marketplace/backend/middleware"
 	"p2p_marketplace/backend/model"
 	"p2p_marketplace/backend/repository"
@@ -42,9 +41,11 @@ func SignUpUser(c *fiber.Ctx) error {
 	if err := c.BodyParser(&body); err != nil {
 		return SendErrorResponse(c, 400, "Invalid request body. Please contact support.", err)
 	}
+	body.Email = strings.TrimSpace(body.Email)
+	body.OTP = strings.TrimSpace(body.OTP)
 
-	if len(body.OTP) != config.EmailOTPLength {
-		return SendErrorResponse(c, 400, fmt.Sprintf("OTP must be %d digits", config.EmailOTPLength), nil)
+	if err := middleware.ValidateOTP(body.OTP); err != nil {
+		return SendErrorResponse(c, 400, err.Error(), err)
 	}
 
 	// Verify the OTP against the database record
@@ -106,9 +107,9 @@ func LogInUser(c *fiber.Ctx) error {
 
 	// NOTE: Disabled password complexity validation during development
 	// Validate password length
-	// if err := middleware.ValidatePasswordLength(rcvUser.Password); err != nil {
-	// 	return SendErrorResponse(c, 400, err.Error(), err)
-	// }
+	if err := middleware.ValidatePasswordLength(body.Password); err != nil {
+		return SendErrorResponse(c, 400, err.Error(), err)
+	}
 
 	// Get userFromDb by email to verify credentials
 	userFromDb, err := repository.GetUserByEmail(body.Email)

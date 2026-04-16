@@ -28,9 +28,32 @@ export type AdminVerificationStatusPayload = {
   reason: string;
 };
 
-export async function getAdminVerifications(): Promise<AdminVerificationRecord[]> {
+export type AdminVerificationsQuery = {
+  search?: string;
+  status?: string;
+  idType?: string;
+  limit?: number;
+  offset?: number;
+};
+
+export type AdminVerificationsResponse = {
+  verifications: AdminVerificationRecord[];
+  total: number;
+  limit: number;
+  offset: number;
+};
+
+export async function getAdminVerifications(query?: AdminVerificationsQuery): Promise<AdminVerificationsResponse> {
   try {
-    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/verifications`, {
+    const params = new URLSearchParams();
+    if (query?.search) params.set("search", query.search);
+    if (query?.status) params.set("status", query.status);
+    if (query?.idType) params.set("idType", query.idType);
+    if (typeof query?.limit === "number") params.set("limit", String(query.limit));
+    if (typeof query?.offset === "number") params.set("offset", String(query.offset));
+
+    const querySuffix = params.toString() ? `?${params.toString()}` : "";
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/verifications${querySuffix}`, {
       method: "GET",
       credentials: "include",
     });
@@ -40,7 +63,12 @@ export async function getAdminVerifications(): Promise<AdminVerificationRecord[]
       throw parsedJson?.data?.message || "Failed to fetch verification records.";
     }
 
-    return (parsedJson?.data?.verifications ?? []) as AdminVerificationRecord[];
+    return {
+      verifications: (parsedJson?.data?.verifications ?? []) as AdminVerificationRecord[],
+      total: Number(parsedJson?.data?.total ?? 0),
+      limit: Number(parsedJson?.data?.limit ?? query?.limit ?? 0),
+      offset: Number(parsedJson?.data?.offset ?? query?.offset ?? 0),
+    };
   } catch {
     throw "An unexpected error occurred. Please try again later.";
   }

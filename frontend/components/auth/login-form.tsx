@@ -7,7 +7,7 @@ import { toast } from "sonner"
 import { Eye, EyeOff } from "lucide-react";
 import { useUser } from "@/utils/UserContext";
 import { getSessionMeta, sendPostRequest } from "@/services/authService";
-import { isValidEmail } from "@/utils/validation";
+import { AUTH_LIMITS, validateLoginForm } from "@/utils/validation";
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Field, FieldDescription, FieldGroup, FieldLabel, FieldSeparator } from "@/components/ui/field"
@@ -30,10 +30,10 @@ export function LoginForm() {
     e.preventDefault()
     setLoading(true);
 
-    // Validate email before sending request to backend
-    const emailError = isValidEmail(form.email);
-    if (emailError) {
-      toast.error(emailError, { position: "top-center" });
+    // Validate auth input before sending request to backend
+    const validationError = validateLoginForm(form);
+    if (validationError) {
+      toast.error(validationError, { position: "top-center" });
       setLoading(false);
       return;
     }
@@ -80,6 +80,8 @@ export function LoginForm() {
                 placeholder="email@example.com"
                 value={form.email}
                 onChange={handleChange}
+                minLength={AUTH_LIMITS.emailMinLength}
+                maxLength={AUTH_LIMITS.emailMaxLength}
                 required
               />
             </Field>
@@ -98,6 +100,8 @@ export function LoginForm() {
                   value={form.password}
                   onChange={handleChange}
                   className="pr-10"
+                  minLength={AUTH_LIMITS.passwordMinLength}
+                  maxLength={AUTH_LIMITS.passwordMaxLength}
                   required
                 />
                 <button

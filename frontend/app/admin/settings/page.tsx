@@ -190,11 +190,7 @@ export default function SettingsPage() {
   const originalLastName  = user?.lastName ?? CURRENT_ADMIN.lastName;
 
   // ── Profile state
-  const [firstName,       setFirstName]       = useState(CURRENT_ADMIN.firstName);
-  const [lastName,        setLastName]        = useState(CURRENT_ADMIN.lastName);
   const [profilePreview,  setProfilePreview]  = useState<string | null>(null);
-  const [firstNameError,  setFirstNameError]  = useState(false);
-  const [lastNameError,   setLastNameError]   = useState(false);
 
   // ── Password state
   const [currentPw,           setCurrentPw]           = useState("");
@@ -217,16 +213,8 @@ export default function SettingsPage() {
   const [showProfileImageMenu, setShowProfileImageMenu] = useState(false);
   const [updatingProfileImage, setUpdatingProfileImage] = useState(false);
 
-  useEffect(() => {
-    setFirstName(originalFirstName);
-    setLastName(originalLastName);
-  }, [originalFirstName, originalLastName]);
-
-  const isNameChanged =
-    firstName.trim() !== originalFirstName.trim() ||
-    lastName.trim() !== originalLastName.trim();
   const hasPasswordValues = Boolean(currentPw || newPw || confirmPw);
-  const canSaveChanges = isNameChanged || hasPasswordValues;
+  const canSaveChanges = hasPasswordValues;
 
   // ── Profile image handlers ─────────────────────────────────────────────────
   function handlePickImage() {
@@ -278,23 +266,6 @@ export default function SettingsPage() {
 
   // ── Validation ──────────────────────────────────────────────────────────────
   function validateForm(): string | null {
-    const trimmedFirstName = firstName.trim();
-    const trimmedLastName = lastName.trim();
-
-    const hasFirstNameError = !trimmedFirstName || !LETTERS_SPACE_ONLY.test(trimmedFirstName);
-    const hasLastNameError = !trimmedLastName || !LETTERS_SPACE_ONLY.test(trimmedLastName);
-
-    setFirstNameError(hasFirstNameError);
-    setLastNameError(hasLastNameError);
-
-    if (!trimmedFirstName || !trimmedLastName) {
-      return "First and last name are required.";
-    }
-
-    if (!LETTERS_SPACE_ONLY.test(trimmedFirstName) || !LETTERS_SPACE_ONLY.test(trimmedLastName)) {
-      return "First and last name must contain letters only.";
-    }
-
     const hasAnyPassword = Boolean(currentPw || newPw || confirmPw);
     if (hasAnyPassword) {
       if (!currentPw || !newPw || !confirmPw) {
@@ -334,13 +305,6 @@ export default function SettingsPage() {
     setSavingForm(true);
     try {
       const updatedUser = await updateProfileData({
-        firstName: firstName.trim(),
-        lastName: lastName.trim(),
-        phoneNumber: (user?.phoneNumber ?? "").trim(),
-        bio: (user?.bio ?? "").trim(),
-        locationProv: (user?.locationProv ?? "").trim(),
-        locationCity: (user?.locationCity ?? "").trim(),
-        locationBrgy: (user?.locationBrgy ?? "").trim(),
         currentPassword: currentPw.trim(),
         newPassword: newPw.trim(),
       });
@@ -366,8 +330,6 @@ export default function SettingsPage() {
       setEmailPw(""); setPhonePw("");
       setNewEmail(""); setNewPhone("");
       setPasswordInputsError(false);
-      setFirstNameError(false);
-      setLastNameError(false);
       setFormMsg({ text: "Settings updated successfully.", type: "success" });
       setTimeout(() => setFormMsg(null), 4000);
     } catch (err) {
@@ -415,7 +377,7 @@ export default function SettingsPage() {
                 <div className="absolute top-full left-0 mt-2 z-20 bg-white dark:bg-[#1c1f2e] border border-stone-200 dark:border-[#2a2d3e] rounded-xl shadow-lg overflow-hidden w-44">
                   <button
                     type="button"
-                    className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-stone-700 dark:text-stone-300 hover:bg-stone-50 dark:hover:bg-[#252837] transition-colors disabled:opacity-60"
+                    className="w-full flex items-center gap-2.5 px-4 py-2.5 text-xs text-stone-700 dark:text-stone-300 hover:bg-stone-50 dark:hover:bg-[#252837] transition-colors disabled:opacity-60"
                     onClick={handlePickImage}
                     disabled={updatingProfileImage}
                   >
@@ -424,7 +386,7 @@ export default function SettingsPage() {
                   </button>
                   <button
                     type="button"
-                    className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors border-t border-stone-100 dark:border-[#2a2d3e] disabled:opacity-60"
+                    className="w-full flex items-center gap-2.5 px-4 py-2.5 text-xs text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors border-t border-stone-100 dark:border-[#2a2d3e] disabled:opacity-60"
                     onClick={handleRemoveProfileImage}
                     disabled={updatingProfileImage}
                   >
@@ -462,35 +424,27 @@ export default function SettingsPage() {
       <Card className="dark:bg-[#1c1f2e] dark:border-[#2a2d3e]">
         <CardHeader>
           <CardTitle>Account Settings</CardTitle>
-          <CardDescription>Update your admin account credentials</CardDescription>
+          <CardDescription>Request Super Admin to update your admin account credentials</CardDescription>
         </CardHeader>
         <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 
           {/* Wraps name inputs in form to disable browser autocomplete */}
           <form className="contents" autoComplete="off">
             {/* ── Name ── */}
-            <div className="space-y-2">
+            <div className="space-y-2 cursor-not-allowed">
               <FieldLabel htmlFor="firstName">First Name</FieldLabel>
               <Input
                 id="firstName"
-                value={firstName}
-                aria-invalid={firstNameError}
-                onChange={(e) => {
-                  setFirstName(e.target.value);
-                  if (firstNameError) setFirstNameError(false);
-                }}
+                value={user?.firstName ?? ""}
+                disabled
               />
             </div>
-            <div className="space-y-2">
+            <div className="space-y-2 cursor-not-allowed">
               <FieldLabel htmlFor="lastName">Last Name</FieldLabel>
               <Input
                 id="lastName"
-                value={lastName}
-                aria-invalid={lastNameError}
-                onChange={(e) => {
-                  setLastName(e.target.value);
-                  if (lastNameError) setLastNameError(false);
-                }}
+                value={user?.lastName ?? ""}
+                disabled
               />
             </div>
           </form>
@@ -518,7 +472,7 @@ export default function SettingsPage() {
 
         <CardHeader>
           <CardTitle>Change Password</CardTitle>
-          <CardDescription>Leave all three fields empty if you don&apos;t want to change your password</CardDescription>
+          <CardDescription>Leave all the fields empty if you don&apos;t want to change your password</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
 
@@ -634,7 +588,7 @@ export default function SettingsPage() {
             type="button"
             disabled={savingForm || !canSaveChanges}
             onClick={handleSave}
-            className="rounded-full px-6 bg-[#1e2433] hover:bg-[#2a3650] dark:bg-stone-100 dark:text-stone-900 dark:hover:bg-stone-200 text-white font-bold gap-2"
+            className="rounded-md px-6 bg-[#1e2433] hover:bg-[#2a3650] dark:bg-stone-100 dark:text-stone-900 dark:hover:bg-stone-200 text-white font-bold gap-2"
           >
             <User className="w-4 h-4" />
             {savingForm ? "Saving…" : "Save Changes"}
@@ -655,7 +609,6 @@ export default function SettingsPage() {
             "Never share your admin credentials with anyone, including other admins.",
             "Always use a strong, unique password. Enable a password manager.",
             "Log out of the admin panel when using a shared or public device.",
-            "Report any suspicious login activity to the system owner immediately.",
           ].map((tip) => (
             <li key={tip} className="flex items-start gap-2 text-xs text-amber-700 dark:text-amber-400">
               <span className="text-amber-400 mt-0.5 shrink-0">•</span>

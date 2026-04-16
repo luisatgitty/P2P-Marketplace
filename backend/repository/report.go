@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"p2p_marketplace/backend/config"
 	"p2p_marketplace/backend/middleware"
 )
 
@@ -15,7 +16,27 @@ func CreateListingReport(reporterId, listingId, reportedUserId, reason, descript
 		return "", fmt.Errorf("Report reason is required")
 	}
 
+	reasonAllowed := false
+	for _, allowedReason := range config.ReportReasons {
+		if trimmedReason == allowedReason {
+			reasonAllowed = true
+			break
+		}
+	}
+	if !reasonAllowed {
+		return "", fmt.Errorf("Invalid report reason")
+	}
+
 	trimmedDescription := strings.TrimSpace(description)
+	if len(trimmedDescription) > config.ReportDescriptionMaxLength {
+		return "", fmt.Errorf("Report details must be at most 500 characters")
+	}
+
+	descriptionWords := strings.Fields(trimmedDescription)
+	if len(descriptionWords) > config.ReportDescriptionMaxWords {
+		return "", fmt.Errorf("Report details must be at most 80 words")
+	}
+
 	targetReportedUserId := strings.TrimSpace(reportedUserId)
 
 	var listingOwnerId string

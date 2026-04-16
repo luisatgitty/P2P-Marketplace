@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect, useCallback, type UIEvent } from "react";
 import {
   Search,
   ShieldCheck,
@@ -11,13 +11,11 @@ import {
   ChevronUp,
   ChevronDown,
   ChevronsUpDown,
-  ChevronLeft,
-  ChevronRight,
-  UserCheck,
-  UserX,
   Trash2,
   RotateCw,
   X,
+  CircleDashed,
+  Ban,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -69,8 +67,8 @@ interface AdminUser {
   joined:            string;
   updated_at:        string;
   deleted_at:        string | null;
-  deleted_by_name:   string;
-  deleted_by_email:  string;
+  action_by_name:    string;
+  action_by_email:   string;
   location:          string;
 }
 
@@ -193,51 +191,78 @@ function FilterSelect({
 // ── Main page ──────────────────────────────────────────────────────────────────
 export default function UsersPage() {
   const [search,             setSearch]             = useState("");
+  const [debouncedSearch,    setDebouncedSearch]    = useState("");
   const [verifFilter,        setVerif]              = useState<string>("ALL");
   const [statusFilter,       setStatus]             = useState<string>("ALL");
   const [sort,               setSort]               = useState<{ field: SortField; dir: SortDir }>({ field: "joined", dir: "desc" });
-  const [page,               setPage]               = useState(1);
   const [users,              setUsers]              = useState<AdminUser[]>([]);
   const [loadingUsers,       setLoadingUsers]       = useState(true);
+  const [loadingMore,        setLoadingMore]        = useState(false);
+  const [hasMore,            setHasMore]            = useState(true);
+  const [offset,             setOffset]             = useState(0);
+  const [totalUsersCount,    setTotalUsersCount]    = useState(0);
   const [isRefreshing,       setIsRefreshing]       = useState(false);
   const [actionLoadingUserId,setActionLoadingUserId]= useState<string | null>(null);
-  const PER_PAGE = 8;
+  const FETCH_LIMIT = 16;
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      setDebouncedSearch(search.trim());
+    }, 250);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [search]);
 
   // ── Load ──────────────────────────────────────────────────────────────────────
-  const loadUsers = useCallback(async () => {
-    setLoadingUsers(true);
+  const loadUsers = useCallback(async (reset: boolean, requestedOffset = 0) => {
+    if (reset) {
+      setLoadingUsers(true);
+    } else {
+      setLoadingMore(true);
+    }
+
+    const nextOffset = reset ? 0 : requestedOffset;
+
     try {
-      const data = await getAdminUsers();
-      setUsers((data ?? []) as AdminUserRecord[]);
+      const payload = await getAdminUsers({
+        search: debouncedSearch,
+        verified: verifFilter,
+        status: statusFilter,
+        limit: FETCH_LIMIT,
+        offset: nextOffset,
+      });
+
+      const received = (payload.users ?? []) as AdminUserRecord[];
+      const nextCount = reset ? received.length : nextOffset + received.length;
+
+      setUsers((prev) => (reset ? received : [...prev, ...received]));
+      setOffset(nextCount);
+      setTotalUsersCount(payload.total);
+      setHasMore(nextCount < payload.total);
     } catch (err) {
       const message = typeof err === "string" ? err : "Failed to load users";
       toast.error(message, { position: "top-center" });
     } finally {
       setLoadingUsers(false);
+      setLoadingMore(false);
       setIsRefreshing(false);
     }
-  }, []);
+  }, [debouncedSearch, verifFilter, statusFilter]);
 
   useEffect(() => {
-    void loadUsers();
-  }, [loadUsers]);
+    void loadUsers(true, 0);
+  }, [debouncedSearch, verifFilter, statusFilter, loadUsers]);
 
   // ── Sort ──────────────────────────────────────────────────────────────────────
   function toggleSort(field: SortField) {
     setSort(s => s.field === field ? { field, dir: s.dir === "asc" ? "desc" : "asc" } : { field, dir: "asc" });
-    setPage(1);
   }
 
-  // ── Filter + sort + paginate ──────────────────────────────────────────────────
+  // ── Sort loaded chunk ─────────────────────────────────────────────────────────
   const filtered = useMemo(() => {
     let data = [...users];
-    if (search)
-      data = data.filter(u =>
-        `${u.first_name} ${u.last_name}`.toLowerCase().includes(search.toLowerCase()) ||
-        u.email.toLowerCase().includes(search.toLowerCase()),
-      );
-    if (verifFilter  !== "ALL") data = data.filter(u => u.verification === verifFilter);
-    if (statusFilter !== "ALL") data = data.filter(u => (statusFilter === "ACTIVE") === u.is_active);
     data.sort((a, b) => {
       let va: any, vb: any;
       if      (sort.field === "name")       { va = `${a.first_name} ${a.last_name}`; vb = `${b.first_name} ${b.last_name}`; }
@@ -252,12 +277,8 @@ export default function UsersPage() {
       return sort.dir === "asc" ? (va > vb ? 1 : -1) : va < vb ? 1 : -1;
     });
     return data;
-  }, [users, search, verifFilter, statusFilter, sort]);
+  }, [users, sort]);
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
-  const paged      = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
-
-  const totalUsersCount  = users.length;
   const verifiedCount    = users.filter(u => u.verification === "VERIFIED").length;
   const pendingCount     = users.filter(u => u.verification === "PENDING").length;
   const unverifiedCount  = users.filter(u => u.verification === "UNVERIFIED").length;
@@ -275,21 +296,33 @@ export default function UsersPage() {
   async function handleToggleActive(id: string) {
     const target = users.find(u => u.id === id);
     if (!target) return;
-    if (target.is_active && !window.confirm("Deactivate this user account?")) return;
-    if (!target.is_active && !window.confirm("Activate this user account?")) return;
-    const nextIsActive = !target.is_active;
+    const isCurrentlyBanned = !!(target.account_locked_until && new Date(target.account_locked_until) > new Date());
+    if (!isCurrentlyBanned && !window.confirm("Ban this user for 3 days?")) return;
+    if (isCurrentlyBanned && !window.confirm("Unban this user account?")) return;
+
+    const nextIsActive = isCurrentlyBanned;
+    const nowIso = new Date().toISOString();
+    const lockUntilIso = new Date(Date.now() + (3 * 24 * 60 * 60 * 1000)).toISOString();
+    const actor = getCurrentAdminSnapshot();
+
     setActionLoadingUserId(id);
     try {
       await setAdminUserActive(id, nextIsActive);
-      const updatedAtPlaceholder = new Date().toISOString();
       setUsers((prev) =>
         prev.map((user) =>
           user.id === id
-            ? { ...user, is_active: nextIsActive, updated_at: updatedAtPlaceholder }
+            ? {
+                ...user,
+                is_active: nextIsActive,
+                account_locked_until: nextIsActive ? null : lockUntilIso,
+                action_by_name: nextIsActive ? "" : (actor?.fullName || user.action_by_name || ""),
+                action_by_email: nextIsActive ? "" : (actor?.email || user.action_by_email || ""),
+                updated_at: nowIso,
+              }
             : user
         )
       );
-      toast.success(`User ${nextIsActive ? "activated" : "deactivated"} successfully`, { position: "top-center" });
+      toast.success(`User ${nextIsActive ? "unbanned" : "banned for 3 days"} successfully`, { position: "top-center" });
     } catch (err) {
       const message = typeof err === "string" ? err : "Failed to update user status";
       toast.error(message, { position: "top-center" });
@@ -313,8 +346,8 @@ export default function UsersPage() {
                 is_active: false,
                 deleted_at: nowIso,
                 updated_at: nowIso,
-                deleted_by_name: actor?.fullName || user.deleted_by_name || "",
-                deleted_by_email: actor?.email || user.deleted_by_email || "",
+                action_by_name: actor?.fullName || user.action_by_name || "",
+                action_by_email: actor?.email || user.action_by_email || "",
               }
             : user
         )
@@ -326,6 +359,16 @@ export default function UsersPage() {
     } finally {
       setActionLoadingUserId(null);
     }
+  }
+
+  function handleTableScroll(event: UIEvent<HTMLDivElement>) {
+    if (loadingUsers || loadingMore || !hasMore) return;
+
+    const node = event.currentTarget;
+    const remaining = node.scrollHeight - node.scrollTop - node.clientHeight;
+    if (remaining > 120) return;
+
+    void loadUsers(false, offset);
   }
 
   const hasActiveFilters = search || verifFilter !== "ALL" || statusFilter !== "ALL";
@@ -345,22 +388,22 @@ export default function UsersPage() {
 
   // ── Render ────────────────────────────────────────────────────────────────────
   return (
-    <div className="p-5 sm:p-6 space-y-5">
+    <div className="h-[calc(100vh)] p-5 sm:p-6 flex flex-col gap-5 min-h-0">
 
       {/* ── Page header ── */}
-      <div>
+      {/* <div>
         <h2 className="text-xl font-extrabold text-stone-900 dark:text-stone-50">
           Users
         </h2>
         <p className="text-sm text-stone-500 dark:text-stone-400">
           Search, filter, and manage all registered user accounts
         </p>
-      </div>
+      </div> */}
 
       {/* ── Summary cards — clickable to filter by status ── */}
       <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
         {[
-          { label: "Total Users", count: totalUsersCount, status: "ALL",        color: "text-stone-700 dark:text-stone-200", bg: "bg-stone-100 dark:bg-[#13151f]",      border: "border-stone-200 dark:border-[#2a2d3e]", Icon: Users },
+          { label: "Total", count: totalUsersCount, status: "ALL",        color: "text-stone-700 dark:text-stone-200", bg: "bg-stone-100 dark:bg-[#13151f]",      border: "border-stone-200 dark:border-[#2a2d3e]", Icon: Users },
           { label: "Verified",    count: verifiedCount,   status: "VERIFIED",   color: "text-teal-600 dark:text-teal-400",   bg: "bg-teal-50 dark:bg-teal-950/20",       border: "border-teal-200 dark:border-teal-800", Icon: ShieldCheck },
           { label: "Pending",     count: pendingCount,    status: "PENDING",    color: "text-amber-600 dark:text-amber-400", bg: "bg-amber-50 dark:bg-amber-950/20",     border: "border-amber-200 dark:border-amber-800", Icon: Clock },
           { label: "Unverified",  count: unverifiedCount, status: "UNVERIFIED", color: "text-stone-600 dark:text-stone-300", bg: "bg-stone-100 dark:bg-stone-800",         border: "border-stone-200 dark:border-stone-700", Icon: AlertTriangle },
@@ -369,7 +412,7 @@ export default function UsersPage() {
           <Card
             key={label}
             className={cn(
-              "rounded-lg cursor-pointer hover:shadow-sm transition-all border",
+              "p-4 rounded-lg cursor-pointer hover:shadow-sm transition-all border",
               bg,
               border,
               verifFilter === status && "ring-2 ring-offset-1 ring-current",
@@ -379,11 +422,10 @@ export default function UsersPage() {
                 if (status === "ALL") return "ALL";
                 return prev === status ? "ALL" : status;
               });
-              setPage(1);
             }}
           >
             <CardContent className="text-center">
-              <Icon className={cn("w-5 h-5 mx-auto mb-1.5", color)} />
+              {/* <Icon className={cn("w-5 h-5 mx-auto mb-1.5", color)} /> */}
               <p className={cn("text-xl font-extrabold", color)}>{count}</p>
               <p className="text-sm text-stone-500 dark:text-stone-400 mt-0.5">{label}</p>
             </CardContent>
@@ -399,7 +441,7 @@ export default function UsersPage() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400 pointer-events-none" />
           <Input
             value={search}
-            onChange={e => { setSearch(e.target.value); setPage(1); }}
+            onChange={e => { setSearch(e.target.value); }}
             placeholder="Search by name or email…"
             className="pl-9 dark:bg-[#13151f] dark:border-[#2a2d3e]"
           />
@@ -409,7 +451,7 @@ export default function UsersPage() {
         <div className="flex gap-2 flex-wrap">
           <FilterSelect
             value={verifFilter}
-            onChange={v => { setVerif(v); setPage(1); }}
+            onChange={v => { setVerif(v); }}
             options={[
               ["ALL",        "All Verification" ],
               ["VERIFIED",   "Verified"         ],
@@ -420,7 +462,7 @@ export default function UsersPage() {
           />
           <FilterSelect
             value={statusFilter}
-            onChange={v => { setStatus(v); setPage(1); }}
+            onChange={v => { setStatus(v); }}
             options={[
               ["ALL",      "All Status" ],
               ["ACTIVE",   "Active"     ],
@@ -431,7 +473,7 @@ export default function UsersPage() {
           {hasActiveFilters && (
             <Button
               variant="outline"
-              onClick={() => { setSearch(""); setVerif("ALL"); setStatus("ALL"); setPage(1); }}
+              onClick={() => { setSearch(""); setVerif("ALL"); setStatus("ALL"); }}
               className="hover:bg-destructive/10! text-destructive! border-destructive! focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40"
             >
               <X className="w-3 h-3" /> Clear
@@ -444,8 +486,7 @@ export default function UsersPage() {
           variant="outline"
           onClick={() => {
             setIsRefreshing(true);
-            setPage(1);
-            void loadUsers();
+            void loadUsers(true, 0);
           }}
           disabled={loadingUsers}
           className="border-sky-600 text-sky-600! hover:bg-sky-600/10 focus-visible:border-sky-600 focus-visible:ring-sky-600/20 dark:border-sky-400 dark:text-sky-400! dark:hover:bg-sky-400/10 dark:focus-visible:border-sky-400 dark:focus-visible:ring-sky-400/40"
@@ -455,9 +496,9 @@ export default function UsersPage() {
       </div>
 
       {/* ── Table ── */}
-      <Card className="p-0 rounded-lg dark:bg-[#1c1f2e] dark:border-[#2a2d3e] overflow-hidden">
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
+      <Card className="p-0 rounded-lg dark:bg-[#1c1f2e] dark:border-[#2a2d3e] overflow-hidden flex-1 min-h-0">
+        <CardContent className="p-0 h-full min-h-0 flex flex-col">
+          <div className="overflow-auto h-full" onScroll={handleTableScroll}>
             <Table>
               <TableHeader>
                 <TableRow className="border-stone-200 dark:border-[#2a2d3e] bg-stone-50 dark:bg-[#13151f] hover:bg-stone-50 dark:hover:bg-[#13151f]">
@@ -483,6 +524,9 @@ export default function UsersPage() {
                   <SortableTH label="Last Login"   field="last_login"   />
                   <SortableTH label="Updated" field="updated" />
                   <SortableTH label="Deleted" field="deleted" />
+                  <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest whitespace-nowrap">
+                    Action By
+                  </TableHead>
                   <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest text-right">
                     Actions
                   </TableHead>
@@ -490,20 +534,20 @@ export default function UsersPage() {
               </TableHeader>
 
               <TableBody>
-                {loadingUsers ? (
+                {loadingUsers && filtered.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={14} className="py-16 text-center text-sm text-stone-400 dark:text-stone-500">
+                    <TableCell colSpan={15} className="py-16 text-center text-sm text-stone-400 dark:text-stone-500">
                       Loading users…
                     </TableCell>
                   </TableRow>
-                ) : paged.length === 0 ? (
+                ) : filtered.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={14} className="py-16 text-center text-sm text-stone-400 dark:text-stone-500">
+                    <TableCell colSpan={15} className="py-16 text-center text-sm text-stone-400 dark:text-stone-500">
                       No users match the current filters.
                     </TableCell>
                   </TableRow>
                 ) : (
-                  paged.map(user => (
+                  filtered.map(user => (
                     <TableRow
                       key={user.id}
                       className="border-stone-100 dark:border-[#2a2d3e] hover:bg-stone-50 dark:hover:bg-[#252837] transition-colors"
@@ -625,14 +669,21 @@ export default function UsersPage() {
                       <TableCell className="py-3.5 text-sm text-stone-500 dark:text-stone-400 whitespace-nowrap">
                         {(user.deleted_at)
                           ? (
-                            <div className="leading-tight">
-                              <p className="text-sm font-medium text-stone-700 dark:text-stone-200">
-                                {user.deleted_by_name || "—"}
-                              </p>
-                              <p className="text-xs">
-                                {user.deleted_at ? formatDate(user.deleted_at) : <span className="text-stone-300 dark:text-stone-600">—</span>}
-                              </p>
-                            </div>
+                            <p className="text-sm font-medium text-stone-700 dark:text-stone-200">
+                              {formatDate(user.deleted_at)}
+                            </p>
+                          )
+                          : <span className="text-stone-300 dark:text-stone-600">—</span>
+                        }
+                      </TableCell>
+
+                      {/* Action By */}
+                      <TableCell className="py-3.5 text-sm text-stone-500 dark:text-stone-400 whitespace-nowrap">
+                        {user.action_by_name
+                          ? (
+                            <p className="text-sm font-medium text-stone-700 dark:text-stone-200">
+                              {user.action_by_name || "—"}
+                            </p>
                           )
                           : <span className="text-stone-300 dark:text-stone-600">—</span>
                         }
@@ -648,15 +699,15 @@ export default function UsersPage() {
                                 variant="ghost"
                                 size="icon"
                                 type="button"
-                                title={user.is_active ? "Deactivate" : "Activate"}
-                                aria-label={user.is_active ? "Deactivate" : "Activate"}
+                                title={user.account_locked_until && new Date(user.account_locked_until) > new Date() ? "Unban" : "Ban 3 Days"}
+                                aria-label={user.account_locked_until && new Date(user.account_locked_until) > new Date() ? "Unban" : "Ban 3 Days"}
                                 onClick={() => handleToggleActive(user.id)}
                                 disabled={actionLoadingUserId === user.id}
                                 className="w-7 h-7 hover:bg-stone-100 dark:hover:bg-[#252837] disabled:opacity-50"
                               >
-                                {user.is_active
-                                  ? <UserX     className="w-4 h-4 text-amber-500 hover:text-amber-800" />
-                                  : <UserCheck className="w-4 h-4 text-teal-500 hover:text-teal-800"  />
+                                {user.account_locked_until && new Date(user.account_locked_until) > new Date()
+                                  ? <CircleDashed className="w-4 h-4 text-teal-500 hover:text-teal-800" />
+                                  : <Ban className="w-4 h-4 text-amber-500 hover:text-amber-800" />
                                 }
                               </Button>
 
@@ -665,8 +716,8 @@ export default function UsersPage() {
                                 variant="ghost"
                                 size="icon"
                                 type="button"
-                                title="Delete user"
-                                aria-label="Delete user"
+                                title="Delete User"
+                                aria-label="Delete User"
                                 onClick={() => handleDelete(user.id)}
                                 disabled={actionLoadingUserId === user.id}
                                 className="w-7 h-7 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 hover:text-red-600 disabled:opacity-50"
@@ -680,54 +731,29 @@ export default function UsersPage() {
                     </TableRow>
                   ))
                 )}
+
+                {loadingMore && (
+                  <TableRow>
+                    <TableCell colSpan={15} className="py-4 text-center text-sm text-stone-400 dark:text-stone-500">
+                      Loading more users…
+                    </TableCell>
+                  </TableRow>
+                )}
+
+                {!hasMore && filtered.length > 0 && (
+                  <TableRow>
+                    <TableCell colSpan={15} className="py-4 text-center text-xs text-stone-400 dark:text-stone-500">
+                      End of user results.
+                    </TableCell>
+                  </TableRow>
+                )}
               </TableBody>
             </Table>
           </div>
 
-          {/* ── Pagination ── */}
           <Separator className="dark:bg-[#2a2d3e]" />
-          <div className="flex items-center justify-between px-4 py-3">
-            <p className="text-sm text-stone-400 dark:text-stone-500">
-              Page {page} of {totalPages} · {filtered.length} result{filtered.length !== 1 ? "s" : ""}
-            </p>
-            <div className="flex items-center gap-1.5">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPage(p => Math.max(1, p - 1))}
-                disabled={page === 1}
-                className="h-8 w-8 p-0 rounded-lg dark:border-[#2a2d3e] dark:text-stone-300 dark:hover:bg-[#252837]"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </Button>
-
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map(n => (
-                <Button
-                  key={n}
-                  variant={page === n ? "default" : "ghost"}
-                  size="sm"
-                  onClick={() => setPage(n)}
-                  className={cn(
-                    "h-8 w-8 p-0 rounded-lg text-sm font-bold",
-                    page === n
-                      ? "bg-[#1e2433] text-white hover:bg-[#2a3650]"
-                      : "text-stone-500 dark:text-stone-400 dark:hover:bg-[#252837]",
-                  )}
-                >
-                  {n}
-                </Button>
-              ))}
-
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                disabled={page === totalPages}
-                className="h-8 w-8 p-0 rounded-lg dark:border-[#2a2d3e] dark:text-stone-300 dark:hover:bg-[#252837]"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </Button>
-            </div>
+          <div className="px-4 py-3 text-sm text-stone-400 dark:text-stone-500">
+            Showing {filtered.length.toLocaleString()} of {totalUsersCount.toLocaleString()} result{totalUsersCount !== 1 ? "s" : ""}
           </div>
         </CardContent>
       </Card>

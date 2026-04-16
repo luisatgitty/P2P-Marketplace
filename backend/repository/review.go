@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"p2p_marketplace/backend/config"
 	"p2p_marketplace/backend/middleware"
 	"p2p_marketplace/backend/model"
 )
@@ -114,8 +115,12 @@ func CreateListingReview(reviewerId, listingId string, rating int, comment strin
 	db := middleware.DBConn
 	var review model.ListingReviewFromDb
 
-	if rating < 1 || rating > 5 {
+	if rating < config.ReviewRatingMin || rating > config.ReviewRatingMax {
 		return review, fmt.Errorf("Rating must be between 1 and 5")
+	}
+
+	if len(strings.TrimSpace(comment)) > config.ReviewCommentMaxLength {
+		return review, fmt.Errorf("Review comment must be at most 500 characters")
 	}
 
 	reviewedUserId, err := validateBuyerCanReview(reviewerId, listingId)
@@ -150,11 +155,37 @@ func CreateListingReview(reviewerId, listingId string, rating int, comment strin
 	`
 
 	trimmedComment := strings.TrimSpace(comment)
-	if err := db.Raw(query, reviewerId, reviewedUserId, listingId, rating, trimmedComment).Scan(&review).Error; err != nil {
+	tx := db.Begin()
+	if tx.Error != nil {
+		return review, tx.Error
+	}
+
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	if err := tx.Raw(query, reviewerId, reviewedUserId, listingId, rating, trimmedComment).Scan(&review).Error; err != nil {
+		tx.Rollback()
 		if strings.Contains(strings.ToLower(err.Error()), "uniq_reviews_reviewer_listing") || strings.Contains(strings.ToLower(err.Error()), "duplicate key") {
 			return review, fmt.Errorf("Review already exists for this listing")
 		}
 		return review, fmt.Errorf("Failed to submit review")
+	}
+
+	if err := InsertReviewNotificationTx(
+		tx,
+		reviewedUserId,
+		fmt.Sprintf("You received a new %d-star review on your listing.", rating),
+		"/listing/"+strings.TrimSpace(listingId),
+	); err != nil {
+		tx.Rollback()
+		return review, err
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		return review, err
 	}
 
 	return review, nil
@@ -164,8 +195,12 @@ func UpdateListingReview(reviewerId, listingId string, rating int, comment strin
 	db := middleware.DBConn
 	var review model.ListingReviewFromDb
 
-	if rating < 1 || rating > 5 {
+	if rating < config.ReviewRatingMin || rating > config.ReviewRatingMax {
 		return review, fmt.Errorf("Rating must be between 1 and 5")
+	}
+
+	if len(strings.TrimSpace(comment)) > config.ReviewCommentMaxLength {
+		return review, fmt.Errorf("Review comment must be at most 500 characters")
 	}
 
 	if _, err := validateBuyerCanReview(reviewerId, listingId); err != nil {

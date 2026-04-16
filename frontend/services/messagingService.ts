@@ -27,6 +27,18 @@ export type ScheduleRequestPayload = {
   message?: string;
 };
 
+export type MessagesPageQuery = {
+  limit?: number;
+  offset?: number;
+};
+
+export type MessagesPage = {
+  messages: Message[];
+  total: number;
+  limit: number;
+  offset: number;
+};
+
 function emitMessagesUpdate() {
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("messages:updated"));
@@ -70,14 +82,40 @@ export async function getConversation(id: string): Promise<Conversation | null> 
   }
 }
 
-export async function getMessages(conversationId: string): Promise<Message[]> {
+export async function getMessages(conversationId: string, query: MessagesPageQuery = {}): Promise<MessagesPage> {
+  const params = new URLSearchParams();
+  if (Number.isFinite(query.limit)) {
+    params.set("limit", String(query.limit));
+  }
+  if (Number.isFinite(query.offset)) {
+    params.set("offset", String(query.offset));
+  }
+
+  const suffix = params.size > 0 ? `?${params.toString()}` : "";
+
   try {
-    const data = await apiFetch<{ messages: Message[] }>(`/messages/conversations/${conversationId}/messages`, {
+    const data = await apiFetch<{ messages: Message[]; total?: number; limit?: number; offset?: number }>(`/messages/conversations/${conversationId}/messages${suffix}`, {
       method: "GET",
     });
-    return data.messages ?? [];
+
+    const messages = data.messages ?? [];
+    const total = Number(data.total ?? messages.length);
+    const limit = Number(data.limit ?? query.limit ?? messages.length);
+    const offset = Number(data.offset ?? query.offset ?? 0);
+
+    return {
+      messages,
+      total,
+      limit,
+      offset,
+    };
   } catch {
-    return [];
+    return {
+      messages: [],
+      total: 0,
+      limit: Number(query.limit ?? 0),
+      offset: Number(query.offset ?? 0),
+    };
   }
 }
 

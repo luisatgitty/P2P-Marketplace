@@ -7,6 +7,7 @@ import type { ReplyPreview } from "@/types/messaging";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { MESSAGE_MAX_LENGTH, limitMessageInputLength } from "@/utils/validation";
 
 type OutgoingAttachment = {
   name: string;
@@ -194,36 +195,36 @@ export default function MessageInput({
     );
   };
 
-  return (
-    <div className="px-3 pt-3 pb-5 shrink">
+return (
+  <div className="px-3 pt-3 pb-4">
 
-      {/* ── Reply banner ───────────────────────────────────────────────── */}
-      {replyTo && (
-        <div className={cn(
-          "flex items-center gap-2 px-3 py-2 mb-2 rounded-xl",
-          "bg-stone-50 dark:bg-[#13151f] border border-border"
-        )}>
-          <CornerUpLeft size={13} className="text-amber-600 dark:text-amber-500 shrink-0" />
-          <div className="flex-1 min-w-0">
-            <p className="text-[10px] font-semibold text-amber-700 dark:text-amber-500 leading-none mb-0.5">
-              Replying to {replyTo.senderName}
-            </p>
-            <p className="text-xs text-stone-500 dark:text-stone-400 truncate">
-              {replyTo.contentPreview}
-            </p>
-          </div>
-          <button
-            onClick={onCancelReply}
-            className="shrink-0 p-1 rounded-full text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-200 dark:hover:bg-white/10 transition-colors"
-            aria-label="Cancel reply"
-          >
-            <X size={13} />
-          </button>
+    {/* ── Reply banner ───────────────────────────────────────────────── */}
+    {replyTo && (
+      <div className={cn(
+        "flex items-center gap-2 px-3 py-2 mb-2 rounded-xl",
+        "bg-stone-50 dark:bg-[#13151f] border border-border"
+      )}>
+        <CornerUpLeft size={13} className="text-amber-600 dark:text-amber-500 shrink-0" />
+        <div className="flex-1 min-w-0">
+          <p className="text-[10px] font-semibold text-amber-700 dark:text-amber-500 leading-none mb-0.5">
+            Replying to {replyTo.senderName}
+          </p>
+          <p className="text-xs text-stone-500 dark:text-stone-400 truncate">
+            {replyTo.contentPreview}
+          </p>
         </div>
-      )}
+        <button
+          onClick={onCancelReply}
+          className="shrink-0 p-1 rounded-full text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-200 dark:hover:bg-white/10 transition-colors"
+          aria-label="Cancel reply"
+        >
+          <X size={13} />
+        </button>
+      </div>
+    )}
 
-      {/* ── Input row ──────────────────────────────────────────────────── */}
-      <div>
+    {/* ── Input row ──────────────────────────────────────────────────── */}
+    <div>
 
         {/* ── Attachment staging area ─────────────────────────────────── */}
         {stagedMedia.length > 0 && (
@@ -292,11 +293,12 @@ export default function MessageInput({
               ref={textareaRef}
               id="message-input"
               value={value}
-              onChange={(e) => setValue(e.target.value)}
+              onChange={(e) => setValue(limitMessageInputLength(e.target.value))}
               onKeyDown={handleKeyDown}
               placeholder={replyTo ? `Reply to ${replyTo.senderName}…` : "Type a message…"}
               disabled={disabled}
               rows={1}
+              maxLength={MESSAGE_MAX_LENGTH}
               className={cn(
                 "min-h-9 max-h-32 resize-none",
                 "bg-white dark:bg-[#1c1f2e] border border-border",

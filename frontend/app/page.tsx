@@ -1,21 +1,19 @@
 "use client";
 
-import { Suspense, useState, useEffect } from "react";
+import { Suspense, useState, useEffect, useRef, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import PostCard from "@/components/post-card";
 import { getHomeListings, type HomeListing } from "@/services/listingFeedService";
 import { getProvinces, getCitiesByProvince, type LocationOption } from "@/services/locationService";
 import { useUser } from "@/utils/UserContext";
-import { Search, SlidersHorizontal, X, ChevronLeft, ChevronRight, PackageSearch } from "lucide-react";
+import { Search, SlidersHorizontal, X, PackageSearch } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { CATEGORIES } from "@/types/listings";
 
 type ListingWithMeta = HomeListing;
-
-// ─── Constants ─────────────────────────────────────────────────────────────────
-const CATEGORIES = ["All Categories", "Electronics", "Clothing", "Vehicles", "Home & Living", "Real Estate", "Sports & Outdoors", "Health & Wellness", "IT & Digital", "Education", "Food & Events", "Creative", "Hobbies", "Events", "Others"];
 
 const SORT_OPTIONS = [
   { value: "recommended", label: "Recommended" },
@@ -25,7 +23,7 @@ const SORT_OPTIONS = [
   { value: "top-rated",   label: "Top Rated"    },
 ];
 
-const ITEMS_PER_PAGE = 25;
+const FETCH_LIMIT = 25;
 
 // ─── Select styled helper ───────────────────────────────────────────────────────
 function FilterSelect({
@@ -51,19 +49,6 @@ function FilterSelect({
   );
 }
 
-// ─── Pagination helper ──────────────────────────────────────────────────────────
-function getPageNumbers(current: number, total: number): (number | "...")[] {
-  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
-  const pages: (number | "...")[] = [1];
-  if (current > 3) pages.push("...");
-  for (let i = Math.max(2, current - 1); i <= Math.min(total - 1, current + 1); i++) {
-    pages.push(i);
-  }
-  if (current < total - 2) pages.push("...");
-  pages.push(total);
-  return pages;
-}
-
 // ─── Inner page (uses useSearchParams — requires Suspense) ─────────────────────
 function HomePageInner() {
   const searchParams = useSearchParams();
@@ -73,6 +58,11 @@ function HomePageInner() {
 
   const [allListings, setAllListings] = useState<ListingWithMeta[]>([]);
   const [loadingListings, setLoadingListings] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const [offset, setOffset] = useState(0);
+  const [totalCount, setTotalCount] = useState(0);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
 
   // ── Filter state (staging = what's in the form, applied = what's actually active)
   const [keyword,  setKeyword]  = useState("");
@@ -96,53 +86,79 @@ function HomePageInner() {
     province: "Province", city: "City/Municipality", priceMin: "", priceMax: "",
   });
 
-  const [sort,        setSort]    = useState("recommended");
-  const [currentPage, setPage]    = useState(1);
+  const [sort, setSort] = useState("recommended");
 
-  // Reset page when type tab changes from URL
-  useEffect(() => { setPage(1); }, [typeFromUrl]);
+  const loadListings = useCallback(async (reset: boolean, requestedOffset = 0) => {
+    if (reset) {
+      setLoadingListings(true);
+    } else {
+      setLoadingMore(true);
+    }
 
-  const totalPages = Math.max(1, Math.ceil(allListings.length / ITEMS_PER_PAGE));
-  const paginated  = allListings.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+    const nextOffset = reset ? 0 : requestedOffset;
+
+    try {
+      const payload = await getHomeListings({
+        type: typeFromUrl,
+        keyword: applied.keyword,
+        category: applied.category,
+        condition: applied.condition,
+        province: applied.province,
+        city: applied.city,
+        priceMin: applied.priceMin,
+        priceMax: applied.priceMax,
+        sort,
+        limit: FETCH_LIMIT,
+        offset: nextOffset,
+      });
+
+      const received = payload.listings ?? [];
+      const nextCount = reset ? received.length : nextOffset + received.length;
+
+      setAllListings((prev) => (reset ? received : [...prev, ...received]));
+      setOffset(nextCount);
+      setTotalCount(payload.total);
+      setHasMore(nextCount < payload.total);
+    } catch {
+      if (reset) {
+        setAllListings([]);
+        setOffset(0);
+        setTotalCount(0);
+        setHasMore(false);
+      }
+    } finally {
+      setLoadingListings(false);
+      setLoadingMore(false);
+    }
+  }, [typeFromUrl, applied, sort]);
 
   useEffect(() => {
-    let mounted = true;
+    void loadListings(true, 0);
+  }, [typeFromUrl, applied, sort, loadListings]);
 
-    const loadListings = async () => {
-      setLoadingListings(true);
-      try {
-        const data = await getHomeListings({
-          type: typeFromUrl,
-          keyword: applied.keyword,
-          category: applied.category,
-          condition: applied.condition,
-          province: applied.province,
-          city: applied.city,
-          priceMin: applied.priceMin,
-          priceMax: applied.priceMax,
-          sort,
-        });
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
 
-        if (!mounted) return;
-        setAllListings(data);
-      } catch {
-        if (!mounted) return;
-        setAllListings([]);
-      } finally {
-        if (mounted) setLoadingListings(false);
-      }
-    };
+    const observer = new IntersectionObserver((entries) => {
+      const first = entries[0];
+      if (!first?.isIntersecting) return;
+      if (loadingListings || loadingMore || !hasMore) return;
 
-    loadListings();
-    return () => {
-      mounted = false;
-    };
-  }, [applied, sort, typeFromUrl]);
+      void loadListings(false, offset);
+    }, {
+      root: null,
+      rootMargin: "220px 0px",
+      threshold: 0.01,
+    });
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [loadListings, hasMore, loadingListings, loadingMore, offset]);
 
   // ── Actions ────────────────────────────────────────────────────────────────
   const handleSearch = () => {
     setApplied({ keyword, category, condition, province: provinceName, city: cityName, priceMin, priceMax });
-    setPage(1);
   };
 
   const handleClear = () => {
@@ -152,7 +168,6 @@ function HomePageInner() {
     setCityOptions([]); setFetchedCitiesProvinceCode("");
     setPriceMin(""); setPriceMax("");
     setApplied({ keyword: "", category: "All Categories", condition: "Any Condition", province: "Province", city: "City/Municipality", priceMin: "", priceMax: "" });
-    setPage(1);
   };
 
   const loadProvincesOnDemand = async () => {
@@ -220,11 +235,17 @@ function HomePageInner() {
 
       {/* ──────────────────────────── HERO ──────────────────────────────────── */}
       <section className="max-h-max relative bg-[#1a2235] overflow-hidden">
+
+    {/* Floating orbs */}
+        <div className="orb orb-amber" />
+        <div className="orb orb-blue" />
+        <div className="orb orb-white" />
+
         {/* Background texture */}
         <div className="absolute inset-0 opacity-20"
           style={{ backgroundImage: "radial-gradient(circle at 20% 50%, #b45309 0%, transparent 50%), radial-gradient(circle at 80% 20%, #1e40af 0%, transparent 40%)" }}
         />
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-7 py-8 sm:py-10">
+        <div className="relative z-20 max-w-7xl mx-auto px-4 sm:px-7 py-8 sm:py-10">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-8">
 
             {/* Left: Headline */}
@@ -262,7 +283,7 @@ function HomePageInner() {
             {/* Right: Stats */}
             <div className="flex gap-6 sm:gap-10 shrink-0">
               {[
-                { value: `${allListings.length.toLocaleString()}+`, label: "Active Listings" },
+                { value: `${totalCount.toLocaleString()}+`, label: "Active Listings" },
                 { value: "Free",    label: "Listing of items"   },
                 { value: "PH-Wide", label: "All regions"     },
               ].map((stat, i) => (
@@ -309,6 +330,7 @@ function HomePageInner() {
             {/* Category */}
             <div className="relative min-w-35 flex-1">
               <FilterSelect value={category} onChange={setCategory}>
+                <option value="">All Categories</option>
                 {CATEGORIES.map((c) => <option key={c}>{c}</option>)}
               </FilterSelect>
               <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
@@ -413,14 +435,14 @@ function HomePageInner() {
       {/* ──────────────────────── SORT BAR ──────────────────────────────────── */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-stone-200 dark:border-white/10">
         <p className="text-sm text-stone-500 dark:text-stone-400 shrink-0">
-          <span className="font-semibold text-stone-700 dark:text-stone-200">{allListings.length}</span> listing{allListings.length !== 1 && "s"} found
+          <span className="font-semibold text-stone-700 dark:text-stone-200">{totalCount}</span> listing{totalCount !== 1 && "s"} found
         </p>
         <div className="flex items-center gap-1 flex-wrap">
           <span className="text-sm text-stone-400 mr-2 hidden sm:inline">Sort:</span>
           {SORT_OPTIONS.map((opt) => (
             <button
               key={opt.value}
-              onClick={() => { setSort(opt.value); setPage(1); }}
+              onClick={() => { setSort(opt.value); }}
               className={cn(
                 "tab-page-base",
                 sort === opt.value
@@ -440,9 +462,9 @@ function HomePageInner() {
           <div className="flex items-center justify-center py-20">
             <div className="w-8 h-8 border-4 border-amber-700 border-t-transparent rounded-full animate-spin" />
           </div>
-        ) : paginated.length > 0 ? (
+        ) : allListings.length > 0 ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4">
-            {paginated.map((listing) => (
+            {allListings.map((listing) => (
               <PostCard key={listing.id} {...listing} />
             ))}
           </div>
@@ -462,53 +484,24 @@ function HomePageInner() {
           </div>
         )}
 
-        {/* ──────────────── PAGINATION ──────────────────────────────────────── */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-center gap-1 mt-10">
-            {/* Prev */}
-            <button
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={currentPage === 1}
-              className="flex items-center gap-1 px-3 py-2 text-sm font-medium text-stone-600 dark:text-stone-400 hover:bg-stone-200 dark:hover:bg-white/10 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-            >
-              <ChevronLeft size={15} /> Prev
-            </button>
-
-            {/* Page numbers */}
-            {getPageNumbers(currentPage, totalPages).map((pg, i) =>
-              pg === "..." ? (
-                <span key={`ellipsis-${i}`} className="px-2 text-stone-400 text-sm select-none">…</span>
-              ) : (
-                <button
-                  key={pg}
-                  onClick={() => setPage(pg as number)}
-                  className={cn(
-                    "w-9 h-9 text-sm font-semibold rounded-lg transition-colors",
-                    currentPage === pg
-                      ? "bg-[#1a2235] dark:bg-amber-700 text-white"
-                      : "text-stone-600 dark:text-stone-400 hover:bg-stone-200 dark:hover:bg-white/10"
-                  )}
-                >
-                  {pg}
-                </button>
-              )
-            )}
-
-            {/* Next */}
-            <button
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              disabled={currentPage === totalPages}
-              className="flex items-center gap-1 px-3 py-2 text-sm font-medium text-stone-600 dark:text-stone-400 hover:bg-stone-200 dark:hover:bg-white/10 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-            >
-              Next <ChevronRight size={15} />
-            </button>
+        {loadingMore && (
+          <div className="flex items-center justify-center py-6">
+            <div className="w-6 h-6 border-4 border-amber-700 border-t-transparent rounded-full animate-spin" />
           </div>
         )}
 
+        {!hasMore && allListings.length > 0 && (
+          <p className="text-center text-sm text-stone-400 dark:text-stone-600 mt-6">
+            End of listing results.
+          </p>
+        )}
+
+        <div ref={sentinelRef} className="h-2" aria-hidden="true" />
+
         {/* Items count text */}
-        {allListings.length > 0 && (
+        {totalCount > 0 && (
           <p className="text-center text-sm text-stone-400 dark:text-stone-600 mt-3">
-            Showing {Math.min((currentPage - 1) * ITEMS_PER_PAGE + 1, allListings.length)}–{Math.min(currentPage * ITEMS_PER_PAGE, allListings.length)} of {allListings.length} listings
+            Showing {allListings.length.toLocaleString()} of {totalCount.toLocaleString()} listings
           </p>
         )}
       </main>
