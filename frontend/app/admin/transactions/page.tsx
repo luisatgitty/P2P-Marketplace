@@ -297,17 +297,16 @@ export default function TransactionsPage() {
       {/* ── Summary cards — clickable to filter by status ── */}
       <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
         {[
-          { label: "Total",     count: totalCount,     status: "ALL",       color: "text-stone-700 dark:text-stone-200", bg: "bg-stone-100 dark:bg-[#13151f]",     border: "border-stone-200 dark:border-[#2a2d3e]", Icon: Handshake   },
-          { label: "Pending",   count: pendingCount,   status: "PENDING",   color: "text-amber-600 dark:text-amber-400", bg: "bg-amber-50 dark:bg-amber-950/20",  border: "border-amber-200 dark:border-amber-800",  Icon: Clock       },
-          { label: "Confirmed", count: confirmedCount, status: "CONFIRMED", color: "text-blue-600 dark:text-blue-400",   bg: "bg-blue-50 dark:bg-blue-950/20",    border: "border-blue-200 dark:border-blue-800",    Icon: Handshake   },
-          { label: "Completed", count: completedCount, status: "COMPLETED", color: "text-teal-600 dark:text-teal-400",   bg: "bg-teal-50 dark:bg-teal-950/20",    border: "border-teal-200 dark:border-teal-800",    Icon: CheckCircle2 },
-          { label: "Cancelled", count: cancelledCount, status: "CANCELLED", color: "text-red-600 dark:text-red-400",     bg: "bg-red-50 dark:bg-red-950/20",      border: "border-red-200 dark:border-red-800",      Icon: XCircle     },
-        ].map(({ label, count, status, color, bg, border, Icon }) => (
+          { label: "Total",     count: totalCount,     status: "ALL",       color: "text-stone-700 dark:text-stone-200", Icon: Handshake   },
+          { label: "Pending",   count: pendingCount,   status: "PENDING",   color: "text-amber-600 dark:text-amber-400", Icon: Clock       },
+          { label: "Confirmed", count: confirmedCount, status: "CONFIRMED", color: "text-blue-600 dark:text-blue-400",   Icon: Handshake   },
+          { label: "Completed", count: completedCount, status: "COMPLETED", color: "text-teal-600 dark:text-teal-400",   Icon: CheckCircle2 },
+          { label: "Cancelled", count: cancelledCount, status: "CANCELLED", color: "text-red-600 dark:text-red-400",     Icon: XCircle     },
+        ].map(({ label, count, status, color, Icon }) => (
           <Card
             key={label}
             className={cn(
-              "p-4 rounded-md cursor-pointer hover:shadow-sm transition-all border",
-              bg, border,
+              "p-4 rounded-md cursor-pointer hover:shadow-sm transition-all card-glass border border-stone-200 dark:border-[#2a2d3e]",
               statusFilter === status && "ring-2 ring-offset-1 ring-current",
             )}
             onClick={() => {
