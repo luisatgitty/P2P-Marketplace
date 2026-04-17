@@ -247,6 +247,7 @@ export default function Navbar() {
             <Image
               src="/logo.png"
               alt="P2P Marketplace"
+              loading="eager"
               width={32}
               height={32}
               className="shrink-0"

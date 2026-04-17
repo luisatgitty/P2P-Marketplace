@@ -126,6 +126,7 @@ export function SafeImage({
       {...props}
       src={imgSrc}
       alt={alt || config.alt}
+      loading="eager"
       className={cn(config.class, className)}
       // If the src fails to load, fallback to the placeholder image
       // NOTE: Broken image can cause flickering if the URL is valid but the server is down
