@@ -389,11 +389,11 @@ export default function AdminLayout({
         onClose={() => setLogoutModalOpen(false)}
       />
 
-      <div className="fixed inset-0 z-100 flex bg-stone-100 dark:bg-[#0f1117] overflow-hidden">
+      <div className="fixed inset-0 z-100 bg-stone-100 dark:bg-[#0f1117] overflow-hidden">
         {/* ── Sidebar ─────────────────────────────────────────────────────── */}
         <div
           className={cn(
-            "flex flex-col shrink-0 bg-[#1e2433] h-full",
+            "absolute top-0 left-0 h-full bg-[#1e2433] z-10",
             "transition-all duration-300 ease-in-out",
             effectiveCollapsed ? "w-16" : "w-60",
           )}
@@ -408,7 +408,12 @@ export default function AdminLayout({
         </div>
 
         {/* ── Main area ───────────────────────────────────────────────────── */}
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div
+          className={cn(
+            "absolute inset-0 flex flex-col overflow-hidden",
+            effectiveCollapsed ? "ml-16" : "ml-0",
+          )}
+        >
           <main className="flex-1 overflow-y-auto">{children}</main>
         </div>
       </div>
