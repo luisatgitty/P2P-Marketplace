@@ -114,8 +114,8 @@ function SidebarContent({
 
         if (!active) return;
 
-        const pendingReports = reports.filter((item) => item.status === "PENDING").length;
-        const pendingVerifications = verifications.filter((item) => item.status === "PENDING").length;
+        const pendingReports = reports.reports.filter((item) => item.status === "PENDING").length;
+        const pendingVerifications = verifications.verifications.filter((item) => item.status === "PENDING").length;
 
         setBadges({
           [BADGE_KEYS.reports]: pendingReports,
@@ -150,9 +150,10 @@ function SidebarContent({
         <Image
           src="/logo.png"
           alt="P2P Marketplace"
+          loading="eager"
           width={32}
           height={32}
-          className="rounded-md shrink-0"
+          className="shrink-0"
         />
 
         {/* Text — only shown when expanded */}
