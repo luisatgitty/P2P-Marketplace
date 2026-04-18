@@ -4,7 +4,6 @@ import Image from "next/image";
 import Link from "next/link";
 import { Suspense, useState, useRef, useEffect, useCallback } from "react";
 import { useUser } from "@/utils/UserContext";
-import { useTheme } from "next-themes";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { getConversations } from "@/services/messagingService";
 import {
@@ -15,7 +14,7 @@ import {
 import { toast } from "sonner";
 import { LogoutModal } from "@/components/auth/logout-modal";
 import {
-  Sun, Moon, MessageCircle, LogOut, User, Home,
+  MessageCircle, LogOut, User, Home,
   ChevronDown, Tag, Store, Wrench, LayoutGrid, UserPlus,
   Bell, LayoutDashboard,
 } from "lucide-react";
@@ -23,6 +22,7 @@ import { cn } from "@/lib/utils";
 import { SafeImage } from "@/components/ui/safe-image";
 import VerificationBadge from "@/components/verification-badge";
 import { NotificationItem, type NotificationItemData } from "@/components/notifications/notification-item";
+import { ThemeModeSwitch } from "@/components/theme-mode-switch";
 
 // ─── Tab config ────────────────────────────────────────────────────────────────
 const TABS = [
@@ -84,13 +84,11 @@ function TabsFallback() {
 // ─── Main Navbar ───────────────────────────────────────────────────────────────
 export default function Navbar() {
   const { isAuth, user } = useUser();
-  const { theme, setTheme } = useTheme();
   const pathname = usePathname();
   const isVerifiedSeller = (user?.status ?? "").toLowerCase() === "verified";
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [notificationOpen, setNotificationOpen] = useState(false);
   const [logoutModalOpen, setLogoutModalOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
   const [hasUnreadMessages, setHasUnreadMessages] = useState(false);
   const [notifications, setNotifications] = useState<NotificationItemData[]>([]);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -175,9 +173,6 @@ export default function Navbar() {
       // Keep current state on transient errors.
     }
   }, [isAuth]);
-
-  // Avoid hydration mismatch for theme
-  useEffect(() => setMounted(true), []);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -313,6 +308,8 @@ export default function Navbar() {
               </div>
             )}
 
+            <ThemeModeSwitch compact className="shrink-0" />
+
             {/* Profile dropdown */}
             <div className="relative" ref={dropdownRef}>
               <button
@@ -365,18 +362,6 @@ export default function Navbar() {
                               <LayoutDashboard size={15} className="text-stone-400" />
                               Admin Dashboard
                             </Link>
-                            {mounted && (
-                              <button
-                                onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-                                className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-stone-200 hover:bg-white/10 hover:text-white transition-colors"
-                              >
-                                {theme === "dark"
-                                  ? <Sun size={15} className="text-amber-400" />
-                                  : <Moon size={15} className="text-stone-300" />
-                                }
-                                {theme === "dark" ? "Light Mode" : "Dark Mode"}
-                              </button>
-                            )}
                           </>
                         ) : (
                           <>
@@ -428,18 +413,6 @@ export default function Navbar() {
                                 Become a Seller
                               </Link>
                             )}
-                            {mounted && (
-                              <button
-                                onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-                                className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-stone-200 hover:bg-white/10 hover:text-white transition-colors"
-                              >
-                                {theme === "dark"
-                                  ? <Sun size={15} className="text-amber-400" />
-                                  : <Moon size={15} className="text-stone-300" />
-                                }
-                                {theme === "dark" ? "Light Mode" : "Dark Mode"}
-                              </button>
-                            )}
                           </>
                         )}
                       </div>
@@ -479,18 +452,6 @@ export default function Navbar() {
                         <UserPlus size={15} />
                         Create Account
                       </Link>
-                      {mounted && (
-                        <button
-                          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-                          className="flex items-center gap-3 w-full px-4 py-3 text-sm font-semibold text-stone-200 hover:bg-white/10 hover:text-white transition-colors"
-                        >
-                          {theme === "dark"
-                            ? <Sun size={15} className="text-amber-400" />
-                            : <Moon size={15} className="text-stone-300" />
-                          }
-                          {theme === "dark" ? "Light Mode" : "Dark Mode"}
-                        </button>
-                      )}
                     </div>
                   )}
                 </div>

@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { useTheme } from "next-themes";
 import { useUser } from "@/utils/UserContext";
 import { LogoutModal } from "@/components/auth/logout-modal";
 import {
@@ -21,13 +20,12 @@ import {
   ChevronRight,
   PanelLeftClose,
   PanelLeftOpen,
-  Sun,
-  Moon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getAdminReports } from "@/services/adminReportsService";
 import { getAdminVerifications } from "@/services/adminVerificationsService";
 import { SafeImage } from "@/components/ui/safe-image";
+import { ThemeModeSwitch } from "@/components/theme-mode-switch";
 
 const BADGE_KEYS = {
   reports: "/admin/reports",
@@ -84,15 +82,12 @@ function SidebarContent({
   onRequestLogout,
 }: SidebarContentProps) {
   const pathname = usePathname();
-  const { theme, resolvedTheme, setTheme } = useTheme();
   const { user } = useUser();
   const [dropdownOpen, setDropdown] = useState(false);
   const [badges, setBadges] = useState<Record<string, number>>({
     [BADGE_KEYS.reports]: 0,
     [BADGE_KEYS.verifications]: 0,
   });
-  const effectiveTheme = resolvedTheme ?? theme;
-  const isDarkMode = effectiveTheme === "dark";
   const roleFromUser = String(user?.role ?? "").toUpperCase();
   const currentAdminRole: "ADMIN" | "SUPER_ADMIN" | null =
     roleFromUser === "SUPER_ADMIN"
@@ -240,42 +235,11 @@ function SidebarContent({
 
       {/* ── Theme toggle near profile ─────────────────────────────────────── */}
       <div className={cn("shrink-0 px-3 pb-2", collapsed ? "px-2" : "px-3")}>
-        <button
-          type="button"
-          onClick={() => setTheme(isDarkMode ? "light" : "dark")}
-          role="switch"
-          aria-checked={isDarkMode}
-          aria-label={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
-          title={collapsed ? (isDarkMode ? "Light Mode" : "Dark Mode") : undefined}
-          className={cn(
-            "w-full flex items-center rounded-lg transition-all text-slate-300 hover:bg-white/5 hover:text-white",
-            collapsed ? "justify-center w-10 h-10 mx-auto" : "justify-between px-3 py-2.5 text-sm font-medium",
-          )}
-        >
-          {!collapsed && (
-            <span>{isDarkMode ? "Dark Mode" : "Light Mode"}</span>
-          )}
-
-          <span
-            className={cn(
-              "relative inline-flex h-6 w-11 items-center rounded-full transition-colors",
-              isDarkMode ? "bg-sky-500/70" : "bg-slate-600/70",
-            )}
-          >
-            <span
-              className={cn(
-                "absolute top-0.5 left-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-white text-slate-700 shadow-sm transition-transform duration-200",
-                isDarkMode ? "translate-x-5" : "translate-x-0",
-              )}
-            >
-              {isDarkMode ? (
-                <Moon className="h-3 w-3" />
-              ) : (
-                <Sun className="h-3 w-3" />
-              )}
-            </span>
-          </span>
-        </button>
+        <ThemeModeSwitch
+          showLabel={!collapsed}
+          compact={collapsed}
+          className={collapsed ? "mx-auto" : undefined}
+        />
       </div>
 
       {/* ── Bottom: user button + dropdown ──────────────────────────────── */}
