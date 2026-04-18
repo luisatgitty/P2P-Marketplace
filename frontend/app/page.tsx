@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { CATEGORIES } from "@/types/listings";
+import Link from "next/link";
 
 type ListingWithMeta = HomeListing;
 
@@ -216,6 +217,22 @@ function HomePageInner() {
     (v, i) => v !== ["", "All Categories", "Any Condition", "Province", "City/Municipality", "", ""][i]
   );
 
+  const viewRandomListing = () => {
+    if (allListings.length === 0) {
+      toast.error("No listings available to discover right now.", { position: "top-center" });
+      return;
+    }
+
+    const randomIndex = Math.floor(Math.random() * allListings.length);
+    const randomListing = allListings[randomIndex];
+    if (!randomListing?.id) {
+      toast.error("Unable to open a random listing.", { position: "top-center" });
+      return;
+    }
+
+    router.push(`/listing/${randomListing.id}`);
+  };
+
   const handlePostForFree = () => {
     if (!isAuth) {
       router.push("/login");
@@ -245,52 +262,48 @@ function HomePageInner() {
         <div className="absolute inset-0 opacity-20"
           style={{ backgroundImage: "radial-gradient(circle at 20% 50%, #b45309 0%, transparent 50%), radial-gradient(circle at 80% 20%, #1e40af 0%, transparent 40%)" }}
         />
-        <div className="relative z-20 max-w-7xl mx-auto px-4 sm:px-7 py-8 sm:py-10">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-8">
+        <div className="relative z-20 max-w-7xl mx-auto px-4 sm:px-7 py-6 sm:py-8">
+          <div className="flex flex-col md:flex-row lg:items-center lg:justify-between gap-8">
 
-            {/* Left: Headline */}
-            <div className="max-w-xl animate-fade-in-up">
-              <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-stone-100 leading-tight">
+            {/* Headline */}
+            <div className="max-w-xl animate-fade-in-up shrink-0">
+              <h1 className="text-2xl md:text-3xl font-bold text-stone-100">
                 Buy, Sell, Rent & Avail Services<br />
                 <span className="text-stone-400">from people near you.</span>
               </h1>
               <p className="text-stone-400 text-sm sm:text-base mt-3 max-w-md">
                 The Philippines&apos; trusted peer-to-peer marketplace. Find great deals or reach thousands of buyers for free.
               </p>
+
+              {/* Hero Buttons */}
               <div className="flex gap-3 mt-6">
-                <a href="#listings" className="bg-amber-700 hover:bg-amber-600 text-white text-sm font-semibold px-5 py-2.5 rounded-full transition-colors">
-                  Browse Listings
-                </a>
-                {user?.status === "VERIFIED" ? (
-                  <button
-                    onClick={handlePostForFree}
-                    className="border border-stone-600 text-stone-300 hover:bg-amber-400 hover:border-amber-400 hover:text-white text-sm font-medium px-5 py-2.5 rounded-full transition-colors"
-                  >
-                    Post for Free
-                  </button>
-                ) : (
-                  <button
-                    onClick={handlePostForFree}
-                    className="border border-stone-600 text-stone-300 hover:bg-amber-400 hover:border-amber-400 hover:text-white text-sm font-medium px-5 py-2.5 rounded-full transition-colors"
-                  >
-                    Become a Seller
-                  </button>
-                )}
+                <Button
+                  onClick={viewRandomListing}
+                  className="bg-amber-700 hover:bg-amber-600 text-white"
+                >
+                  Feeling Lucky
+                </Button>
+                <Button
+                  onClick={handlePostForFree}
+                  className="bg-slate-900 text-white hover:bg-sky-600 hover:text-white"
+                >
+                  {user?.status === "VERIFIED" ? "Post for Free" : "Become a Seller"}
+                </Button>
                 
               </div>
             </div>
 
-            {/* Right: Stats */}
-            <div className="flex gap-6 sm:gap-10 shrink-0">
+            {/* Stats */}
+            <div className="hidden md:flex">
               {[
                 { value: `${totalCount.toLocaleString()}+`, label: "Active Listings" },
-                { value: "Free",    label: "Listing of items"   },
-                { value: "PH-Wide", label: "All regions"     },
+                { value: "Free",    label: "Listing of items" },
+                { value: "PH-Wide", label: "All regions" },
               ].map((stat, i) => (
                 <div key={stat.label} className="flex items-center gap-6 sm:gap-10">
-                  {i > 0 && <div className="w-px h-12 bg-stone-700" />}
+                  {i > 0 && <div className="w-px h-12 ml-6 bg-slate-700" />}
                   <div className="text-center">
-                    <p className="text-xl sm:text-2xl font-bold text-stone-100">{stat.value}</p>
+                    <p className="text-xl sm:text-2xl font-bold text-stone-100 whitespace-nowrap">{stat.value}</p>
                     <p className="text-sm text-stone-300 mt-0.5">{stat.label}</p>
                   </div>
                 </div>
