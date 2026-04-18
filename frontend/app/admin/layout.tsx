@@ -220,9 +220,9 @@ function SidebarContent({
               {/* Badge: count when expanded, red dot when collapsed */}
               {badge ? (
                 collapsed ? (
-                  <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-red-500" />
+                  <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-red-500" />
                 ) : (
-                  <span className="w-5 h-5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center shrink-0">
+                  <span className="w-4 h-4 pb-0.5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
                     {badge > 9 ? "9+" : badge}
                   </span>
                 )
@@ -236,10 +236,7 @@ function SidebarContent({
 
       {/* ── Bottom: user button + dropdown ──────────────────────────────── */}
       <div
-        className={cn(
-          "relative shrink-0 border-t border-white/10",
-          collapsed ? "p-2" : "p-4",
-        )}
+        className={"relative p-4 shrink-0 border-t border-white/10"}
       >
         {/* Close dropdown on outside click */}
         {dropdownOpen && (
@@ -254,9 +251,7 @@ function SidebarContent({
           <div
             className={cn(
               "absolute z-50 bottom-full mb-2",
-              // When collapsed, align to left and set a fixed width so it
-              // extends to the right of the icon-only sidebar.
-              collapsed ? "left-0 min-w-52" : "left-2 right-2",
+              "min-w-52 left-2 right-2",
               "bg-[#252f45] border border-white/10 rounded-2xl shadow-2xl overflow-hidden",
               // Slide-up entrance
               "animate-in fade-in slide-in-from-bottom-2 duration-150",
@@ -317,11 +312,11 @@ function SidebarContent({
           className={cn(
             "w-full flex items-center rounded-xl transition-all",
             "hover:bg-white/5 active:bg-white/10",
-            collapsed ? "justify-center w-10 h-10 mx-auto" : "gap-3 px-2 py-2",
+            collapsed ? "justify-center w-8 h-8 mx-auto" : "gap-3",
           )}
         >
           {/* Avatar */}
-          <div className="w-9 h-9 rounded-full overflow-hidden shrink-0 ring-2 ring-white/10">
+          <div className="w-8 h-8 rounded-full overflow-hidden shrink-0 ring-2 ring-white/10">
             <SafeImage
               src={user?.profileImageUrl}
               type="profile"
