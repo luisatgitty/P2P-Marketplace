@@ -56,11 +56,15 @@ const NAV: NavItem[] = [
 const USER_MENU: NavItem[] = [
   {
     href: "/admin/admins",
-    label: "Admin Management",
+    label: "Admins",
     Icon: UserCog,
     roles: ["SUPER_ADMIN"],
   },
-  { href: "/admin/settings", label: "Settings", Icon: Settings },
+  {
+    href: "/admin/settings",
+    label: "Settings",
+    Icon: Settings 
+  },
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -251,8 +255,8 @@ function SidebarContent({
           <div
             className={cn(
               "absolute z-50 bottom-full mb-2",
-              "min-w-52 left-2 right-2",
-              "bg-[#252f45] border border-white/10 rounded-2xl shadow-2xl overflow-hidden",
+              "min-w-46 left-2 right-2",
+              "bg-[#252f45] border border-white/10 rounded-lg shadow-2xl overflow-hidden",
               // Slide-up entrance
               "animate-in fade-in slide-in-from-bottom-2 duration-150",
             )}
@@ -269,7 +273,7 @@ function SidebarContent({
                   }}
                   className="flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-slate-300 hover:bg-white/5 hover:text-white transition-colors"
                 >
-                  <Icon className="w-3.5 h-3.5 shrink-0 text-slate-400" />
+                  <Icon className="w-4 h-4 shrink-0 text-slate-400" />
                   {label}
                 </Link>
               ))}
@@ -310,7 +314,7 @@ function SidebarContent({
           type="button"
           onClick={() => setDropdown((v) => !v)}
           className={cn(
-            "w-full flex items-center rounded-xl transition-all",
+            "w-full flex items-center rounded-lg transition-all",
             "hover:bg-white/5 active:bg-white/10",
             collapsed ? "justify-center w-8 h-8 mx-auto" : "gap-3",
           )}
