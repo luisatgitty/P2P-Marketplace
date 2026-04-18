@@ -238,6 +238,46 @@ function SidebarContent({
         })}
       </nav>
 
+      {/* ── Theme toggle near profile ─────────────────────────────────────── */}
+      <div className={cn("shrink-0 px-3 pb-2", collapsed ? "px-2" : "px-3")}>
+        <button
+          type="button"
+          onClick={() => setTheme(isDarkMode ? "light" : "dark")}
+          role="switch"
+          aria-checked={isDarkMode}
+          aria-label={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
+          title={collapsed ? (isDarkMode ? "Light Mode" : "Dark Mode") : undefined}
+          className={cn(
+            "w-full flex items-center rounded-lg transition-all text-slate-300 hover:bg-white/5 hover:text-white",
+            collapsed ? "justify-center w-10 h-10 mx-auto" : "justify-between px-3 py-2.5 text-sm font-medium",
+          )}
+        >
+          {!collapsed && (
+            <span>{isDarkMode ? "Dark Mode" : "Light Mode"}</span>
+          )}
+
+          <span
+            className={cn(
+              "relative inline-flex h-6 w-11 items-center rounded-full transition-colors",
+              isDarkMode ? "bg-sky-500/70" : "bg-slate-600/70",
+            )}
+          >
+            <span
+              className={cn(
+                "absolute top-0.5 left-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-white text-slate-700 shadow-sm transition-transform duration-200",
+                isDarkMode ? "translate-x-5" : "translate-x-0",
+              )}
+            >
+              {isDarkMode ? (
+                <Moon className="h-3 w-3" />
+              ) : (
+                <Sun className="h-3 w-3" />
+              )}
+            </span>
+          </span>
+        </button>
+      </div>
+
       {/* ── Bottom: user button + dropdown ──────────────────────────────── */}
       <div
         className={"relative p-4 shrink-0 border-t border-white/10"}
@@ -277,19 +317,6 @@ function SidebarContent({
                   {label}
                 </Link>
               ))}
-
-              <button
-                type="button"
-                onClick={() => setTheme(isDarkMode ? "light" : "dark")}
-                className="flex items-center gap-3 w-full px-4 py-2.5 text-sm font-medium text-slate-300 hover:bg-white/5 hover:text-white transition-colors"
-              >
-                {isDarkMode ? (
-                  <Sun className="w-3.5 h-3.5 shrink-0 text-slate-400" />
-                ) : (
-                  <Moon className="w-3.5 h-3.5 shrink-0 text-slate-400" />
-                )}
-                {isDarkMode ? "Light Mode" : "Dark Mode"}
-              </button>
             </div>
 
             {/* Log out */}
