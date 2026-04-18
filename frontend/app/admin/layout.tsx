@@ -75,7 +75,7 @@ interface SidebarContentProps {
 
 function SidebarContent({
   onNavigate,
-  collapsed = false,
+  collapsed = true,
   onToggleCollapse,
   onRequestLogout,
 }: SidebarContentProps) {
@@ -366,7 +366,7 @@ export default function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(true);
   const [isSmallScreen, setIsSmallScreen] = useState(false);
   const [logoutModalOpen, setLogoutModalOpen] = useState(false);
 
@@ -380,7 +380,7 @@ export default function AdminLayout({
     return () => window.removeEventListener("resize", checkScreen);
   }, []);
 
-  const effectiveCollapsed = isSmallScreen ? true : collapsed;
+  const effectiveCollapsed = collapsed;
 
   return (
     <>
@@ -409,12 +409,9 @@ export default function AdminLayout({
 
         {/* ── Main area ───────────────────────────────────────────────────── */}
         <div
-          className={cn(
-            "absolute inset-0 flex flex-col overflow-hidden",
-            effectiveCollapsed ? "ml-16" : "ml-0",
-          )}
+          className={"absolute inset-0 flex flex-col ml-0 overflow-hidden"}
         >
-          <main className="flex-1 overflow-y-auto">{children}</main>
+          <main className="flex-1 overflow-y-auto ml-16">{children}</main>
         </div>
       </div>
     </>
