@@ -51,6 +51,32 @@ export interface ProfilePayload {
   reviews: ProfileReviewItem[];
   receivedReviews?: ProfileReviewItem[];
   personalReviews?: ProfileReviewItem[];
+  listingsTotal?: number;
+  bookmarksTotal?: number;
+  receivedReviewsTotal?: number;
+  personalReviewsTotal?: number;
+}
+
+export interface ProfilePageQuery {
+  listingsLimit?: number;
+  listingsOffset?: number;
+  bookmarksLimit?: number;
+  bookmarksOffset?: number;
+  receivedReviewsLimit?: number;
+  receivedReviewsOffset?: number;
+  personalReviewsLimit?: number;
+  personalReviewsOffset?: number;
+}
+
+function appendProfileQueryParams(url: URL, query?: ProfilePageQuery) {
+  if (!query) return;
+
+  const entries = Object.entries(query) as Array<[keyof ProfilePageQuery, number | undefined]>;
+  for (const [key, value] of entries) {
+    if (typeof value === "number" && Number.isFinite(value) && value >= 0) {
+      url.searchParams.set(key, String(value));
+    }
+  }
 }
 
 export interface UpdateProfilePayload {
@@ -90,9 +116,12 @@ export interface UpdateProfileImagesPayload {
   removeCoverImage?: boolean;
 }
 
-export async function getProfileData(): Promise<ProfilePayload> {
+export async function getProfileData(query?: ProfilePageQuery): Promise<ProfilePayload> {
   try {
-    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/profile/me`, {
+    const url = new URL(`${process.env.NEXT_PUBLIC_API_URL}/profile/me`);
+    appendProfileQueryParams(url, query);
+
+    const res = await fetch(url.toString(), {
       method: "GET",
       credentials: "include",
     });
@@ -108,9 +137,12 @@ export async function getProfileData(): Promise<ProfilePayload> {
   }
 }
 
-export async function getUserProfileData(userId: string): Promise<ProfilePayload> {
+export async function getUserProfileData(userId: string, query?: ProfilePageQuery): Promise<ProfilePayload> {
   try {
-    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/profile/${userId}`, {
+    const url = new URL(`${process.env.NEXT_PUBLIC_API_URL}/profile/${userId}`);
+    appendProfileQueryParams(url, query);
+
+    const res = await fetch(url.toString(), {
       method: "GET",
       credentials: "include",
     });

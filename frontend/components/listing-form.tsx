@@ -1086,10 +1086,20 @@ export default function ListingForm({
   const next = () => {
     if (validate(step)) setStep((s) => s + 1);
   };
+
   const back = () => {
     setErrors({});
     setStep((s) => s - 1);
   };
+
+  const discardProgress = () => {
+    const confirmed = window.confirm(
+      "Are you sure you want to discard your changes?",
+    );
+    if (!confirmed) return;
+    router.back();
+  };
+  
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate(2)) return;
@@ -1976,61 +1986,65 @@ export default function ListingForm({
 
           {/* Nav */}
           <div className="flex items-center justify-between mt-6 pt-5 border-t border-stone-200 dark:border-[#2a2d3e]">
-            {step > 0 ? (
-              <button
-                type="button"
-                onClick={back}
-                className="flex items-center gap-1.5 text-sm font-semibold text-stone-500 dark:text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 transition-colors"
-              >
-                <ChevronLeft size={16} /> Back
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() =>
-                  router.push(isEdit ? `/listing/${listingId}` : "/create")
-                }
-                className="flex items-center gap-1.5 text-sm font-semibold text-stone-500 dark:text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 transition-colors"
-              >
-                <ChevronLeft size={16} />{" "}
-                {isEdit ? "Back to listing" : "Change type"}
-              </button>
-            )}
+            <div className="flex items-center gap-4">
+              {step > 0 ? (
+                <Button
+                  variant={'ghost'}
+                  onClick={back}
+                >
+                  <ChevronLeft size={16} /> Back
+                </Button>
+              ) : (
+                <Button
+                  variant={'ghost'}
+                  onClick={() =>
+                    router.push(isEdit ? `/listing/${listingId}` : "/create")
+                  }
+                >
+                  <ChevronLeft size={16} />{" "}
+                  {isEdit ? "Back to listing" : "Change type"}
+                </Button>
+              )}
+            </div>
 
-            {step < 2 ? (
-              <button
-                type="button"
-                onClick={next}
-                className={cn(
-                  "flex items-center gap-1.5 px-6 py-2.5 rounded-full text-sm font-bold transition-all",
-                  cfg.btnCls,
-                )}
+            <div className="flex items-center gap-4">
+              <Button
+                variant={'destructive'}
+                onClick={discardProgress}
+                className="hover:bg-red-600 dark:hover:bg-red-600 font-bold"
               >
-                Continue <ChevronRight size={15} />
-              </button>
-            ) : (
-              <button
-                type="submit"
-                disabled={submitting}
-                className={cn(
-                  "flex items-center gap-2 px-6 py-2.5 rounded-full text-sm font-bold transition-all cursor-pointer",
-                  cfg.btnCls,
-                  "disabled:opacity-60 disabled:cursor-not-allowed",
-                )}
-              >
-                {submitting ? (
-                  <>
-                    <Loader2 size={14} className="animate-spin" />{" "}
-                    {isEdit ? "Saving..." : "Publishing..."}
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle2 size={14} />{" "}
-                    {isEdit ? "Save Changes" : "Publish Listing"}
-                  </>
-                )}
-              </button>
-            )}
+                <X size={14} /> Discard
+              </Button>
+
+              {step < 2 ? (
+                <Button
+                  onClick={next}
+                  className="font-bold"
+                >
+                  Continue <ChevronRight size={15} />
+                </Button>
+              ) : (
+                <Button
+                  type="submit"
+                  disabled={submitting}
+                  className="font-bold"
+                >
+                  {submitting ? (
+                    <>
+                      <Loader2 size={14} className="animate-spin" />{" "}
+                      {isEdit ? "Saving..." : "Publishing..."}
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 size={14} />{" "}
+                      {isEdit ? "Save Changes" : "Publish Listing"}
+                    </>
+                  )}
+                </Button>
+              )}
+
+            </div>
+
           </div>
         </form>
       </div>

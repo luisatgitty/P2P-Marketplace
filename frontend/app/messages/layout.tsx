@@ -55,7 +55,6 @@ function ConversationShell({ children }: { children: React.ReactNode }) {
               autoFocusKey={conversation.id}
             />
           )}
-          <div className="h-14 md:h-0 shrink-0" />
         </>
       ) : (
         children
@@ -73,7 +72,7 @@ export default function MessagesLayout({ children }: { children: React.ReactNode
   const isInConversation = pathname !== "/messages";
 
   const handleTabChange = (tab: MessageTab) => {
-    setActiveTab(tab);
+    setActiveTab((prev) => (prev === tab ? "all" : tab));
     // On mobile, tapping a tab while in a conversation navigates back to the list
     if (isInConversation) {
       router.push("/messages");
@@ -83,20 +82,6 @@ export default function MessagesLayout({ children }: { children: React.ReactNode
   return (
     <MessageShellProvider>
     <div className="h-[calc(100vh-60px)] flex overflow-hidden bg-[#faf6f0] dark:bg-[#0b0f1a]">
-
-      {/* ══════════════════════════════════════════════
-          LEFT — vertical tab sidebar (md+)
-      ══════════════════════════════════════════════ */}
-      <aside className="hidden md:flex flex-col w-14 lg:w-32 shrink-0 bg-[#1a2235] border-r border-white/5">
-        {/* Tab navigation */}
-        <div className="flex-1 overflow-hidden pt-1">
-          <MessagesTabNav
-            activeTab={activeTab}
-            onTabChange={handleTabChange}
-            orientation="vertical"
-          />
-        </div>
-      </aside>
 
       {/* ══════════════════════════════════════════════
           MIDDLE — conversations list
@@ -113,11 +98,15 @@ export default function MessagesLayout({ children }: { children: React.ReactNode
         )}
       >
         {/* Panel header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-          <div>
-            <h1 className="text-base font-bold text-stone-900 dark:text-stone-50 leading-tight">
-              Messages
-            </h1>
+        <div className="flex items-center px-3 py-3 border-b border-border">
+          <h1 className="shrink-0 px-1 pr-2 text-base font-bold text-stone-900 dark:text-stone-50 leading-tight">
+            Messages
+          </h1>
+          <div className="min-w-0 flex-1">
+            <MessagesTabNav
+              activeTab={activeTab}
+              onTabChange={handleTabChange}
+            />
           </div>
         </div>
 
@@ -139,33 +128,6 @@ export default function MessagesLayout({ children }: { children: React.ReactNode
         {isInConversation ? <ConversationShell>{children}</ConversationShell> : children}
       </div>
 
-      {/* ══════════════════════════════════════════════
-          BOTTOM — mobile-only tab nav
-          Always rendered on mobile so users can switch
-          categories even while reading a conversation.
-      ══════════════════════════════════════════════ */}
-      <nav
-        aria-label="Message categories"
-        className={cn(
-          "md:hidden fixed bottom-0 inset-x-0 z-40",
-          "bg-[#faf6f0] dark:bg-[#1c1f2e] border-t border-border",
-          // Add padding for iOS home indicator
-          "pb-safe"
-        )}
-      >
-        <MessagesTabNav
-          activeTab={activeTab}
-          onTabChange={handleTabChange}
-          orientation="horizontal"
-        />
-      </nav>
-
-      {/* Spacer so the content isn't hidden behind the mobile bottom nav */}
-      <style>{`
-        @supports (padding-bottom: env(safe-area-inset-bottom)) {
-          .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
-        }
-      `}</style>
     </div>
     </MessageShellProvider>
   );

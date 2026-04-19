@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect, useCallback, type UIEvent } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import {
   Search, X, CheckCircle2, XCircle, ShieldCheck, Clock,
   Eye, AlertTriangle, IdCard,
@@ -555,16 +555,15 @@ export default function VerificationsPage() {
   const [selected, setSelected] = useState<AdminVerification | null>(null);
   const [records, setRecords] = useState<AdminVerification[]>([]);
   const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [hasMore, setHasMore] = useState(true);
-  const [offset, setOffset] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
-  const FETCH_LIMIT = 16;
+  const FETCH_LIMIT = 15;
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
+      setCurrentPage(1);
       setDebouncedSearch(search.trim());
     }, 250);
 
@@ -574,6 +573,7 @@ export default function VerificationsPage() {
   }, [search]);
 
   function toggleSort(field: SortField) {
+    setCurrentPage(1);
     setSort(s => s.field === field ? { field, dir: s.dir === "asc" ? "desc" : "asc" } : { field, dir: "asc" });
   }
 
@@ -617,14 +617,9 @@ export default function VerificationsPage() {
     };
   }, []);
 
-  const loadVerifications = useCallback(async (reset: boolean, requestedOffset = 0) => {
-    if (reset) {
-      setLoading(true);
-    } else {
-      setLoadingMore(true);
-    }
-
-    const nextOffset = reset ? 0 : requestedOffset;
+  const loadVerifications = useCallback(async (pageNumber: number) => {
+    setLoading(true);
+    const nextOffset = (pageNumber - 1) * FETCH_LIMIT;
 
     try {
       const payload = await getAdminVerifications({
@@ -636,25 +631,21 @@ export default function VerificationsPage() {
       });
 
       const received = (payload.verifications ?? []).map(mapRecord);
-      const nextCount = reset ? received.length : nextOffset + received.length;
-
-      setRecords((prev) => (reset ? received : [...prev, ...received]));
-      setOffset(nextCount);
+      setRecords(received);
       setTotalCount(payload.total);
-      setHasMore(nextCount < payload.total);
+      setCurrentPage(pageNumber);
     } catch (error) {
       const message = typeof error === "string" ? error : "Failed to load verification records";
       toast.error(message, { position: "top-center" });
     } finally {
       setLoading(false);
-      setLoadingMore(false);
       setIsRefreshing(false);
     }
   }, [mapRecord, debouncedSearch, statusFilter, idTypeFilter]);
 
   useEffect(() => {
-    void loadVerifications(true, 0);
-  }, [debouncedSearch, statusFilter, idTypeFilter, loadVerifications]);
+    void loadVerifications(currentPage);
+  }, [currentPage, loadVerifications]);
 
   const filtered = useMemo(() => {
     let data = [...records];
@@ -693,6 +684,14 @@ export default function VerificationsPage() {
   const verifiedCount = records.filter(r => r.status === "VERIFIED").length;
   const rejectedCount = records.filter(r => r.status === "REJECTED").length;
   const hasActiveFilters = search || statusFilter !== "ALL" || idTypeFilter !== "ALL";
+  const totalPages = Math.max(1, Math.ceil(totalCount / FETCH_LIMIT));
+  const paginationPages = useMemo(() => {
+    const maxButtons = 5;
+    let start = Math.max(1, currentPage - 2);
+    let end = Math.min(totalPages, start + maxButtons - 1);
+    start = Math.max(1, end - maxButtons + 1);
+    return Array.from({ length: end - start + 1 }, (_, idx) => start + idx);
+  }, [currentPage, totalPages]);
 
   const SortIcon = ({ field }: { field: SortField }) => {
     if (sort.field !== field)
@@ -798,16 +797,6 @@ export default function VerificationsPage() {
     }
   }
 
-  function handleTableScroll(event: UIEvent<HTMLDivElement>) {
-    if (loading || loadingMore || !hasMore) return;
-
-    const node = event.currentTarget;
-    const remaining = node.scrollHeight - node.scrollTop - node.clientHeight;
-    if (remaining > 120) return;
-
-    void loadVerifications(false, offset);
-  }
-
   return (
     <div className="h-[calc(100vh)] p-5 sm:p-6 flex flex-col gap-5 min-h-0">
 
@@ -836,6 +825,7 @@ export default function VerificationsPage() {
               statusFilter === status && "ring-2 ring-offset-1 ring-current",
             )}
             onClick={() => {
+              setCurrentPage(1);
               setStatusFilter(prev => {
                 if (status === "ALL") return "ALL";
                 return prev === status ? "ALL" : status;
@@ -865,12 +855,12 @@ export default function VerificationsPage() {
         <div className="flex gap-2">
           <FilterSelect
             value={idTypeFilter}
-            onChange={v => { setIdTypeFilter(v as IdType); }}
+            onChange={v => { setIdTypeFilter(v as IdType); setCurrentPage(1); }}
             options={ID_TYPE_OPTIONS}
           />
           <FilterSelect
             value={statusFilter}
-            onChange={v => { setStatusFilter(v); }}
+            onChange={v => { setStatusFilter(v); setCurrentPage(1); }}
             options={[
               ["ALL", "All Status"], ["PENDING", "Pending"],
               ["VERIFIED", "Verified"], ["REJECTED", "Rejected"],
@@ -879,7 +869,7 @@ export default function VerificationsPage() {
           {hasActiveFilters && (
             <Button
               variant="outline"
-              onClick={() => { setSearch(""); setIdTypeFilter("ALL"); setStatusFilter("ALL"); }}
+              onClick={() => { setSearch(""); setIdTypeFilter("ALL"); setStatusFilter("ALL"); setCurrentPage(1); }}
               className="hover:bg-destructive/10! text-destructive! border-destructive! focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40"
             >
               <X className="w-3 h-3" /> Clear
@@ -891,7 +881,7 @@ export default function VerificationsPage() {
           variant="outline"
           onClick={() => {
             setIsRefreshing(true);
-            void loadVerifications(true, 0);
+            void loadVerifications(currentPage);
           }}
           disabled={loading}
           className="border-sky-600 text-sky-600! hover:bg-sky-600/10 focus-visible:border-sky-600 focus-visible:ring-sky-600/20 dark:border-sky-400 dark:text-sky-400! dark:hover:bg-sky-400/10 dark:focus-visible:border-sky-400 dark:focus-visible:ring-sky-400/40"
@@ -903,7 +893,7 @@ export default function VerificationsPage() {
       {/* Table */}
       <Card className="p-0 rounded-lg dark:bg-[#1c1f2e] dark:border-[#2a2d3e] overflow-hidden flex-1 min-h-0">
         <CardContent className="p-0 h-full min-h-0 flex flex-col">
-          <div className="overflow-auto h-full" onScroll={handleTableScroll}>
+          <div className="overflow-auto h-full">
             <Table>
               <TableHeader>
                 <TableRow className="border-stone-200 dark:border-[#2a2d3e] bg-stone-50 dark:bg-[#13151f] hover:bg-stone-50 dark:hover:bg-[#13151f]">
@@ -1022,28 +1012,50 @@ export default function VerificationsPage() {
                   })
                 )}
 
-                {loadingMore && (
-                  <TableRow>
-                    <TableCell colSpan={9} className="py-4 text-center text-sm text-stone-400 dark:text-stone-500">
-                      Loading more verification requests...
-                    </TableCell>
-                  </TableRow>
-                )}
-
-                {!hasMore && filtered.length > 0 && (
-                  <TableRow>
-                    <TableCell colSpan={9} className="py-4 text-center text-xs text-stone-400 dark:text-stone-500">
-                      End of verification results.
-                    </TableCell>
-                  </TableRow>
-                )}
               </TableBody>
             </Table>
           </div>
 
           <Separator className="dark:bg-[#2a2d3e]" />
-          <div className="px-4 py-3 text-sm text-stone-400 dark:text-stone-500">
-            Showing {filtered.length.toLocaleString()} of {totalCount.toLocaleString()} result{totalCount !== 1 ? "s" : ""}
+          <div className="px-4 py-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between text-sm text-stone-400 dark:text-stone-500">
+            <span>
+              Showing {filtered.length.toLocaleString()} of {totalCount.toLocaleString()} result{totalCount !== 1 ? "s" : ""}
+            </span>
+            <div className="flex items-center gap-1.5 self-end sm:self-auto">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                disabled={loading || currentPage <= 1}
+                className="h-8 px-2.5"
+              >
+                Prev
+              </Button>
+              {paginationPages.map((page) => (
+                <Button
+                  key={page}
+                  type="button"
+                  variant={page === currentPage ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setCurrentPage(page)}
+                  disabled={loading}
+                  className="h-8 min-w-8 px-2"
+                >
+                  {page}
+                </Button>
+              ))}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                disabled={loading || currentPage >= totalPages}
+                className="h-8 px-2.5"
+              >
+                Next
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>

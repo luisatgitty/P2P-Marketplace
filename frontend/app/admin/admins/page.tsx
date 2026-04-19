@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, type UIEvent } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Search, Plus, Trash2, Eye, EyeOff, X, UserCog,
   Shield, ShieldCheck, CheckCircle2, AlertTriangle,
@@ -364,17 +364,16 @@ export default function AdminsPage() {
   const [showAdd,              setShowAdd]              = useState(false);
   const [addSuccess,           setAddSuccess]           = useState<string | null>(null);
   const [loadingAdmins,        setLoadingAdmins]        = useState(true);
-  const [loadingMore,          setLoadingMore]          = useState(false);
-  const [hasMore,              setHasMore]              = useState(true);
-  const [offset,               setOffset]               = useState(0);
+  const [currentPage,          setCurrentPage]          = useState(1);
   const [totalCount,           setTotalCount]           = useState(0);
   const [isRefreshing,         setIsRefreshing]         = useState(false);
   const [removingId,           setRemovingId]           = useState<string | null>(null);
   const [actionLoadingUserId, setActionLoadingUserId] = useState<string | null>(null);
-  const FETCH_LIMIT = 12;
+  const FETCH_LIMIT = 10;
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
+      setCurrentPage(1);
       setDebouncedSearch(search.trim());
     }, 250);
 
@@ -419,14 +418,9 @@ export default function AdminsPage() {
   }
 
   // ── Load ──────────────────────────────────────────────────────────────────────
-  const loadAdmins = useCallback(async (reset: boolean, requestedOffset = 0) => {
-    if (reset) {
-      setLoadingAdmins(true);
-    } else {
-      setLoadingMore(true);
-    }
-
-    const nextOffset = reset ? 0 : requestedOffset;
+  const loadAdmins = useCallback(async (pageNumber: number) => {
+    setLoadingAdmins(true);
+    const nextOffset = (pageNumber - 1) * FETCH_LIMIT;
 
     try {
       const payload = await getAdminAccounts({
@@ -438,27 +432,24 @@ export default function AdminsPage() {
       });
 
       const received = (payload.admins ?? []).map(mapAdminRecord);
-      const nextCount = reset ? received.length : nextOffset + received.length;
-
-      setAdmins((prev) => (reset ? received : [...prev, ...received]));
-      setOffset(nextCount);
+      setAdmins(received);
       setTotalCount(payload.total);
-      setHasMore(nextCount < payload.total);
+      setCurrentPage(pageNumber);
     } catch (err) {
       const message = typeof err === "string" ? err : "Failed to load admin accounts";
       toast.error(message, { position: "top-center" });
     } finally {
       setLoadingAdmins(false);
-      setLoadingMore(false);
       setIsRefreshing(false);
     }
   }, [debouncedSearch, roleFilter, statusFilter]);
 
   useEffect(() => {
-    void loadAdmins(true, 0);
-  }, [debouncedSearch, roleFilter, statusFilter, loadAdmins]);
+    void loadAdmins(currentPage);
+  }, [currentPage, loadAdmins]);
 
   function toggleSort(field: SortField) {
+    setCurrentPage(1);
     setSort((current) => (
       current.field === field
         ? { field, dir: current.dir === "asc" ? "desc" : "asc" }
@@ -591,15 +582,14 @@ export default function AdminsPage() {
     }
   }
 
-  function handleTableScroll(event: UIEvent<HTMLDivElement>) {
-    if (loadingAdmins || loadingMore || !hasMore) return;
-
-    const node = event.currentTarget;
-    const remaining = node.scrollHeight - node.scrollTop - node.clientHeight;
-    if (remaining > 120) return;
-
-    void loadAdmins(false, offset);
-  }
+  const totalPages = Math.max(1, Math.ceil(totalCount / FETCH_LIMIT));
+  const paginationPages = useMemo(() => {
+    const maxButtons = 5;
+    let start = Math.max(1, currentPage - 2);
+    let end = Math.min(totalPages, start + maxButtons - 1);
+    start = Math.max(1, end - maxButtons + 1);
+    return Array.from({ length: end - start + 1 }, (_, idx) => start + idx);
+  }, [currentPage, totalPages]);
 
   // ── Render ────────────────────────────────────────────────────────────────────
   return (
@@ -668,6 +658,7 @@ export default function AdminsPage() {
               roleFilter === role && "ring-2 ring-offset-1 ring-current",
             )}
             onClick={() => {
+              setCurrentPage(1);
               setRoleFilter((prev) => {
                 if (role === "ALL") return "ALL";
                 return prev === role ? "ALL" : role;
@@ -702,7 +693,7 @@ export default function AdminsPage() {
         <div className="relative shrink-0">
           <select
             value={roleFilter}
-            onChange={e => { setRoleFilter(e.target.value); }}
+            onChange={e => { setRoleFilter(e.target.value); setCurrentPage(1); }}
             className="pl-3 pr-8 py-2 h-9 bg-transparent border border-stone-200 dark:border-[#2a2d3e] rounded-md text-sm text-stone-700 dark:text-stone-200 outline-none focus:border-stone-400 transition-colors appearance-none cursor-pointer dark:bg-[#13151f]"
           >
             <option value="ALL">All Roles</option>
@@ -721,7 +712,7 @@ export default function AdminsPage() {
         <div className="relative shrink-0">
           <select
             value={statusFilter}
-            onChange={e => { setStatusFilter(e.target.value); }}
+            onChange={e => { setStatusFilter(e.target.value); setCurrentPage(1); }}
             className="pl-3 pr-8 py-2 h-9 bg-transparent border border-stone-200 dark:border-[#2a2d3e] rounded-md text-sm text-stone-700 dark:text-stone-200 outline-none focus:border-stone-400 transition-colors appearance-none cursor-pointer dark:bg-[#13151f]"
           >
             <option value="ALL">All Status</option>
@@ -739,7 +730,7 @@ export default function AdminsPage() {
         {hasActiveFilters && (
           <Button
             variant="outline"
-            onClick={() => { setSearch(""); setRoleFilter("ALL"); setStatusFilter("ALL"); }}
+            onClick={() => { setSearch(""); setRoleFilter("ALL"); setStatusFilter("ALL"); setCurrentPage(1); }}
             className="hover:bg-destructive/10! text-destructive! border-destructive! focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40"
           >
             <X className="w-3 h-3" /> Clear
@@ -751,7 +742,7 @@ export default function AdminsPage() {
           variant="outline"
           onClick={() => {
             setIsRefreshing(true);
-            void loadAdmins(true, 0);
+            void loadAdmins(currentPage);
           }}
           disabled={loadingAdmins}
           className="border-sky-600 text-sky-600! hover:bg-sky-600/10 focus-visible:border-sky-600 focus-visible:ring-sky-600/20 dark:border-sky-400 dark:text-sky-400! dark:hover:bg-sky-400/10 dark:focus-visible:border-sky-400 dark:focus-visible:ring-sky-400/40"
@@ -763,7 +754,7 @@ export default function AdminsPage() {
       {/* ── Table ── */}
       <Card className="p-0 rounded-lg dark:bg-[#1c1f2e] dark:border-[#2a2d3e] overflow-hidden flex-1 min-h-0">
         <CardContent className="p-0 h-full min-h-0 flex flex-col">
-          <div className="overflow-auto h-full" onScroll={handleTableScroll}>
+          <div className="overflow-auto h-full">
             <Table>
               <TableHeader>
                 <TableRow className="border-stone-200 dark:border-[#2a2d3e] bg-stone-50 dark:bg-[#13151f] hover:bg-stone-50 dark:hover:bg-[#13151f]">
@@ -965,28 +956,50 @@ export default function AdminsPage() {
                   ))
                 )}
 
-                {loadingMore && (
-                  <TableRow>
-                    <TableCell colSpan={10} className="py-4 text-center text-sm text-stone-400 dark:text-stone-500">
-                      Loading more admin accounts…
-                    </TableCell>
-                  </TableRow>
-                )}
-
-                {!hasMore && filtered.length > 0 && (
-                  <TableRow>
-                    <TableCell colSpan={10} className="py-4 text-center text-xs text-stone-400 dark:text-stone-500">
-                      End of admin account results.
-                    </TableCell>
-                  </TableRow>
-                )}
               </TableBody>
             </Table>
           </div>
 
           <Separator className="dark:bg-[#2a2d3e]" />
-          <div className="px-4 py-3 text-sm text-stone-400 dark:text-stone-500">
-            Showing {filtered.length.toLocaleString()} of {totalCount.toLocaleString()} account{totalCount !== 1 ? "s" : ""}
+          <div className="px-4 py-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between text-sm text-stone-400 dark:text-stone-500">
+            <span>
+              Showing {filtered.length.toLocaleString()} of {totalCount.toLocaleString()} account{totalCount !== 1 ? "s" : ""}
+            </span>
+            <div className="flex items-center gap-1.5 self-end sm:self-auto">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                disabled={loadingAdmins || currentPage <= 1}
+                className="h-8 px-2.5"
+              >
+                Prev
+              </Button>
+              {paginationPages.map((page) => (
+                <Button
+                  key={page}
+                  type="button"
+                  variant={page === currentPage ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setCurrentPage(page)}
+                  disabled={loadingAdmins}
+                  className="h-8 min-w-8 px-2"
+                >
+                  {page}
+                </Button>
+              ))}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                disabled={loadingAdmins || currentPage >= totalPages}
+                className="h-8 px-2.5"
+              >
+                Next
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>

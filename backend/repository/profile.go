@@ -60,8 +60,36 @@ func GetProfileUserById(userId string) (model.ProfileUserFromDb, error) {
 }
 
 func GetUserListings(userId string) ([]model.ProfileListingFromDb, error) {
+	listings, _, err := GetUserListingsPage(userId, 0, 0)
+	return listings, err
+}
+
+func GetUserListingsPage(userId string, limit int, offset int) ([]model.ProfileListingFromDb, int, error) {
 	db := middleware.DBConn
 	listings := make([]model.ProfileListingFromDb, 0)
+	total := 0
+
+	countQuery := `
+		SELECT COUNT(*)
+		FROM public.listings l
+		WHERE l.user_id = $1
+			AND l.status <> 'DELETED'
+	`
+
+	if err := db.Raw(countQuery, userId).Scan(&total).Error; err != nil {
+		return nil, 0, fmt.Errorf("Failed to retrieve listings")
+	}
+
+	if limit == 0 {
+		if offset != 0 {
+			return nil, 0, fmt.Errorf("Offset must be 0 when limit is 0")
+		}
+		limit = total
+	}
+
+	if limit < 0 || offset < 0 {
+		return nil, 0, fmt.Errorf("Invalid pagination values")
+	}
 
 	selectQuery := `
 		SELECT
@@ -106,17 +134,47 @@ func GetUserListings(userId string) ([]model.ProfileListingFromDb, error) {
 		WHERE l.user_id = $1
 			AND l.status <> 'DELETED'
 		ORDER BY l.created_at DESC
+		LIMIT $2 OFFSET $3
 	`
 
-	if err := db.Raw(selectQuery, userId).Scan(&listings).Error; err != nil {
-		return nil, fmt.Errorf("Failed to retrieve listings")
+	if err := db.Raw(selectQuery, userId, limit, offset).Scan(&listings).Error; err != nil {
+		return nil, 0, fmt.Errorf("Failed to retrieve listings")
 	}
-	return listings, nil
+	return listings, total, nil
 }
 
 func GetUserBookmarks(userId string) ([]model.ProfileListingFromDb, error) {
+	bookmarks, _, err := GetUserBookmarksPage(userId, 0, 0)
+	return bookmarks, err
+}
+
+func GetUserBookmarksPage(userId string, limit int, offset int) ([]model.ProfileListingFromDb, int, error) {
 	db := middleware.DBConn
 	bookmarks := make([]model.ProfileListingFromDb, 0)
+	total := 0
+
+	countQuery := `
+		SELECT COUNT(*)
+		FROM public.bookmarks b
+		INNER JOIN public.listings l ON l.id = b.listing_id
+		WHERE b.user_id = $1
+			AND l.status <> 'DELETED'
+	`
+
+	if err := db.Raw(countQuery, userId).Scan(&total).Error; err != nil {
+		return nil, 0, fmt.Errorf("Failed to retrieve bookmarks")
+	}
+
+	if limit == 0 {
+		if offset != 0 {
+			return nil, 0, fmt.Errorf("Offset must be 0 when limit is 0")
+		}
+		limit = total
+	}
+
+	if limit < 0 || offset < 0 {
+		return nil, 0, fmt.Errorf("Invalid pagination values")
+	}
 
 	selectQuery := `
 		SELECT
@@ -162,17 +220,45 @@ func GetUserBookmarks(userId string) ([]model.ProfileListingFromDb, error) {
 		WHERE b.user_id = $1
 			AND l.status <> 'DELETED'
 		ORDER BY b.created_at DESC
+		LIMIT $2 OFFSET $3
 	`
 
-	if err := db.Raw(selectQuery, userId).Scan(&bookmarks).Error; err != nil {
-		return nil, fmt.Errorf("Failed to retrieve bookmarks")
+	if err := db.Raw(selectQuery, userId, limit, offset).Scan(&bookmarks).Error; err != nil {
+		return nil, 0, fmt.Errorf("Failed to retrieve bookmarks")
 	}
-	return bookmarks, nil
+	return bookmarks, total, nil
 }
 
 func GetUserReceivedReviews(userId string) ([]model.ProfileReviewFromDb, error) {
+	reviews, _, err := GetUserReceivedReviewsPage(userId, 0, 0)
+	return reviews, err
+}
+
+func GetUserReceivedReviewsPage(userId string, limit int, offset int) ([]model.ProfileReviewFromDb, int, error) {
 	db := middleware.DBConn
 	reviews := make([]model.ProfileReviewFromDb, 0)
+	total := 0
+
+	countQuery := `
+		SELECT COUNT(*)
+		FROM public.reviews r
+		WHERE r.reviewed_user_id = $1
+	`
+
+	if err := db.Raw(countQuery, userId).Scan(&total).Error; err != nil {
+		return nil, 0, fmt.Errorf("Failed to retrieve reviews")
+	}
+
+	if limit == 0 {
+		if offset != 0 {
+			return nil, 0, fmt.Errorf("Offset must be 0 when limit is 0")
+		}
+		limit = total
+	}
+
+	if limit < 0 || offset < 0 {
+		return nil, 0, fmt.Errorf("Invalid pagination values")
+	}
 
 	selectQuery := `
 		SELECT
@@ -205,18 +291,46 @@ func GetUserReceivedReviews(userId string) ([]model.ProfileReviewFromDb, error) 
 		) li ON TRUE
 		WHERE r.reviewed_user_id = $1
 		ORDER BY r.created_at DESC
+		LIMIT $2 OFFSET $3
 	`
 
-	if err := db.Raw(selectQuery, userId).Scan(&reviews).Error; err != nil {
-		return nil, fmt.Errorf("Failed to retrieve reviews")
+	if err := db.Raw(selectQuery, userId, limit, offset).Scan(&reviews).Error; err != nil {
+		return nil, 0, fmt.Errorf("Failed to retrieve reviews")
 	}
 
-	return reviews, nil
+	return reviews, total, nil
 }
 
 func GetUserPersonalReviews(userId string) ([]model.ProfileReviewFromDb, error) {
+	reviews, _, err := GetUserPersonalReviewsPage(userId, 0, 0)
+	return reviews, err
+}
+
+func GetUserPersonalReviewsPage(userId string, limit int, offset int) ([]model.ProfileReviewFromDb, int, error) {
 	db := middleware.DBConn
 	reviews := make([]model.ProfileReviewFromDb, 0)
+	total := 0
+
+	countQuery := `
+		SELECT COUNT(*)
+		FROM public.reviews r
+		WHERE r.reviewer_id = $1
+	`
+
+	if err := db.Raw(countQuery, userId).Scan(&total).Error; err != nil {
+		return nil, 0, fmt.Errorf("Failed to retrieve personal reviews")
+	}
+
+	if limit == 0 {
+		if offset != 0 {
+			return nil, 0, fmt.Errorf("Offset must be 0 when limit is 0")
+		}
+		limit = total
+	}
+
+	if limit < 0 || offset < 0 {
+		return nil, 0, fmt.Errorf("Invalid pagination values")
+	}
 
 	selectQuery := `
 		SELECT
@@ -249,13 +363,14 @@ func GetUserPersonalReviews(userId string) ([]model.ProfileReviewFromDb, error) 
 		) li ON TRUE
 		WHERE r.reviewer_id = $1
 		ORDER BY r.created_at DESC
+		LIMIT $2 OFFSET $3
 	`
 
-	if err := db.Raw(selectQuery, userId).Scan(&reviews).Error; err != nil {
-		return nil, fmt.Errorf("Failed to retrieve personal reviews")
+	if err := db.Raw(selectQuery, userId, limit, offset).Scan(&reviews).Error; err != nil {
+		return nil, 0, fmt.Errorf("Failed to retrieve personal reviews")
 	}
 
-	return reviews, nil
+	return reviews, total, nil
 }
 
 func UpdateProfile(userId string, body model.UpdateProfileBody) error {
