@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useCallback, useEffect, useMemo, useState, type UIEvent } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import {
   Search,
   X,
@@ -100,17 +100,16 @@ export default function ReportsPage() {
   const [sort,            setSort]            = useState<{ field: SortField; dir: SortDir }>({ field: "submitted", dir: "desc" });
   const [reports,         setReports]         = useState<AdminReport[]>(REPORTS);
   const [loadingReports,  setLoadingReports]  = useState(true);
-  const [loadingMore,     setLoadingMore]     = useState(false);
-  const [hasMore,         setHasMore]         = useState(true);
-  const [offset,          setOffset]          = useState(0);
+  const [currentPage,     setCurrentPage]     = useState(1);
   const [totalCount,      setTotalCount]      = useState(0);
   const [isRefreshing,    setIsRefreshing]    = useState(false);
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
   const [resolving,       setResolving]       = useState<AdminReport | null>(null);
-  const FETCH_LIMIT = 16;
+  const FETCH_LIMIT = 15;
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
+      setCurrentPage(1);
       setDebouncedSearch(search.trim());
     }, 250);
 
@@ -120,18 +119,14 @@ export default function ReportsPage() {
   }, [search]);
 
   function toggleSort(field: SortField) {
+    setCurrentPage(1);
     setSort(s => s.field === field ? { field, dir: s.dir === "asc" ? "desc" : "asc" } : { field, dir: "asc" });
   }
 
   // ── Load ──────────────────────────────────────────────────────────────────────
-  const loadReports = useCallback(async (reset: boolean, requestedOffset = 0) => {
-    if (reset) {
-      setLoadingReports(true);
-    } else {
-      setLoadingMore(true);
-    }
-
-    const nextOffset = reset ? 0 : requestedOffset;
+  const loadReports = useCallback(async (pageNumber: number) => {
+    setLoadingReports(true);
+    const nextOffset = (pageNumber - 1) * FETCH_LIMIT;
 
     try {
       const payload = await getAdminReports({
@@ -143,25 +138,21 @@ export default function ReportsPage() {
       });
 
       const received = (payload.reports ?? []) as AdminReport[];
-      const nextCount = reset ? received.length : nextOffset + received.length;
-
-      setReports((prev) => (reset ? received : [...prev, ...received]));
-      setOffset(nextCount);
+      setReports(received);
       setTotalCount(payload.total);
-      setHasMore(nextCount < payload.total);
+      setCurrentPage(pageNumber);
     } catch (err) {
       const message = typeof err === "string" ? err : "Failed to load reports";
       toast.error(message, { position: "top-center" });
     } finally {
       setLoadingReports(false);
-      setLoadingMore(false);
       setIsRefreshing(false);
     }
   }, [debouncedSearch, statusFilter, reasonFilter]);
 
   useEffect(() => {
-    void loadReports(true, 0);
-  }, [debouncedSearch, statusFilter, reasonFilter, loadReports]);
+    void loadReports(currentPage);
+  }, [currentPage, loadReports]);
 
   // ── Sort loaded chunk ──────────────────────────────────────────────────────────
   const filtered = useMemo(() => {
@@ -268,17 +259,15 @@ export default function ReportsPage() {
     }
   }
 
-  function handleTableScroll(event: UIEvent<HTMLDivElement>) {
-    if (loadingReports || loadingMore || !hasMore) return;
-
-    const node = event.currentTarget;
-    const remaining = node.scrollHeight - node.scrollTop - node.clientHeight;
-    if (remaining > 120) return;
-
-    void loadReports(false, offset);
-  }
-
   const hasActiveFilters = search || statusFilter !== "ALL" || reasonFilter !== "ALL";
+  const totalPages = Math.max(1, Math.ceil(totalCount / FETCH_LIMIT));
+  const paginationPages = useMemo(() => {
+    const maxButtons = 5;
+    let start = Math.max(1, currentPage - 2);
+    let end = Math.min(totalPages, start + maxButtons - 1);
+    start = Math.max(1, end - maxButtons + 1);
+    return Array.from({ length: end - start + 1 }, (_, idx) => start + idx);
+  }, [currentPage, totalPages]);
 
   const SortIcon = ({ field }: { field: SortField }) => {
     if (sort.field !== field)
@@ -329,6 +318,7 @@ export default function ReportsPage() {
               statusFilter === status && "ring-2 ring-offset-1 ring-current",
             )}
             onClick={() => {
+              setCurrentPage(1);
               setStatusFilter(prev => {
                 if (status === "ALL") return "ALL";
                 return prev === status ? "ALL" : status;
@@ -362,7 +352,7 @@ export default function ReportsPage() {
           {/* Reason filter */}
           <FilterSelect
             value={reasonFilter}
-            onChange={v => { setReasonFilter(v); }}
+            onChange={v => { setReasonFilter(v); setCurrentPage(1); }}
             options={[
               ["ALL", "All Reasons"],
               ...reasonOptions.map(reason => [reason, reason] as [string, string]),
@@ -372,7 +362,7 @@ export default function ReportsPage() {
           {/* Status filter */}
           <FilterSelect
             value={statusFilter}
-            onChange={v => { setStatusFilter(v); }}
+            onChange={v => { setStatusFilter(v); setCurrentPage(1); }}
             options={[
               ["ALL",       "All Status" ],
               ["PENDING",   "Pending"    ],
@@ -385,7 +375,7 @@ export default function ReportsPage() {
           {hasActiveFilters && (
             <Button
               variant="outline"
-              onClick={() => { setSearch(""); setReasonFilter("ALL"); setStatusFilter("ALL"); }}
+              onClick={() => { setSearch(""); setReasonFilter("ALL"); setStatusFilter("ALL"); setCurrentPage(1); }}
               className="hover:bg-destructive/10! text-destructive! border-destructive! focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40"
             >
               <X className="w-3 h-3" /> Clear
@@ -398,7 +388,7 @@ export default function ReportsPage() {
           variant="outline"
           onClick={() => {
             setIsRefreshing(true);
-            void loadReports(true, 0);
+            void loadReports(currentPage);
           }}
           disabled={loadingReports}
           className="border-sky-600 text-sky-600! hover:bg-sky-600/10 focus-visible:border-sky-600 focus-visible:ring-sky-600/20 dark:border-sky-400 dark:text-sky-400! dark:hover:bg-sky-400/10 dark:focus-visible:border-sky-400 dark:focus-visible:ring-sky-400/40"
@@ -411,7 +401,7 @@ export default function ReportsPage() {
       <div className="relative flex-1 min-h-0">
         <Card className="p-0 rounded-lg dark:bg-[#1c1f2e] dark:border-[#2a2d3e] overflow-hidden h-full min-h-0">
           <CardContent className="p-0 h-full min-h-0 flex flex-col">
-            <div className="overflow-auto h-full" onScroll={handleTableScroll}>
+            <div className="overflow-auto h-full">
               <Table>
                 <TableHeader>
                   <TableRow className="border-stone-200 dark:border-[#2a2d3e] bg-stone-50 dark:bg-[#13151f] hover:bg-stone-50 dark:hover:bg-[#13151f]">
@@ -586,28 +576,50 @@ export default function ReportsPage() {
                     ))
                   )}
 
-                  {loadingMore && (
-                    <TableRow>
-                      <TableCell colSpan={9} className="py-4 text-center text-sm text-stone-400 dark:text-stone-500">
-                        Loading more reports…
-                      </TableCell>
-                    </TableRow>
-                  )}
-
-                  {!hasMore && filtered.length > 0 && (
-                    <TableRow>
-                      <TableCell colSpan={9} className="py-4 text-center text-xs text-stone-400 dark:text-stone-500">
-                        End of report results.
-                      </TableCell>
-                    </TableRow>
-                  )}
                 </TableBody>
               </Table>
             </div>
 
             <Separator className="dark:bg-[#2a2d3e]" />
-            <div className="px-4 py-3 text-sm text-stone-400 dark:text-stone-500">
-              Showing {filtered.length.toLocaleString()} of {totalCount.toLocaleString()} result{totalCount !== 1 ? "s" : ""}
+            <div className="px-4 py-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between text-sm text-stone-400 dark:text-stone-500">
+              <span>
+                Showing {filtered.length.toLocaleString()} of {totalCount.toLocaleString()} result{totalCount !== 1 ? "s" : ""}
+              </span>
+              <div className="flex items-center gap-1.5 self-end sm:self-auto">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                  disabled={loadingReports || currentPage <= 1}
+                  className="h-8 px-2.5"
+                >
+                  Prev
+                </Button>
+                {paginationPages.map((page) => (
+                  <Button
+                    key={page}
+                    type="button"
+                    variant={page === currentPage ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setCurrentPage(page)}
+                    disabled={loadingReports}
+                    className="h-8 min-w-8 px-2"
+                  >
+                    {page}
+                  </Button>
+                ))}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                  disabled={loadingReports || currentPage >= totalPages}
+                  className="h-8 px-2.5"
+                >
+                  Next
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>
