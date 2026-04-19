@@ -1,16 +1,16 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
-
+ 
 const REPORT_REASONS = [
   "Scam / Fraud",
-  "Prohibited item",
-  "Fake / Counterfeit",
-  "Wrong category",
+  "Prohibited",
   "Spam / Duplicate",
-  "Other",
-] as const;
+  "Listing Issue",
+  "Transaction Issue",
+  "Other"
+];
 
 interface ReportModalProps {
   open: boolean;
