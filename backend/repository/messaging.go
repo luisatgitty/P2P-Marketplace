@@ -148,6 +148,150 @@ func GetConversationsByUser(userId string) ([]model.ConversationFromDb, error) {
 	return rows, nil
 }
 
+func GetConversationsByUserPage(userId string, limit, offset int) ([]model.ConversationFromDb, int, error) {
+	db := middleware.DBConn
+	rows := make([]model.ConversationFromDb, 0)
+	total := 0
+
+	countQuery := `
+		SELECT COUNT(*)
+		FROM public.conversation_members cm
+		WHERE cm.user_id = $1
+			AND cm.deleted_at IS NULL
+	`
+
+	if err := db.Raw(countQuery, userId).Scan(&total).Error; err != nil {
+		return nil, 0, fmt.Errorf("Failed to count conversations")
+	}
+
+	query := `
+		SELECT
+			c.id,
+			l.id AS listing_id,
+			l.title AS listing_title,
+			l.price AS listing_price,
+			COALESCE(tx.total_price, 0) AS offer_price,
+			COALESCE(tx.status::text, '') AS transaction_status,
+			COALESCE(tx.provider_agreed, FALSE) AS provider_agreed,
+			COALESCE(tx.client_agreed, FALSE) AS client_agreed,
+			CASE
+				WHEN c.seller_id = $1 THEN COALESCE(tx.provider_agreed, FALSE)
+				ELSE COALESCE(tx.client_agreed, FALSE)
+			END AS user_agreed,
+			tx.start_date AS schedule_start,
+			tx.end_date AS schedule_end,
+			COALESCE(lrd.available_from, lsrv.available_from) AS available_from,
+			COALESCE(lrd.days_off, lsrv.days_off, '[]') AS days_off,
+			COALESCE(tw.time_windows, '[]') AS time_windows,
+			COALESCE(l.price_unit, '') AS listing_price_unit,
+			l.listing_type::text AS listing_type,
+			l.status::text AS listing_status,
+			CASE
+				WHEN c.seller_id = $1::uuid THEN FALSE
+				ELSE EXISTS(
+					SELECT 1
+					FROM public.listing_transactions lt_review
+					WHERE lt_review.listing_id = c.listing_id
+						AND lt_review.client_id = $1::uuid
+						AND lt_review.status = 'COMPLETED'
+				)
+			END AS can_review,
+			COALESCE(li.image_url, '') AS listing_image_url,
+			u.id AS other_user_id,
+			u.first_name AS other_first_name,
+			u.last_name AS other_last_name,
+			COALESCE(u.profile_image_url, '') AS other_profile_image_url,
+			COALESCE(u.verification_status::text, '') AS other_verification_status,
+			COALESCE(u.location_city, '') AS other_location_city,
+			COALESCE(u.location_province, '') AS other_location_province,
+			COALESCE(u.is_active, FALSE) AS other_is_active,
+			u.account_locked_until AS other_account_locked_until,
+			COALESCE(su.is_active, FALSE) AS self_is_active,
+			su.account_locked_until AS self_account_locked_until,
+			COALESCE(c.last_message, '') AS last_message,
+			c.last_message_at,
+			COALESCE(other_cm.last_read_message_id::text, '') AS other_last_read_message_id,
+			COALESCE(unread.unread_count, 0) AS unread_count,
+			(c.seller_id = $1) AS is_seller,
+			EXISTS(
+				SELECT 1
+				FROM public.reports rp
+				WHERE rp.reporter_id = $1::uuid
+					AND rp.reported_listing_id = c.listing_id
+					AND rp.reported_user_id = u.id
+					AND rp.status = 'PENDING'
+			) AS has_pending_report
+		FROM public.conversation_members cm
+		JOIN public.conversations c
+			ON c.id = cm.conversation_id
+		JOIN public.listings l
+			ON l.id = c.listing_id
+		LEFT JOIN public.listing_rent_details lrd
+			ON lrd.listing_id = l.id
+		LEFT JOIN public.listing_service_details lsrv
+			ON lsrv.listing_id = l.id
+		LEFT JOIN LATERAL (
+			SELECT image_url
+			FROM public.listing_images
+			WHERE listing_id = l.id
+			ORDER BY is_primary DESC, id ASC
+			LIMIT 1
+		) li ON TRUE
+		LEFT JOIN LATERAL (
+			SELECT COALESCE(
+				json_agg(
+					json_build_object(
+						'startTime', TO_CHAR(ltw.start_time, 'HH24:MI:SS'),
+						'endTime', TO_CHAR(ltw.end_time, 'HH24:MI:SS')
+					)
+					ORDER BY ltw.start_time
+				)::text,
+				'[]'
+			) AS time_windows
+			FROM public.listing_time_windows ltw
+			WHERE ltw.listing_id = l.id
+		) tw ON TRUE
+		LEFT JOIN LATERAL (
+			SELECT total_price, start_date, end_date, status, provider_agreed, client_agreed
+			FROM public.listing_transactions lt
+			WHERE lt.listing_id = c.listing_id
+				AND lt.client_id = c.buyer_id
+			ORDER BY lt.created_at DESC
+			LIMIT 1
+		) tx ON TRUE
+		JOIN public.users u
+			ON u.id = CASE WHEN c.buyer_id = $1 THEN c.seller_id ELSE c.buyer_id END
+		JOIN public.users su
+			ON su.id = $1::uuid
+		LEFT JOIN public.conversation_members other_cm
+			ON other_cm.conversation_id = c.id
+			AND other_cm.user_id = CASE WHEN c.buyer_id = $1 THEN c.seller_id ELSE c.buyer_id END
+			AND other_cm.deleted_at IS NULL
+		LEFT JOIN LATERAL (
+			SELECT COUNT(*) AS unread_count
+			FROM public.messages m
+			LEFT JOIN public.message_deletions md
+				ON md.message_id = m.id
+				AND md.user_id = $1
+			WHERE m.conversation_id = c.id
+				AND md.id IS NULL
+				AND m.sender_id <> $1
+				AND m.is_unsent = FALSE
+				AND m.created_at > COALESCE(cm.last_read_at, to_timestamp(0))
+		) unread ON TRUE
+		WHERE cm.user_id = $1
+			AND cm.deleted_at IS NULL
+		ORDER BY c.last_message_at DESC NULLS LAST, c.created_at DESC
+		LIMIT $2 OFFSET $3
+	`
+
+	if err := db.Raw(query, userId, limit, offset).Scan(&rows).Error; err != nil {
+		return nil, 0, fmt.Errorf("Failed to load conversations")
+	}
+
+	return rows, total, nil
+}
+
 func GetConversationById(userId, conversationId string) (model.ConversationFromDb, error) {
 	db := middleware.DBConn
 	var row model.ConversationFromDb
