@@ -87,12 +87,15 @@ export default function Navbar() {
   const pathname = usePathname();
   const isVerifiedSeller = (user?.status ?? "").toLowerCase() === "verified";
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [dropdownClosing, setDropdownClosing] = useState(false);
   const [notificationOpen, setNotificationOpen] = useState(false);
   const [logoutModalOpen, setLogoutModalOpen] = useState(false);
   const [hasUnreadMessages, setHasUnreadMessages] = useState(false);
   const [notifications, setNotifications] = useState<NotificationItemData[]>([]);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const mobileDropdownPanelRef = useRef<HTMLDivElement>(null);
   const notificationRef = useRef<HTMLDivElement>(null);
+  const dropdownCloseTimerRef = useRef<number | null>(null);
 
   // If the user role is ADMIN or SUPER_ADMIN, show a banner at the top linking to the admin dashboard
   const isAdmin = user && (user.role === "ADMIN" || user.role === "SUPER_ADMIN");
@@ -155,9 +158,43 @@ export default function Navbar() {
 
   const handleLogOut = () => {
     setLogoutModalOpen(true);
+    if (dropdownCloseTimerRef.current !== null) {
+      window.clearTimeout(dropdownCloseTimerRef.current);
+      dropdownCloseTimerRef.current = null;
+    }
     setDropdownOpen(false);
+    setDropdownClosing(false);
     setNotificationOpen(false);
   }
+
+  const closeDropdown = useCallback(() => {
+    if (!dropdownOpen || dropdownClosing) return;
+
+    setDropdownClosing(true);
+    dropdownCloseTimerRef.current = window.setTimeout(() => {
+      setDropdownOpen(false);
+      setDropdownClosing(false);
+      dropdownCloseTimerRef.current = null;
+    }, 180);
+  }, [dropdownOpen, dropdownClosing]);
+
+  const openDropdown = useCallback(() => {
+    if (dropdownCloseTimerRef.current !== null) {
+      window.clearTimeout(dropdownCloseTimerRef.current);
+      dropdownCloseTimerRef.current = null;
+    }
+
+    setDropdownClosing(false);
+    setDropdownOpen(true);
+  }, []);
+
+  const toggleDropdown = useCallback(() => {
+    if (dropdownOpen && !dropdownClosing) {
+      closeDropdown();
+      return;
+    }
+    openDropdown();
+  }, [closeDropdown, dropdownOpen, dropdownClosing, openDropdown]);
 
   const refreshUnreadState = useCallback(async () => {
     if (!isAuth) {
@@ -177,8 +214,12 @@ export default function Navbar() {
   // Close dropdown on outside click
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setDropdownOpen(false);
+      const targetNode = e.target as Node;
+      const clickedProfileTrigger = dropdownRef.current?.contains(targetNode);
+      const clickedMobilePanel = mobileDropdownPanelRef.current?.contains(targetNode);
+
+      if (!clickedProfileTrigger && !clickedMobilePanel) {
+        closeDropdown();
       }
 
       if (notificationRef.current && !notificationRef.current.contains(e.target as Node)) {
@@ -187,6 +228,14 @@ export default function Navbar() {
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
+  }, [closeDropdown]);
+
+  useEffect(() => {
+    return () => {
+      if (dropdownCloseTimerRef.current !== null) {
+        window.clearTimeout(dropdownCloseTimerRef.current);
+      }
+    };
   }, []);
 
   useEffect(() => {
@@ -313,7 +362,7 @@ export default function Navbar() {
             {/* Profile dropdown */}
             <div className="relative" ref={dropdownRef}>
               <button
-                onClick={() => setDropdownOpen((v) => !v)}
+                onClick={toggleDropdown}
                 className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg hover:bg-white/10 transition-colors"
                 aria-label="Account menu"
               >
@@ -333,13 +382,20 @@ export default function Navbar() {
                 </div>
                 <ChevronDown
                   size={13}
-                  className={cn("text-stone-400 transition-transform duration-200", dropdownOpen && "rotate-180")}
+                  className={cn("text-stone-400 transition-transform duration-200", dropdownOpen && !dropdownClosing && "rotate-180")}
                 />
               </button>
 
               {/* Dropdown panel */}
-              {dropdownOpen && (
-                <div className="absolute right-0 mt-2 w-48 bg-[#1e2b3c] border border-white/10 rounded-xl shadow-2xl overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+              {(dropdownOpen || dropdownClosing) && (
+                <div
+                  className={cn(
+                    "hidden md:block absolute right-0 mt-2 w-48 bg-[#1e2b3c] border border-white/10 rounded-xl shadow-2xl overflow-hidden transition-all duration-200 z-50",
+                    dropdownClosing
+                      ? "opacity-0 -translate-y-2"
+                      : "opacity-100 translate-y-0"
+                  )}
+                >
                   {isAuth ? (
                     <>
                       {/* User info */}
@@ -356,7 +412,7 @@ export default function Navbar() {
                           <>
                             <Link
                               href="/admin"
-                              onClick={() => setDropdownOpen(false)}
+                              onClick={closeDropdown}
                               className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-200 hover:bg-white/10 hover:text-white transition-colors"
                             >
                               <LayoutDashboard size={15} className="text-stone-400" />
@@ -367,7 +423,7 @@ export default function Navbar() {
                           <>
                             <Link
                               href="/"
-                              onClick={() => setDropdownOpen(false)}
+                              onClick={closeDropdown}
                               className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-200 hover:bg-white/10 hover:text-white transition-colors"
                             >
                               <Home size={15} className="text-stone-400" />
@@ -375,7 +431,7 @@ export default function Navbar() {
                             </Link>
                             <Link
                               href="/profile"
-                              onClick={() => setDropdownOpen(false)}
+                              onClick={closeDropdown}
                               className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-200 hover:bg-white/10 hover:text-white transition-colors"
                             >
                               <User size={15} className="text-stone-400" />
@@ -383,7 +439,7 @@ export default function Navbar() {
                             </Link>
                             <Link
                               href="/messages"
-                              onClick={() => setDropdownOpen(false)}
+                              onClick={closeDropdown}
                               className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-200 hover:bg-white/10 hover:text-white transition-colors"
                             >
                               <span className="relative inline-flex">
@@ -397,7 +453,7 @@ export default function Navbar() {
                             {isVerifiedSeller ? (
                               <Link
                                 href="/create"
-                                onClick={() => setDropdownOpen(false)}
+                                onClick={closeDropdown}
                                 className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-200 hover:bg-white/10 hover:text-white transition-colors"
                               >
                                 <Tag size={15} className="text-stone-400" />
@@ -406,7 +462,7 @@ export default function Navbar() {
                             ) : (
                               <Link
                                 href="/become-seller"
-                                onClick={() => setDropdownOpen(false)}
+                                onClick={closeDropdown}
                                 className="flex items-center gap-3 px-4 py-2.5 text-sm text-amber-300 hover:bg-amber-500/10 hover:text-amber-200 transition-colors"
                               >
                                 <UserPlus size={15} />
@@ -430,7 +486,7 @@ export default function Navbar() {
                     <div className="py-1">
                       <Link
                         href="/"
-                        onClick={() => setDropdownOpen(false)}
+                        onClick={closeDropdown}
                         className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-200 hover:bg-white/10 hover:text-white transition-colors"
                       >
                         <Home size={15} className="text-stone-400" />
@@ -438,7 +494,7 @@ export default function Navbar() {
                       </Link>
                       <Link
                         href="/login"
-                        onClick={() => setDropdownOpen(false)}
+                        onClick={closeDropdown}
                         className="flex items-center gap-3 px-4 py-3 text-sm font-semibold text-white hover:bg-white/10 transition-colors"
                       >
                         <User size={15} className="text-stone-400" />
@@ -446,7 +502,7 @@ export default function Navbar() {
                       </Link>
                       <Link
                         href="/signup"
-                        onClick={() => setDropdownOpen(false)}
+                        onClick={closeDropdown}
                         className="flex items-center gap-3 px-4 py-3 text-sm font-semibold text-amber-400 hover:bg-amber-500/10 hover:text-amber-300 transition-colors"
                       >
                         <UserPlus size={15} />
@@ -460,6 +516,144 @@ export default function Navbar() {
           </div>
         </div>
       </nav>
+
+      {/* Mobile bottom-sheet account panel (outside navbar so it's fixed to viewport) */}
+      {(dropdownOpen || dropdownClosing) && (
+        <>
+          <div
+            className={cn(
+              "md:hidden fixed inset-0 z-60 bg-black/35 transition-opacity duration-200",
+              dropdownClosing ? "opacity-0" : "opacity-100"
+            )}
+            onClick={closeDropdown}
+          />
+
+          <div
+            ref={mobileDropdownPanelRef}
+            className={cn(
+              "md:hidden fixed inset-x-0 bottom-0 z-61 w-auto bg-[#1e2b3c] rounded-t-xl shadow-2xl overflow-hidden transition-all duration-200",
+              dropdownClosing
+                ? "opacity-0 translate-y-4"
+                : "opacity-100 translate-y-0"
+            )}
+          >
+            {isAuth ? (
+              <>
+                {/* User info */}
+                <div className="px-4 py-3 border-b border-white/10 bg-white/5">
+                  <p className="text-sm font-semibold text-white leading-tight flex items-center gap-1.5">
+                    {user?.firstName} {user?.lastName}
+                    {<VerificationBadge verified={isVerifiedSeller} />}
+                  </p>
+                  <p className="text-xs text-stone-400 truncate mt-0.5">{user?.email}</p>
+                </div>
+
+                <div className="py-1">
+                  {isAdmin ? (
+                    <>
+                      <Link
+                        href="/admin"
+                        onClick={closeDropdown}
+                        className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-200 hover:bg-white/10 hover:text-white transition-colors"
+                      >
+                        <LayoutDashboard size={15} className="text-stone-400" />
+                        Admin Dashboard
+                      </Link>
+                    </>
+                  ) : (
+                    <>
+                      <Link
+                        href="/"
+                        onClick={closeDropdown}
+                        className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-200 hover:bg-white/10 hover:text-white transition-colors"
+                      >
+                        <Home size={15} className="text-stone-400" />
+                        Home
+                      </Link>
+                      <Link
+                        href="/profile"
+                        onClick={closeDropdown}
+                        className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-200 hover:bg-white/10 hover:text-white transition-colors"
+                      >
+                        <User size={15} className="text-stone-400" />
+                        Profile
+                      </Link>
+                      <Link
+                        href="/messages"
+                        onClick={closeDropdown}
+                        className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-200 hover:bg-white/10 hover:text-white transition-colors"
+                      >
+                        <span className="relative inline-flex">
+                          <MessageCircle size={15} className="text-stone-400" />
+                          {hasUnreadMessages && (
+                            <span className="absolute -right-1 -bottom-1 w-2 h-2 rounded-full bg-amber-500 border border-[#1e2b3c]" />
+                          )}
+                        </span>
+                        Messages
+                      </Link>
+                      {isVerifiedSeller ? (
+                        <Link
+                          href="/create"
+                          onClick={closeDropdown}
+                          className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-200 hover:bg-white/10 hover:text-white transition-colors"
+                        >
+                          <Tag size={15} className="text-stone-400" />
+                          Post a Listing
+                        </Link>
+                      ) : (
+                        <Link
+                          href="/become-seller"
+                          onClick={closeDropdown}
+                          className="flex items-center gap-3 px-4 py-2.5 text-sm text-amber-300 hover:bg-amber-500/10 hover:text-amber-200 transition-colors"
+                        >
+                          <UserPlus size={15} />
+                          Become a Seller
+                        </Link>
+                      )}
+                    </>
+                  )}
+                </div>
+
+                <div className="border-t border-white/10" />
+                <button
+                  onClick={handleLogOut}
+                  className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors"
+                >
+                  <LogOut size={15} />
+                  Log Out
+                </button>
+              </>
+            ) : (
+              <div className="py-1">
+                <Link
+                  href="/"
+                  onClick={closeDropdown}
+                  className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-200 hover:bg-white/10 hover:text-white transition-colors"
+                >
+                  <Home size={15} className="text-stone-400" />
+                  Home
+                </Link>
+                <Link
+                  href="/login"
+                  onClick={closeDropdown}
+                  className="flex items-center gap-3 px-4 py-3 text-sm font-semibold text-white hover:bg-white/10 transition-colors"
+                >
+                  <User size={15} className="text-stone-400" />
+                  Log In
+                </Link>
+                <Link
+                  href="/signup"
+                  onClick={closeDropdown}
+                  className="flex items-center gap-3 px-4 py-3 text-sm font-semibold text-amber-400 hover:bg-amber-500/10 hover:text-amber-300 transition-colors"
+                >
+                  <UserPlus size={15} />
+                  Create Account
+                </Link>
+              </div>
+            )}
+          </div>
+        </>
+      )}
 
       {/* Spacer for fixed navbar (1px stripe + 56px nav) */}
       <div className="h-15" />
