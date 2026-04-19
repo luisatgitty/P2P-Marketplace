@@ -1108,7 +1108,7 @@ export default function ProfilePage() {
 
             {/* Name + badge */}
             <div className="flex flex-wrap items-center gap-2 mb-1">
-              <h1 className="text-xl font-bold text-stone-900 dark:text-stone-100">{fullName}</h1>
+              <h1 className="text-md md:text-xl font-bold text-stone-900 dark:text-stone-100">{fullName}</h1>
               <VerificationBadge verified={verificationState === "verified"} size={16} />
             </div>
             <p className="text-sm text-stone-400 dark:text-stone-500 mb-3">{profileUser?.bio}</p>
