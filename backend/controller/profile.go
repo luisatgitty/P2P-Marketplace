@@ -2,6 +2,7 @@ package controller
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -12,6 +13,52 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 )
+
+const profilePageDefaultLimit = 16
+const profilePageMaxLimit = 100
+
+type profileSectionPage struct {
+	Limit         int
+	Offset        int
+	HasPagination bool
+}
+
+func parseProfileSectionPage(c *fiber.Ctx, key string) (profileSectionPage, error) {
+	limitQuery := strings.TrimSpace(c.Query(key + "Limit"))
+	offsetQuery := strings.TrimSpace(c.Query(key + "Offset"))
+	hasPagination := limitQuery != "" || offsetQuery != ""
+
+	page := profileSectionPage{
+		Limit:         profilePageDefaultLimit,
+		Offset:        0,
+		HasPagination: hasPagination,
+	}
+
+	if !hasPagination {
+		return page, nil
+	}
+
+	if limitQuery != "" {
+		parsedLimit, parseErr := strconv.Atoi(limitQuery)
+		if parseErr != nil || parsedLimit < 0 {
+			return page, fmt.Errorf("%sLimit must be a non-negative integer", key)
+		}
+		if parsedLimit > profilePageMaxLimit {
+			parsedLimit = profilePageMaxLimit
+		}
+		page.Limit = parsedLimit
+	}
+
+	if offsetQuery != "" {
+		parsedOffset, parseErr := strconv.Atoi(offsetQuery)
+		if parseErr != nil || parsedOffset < 0 {
+			return page, fmt.Errorf("%sOffset must be a non-negative integer", key)
+		}
+		page.Offset = parsedOffset
+	}
+
+	return page, nil
+}
 
 func getOptionalRequesterRoleFromSession(c *fiber.Ctx) string {
 	sessionToken := strings.TrimSpace(c.Cookies(config.SessionCookieName))
@@ -43,40 +90,105 @@ func MeProfile(c *fiber.Ctx) error {
 		return SendErrorResponse(c, 401, "User is not authenticated", nil)
 	}
 
+	listingsPage, err := parseProfileSectionPage(c, "listings")
+	if err != nil {
+		return SendErrorResponse(c, 400, err.Error(), err)
+	}
+
+	bookmarksPage, err := parseProfileSectionPage(c, "bookmarks")
+	if err != nil {
+		return SendErrorResponse(c, 400, err.Error(), err)
+	}
+
+	receivedReviewsPage, err := parseProfileSectionPage(c, "receivedReviews")
+	if err != nil {
+		return SendErrorResponse(c, 400, err.Error(), err)
+	}
+
+	personalReviewsPage, err := parseProfileSectionPage(c, "personalReviews")
+	if err != nil {
+		return SendErrorResponse(c, 400, err.Error(), err)
+	}
+
+	hasPagination := listingsPage.HasPagination || bookmarksPage.HasPagination || receivedReviewsPage.HasPagination || personalReviewsPage.HasPagination
+
 	user, err := repository.GetProfileUserById(userId)
 	if err != nil {
 		return SendErrorResponse(c, 500, err.Error(), err)
 	}
 
-	listings, err := repository.GetUserListings(userId)
-	if err != nil {
-		return SendErrorResponse(c, 500, err.Error(), err)
-	}
+	listings := make([]model.ProfileListingFromDb, 0)
+	bookmarks := make([]model.ProfileListingFromDb, 0)
+	receivedReviews := make([]model.ProfileReviewFromDb, 0)
+	personalReviews := make([]model.ProfileReviewFromDb, 0)
+	listingsTotal := 0
+	bookmarksTotal := 0
+	receivedReviewsTotal := 0
+	personalReviewsTotal := 0
 
-	bookmarks, err := repository.GetUserBookmarks(userId)
-	if err != nil {
-		return SendErrorResponse(c, 500, err.Error(), err)
-	}
+	if !hasPagination {
+		listings, listingsTotal, err = repository.GetUserListingsPage(userId, 0, 0)
+		if err != nil {
+			return SendErrorResponse(c, 500, err.Error(), err)
+		}
 
-	receivedReviews, err := repository.GetUserReceivedReviews(userId)
-	if err != nil {
-		return SendErrorResponse(c, 500, err.Error(), err)
-	}
+		bookmarks, bookmarksTotal, err = repository.GetUserBookmarksPage(userId, 0, 0)
+		if err != nil {
+			return SendErrorResponse(c, 500, err.Error(), err)
+		}
 
-	personalReviews, err := repository.GetUserPersonalReviews(userId)
-	if err != nil {
-		return SendErrorResponse(c, 500, err.Error(), err)
+		receivedReviews, receivedReviewsTotal, err = repository.GetUserReceivedReviewsPage(userId, 0, 0)
+		if err != nil {
+			return SendErrorResponse(c, 500, err.Error(), err)
+		}
+
+		personalReviews, personalReviewsTotal, err = repository.GetUserPersonalReviewsPage(userId, 0, 0)
+		if err != nil {
+			return SendErrorResponse(c, 500, err.Error(), err)
+		}
+	} else {
+		if listingsPage.HasPagination {
+			listings, listingsTotal, err = repository.GetUserListingsPage(userId, listingsPage.Limit, listingsPage.Offset)
+			if err != nil {
+				return SendErrorResponse(c, 500, err.Error(), err)
+			}
+		}
+
+		if bookmarksPage.HasPagination {
+			bookmarks, bookmarksTotal, err = repository.GetUserBookmarksPage(userId, bookmarksPage.Limit, bookmarksPage.Offset)
+			if err != nil {
+				return SendErrorResponse(c, 500, err.Error(), err)
+			}
+		}
+
+		if receivedReviewsPage.HasPagination {
+			receivedReviews, receivedReviewsTotal, err = repository.GetUserReceivedReviewsPage(userId, receivedReviewsPage.Limit, receivedReviewsPage.Offset)
+			if err != nil {
+				return SendErrorResponse(c, 500, err.Error(), err)
+			}
+		}
+
+		if personalReviewsPage.HasPagination {
+			personalReviews, personalReviewsTotal, err = repository.GetUserPersonalReviewsPage(userId, personalReviewsPage.Limit, personalReviewsPage.Offset)
+			if err != nil {
+				return SendErrorResponse(c, 500, err.Error(), err)
+			}
+		}
 	}
 
 	apiURL := c.BaseURL()
 
 	return SendSuccessResponse(c, 200, "Profile fetched successfully", map[string]any{
-		"user":            mapProfileUser(user, apiURL),
-		"listings":        mapProfileListings(listings, apiURL),
-		"bookmarks":       mapProfileListings(bookmarks, apiURL),
-		"reviews":         mapProfileReviews(receivedReviews, apiURL),
-		"receivedReviews": mapProfileReviews(receivedReviews, apiURL),
-		"personalReviews": mapProfileReviews(personalReviews, apiURL),
+		"user":                 mapProfileUser(user, apiURL),
+		"listings":             mapProfileListings(listings, apiURL),
+		"bookmarks":            mapProfileListings(bookmarks, apiURL),
+		"reviews":              mapProfileReviews(receivedReviews, apiURL),
+		"receivedReviews":      mapProfileReviews(receivedReviews, apiURL),
+		"personalReviews":      mapProfileReviews(personalReviews, apiURL),
+		"listingsTotal":        listingsTotal,
+		"bookmarksTotal":       bookmarksTotal,
+		"receivedReviewsTotal": receivedReviewsTotal,
+		"personalReviewsTotal": personalReviewsTotal,
 	})
 }
 
@@ -85,6 +197,23 @@ func ProfileById(c *fiber.Ctx) error {
 	if profileUserId == "" {
 		return SendErrorResponse(c, 400, "Profile user ID is required", nil)
 	}
+
+	listingsPage, err := parseProfileSectionPage(c, "listings")
+	if err != nil {
+		return SendErrorResponse(c, 400, err.Error(), err)
+	}
+
+	receivedReviewsPage, err := parseProfileSectionPage(c, "receivedReviews")
+	if err != nil {
+		return SendErrorResponse(c, 400, err.Error(), err)
+	}
+
+	personalReviewsPage, err := parseProfileSectionPage(c, "personalReviews")
+	if err != nil {
+		return SendErrorResponse(c, 400, err.Error(), err)
+	}
+
+	hasPagination := listingsPage.HasPagination || receivedReviewsPage.HasPagination || personalReviewsPage.HasPagination
 
 	user, err := repository.GetProfileUserById(profileUserId)
 	if err != nil {
@@ -98,30 +227,64 @@ func ProfileById(c *fiber.Ctx) error {
 		return SendErrorResponse(c, 404, "User not found", nil)
 	}
 
-	listings, err := repository.GetUserListings(profileUserId)
-	if err != nil {
-		return SendErrorResponse(c, 500, err.Error(), err)
-	}
+	listings := make([]model.ProfileListingFromDb, 0)
+	receivedReviews := make([]model.ProfileReviewFromDb, 0)
+	personalReviews := make([]model.ProfileReviewFromDb, 0)
+	listingsTotal := 0
+	receivedReviewsTotal := 0
+	personalReviewsTotal := 0
 
-	receivedReviews, err := repository.GetUserReceivedReviews(profileUserId)
-	if err != nil {
-		return SendErrorResponse(c, 500, err.Error(), err)
-	}
+	if !hasPagination {
+		listings, listingsTotal, err = repository.GetUserListingsPage(profileUserId, 0, 0)
+		if err != nil {
+			return SendErrorResponse(c, 500, err.Error(), err)
+		}
 
-	personalReviews, err := repository.GetUserPersonalReviews(profileUserId)
-	if err != nil {
-		return SendErrorResponse(c, 500, err.Error(), err)
+		receivedReviews, receivedReviewsTotal, err = repository.GetUserReceivedReviewsPage(profileUserId, 0, 0)
+		if err != nil {
+			return SendErrorResponse(c, 500, err.Error(), err)
+		}
+
+		personalReviews, personalReviewsTotal, err = repository.GetUserPersonalReviewsPage(profileUserId, 0, 0)
+		if err != nil {
+			return SendErrorResponse(c, 500, err.Error(), err)
+		}
+	} else {
+		if listingsPage.HasPagination {
+			listings, listingsTotal, err = repository.GetUserListingsPage(profileUserId, listingsPage.Limit, listingsPage.Offset)
+			if err != nil {
+				return SendErrorResponse(c, 500, err.Error(), err)
+			}
+		}
+
+		if receivedReviewsPage.HasPagination {
+			receivedReviews, receivedReviewsTotal, err = repository.GetUserReceivedReviewsPage(profileUserId, receivedReviewsPage.Limit, receivedReviewsPage.Offset)
+			if err != nil {
+				return SendErrorResponse(c, 500, err.Error(), err)
+			}
+		}
+
+		if personalReviewsPage.HasPagination {
+			personalReviews, personalReviewsTotal, err = repository.GetUserPersonalReviewsPage(profileUserId, personalReviewsPage.Limit, personalReviewsPage.Offset)
+			if err != nil {
+				return SendErrorResponse(c, 500, err.Error(), err)
+			}
+		}
 	}
 
 	apiURL := c.BaseURL()
 
 	return SendSuccessResponse(c, 200, "Profile fetched successfully", map[string]any{
-		"user":            mapProfileUser(user, apiURL),
-		"listings":        mapProfileListings(listings, apiURL),
-		"bookmarks":       []map[string]any{},
-		"reviews":         mapProfileReviews(receivedReviews, apiURL),
-		"receivedReviews": mapProfileReviews(receivedReviews, apiURL),
-		"personalReviews": mapProfileReviews(personalReviews, apiURL),
+		"user":                 mapProfileUser(user, apiURL),
+		"listings":             mapProfileListings(listings, apiURL),
+		"bookmarks":            []map[string]any{},
+		"reviews":              mapProfileReviews(receivedReviews, apiURL),
+		"receivedReviews":      mapProfileReviews(receivedReviews, apiURL),
+		"personalReviews":      mapProfileReviews(personalReviews, apiURL),
+		"listingsTotal":        listingsTotal,
+		"bookmarksTotal":       0,
+		"receivedReviewsTotal": receivedReviewsTotal,
+		"personalReviewsTotal": personalReviewsTotal,
 	})
 }
 
