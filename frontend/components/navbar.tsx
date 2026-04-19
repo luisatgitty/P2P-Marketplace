@@ -7,7 +7,7 @@ import { useUser } from "@/utils/UserContext";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { getConversations } from "@/services/messagingService";
 import {
-  getNotifications,
+  getNotificationsPage,
   markAllNotificationsRead,
   markNotificationRead,
 } from "@/services/notificationService";
@@ -83,6 +83,7 @@ function TabsFallback() {
 
 // ─── Main Navbar ───────────────────────────────────────────────────────────────
 export default function Navbar() {
+  const NOTIFICATIONS_PAGE_SIZE = 15;
   const { isAuth, user } = useUser();
   const pathname = usePathname();
   const isVerifiedSeller = (user?.status ?? "").toLowerCase() === "verified";
@@ -92,52 +93,113 @@ export default function Navbar() {
   const [logoutModalOpen, setLogoutModalOpen] = useState(false);
   const [hasUnreadMessages, setHasUnreadMessages] = useState(false);
   const [notifications, setNotifications] = useState<NotificationItemData[]>([]);
+  const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
+  const [notificationsTotal, setNotificationsTotal] = useState(0);
+  const [notificationsHasMore, setNotificationsHasMore] = useState(false);
+  const [loadingMoreNotifications, setLoadingMoreNotifications] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const mobileDropdownPanelRef = useRef<HTMLDivElement>(null);
   const notificationRef = useRef<HTMLDivElement>(null);
   const mobileNotificationPanelRef = useRef<HTMLDivElement>(null);
+  const desktopNotificationsListRef = useRef<HTMLDivElement>(null);
+  const mobileNotificationsListRef = useRef<HTMLDivElement>(null);
   const dropdownCloseTimerRef = useRef<number | null>(null);
 
   // If the user role is ADMIN or SUPER_ADMIN, show a banner at the top linking to the admin dashboard
   const isAdmin = user && (user.role === "ADMIN" || user.role === "SUPER_ADMIN");
   const canSeeNotifications = Boolean(isAuth && user && user.role === "USER");
-  const hasUnreadNotifications = notifications.some((notification) => !notification.is_read);
+  const hasUnreadNotifications = unreadNotificationsCount > 0;
+
+  const mapNotificationRows = useCallback((rows: Array<{
+    id: string;
+    userId: string;
+    type: string;
+    message: string;
+    link: string;
+    isRead: boolean;
+    createdAt: string;
+  }>): NotificationItemData[] => {
+    return rows.map((row) => ({
+      id: row.id,
+      user_id: row.userId,
+      type: row.type,
+      message: row.message,
+      link: row.link,
+      is_read: row.isRead,
+      created_at: row.createdAt,
+    }));
+  }, []);
 
   const refreshNotifications = useCallback(async () => {
     if (!isAuth) {
       setNotifications([]);
+      setUnreadNotificationsCount(0);
+      setNotificationsTotal(0);
+      setNotificationsHasMore(false);
       return;
     }
 
     try {
-      const rows = await getNotifications();
-      const mapped: NotificationItemData[] = rows.map((row) => ({
-        id: row.id,
-        user_id: row.userId,
-        type: row.type,
-        message: row.message,
-        link: row.link,
-        is_read: row.isRead,
-        created_at: row.createdAt,
-      }));
-      setNotifications(mapped);
+      const page = await getNotificationsPage({
+        limit: NOTIFICATIONS_PAGE_SIZE,
+        offset: 0,
+      });
+
+      setNotifications(mapNotificationRows(page.notifications));
+      setUnreadNotificationsCount(page.unreadCount);
+      setNotificationsTotal(page.total);
+      setNotificationsHasMore(page.offset + page.notifications.length < page.total);
     } catch {
       // Keep existing notification state on transient errors.
     }
-  }, [isAuth]);
+  }, [isAuth, mapNotificationRows, NOTIFICATIONS_PAGE_SIZE]);
+
+  const loadMoreNotifications = useCallback(async () => {
+    if (!canSeeNotifications || loadingMoreNotifications || !notificationsHasMore) {
+      return;
+    }
+
+    setLoadingMoreNotifications(true);
+    try {
+      const page = await getNotificationsPage({
+        limit: NOTIFICATIONS_PAGE_SIZE,
+        offset: notifications.length,
+      });
+
+      const mapped = mapNotificationRows(page.notifications);
+      setNotifications((prev) => {
+        const seen = new Set(prev.map((item) => item.id));
+        const deduped = mapped.filter((item) => !seen.has(item.id));
+        return [...prev, ...deduped];
+      });
+
+      setUnreadNotificationsCount(page.unreadCount);
+      setNotificationsTotal(page.total);
+      setNotificationsHasMore(notifications.length + page.notifications.length < page.total);
+    } finally {
+      setLoadingMoreNotifications(false);
+    }
+  }, [canSeeNotifications, loadingMoreNotifications, mapNotificationRows, notifications.length, notificationsHasMore, NOTIFICATIONS_PAGE_SIZE]);
 
   const handleMarkNotificationRead = async (id: string) => {
     const previous = notifications;
+    const previousUnreadCount = unreadNotificationsCount;
+    const wasUnread = notifications.some((notification) => notification.id === id && !notification.is_read);
+
     setNotifications((prev) =>
       prev.map((notification) =>
         notification.id === id ? { ...notification, is_read: true } : notification
       )
     );
+    if (wasUnread) {
+      setUnreadNotificationsCount((prev) => Math.max(0, prev - 1));
+    }
 
     try {
       await markNotificationRead(id);
     } catch (error) {
       setNotifications(previous);
+      setUnreadNotificationsCount(previousUnreadCount);
       const message = error instanceof Error ? error.message : "Failed to mark notification as read.";
       toast.error(message, { position: "top-center" });
       throw error;
@@ -146,16 +208,27 @@ export default function Navbar() {
 
   const handleMarkAllNotificationsRead = async () => {
     const previous = notifications;
+    const previousUnreadCount = unreadNotificationsCount;
     setNotifications((prev) => prev.map((notification) => ({ ...notification, is_read: true })));
+    setUnreadNotificationsCount(0);
 
     try {
       await markAllNotificationsRead();
     } catch (error) {
       setNotifications(previous);
+      setUnreadNotificationsCount(previousUnreadCount);
       const message = error instanceof Error ? error.message : "Failed to mark all notifications as read.";
       toast.error(message, { position: "top-center" });
     }
   };
+
+  const handleNotificationsScroll = useCallback((event: React.UIEvent<HTMLDivElement>) => {
+    const node = event.currentTarget;
+    const remaining = node.scrollHeight - node.scrollTop - node.clientHeight;
+    if (remaining <= 120) {
+      void loadMoreNotifications();
+    }
+  }, [loadMoreNotifications]);
 
   const handleLogOut = () => {
     setLogoutModalOpen(true);
@@ -264,6 +337,9 @@ export default function Navbar() {
   useEffect(() => {
     if (!canSeeNotifications) {
       setNotifications([]);
+      setUnreadNotificationsCount(0);
+      setNotificationsTotal(0);
+      setNotificationsHasMore(false);
       return;
     }
 
@@ -342,17 +418,29 @@ export default function Navbar() {
                       </div>
                     </div>
 
-                    <div className="max-h-96 overflow-y-auto p-2 space-y-1.5">
+                    <div
+                      ref={desktopNotificationsListRef}
+                      onScroll={handleNotificationsScroll}
+                      className="max-h-96 overflow-y-auto p-2 space-y-1.5"
+                    >
                       {notifications.length === 0 ? (
                         <div className="px-2 py-8 text-center text-sm text-stone-400">No notifications yet.</div>
                       ) : (
-                        notifications.map((notification) => (
-                          <NotificationItem
-                            key={notification.id}
-                            notification={notification}
-                            onClick={handleMarkNotificationRead}
-                          />
-                        ))
+                        <>
+                          {notifications.map((notification) => (
+                            <NotificationItem
+                              key={notification.id}
+                              notification={notification}
+                              onClick={handleMarkNotificationRead}
+                            />
+                          ))}
+                          {loadingMoreNotifications && (
+                            <div className="px-2 py-2 text-center text-xs text-stone-400">Loading more...</div>
+                          )}
+                          {!notificationsHasMore && notificationsTotal > NOTIFICATIONS_PAGE_SIZE && (
+                            <div className="px-2 py-2 text-center text-xs text-stone-500">End of notifications.</div>
+                          )}
+                        </>
                       )}
                     </div>
                   </div>
@@ -547,17 +635,29 @@ export default function Navbar() {
               </div>
             </div>
 
-            <div className="max-h-[70vh] overflow-y-auto p-2 space-y-1.5 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+            <div
+              ref={mobileNotificationsListRef}
+              onScroll={handleNotificationsScroll}
+              className="max-h-[70vh] overflow-y-auto p-2 space-y-1.5 pb-[max(0.5rem,env(safe-area-inset-bottom))]"
+            >
               {notifications.length === 0 ? (
                 <div className="px-2 py-8 text-center text-sm text-stone-400">No notifications yet.</div>
               ) : (
-                notifications.map((notification) => (
-                  <NotificationItem
-                    key={notification.id}
-                    notification={notification}
-                    onClick={handleMarkNotificationRead}
-                  />
-                ))
+                <>
+                  {notifications.map((notification) => (
+                    <NotificationItem
+                      key={notification.id}
+                      notification={notification}
+                      onClick={handleMarkNotificationRead}
+                    />
+                  ))}
+                  {loadingMoreNotifications && (
+                    <div className="px-2 py-2 text-center text-xs text-stone-400">Loading more...</div>
+                  )}
+                  {!notificationsHasMore && notificationsTotal > NOTIFICATIONS_PAGE_SIZE && (
+                    <div className="px-2 py-2 text-center text-xs text-stone-500">End of notifications.</div>
+                  )}
+                </>
               )}
             </div>
           </div>

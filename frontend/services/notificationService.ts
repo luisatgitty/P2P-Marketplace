@@ -16,6 +16,19 @@ export type NotificationDto = {
   createdAt: string;
 };
 
+export type NotificationsPageQuery = {
+  limit?: number;
+  offset?: number;
+};
+
+export type NotificationsPage = {
+  notifications: NotificationDto[];
+  total: number;
+  limit: number;
+  offset: number;
+  unreadCount: number;
+};
+
 async function apiFetch<T>(route: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${API}${route}`, {
     credentials: "include",
@@ -39,6 +52,52 @@ export async function getNotifications(): Promise<NotificationDto[]> {
     method: "GET",
   });
   return data.notifications ?? [];
+}
+
+export async function getNotificationsPage(query: NotificationsPageQuery = {}): Promise<NotificationsPage> {
+  const params = new URLSearchParams();
+  if (Number.isFinite(query.limit)) {
+    params.set("limit", String(query.limit));
+  }
+  if (Number.isFinite(query.offset)) {
+    params.set("offset", String(query.offset));
+  }
+
+  const suffix = params.size > 0 ? `?${params.toString()}` : "";
+
+  try {
+    const data = await apiFetch<{
+      notifications: NotificationDto[];
+      total?: number;
+      limit?: number;
+      offset?: number;
+      unreadCount?: number;
+    }>(`/notifications${suffix}`, {
+      method: "GET",
+    });
+
+    const notifications = data.notifications ?? [];
+    const total = Number(data.total ?? notifications.length);
+    const limit = Number(data.limit ?? query.limit ?? notifications.length);
+    const offset = Number(data.offset ?? query.offset ?? 0);
+    const unreadCount = Number(data.unreadCount ?? notifications.filter((item) => !item.isRead).length);
+
+    return {
+      notifications,
+      total,
+      limit,
+      offset,
+      unreadCount,
+    };
+  } catch {
+    return {
+      notifications: [],
+      total: 0,
+      limit: Number(query.limit ?? 0),
+      offset: Number(query.offset ?? 0),
+      unreadCount: 0,
+    };
+  }
 }
 
 export async function markAllNotificationsRead(): Promise<void> {
