@@ -95,6 +95,7 @@ export default function Navbar() {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const mobileDropdownPanelRef = useRef<HTMLDivElement>(null);
   const notificationRef = useRef<HTMLDivElement>(null);
+  const mobileNotificationPanelRef = useRef<HTMLDivElement>(null);
   const dropdownCloseTimerRef = useRef<number | null>(null);
 
   // If the user role is ADMIN or SUPER_ADMIN, show a banner at the top linking to the admin dashboard
@@ -217,12 +218,14 @@ export default function Navbar() {
       const targetNode = e.target as Node;
       const clickedProfileTrigger = dropdownRef.current?.contains(targetNode);
       const clickedMobilePanel = mobileDropdownPanelRef.current?.contains(targetNode);
+      const clickedNotificationTrigger = notificationRef.current?.contains(targetNode);
+      const clickedMobileNotificationPanel = mobileNotificationPanelRef.current?.contains(targetNode);
 
       if (!clickedProfileTrigger && !clickedMobilePanel) {
         closeDropdown();
       }
 
-      if (notificationRef.current && !notificationRef.current.contains(e.target as Node)) {
+      if (!clickedNotificationTrigger && !clickedMobileNotificationPanel) {
         setNotificationOpen(false);
       }
     };
@@ -323,7 +326,7 @@ export default function Navbar() {
                 </button>
 
                 {notificationOpen && (
-                  <div className="absolute right-0 mt-2 w-88 max-w-[90vw] rounded-xl border border-white/10 bg-[#1e2b3c] shadow-2xl z-50 animate-in fade-in slide-in-from-top-2 duration-150 overflow-hidden">
+                  <div className="hidden md:block absolute right-0 mt-2 w-88 max-w-[90vw] rounded-xl border border-white/10 bg-[#1e2b3c] shadow-2xl z-50 animate-in fade-in slide-in-from-top-2 duration-150 overflow-hidden">
                     <div className="px-3 py-2.5 border-b border-white/10 bg-white/5 flex items-center justify-between gap-2">
                       <h3 className="text-sm font-semibold text-white">Notifications</h3>
                       <div className="flex items-center gap-2">
@@ -516,6 +519,50 @@ export default function Navbar() {
           </div>
         </div>
       </nav>
+
+      {/* Mobile bottom-sheet notifications panel (outside navbar so it's fixed to viewport) */}
+      {notificationOpen && (
+        <>
+          <div
+            className="md:hidden fixed inset-0 z-62 bg-black/35"
+            onClick={() => setNotificationOpen(false)}
+          />
+
+          <div
+            ref={mobileNotificationPanelRef}
+            className="md:hidden fixed inset-x-0 bottom-0 z-63 w-auto bg-[#1e2b3c] rounded-t-xl shadow-2xl border-t border-white/10 overflow-hidden"
+          >
+            <div className="px-4 py-3 border-b border-white/10 bg-white/5 flex items-center justify-between gap-2">
+              <h3 className="text-sm font-semibold text-white">Notifications</h3>
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] text-stone-400">{notifications.length} items</span>
+                <button
+                  type="button"
+                  onClick={handleMarkAllNotificationsRead}
+                  disabled={!hasUnreadNotifications}
+                  className="text-[11px] font-medium text-amber-300 hover:text-amber-200 disabled:text-stone-500 disabled:cursor-not-allowed transition-colors"
+                >
+                  Mark all as read
+                </button>
+              </div>
+            </div>
+
+            <div className="max-h-[70vh] overflow-y-auto p-2 space-y-1.5 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+              {notifications.length === 0 ? (
+                <div className="px-2 py-8 text-center text-sm text-stone-400">No notifications yet.</div>
+              ) : (
+                notifications.map((notification) => (
+                  <NotificationItem
+                    key={notification.id}
+                    notification={notification}
+                    onClick={handleMarkNotificationRead}
+                  />
+                ))
+              )}
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Mobile bottom-sheet account panel (outside navbar so it's fixed to viewport) */}
       {(dropdownOpen || dropdownClosing) && (
