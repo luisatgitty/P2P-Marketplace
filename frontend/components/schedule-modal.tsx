@@ -390,10 +390,10 @@ export function ScheduleModal({
 
   return (
     <div
-      className="fixed inset-0 z-120 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-0 p-4 bg-black/60 backdrop-blur-sm"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div className="bg-white dark:bg-[#1c1f2e] rounded-lg w-full sm:max-w-md shadow-2xl flex flex-col max-h-[92vh] sm:max-h-[88vh]">
+      <div className="bg-white dark:bg-[#1c1f2e] rounded-lg w-full max-w-sm shadow-2xl flex flex-col max-h-[90vh] sm:max-h-[80vh]">
 
         {/* ── Header ── */}
         <div className="bg-[#1e2433] px-5 py-4 flex items-start justify-between shrink-0 rounded-t-lg">
@@ -505,7 +505,7 @@ export function ScheduleModal({
                         type="time"
                         value={manualStartTime}
                         onChange={(e) => setManualStartTime(e.target.value)}
-                        className="peer appearance-none pl-9 [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none"
+                        className="peer appearance-none pl-9 text-sm [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none"
                       />
                       <div className="text-muted-foreground/80 pointer-events-none absolute inset-y-0 left-0 flex items-center justify-center pl-3 peer-disabled:opacity-50">
                         <ClockIcon size={16} aria-hidden="true" />
@@ -523,7 +523,7 @@ export function ScheduleModal({
                         type="time"
                         value={manualEndTime}
                         onChange={(e) => setManualEndTime(e.target.value)}
-                        className="peer appearance-none pl-9 [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none"
+                        className="peer appearance-none pl-9 text-sm [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none"
                       />
                       <div className="text-muted-foreground/80 pointer-events-none absolute inset-y-0 left-0 flex items-center justify-center pl-3 peer-disabled:opacity-50">
                         <ClockIcon size={16} aria-hidden="true" />
@@ -543,7 +543,7 @@ export function ScheduleModal({
             {stepMessage.phase < 3 ? (
               <div className="flex items-center gap-3 bg-teal-50 dark:bg-teal-950/20 border border-teal-200 dark:border-teal-800 rounded-lg px-4 py-3">
                 <div className={cn(
-                  "w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0",
+                  "w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0",
                   stepMessage.phase === 1
                     ? "bg-teal-600 text-white"
                     : "bg-stone-200 dark:bg-stone-700 text-stone-500 dark:text-stone-400",
@@ -552,14 +552,14 @@ export function ScheduleModal({
                 </div>
                 <div className="w-8 h-0.5 bg-teal-200 dark:bg-teal-800 shrink-0" />
                 <div className={cn(
-                  "w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0",
+                  "w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0",
                   stepMessage.phase === 2
                     ? "bg-teal-600 text-white"
                     : "bg-stone-200 dark:bg-stone-700 text-stone-500 dark:text-stone-400",
                 )}>
                   2
                 </div>
-                <p className="text-sm text-teal-700 dark:text-teal-300 font-medium">
+                <p className="text-xs text-teal-700 dark:text-teal-300 font-medium">
                   {stepMessage.text}
                 </p>
               </div>

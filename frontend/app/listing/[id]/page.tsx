@@ -104,8 +104,8 @@ function RentInfoCard({ extra }: { extra: ExtraDetail }) {
             <p className="text-xs font-semibold text-stone-500 dark:text-stone-400 uppercase tracking-widest mb-2.5">Amenities & Features</p>
             <div className="flex flex-wrap gap-1.5">
               {extra.amenities.map((a) => (
-                <span key={a} className="flex items-center gap-1 text-xs bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800 px-2.5 py-1 rounded-full font-medium">
-                  <CheckCircle className="w-3 h-3 shrink-0" /> {a}
+                <span key={a} className="text-sm bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800 px-2.5 py-1 rounded-lg">
+                  {a}
                 </span>
               ))}
             </div>
@@ -151,12 +151,11 @@ function ServiceInfoCard({ extra }: { extra: ExtraDetail }) {
         {extra.inclusions && extra.inclusions.filter(Boolean).length > 0 && (
           <div>
             <p className="text-xs font-semibold text-stone-500 dark:text-stone-400 uppercase tracking-widest mb-2.5">What&apos;s Included</p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-2 gap-x-6">
+            <div className="flex flex-wrap gap-1.5">
               {extra.inclusions.filter(Boolean).map((item) => (
-                <div key={item} className="flex items-start gap-2 text-sm text-stone-700 dark:text-stone-200">
-                  <CheckCircle className="w-4 h-4 text-violet-500 shrink-0 mt-0.5" />
+                <span key={item} className="text-sm bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300 border border-violet-200 dark:border-violet-800 px-2.5 py-1 rounded-lg">
                   {item}
-                </div>
+                </span>
               ))}
             </div>
           </div>
@@ -625,7 +624,7 @@ export default function ListingDetailPage() {
                   {images.map((img, i) => (
                     <button key={i} onClick={() => setImgIdx(i)}
                       className={cn(
-                        "relative shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 transition-all",
+                        "relative shrink-0 w-16 h-16 rounded-xl overflow-hidden border-2 transition-all",
                         i === imgIdx ? "border-slate-800 dark:border-stone-300" : "border-transparent opacity-60 hover:opacity-100"
                       )}>
                       <SafeImage
@@ -663,12 +662,11 @@ export default function ListingDetailPage() {
               {isSell && extra.inclusions && extra.inclusions.filter(Boolean).length > 0 && (
                 <div className="mt-4 pt-4 border-t border-stone-100 dark:border-[#2a2d3e]">
                   <h3 className="text-xs font-semibold text-stone-500 dark:text-stone-400 uppercase tracking-widest mb-3">What&apos;s Included</h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-2 gap-x-6">
+                  <div className="flex flex-wrap gap-1.5">
                     {extra.inclusions.filter(Boolean).map((item) => (
-                      <div key={item} className="flex items-start gap-2 text-sm text-stone-700 dark:text-stone-200">
-                        <CheckCircle className="w-4 h-4 text-teal-500 shrink-0 mt-0.5" />
+                      <span key={item} className="text-sm bg-slate-50 dark:bg-slate-950/40 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 px-2.5 py-1 rounded-lg">
                         {item}
-                      </div>
+                      </span>
                     ))}
                   </div>
                 </div>
@@ -953,7 +951,6 @@ export default function ListingDetailPage() {
         availableFrom={extra.available_from}
         daysOff={extra.daysOff ?? []}
         timeWindows={extra.timeWindows ?? []}
-        submitLabel={isService ? "Request Service Schedule" : "Request Rent Schedule"}
       />
 
       {/* ══ REPORT MODAL ══════════════════════════════════════════════════════ */}
