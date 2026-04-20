@@ -4,6 +4,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { Suspense, useState, useRef, useEffect, useCallback } from "react";
 import { useUser } from "@/utils/UserContext";
+import { useUnsavedChanges } from "@/utils/UnsavedChangesContext";
+import { useConfirmDialog } from "@/utils/ConfirmDialogContext";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { getConversations } from "@/services/messagingService";
 import {
@@ -85,7 +87,10 @@ function TabsFallback() {
 export default function Navbar() {
   const NOTIFICATIONS_PAGE_SIZE = 15;
   const { isAuth, user } = useUser();
+  const { hasUnsavedChanges } = useUnsavedChanges();
+  const { openDialog } = useConfirmDialog();
   const pathname = usePathname();
+  const router = useRouter();
   const isVerifiedSeller = (user?.status ?? "").toLowerCase() === "verified";
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [dropdownClosing, setDropdownClosing] = useState(false);
@@ -252,6 +257,23 @@ export default function Navbar() {
     }, 180);
   }, [dropdownOpen, dropdownClosing]);
 
+  const handleNavigateHome = useCallback(() => {
+    if (!hasUnsavedChanges) {
+      router.push("/");
+      return;
+    }
+
+    openDialog({
+      title: "Discard Changes?",
+      message: "Are you sure you want to discard your changes? This action cannot be undone.",
+      confirmText: "Discard",
+      cancelText: "Cancel",
+      isDangerous: true,
+      onConfirm: () => router.push("/"),
+      onCancel: () => {},
+    });
+  }, [hasUnsavedChanges, router, openDialog]);
+
   const openDropdown = useCallback(() => {
     if (dropdownCloseTimerRef.current !== null) {
       window.clearTimeout(dropdownCloseTimerRef.current);
@@ -366,7 +388,12 @@ export default function Navbar() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-3">
 
           {/* ── LEFT: Branding ─────────────────────────────────── */}
-          <Link href="/" className="flex items-center gap-2 shrink-0 min-w-0">
+          <button
+            onClick={() => {
+              handleNavigateHome();
+            }}
+            className="flex items-center gap-2 shrink-0 min-w-0 hover:opacity-80 transition-opacity"
+          >
             <Image
               src="/logo.png"
               alt="P2P Marketplace"
@@ -378,7 +405,7 @@ export default function Navbar() {
             <span className="font-bold text-base sm:text-lg leading-tight hidden sm:block whitespace-nowrap tracking-tight">
               P2P Marketplace
             </span>
-          </Link>
+          </button>
 
           {/* ── CENTER: Tab navigation ──────────────────────────── */}
           <Suspense fallback={<TabsFallback />}>
@@ -512,14 +539,16 @@ export default function Navbar() {
                           </>
                         ) : (
                           <>
-                            <Link
-                              href="/"
-                              onClick={closeDropdown}
-                              className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-200 hover:bg-white/10 hover:text-white transition-colors"
+                            <button
+                              onClick={() => {
+                                handleNavigateHome();
+                                closeDropdown();
+                              }}
+                              className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-200 hover:bg-white/10 hover:text-white transition-colors w-full text-left"
                             >
                               <Home size={15} className="text-stone-400" />
                               Home
-                            </Link>
+                            </button>
                             <Link
                               href="/profile"
                               onClick={closeDropdown}
@@ -575,14 +604,16 @@ export default function Navbar() {
                     </>
                   ) : (
                     <div className="py-1">
-                      <Link
-                        href="/"
-                        onClick={closeDropdown}
-                        className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-200 hover:bg-white/10 hover:text-white transition-colors"
+                      <button
+                        onClick={() => {
+                          handleNavigateHome();
+                          closeDropdown();
+                        }}
+                        className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-200 hover:bg-white/10 hover:text-white transition-colors w-full text-left"
                       >
                         <Home size={15} className="text-stone-400" />
                         Home
-                      </Link>
+                      </button>
                       <Link
                         href="/login"
                         onClick={closeDropdown}
@@ -709,14 +740,16 @@ export default function Navbar() {
                     </>
                   ) : (
                     <>
-                      <Link
-                        href="/"
-                        onClick={closeDropdown}
-                        className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-200 hover:bg-white/10 hover:text-white transition-colors"
+                      <button
+                        onClick={() => {
+                          handleNavigateHome();
+                          closeDropdown();
+                        }}
+                        className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-200 hover:bg-white/10 hover:text-white transition-colors w-full text-left"
                       >
                         <Home size={15} className="text-stone-400" />
                         Home
-                      </Link>
+                      </button>
                       <Link
                         href="/profile"
                         onClick={closeDropdown}
@@ -772,14 +805,16 @@ export default function Navbar() {
               </>
             ) : (
               <div className="py-1">
-                <Link
-                  href="/"
-                  onClick={closeDropdown}
-                  className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-200 hover:bg-white/10 hover:text-white transition-colors"
+                <button
+                  onClick={() => {
+                    handleNavigateHome();
+                    closeDropdown();
+                  }}
+                  className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-200 hover:bg-white/10 hover:text-white transition-colors w-full text-left"
                 >
                   <Home size={15} className="text-stone-400" />
                   Home
-                </Link>
+                </button>
                 <Link
                   href="/login"
                   onClick={closeDropdown}
