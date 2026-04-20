@@ -155,6 +155,23 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
+function formatReportDate(value: string | null | undefined): string {
+  const trimmedValue = (value ?? "").trim();
+  if (!trimmedValue) return "-";
+
+  const date = new Date(trimmedValue);
+  if (Number.isNaN(date.getTime())) return trimmedValue;
+
+  return date.toLocaleString("en-PH", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
+}
+
 // ── Modal ──────────────────────────────────────────────────────────────────────
 
 export default function ReportActionsModal({ report, onClose, onSubmit }: ReportActionsModalProps) {
@@ -207,7 +224,7 @@ export default function ReportActionsModal({ report, onClose, onSubmit }: Report
                 Report Resolution
               </h2>
               <p className="text-slate-400 text-xs mt-0.5">
-                Report #{report.id.slice(0, 8).toUpperCase()} · Submitted {report.submitted_at}
+                Report #{report.id.slice(0, 8).toUpperCase()} · Submitted {formatReportDate(report.submitted_at)}
               </p>
             </div>
           </div>
@@ -511,7 +528,7 @@ export default function ReportActionsModal({ report, onClose, onSubmit }: Report
                       />
                       <InfoPair icon={User}     label="Reviewed By" value={report.resolved_by}  />
                       <InfoPair icon={FileText} label="Reason"       value={report.action_reason} />
-                      <InfoPair icon={Clock}    label="Reviewed At"  value={report.resolved_at}  />
+                      <InfoPair icon={Clock}    label="Reviewed At"  value={formatReportDate(report.resolved_at)}  />
                     </CardContent>
                   </Card>
                 </div>
