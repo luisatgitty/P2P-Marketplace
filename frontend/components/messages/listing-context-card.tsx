@@ -287,7 +287,7 @@ export default function ListingContextCard({
     <>
       <div
         data-listing-context-card="true"
-        className="h-16 mx-5 my-2 flex items-center gap-3 px-2 py-2 rounded-xl bg-stone-50 dark:bg-[#13151f] border border-border shrink-0"
+        className="h-16 mx-5 my-2 flex items-center gap-3 px-2 py-2 rounded-lg bg-stone-50 dark:bg-[#13151f] border border-border shrink-0"
       >
         {/* Listing primary image */}
         <ImageLink
@@ -429,7 +429,7 @@ export default function ListingContextCard({
             e.target === e.currentTarget && handleCloseReviewModal()
           }
         >
-          <div className="w-full max-w-md rounded-2xl bg-white dark:bg-[#1c1f2e] border border-stone-200 dark:border-[#2a2d3e] shadow-2xl overflow-hidden">
+          <div className="w-full max-w-md rounded-lg bg-white dark:bg-[#1c1f2e] border border-stone-200 dark:border-[#2a2d3e] shadow-2xl overflow-hidden">
             <div className="px-5 py-4 border-b border-stone-200 dark:border-[#2a2d3e]">
               <h3 className="text-sm font-bold text-stone-900 dark:text-stone-50">
                 Review Item
@@ -453,7 +453,7 @@ export default function ListingContextCard({
                         type="button"
                         onClick={() => setRating(value)}
                         disabled={reviewSubmitting || reviewDeleting}
-                        className="p-1 rounded-md hover:bg-stone-100 dark:hover:bg-white/5 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                        className="p-1 rounded-lg hover:bg-stone-100 dark:hover:bg-white/5 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
                         aria-label={`Rate ${value} star${value > 1 ? "s" : ""}`}
                       >
                         <Star
@@ -530,7 +530,7 @@ export default function ListingContextCard({
             e.target === e.currentTarget && handleCloseReviewModal()
           }
         >
-          <div className="w-full max-w-md rounded-2xl bg-white dark:bg-[#1c1f2e] border border-stone-200 dark:border-[#2a2d3e] shadow-2xl overflow-hidden">
+          <div className="w-full max-w-md rounded-lg bg-white dark:bg-[#1c1f2e] border border-stone-200 dark:border-[#2a2d3e] shadow-2xl overflow-hidden">
             <div className="px-5 py-4 border-b border-stone-200 dark:border-[#2a2d3e]">
               <h3 className="text-sm font-bold text-stone-900 dark:text-stone-50">
                 Review Item
@@ -554,7 +554,7 @@ export default function ListingContextCard({
                         type="button"
                         onClick={() => setRating(value)}
                         disabled={reviewSubmitting || reviewDeleting}
-                        className="p-1 rounded-md hover:bg-stone-100 dark:hover:bg-white/5 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                        className="p-1 rounded-lg hover:bg-stone-100 dark:hover:bg-white/5 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
                         aria-label={`Rate ${value} star${value > 1 ? "s" : ""}`}
                       >
                         <Star

@@ -165,7 +165,7 @@ export default function ChatHeader({ conversation, onDelete, onMarkedComplete }:
           </button>
 
           {menuOpen && (
-            <div className="absolute right-0 top-full mt-1 w-44 bg-white dark:bg-[#1c1f2e] border border-border rounded-xl shadow-xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-1 duration-100">
+            <div className="absolute right-0 top-full mt-1 w-44 bg-white dark:bg-[#1c1f2e] border border-border rounded-lg shadow-xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-1 duration-100">
               {menuItems.map(({ icon: Icon, label, action, danger }) => (
                 <button
                   key={label}

@@ -81,18 +81,18 @@ function RentInfoCard({ extra }: { extra: ExtraDetail }) {
   if (!hasData) return null;
 
   return (
-    <div className="bg-white dark:bg-[#1c1f2e] rounded-2xl border border-stone-200 dark:border-[#2a2d3e] shadow-sm p-6">
+    <div className="bg-white dark:bg-[#1c1f2e] rounded-lg border border-stone-200 dark:border-[#2a2d3e] shadow-sm p-6">
       <h2 className="font-bold text-stone-900 dark:text-stone-50 text-base mb-4">Rental Terms</h2>
       <div className="flex flex-col gap-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {extra.minPeriod && (
-            <div className="bg-stone-50 dark:bg-[#13151f] rounded-xl p-3">
+            <div className="bg-stone-50 dark:bg-[#13151f] rounded-lg p-3">
               <p className="text-[10px] font-semibold text-stone-400 dark:text-stone-500 uppercase tracking-widest mb-1">Min. Period</p>
               <p className="text-sm font-semibold text-stone-800 dark:text-stone-100">{extra.minPeriod}</p>
             </div>
           )}
           {extra.deposit && (
-            <div className="bg-stone-50 dark:bg-[#13151f] rounded-xl p-3">
+            <div className="bg-stone-50 dark:bg-[#13151f] rounded-lg p-3">
               <p className="text-[10px] font-semibold text-stone-400 dark:text-stone-500 uppercase tracking-widest mb-1">Deposit</p>
               <p className="text-sm font-semibold text-stone-800 dark:text-stone-100">{extra.deposit}</p>
             </div>
@@ -122,13 +122,13 @@ function ServiceInfoCard({ extra }: { extra: ExtraDetail }) {
   if (!hasData) return null;
 
   return (
-    <div className="bg-white dark:bg-[#1c1f2e] rounded-2xl border border-stone-200 dark:border-[#2a2d3e] shadow-sm p-6">
+    <div className="bg-white dark:bg-[#1c1f2e] rounded-lg border border-stone-200 dark:border-[#2a2d3e] shadow-sm p-6">
       <h2 className="font-bold text-stone-900 dark:text-stone-50 text-base mb-4">Service Details</h2>
       <div className="flex flex-col gap-4">
         {(extra.turnaround || extra.serviceArea) && (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {extra.turnaround && (
-              <div className="bg-stone-50 dark:bg-[#13151f] rounded-xl p-3">
+              <div className="bg-stone-50 dark:bg-[#13151f] rounded-lg p-3">
                 <p className="text-[10px] font-semibold text-stone-400 dark:text-stone-500 uppercase tracking-widest mb-1">Turnaround</p>
                 <p className="text-sm font-semibold text-stone-800 dark:text-stone-100 flex items-center gap-1.5">
                   <Clock className="w-3.5 h-3.5 text-violet-500 shrink-0" />
@@ -137,7 +137,7 @@ function ServiceInfoCard({ extra }: { extra: ExtraDetail }) {
               </div>
             )}
             {extra.serviceArea && (
-              <div className="bg-stone-50 dark:bg-[#13151f] rounded-xl p-3">
+              <div className="bg-stone-50 dark:bg-[#13151f] rounded-lg p-3">
                 <p className="text-[10px] font-semibold text-stone-400 dark:text-stone-500 uppercase tracking-widest mb-1">Service Area</p>
                 <p className="text-sm font-semibold text-stone-800 dark:text-stone-100 flex items-center gap-1.5">
                   <MapPin className="w-3.5 h-3.5 text-violet-500 shrink-0" />
@@ -550,7 +550,7 @@ export default function ListingDetailPage() {
           <div className="flex flex-col gap-5">
 
             {/* ── Image gallery ── */}
-            <div className="bg-white dark:bg-[#1c1f2e] rounded-2xl border border-stone-200 dark:border-[#2a2d3e] overflow-hidden shadow-sm">
+            <div className="bg-white dark:bg-[#1c1f2e] rounded-lg border border-stone-200 dark:border-[#2a2d3e] overflow-hidden shadow-sm">
               <div className="relative aspect-video overflow-hidden group">
                 <SafeImage
                   src={images[imgIdx] ?? listing.imageUrl}
@@ -566,8 +566,8 @@ export default function ListingDetailPage() {
                     status={listing.status}
                     sellStatus={listing.sellStatus}
                     variant="solid"
-                    className="text-xs font-bold px-3 py-1 rounded-full"
-                    soldClassName="text-xs font-bold px-3 py-1 rounded-full"
+                    className="text-xs font-bold px-3 py-1 rounded-md"
+                    soldClassName="text-xs font-bold px-3 py-1 rounded-md"
                   />
                 </div>
 
@@ -586,12 +586,12 @@ export default function ListingDetailPage() {
                   <>
                     <button
                       onClick={() => setImgIdx((i) => (i - 1 + images.length) % images.length)}
-                      className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 bg-white/80 dark:bg-black/50 rounded-full flex items-center justify-center shadow-md hover:bg-white dark:hover:bg-black/70 transition-colors opacity-0 group-hover:opacity-100">
+                      className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 bg-white/80 dark:bg-black/50 rounded-lg flex items-center justify-center shadow-md hover:bg-white dark:hover:bg-black/70 transition-colors opacity-0 group-hover:opacity-100">
                       <ChevronLeft className="w-5 h-5 text-stone-700 dark:text-stone-200" />
                     </button>
                     <button
                       onClick={() => setImgIdx((i) => (i + 1) % images.length)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 bg-white/80 dark:bg-black/50 rounded-full flex items-center justify-center shadow-md hover:bg-white dark:hover:bg-black/70 transition-colors opacity-0 group-hover:opacity-100">
+                      className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 bg-white/80 dark:bg-black/50 rounded-lg flex items-center justify-center shadow-md hover:bg-white dark:hover:bg-black/70 transition-colors opacity-0 group-hover:opacity-100">
                       <ChevronRight className="w-5 h-5 text-stone-700 dark:text-stone-200" />
                     </button>
                   </>
@@ -611,7 +611,7 @@ export default function ListingDetailPage() {
                 {galleryMediaItems.length > 0 && (
                   <button
                     onClick={() => setMediaViewerIndex(Math.min(imgIdx, galleryMediaItems.length - 1))}
-                    className="absolute bottom-3 right-3 w-9 h-9 bg-black/55 rounded-full flex items-center justify-center text-white hover:bg-black/75 transition-colors"
+                    className="absolute bottom-3 right-3 w-9 h-9 bg-black/55 rounded-lg flex items-center justify-center text-white hover:bg-black/75 transition-colors"
                     aria-label="Open fullscreen gallery"
                   >
                     <Expand className="w-4 h-4" />
@@ -641,7 +641,7 @@ export default function ListingDetailPage() {
             </div>
 
             {/* ── Description + Highlights ── */}
-            <div className="bg-white dark:bg-[#1c1f2e] rounded-2xl border border-stone-200 dark:border-[#2a2d3e] shadow-sm p-6">
+            <div className="bg-white dark:bg-[#1c1f2e] rounded-lg border border-stone-200 dark:border-[#2a2d3e] shadow-sm p-6">
               <h2 className="font-bold text-stone-900 dark:text-stone-50 text-base mb-3">About this listing</h2>
               <p className="text-stone-600 dark:text-stone-300 text-sm leading-relaxed">{extra.description}</p>
 
@@ -680,7 +680,7 @@ export default function ListingDetailPage() {
             {isService && <ServiceInfoCard extra={extra} />}
 
             {/* ── Listing info rows ── */}
-            <div className="bg-white dark:bg-[#1c1f2e] rounded-2xl border border-stone-200 dark:border-[#2a2d3e] shadow-sm divide-y divide-stone-100 dark:divide-[#2a2d3e]">
+            <div className="bg-white dark:bg-[#1c1f2e] rounded-lg border border-stone-200 dark:border-[#2a2d3e] shadow-sm divide-y divide-stone-100 dark:divide-[#2a2d3e]">
               {[
                 {
                   icon:  <MapPin className="w-4 h-4 text-stone-400" />,
@@ -728,7 +728,7 @@ export default function ListingDetailPage() {
             <div className="lg:sticky lg:top-20">
 
               {/* ── Price + title card ── */}
-              <div className="bg-white dark:bg-[#1c1f2e] rounded-2xl border border-stone-200 dark:border-[#2a2d3e] shadow-sm p-5 mb-4">
+              <div className="bg-white dark:bg-[#1c1f2e] rounded-lg border border-stone-200 dark:border-[#2a2d3e] shadow-sm p-5 mb-4">
                 <div className="flex items-start justify-between gap-2 mb-2">
                   <h1 className="text-lg font-bold text-stone-900 dark:text-stone-50 leading-tight">{listing.title}</h1>
                   <div className="flex gap-1.5 shrink-0">
@@ -736,7 +736,7 @@ export default function ListingDetailPage() {
                       onClick={handleToggleBookmark}
                       disabled={isBookmarking}
                       className={cn(
-                        "w-9 h-9 rounded-full flex items-center justify-center border transition-all disabled:opacity-60 disabled:cursor-not-allowed",
+                        "w-9 h-9 rounded-lg flex items-center justify-center border transition-all disabled:opacity-60 disabled:cursor-not-allowed",
                         isBookmarked
                           ? "border-rose-200 bg-rose-50 dark:bg-rose-900/30 dark:border-rose-800 text-rose-500"
                           : "border-stone-200 dark:border-[#2a2d3e] text-stone-400 dark:text-stone-500 hover:border-rose-200 hover:text-rose-400"
@@ -745,7 +745,7 @@ export default function ListingDetailPage() {
                     </button>
                     <button
                       onClick={() => toast.info("Link copied to clipboard!", { position: "top-center" })}
-                      className="w-9 h-9 rounded-full flex items-center justify-center border border-stone-200 dark:border-[#2a2d3e] text-stone-400 dark:text-stone-500 hover:border-stone-400 dark:hover:border-stone-500 transition-all">
+                      className="w-9 h-9 rounded-lg flex items-center justify-center border border-stone-200 dark:border-[#2a2d3e] text-stone-400 dark:text-stone-500 hover:border-stone-400 dark:hover:border-stone-500 transition-all">
                       <Share2 className="w-4 h-4" />
                     </button>
                   </div>
@@ -769,7 +769,7 @@ export default function ListingDetailPage() {
                     {isDeletedState || isBannedState || isSold ? (
                       <button
                         disabled
-                        className="flex items-center justify-center gap-2 w-full py-3 rounded-full bg-stone-400/80 text-white text-sm font-bold cursor-not-allowed opacity-95"
+                        className="flex items-center justify-center gap-2 w-full py-3 rounded-lg bg-stone-400/80 text-white text-sm font-bold cursor-not-allowed opacity-95"
                       >
                         <AlertTriangle className="w-4 h-4" /> Unavailable
                       </button>
@@ -778,7 +778,7 @@ export default function ListingDetailPage() {
                         {/* Edit Listing Button */}
                         <Link
                           href={`/listing/${id}/edit`}
-                          className="flex items-center justify-center gap-2 w-full py-3 rounded-full bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 text-sm font-bold hover:opacity-90 transition-opacity">
+                          className="flex items-center justify-center gap-2 w-full py-3 rounded-lg bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 text-sm font-bold hover:opacity-90 transition-opacity">
                           Edit Listing
                         </Link>
 
@@ -786,7 +786,7 @@ export default function ListingDetailPage() {
                         <button
                           onClick={handleListingVisibility}
                           disabled={toggling}
-                          className="flex items-center justify-center w-full py-2.5 rounded-full border-2 border-stone-200 dark:border-[#2a2d3e] text-stone-700 dark:text-stone-200 bg-white dark:bg-transparent text-sm font-semibold hover:border-stone-400 dark:hover:border-stone-500 hover:bg-stone-50 dark:hover:bg-[#252837] transition-all"
+                          className="flex items-center justify-center w-full py-2.5 rounded-lg border-2 border-stone-200 dark:border-[#2a2d3e] text-stone-700 dark:text-stone-200 bg-white dark:bg-transparent text-sm font-semibold hover:border-stone-400 dark:hover:border-stone-500 hover:bg-stone-50 dark:hover:bg-[#252837] transition-all"
                         >
                           {isListingAvailable ? "Hide Listing" : "Show Listing"}
                         </button>
@@ -795,7 +795,7 @@ export default function ListingDetailPage() {
                         <button
                           onClick={handleRemoveListing}
                           disabled={deleting}
-                          className="flex items-center justify-center gap-2 w-full py-3 rounded-full border border-red-200 dark:border-red-800 text-red-500 dark:text-red-400 text-sm font-semibold hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                          className="flex items-center justify-center gap-2 w-full py-3 rounded-lg border border-red-200 dark:border-red-800 text-red-500 dark:text-red-400 text-sm font-semibold hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
                         >
                           {deleting ? "Removing..." : "Remove Listing"}
                         </button>
@@ -807,14 +807,14 @@ export default function ListingDetailPage() {
                     {visitorUnavailableState ? (
                       <button
                         disabled
-                        className="flex items-center justify-center gap-2 w-full py-3 rounded-full bg-stone-400/80 text-white text-sm font-bold cursor-not-allowed opacity-95"
+                        className="flex items-center justify-center gap-2 w-full py-3 rounded-lg bg-stone-400/80 text-white text-sm font-bold cursor-not-allowed opacity-95"
                       >
                         <AlertTriangle className="w-4 h-4" /> Unavailable
                       </button>
                     ) : isSold ? (
                       <button
                         disabled
-                        className="flex items-center justify-center gap-2 w-full py-3 rounded-full bg-emerald-600/90 text-white text-sm font-bold cursor-not-allowed opacity-95"
+                        className="flex items-center justify-center gap-2 w-full py-3 rounded-lg bg-emerald-600/90 text-white text-sm font-bold cursor-not-allowed opacity-95"
                       >
                         <CheckCircle className="w-4 h-4" /> Sold
                       </button>
@@ -823,28 +823,28 @@ export default function ListingDetailPage() {
                         {isSell && (
                           <button
                             onClick={handleBuy}
-                            className="flex items-center justify-center gap-2 w-full py-3 rounded-full border-2 border-stone-200 dark:border-[#2a2d3e] text-stone-700 dark:text-stone-200 bg-white dark:bg-transparent text-sm font-bold hover:border-stone-400 dark:hover:border-stone-500 hover:bg-stone-50 dark:hover:bg-[#252837] transition-all active:scale-[0.98]">
+                            className="flex items-center justify-center gap-2 w-full py-3 rounded-lg border-2 border-stone-200 dark:border-[#2a2d3e] text-stone-700 dark:text-stone-200 bg-white dark:bg-transparent text-sm font-bold hover:border-stone-400 dark:hover:border-stone-500 hover:bg-stone-50 dark:hover:bg-[#252837] transition-all active:scale-[0.98]">
                             <Zap className="w-4 h-4" /> Make an Offer
                           </button>
                         )}
                         {isRent && (
                           <button
                             onClick={handleBuy}
-                            className="flex items-center justify-center gap-2 w-full py-3 rounded-full text-sm font-bold text-white bg-teal-700 hover:bg-teal-600 transition-colors active:scale-[0.98]">
+                            className="flex items-center justify-center gap-2 w-full py-3 rounded-lg text-sm font-bold text-white bg-teal-700 hover:bg-teal-600 transition-colors active:scale-[0.98]">
                             <Package className="w-4 h-4" /> Request to Rent
                           </button>
                         )}
                         {isService && (
                           <button
                             onClick={handleBuy}
-                            className="flex items-center justify-center gap-2 w-full py-3 rounded-full text-sm font-bold text-white bg-violet-700 hover:bg-violet-600 transition-colors active:scale-[0.98]">
+                            className="flex items-center justify-center gap-2 w-full py-3 rounded-lg text-sm font-bold text-white bg-violet-700 hover:bg-violet-600 transition-colors active:scale-[0.98]">
                             <CheckCircle className="w-4 h-4" /> Book Service
                           </button>
                         )}
                         <button
                           onClick={handleMessage}
                           disabled={messaging}
-                          className="flex items-center justify-center gap-2 w-full py-3 rounded-full border-2 border-stone-200 dark:border-[#2a2d3e] text-stone-700 dark:text-stone-200 text-sm font-semibold hover:border-stone-400 dark:hover:border-stone-500 hover:bg-stone-50 dark:hover:bg-[#252837] transition-all">
+                          className="flex items-center justify-center gap-2 w-full py-3 rounded-lg border-2 border-stone-200 dark:border-[#2a2d3e] text-stone-700 dark:text-stone-200 text-sm font-semibold hover:border-stone-400 dark:hover:border-stone-500 hover:bg-stone-50 dark:hover:bg-[#252837] transition-all">
                           <MessageCircle className="w-4 h-4" /> {messaging ? "Opening chat..." : "Message Seller"}
                         </button>
                       </>
@@ -854,7 +854,7 @@ export default function ListingDetailPage() {
               </div>
 
               {/* ── Seller card ── */}
-              <div className="flex flex-col gap-4 bg-white dark:bg-[#1c1f2e] rounded-2xl border border-stone-200 dark:border-[#2a2d3e] shadow-sm p-5 mb-4">
+              <div className="flex flex-col gap-4 bg-white dark:bg-[#1c1f2e] rounded-lg border border-stone-200 dark:border-[#2a2d3e] shadow-sm p-5 mb-4">
                 <div className="flex items-center gap-3">
                   <ImageLink
                     href={sellerProfileHref}
@@ -885,7 +885,7 @@ export default function ListingDetailPage() {
                 {/* View Profile Button */}
                 <Link
                   href={sellerProfileHref}
-                  className="flex items-center justify-center w-full py-2.5 rounded-full border-2 border-stone-200 dark:border-[#2a2d3e] text-stone-700 dark:text-stone-200 bg-white dark:bg-transparent text-sm font-semibold hover:border-stone-400 dark:hover:border-stone-500 hover:bg-stone-50 dark:hover:bg-[#252837] transition-all">
+                  className="flex items-center justify-center w-full py-2.5 rounded-lg border-2 border-stone-200 dark:border-[#2a2d3e] text-stone-700 dark:text-stone-200 bg-white dark:bg-transparent text-sm font-semibold hover:border-stone-400 dark:hover:border-stone-500 hover:bg-stone-50 dark:hover:bg-[#252837] transition-all">
                   {isOwnListing ? "View My Profile" : "View Seller Profile"}
                 </Link>
 
@@ -893,13 +893,13 @@ export default function ListingDetailPage() {
                 <button
                   onClick={handleShowContactNumber}
                   disabled={isFetchingContact}
-                  className="flex items-center justify-center gap-2 w-full py-3 rounded-full border-2 border-stone-200 dark:border-[#2a2d3e] text-stone-700 dark:text-stone-200 bg-white dark:bg-transparent text-sm font-bold hover:border-stone-400 dark:hover:border-stone-500 hover:bg-stone-50 dark:hover:bg-[#252837] transition-all active:scale-[0.98]">
+                  className="flex items-center justify-center gap-2 w-full py-3 rounded-lg border-2 border-stone-200 dark:border-[#2a2d3e] text-stone-700 dark:text-stone-200 bg-white dark:bg-transparent text-sm font-bold hover:border-stone-400 dark:hover:border-stone-500 hover:bg-stone-50 dark:hover:bg-[#252837] transition-all active:scale-[0.98]">
                   <Phone className="w-3.5 h-3.5" /> {shownContactNumber ?? (isFetchingContact ? "Loading Number..." : "Show Contact Number")}
                 </button>
               </div>
 
               {/* ── Safety Tips ── */}
-              <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-2xl p-4">
+              <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
                 <p className="text-sm font-bold text-amber-800 dark:text-amber-300 mb-2">🛡 Safety Tips</p>
                 <ul className="flex flex-col gap-1.5">
                   {[

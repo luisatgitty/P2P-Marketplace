@@ -88,7 +88,7 @@ export default function CreateListingPage() {
               key={t.slug}
               href={`/create/${t.slug}`}
               className={cn(
-                "group relative flex flex-col rounded-2xl border-2 border-stone-200 dark:border-white/10",
+                "group relative flex flex-col rounded-lg border-2 border-stone-200 dark:border-white/10",
                 "bg-white/80 dark:bg-[#1c1f2e] p-5 sm:p-6",
                 "transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5",
                 t.borderHover,
@@ -98,7 +98,7 @@ export default function CreateListingPage() {
             >
               {/* Icon */}
               <div className={cn(
-                "w-11 h-11 rounded-xl flex items-center justify-center mb-4 shrink-0 transition-transform duration-200 group-hover:scale-110",
+                "w-11 h-11 rounded-lg flex items-center justify-center mb-4 shrink-0 transition-transform duration-200 group-hover:scale-110",
                 t.iconBg
               )}>
                 <t.icon size={20} className="text-white" />

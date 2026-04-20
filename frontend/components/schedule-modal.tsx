@@ -393,10 +393,10 @@ export function ScheduleModal({
       className="fixed inset-0 z-120 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div className="bg-white dark:bg-[#1c1f2e] rounded-t-3xl sm:rounded-2xl w-full sm:max-w-md shadow-2xl flex flex-col max-h-[92vh] sm:max-h-[88vh]">
+      <div className="bg-white dark:bg-[#1c1f2e] rounded-lg w-full sm:max-w-md shadow-2xl flex flex-col max-h-[92vh] sm:max-h-[88vh]">
 
         {/* ── Header ── */}
-        <div className="bg-[#1e2433] px-5 py-4 flex items-start justify-between shrink-0 rounded-t-3xl sm:rounded-t-2xl">
+        <div className="bg-[#1e2433] px-5 py-4 flex items-start justify-between shrink-0 rounded-t-lg">
           <div className="min-w-0">
             <div className="flex items-center gap-2 mb-1">
               <Package className="w-4 h-4 text-teal-400 shrink-0" />
@@ -434,7 +434,7 @@ export function ScheduleModal({
                 )}
               </div>
 
-              <div className="bg-stone-50 dark:bg-[#13151f] rounded-2xl p-4 border border-stone-200 dark:border-[#2a2d3e]">
+              <div className="bg-stone-50 dark:bg-[#13151f] rounded-lg p-4 border border-stone-200 dark:border-[#2a2d3e]">
                 <BookingCalendar
                   viewYear={viewYear}
                   viewMonth={viewMonth}
@@ -479,7 +479,7 @@ export function ScheduleModal({
                         type="button"
                         onClick={() => setWindow((prev) => (prev === tw.id ? null : tw.id))}
                         className={cn(
-                          "px-3 py-3 rounded-xl border text-sm font-semibold text-center transition-all",
+                          "px-3 py-3 rounded-lg border text-sm font-semibold text-center transition-all",
                           selectedWindow === tw.id
                             ? "bg-violet-700 border-violet-700 text-white shadow-sm"
                             : "bg-stone-50 dark:bg-[#13151f] border-stone-200 dark:border-[#2a2d3e] text-stone-600 dark:text-stone-300 hover:border-violet-300 dark:hover:border-violet-700 hover:bg-violet-50 dark:hover:bg-violet-950/20 hover:text-violet-700 dark:hover:text-violet-300",
@@ -541,7 +541,7 @@ export function ScheduleModal({
 
             {/* Step / selection summary */}
             {stepMessage.phase < 3 ? (
-              <div className="flex items-center gap-3 bg-teal-50 dark:bg-teal-950/20 border border-teal-200 dark:border-teal-800 rounded-xl px-4 py-3">
+              <div className="flex items-center gap-3 bg-teal-50 dark:bg-teal-950/20 border border-teal-200 dark:border-teal-800 rounded-lg px-4 py-3">
                 <div className={cn(
                   "w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0",
                   stepMessage.phase === 1
@@ -566,7 +566,7 @@ export function ScheduleModal({
             ) : (
               /* Complete range summary card */
               startDate && endDate && (
-                <div className="bg-teal-50 dark:bg-teal-950/20 border border-teal-200 dark:border-teal-800 rounded-xl px-4 py-3.5 flex flex-col gap-2">
+                <div className="bg-teal-50 dark:bg-teal-950/20 border border-teal-200 dark:border-teal-800 rounded-lg px-4 py-3.5 flex flex-col gap-2">
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <p className="text-[10px] font-bold text-teal-600 dark:text-teal-500 uppercase tracking-widest mb-1">
@@ -622,7 +622,7 @@ export function ScheduleModal({
                 onChange={(e) => setMessage(limitMessageInputLength(e.target.value))}
                 maxLength={MESSAGE_MAX_LENGTH}
                 placeholder="Enter any specific requests or questions for the seller here."
-                className="w-full bg-stone-50 dark:bg-[#13151f] border border-stone-200 dark:border-[#2a2d3e] rounded-xl px-3 py-2.5 text-sm text-stone-800 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-600 outline-none focus:border-teal-400 dark:focus:border-teal-600 resize-none transition-colors"
+                className="w-full bg-stone-50 dark:bg-[#13151f] border border-stone-200 dark:border-[#2a2d3e] rounded-lg px-3 py-2.5 text-sm text-stone-800 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-600 outline-none focus:border-teal-400 dark:focus:border-teal-600 resize-none transition-colors"
               />
             </div>
 
@@ -634,7 +634,7 @@ export function ScheduleModal({
           <button
             type="button"
             onClick={onClose}
-            className="flex-1 py-3 rounded-full border border-stone-200 dark:border-[#2a2d3e] text-stone-600 dark:text-stone-300 text-sm font-semibold hover:bg-stone-50 dark:hover:bg-[#252837] transition-colors"
+            className="flex-1 py-3 rounded-lg border border-stone-200 dark:border-[#2a2d3e] text-stone-600 dark:text-stone-300 text-sm font-semibold hover:bg-stone-50 dark:hover:bg-[#252837] transition-colors"
           >
             Cancel
           </button>
@@ -642,7 +642,7 @@ export function ScheduleModal({
             type="button"
             onClick={handleSend}
             disabled={!canSend}
-            className="flex-1 py-3 rounded-full bg-teal-700 hover:bg-teal-600 text-white text-sm font-bold transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className="flex-1 py-3 rounded-lg bg-teal-700 hover:bg-teal-600 text-white text-sm font-bold transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {sending ? "Sending..." : submitLabel}
           </button>

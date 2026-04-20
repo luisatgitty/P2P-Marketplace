@@ -402,7 +402,7 @@ export default function Navbar() {
                 </button>
 
                 {notificationOpen && (
-                  <div className="hidden md:block absolute right-0 mt-2 w-88 max-w-[90vw] rounded-xl border border-white/10 bg-[#1e2b3c] shadow-2xl z-50 animate-in fade-in slide-in-from-top-2 duration-150 overflow-hidden">
+                  <div className="hidden md:block absolute right-0 mt-2 w-88 max-w-[90vw] rounded-lg border border-white/10 bg-[#1e2b3c] shadow-2xl z-50 animate-in fade-in slide-in-from-top-2 duration-150 overflow-hidden">
                     <div className="px-3 py-2.5 border-b border-white/10 bg-white/5 flex items-center justify-between gap-2">
                       <h3 className="text-sm font-semibold text-white">Notifications</h3>
                       <button
@@ -478,7 +478,7 @@ export default function Navbar() {
               {(dropdownOpen || dropdownClosing) && (
                 <div
                   className={cn(
-                    "hidden md:block absolute right-0 mt-2 w-48 bg-[#1e2b3c] border border-white/10 rounded-xl shadow-2xl overflow-hidden transition-all duration-200 z-50",
+                    "hidden md:block absolute right-0 mt-2 w-48 bg-[#1e2b3c] border border-white/10 rounded-lg shadow-2xl overflow-hidden transition-all duration-200 z-50",
                     dropdownClosing
                       ? "opacity-0 -translate-y-2"
                       : "opacity-100 translate-y-0"
@@ -615,7 +615,7 @@ export default function Navbar() {
 
           <div
             ref={mobileNotificationPanelRef}
-            className="md:hidden fixed inset-x-0 bottom-0 z-63 w-auto bg-[#1e2b3c] rounded-t-xl shadow-2xl border-t border-white/10 overflow-hidden"
+            className="md:hidden fixed inset-x-0 bottom-0 z-63 w-auto bg-[#1e2b3c] rounded-t-lg shadow-2xl border-t border-white/10 overflow-hidden"
           >
             <div className="px-4 py-3 border-b border-white/10 bg-white/5 flex items-center justify-between gap-2">
               <h3 className="text-sm font-semibold text-white">Notifications</h3>
@@ -675,7 +675,7 @@ export default function Navbar() {
           <div
             ref={mobileDropdownPanelRef}
             className={cn(
-              "md:hidden fixed inset-x-0 bottom-0 z-61 w-auto bg-[#1e2b3c] rounded-t-xl shadow-2xl overflow-hidden transition-all duration-200",
+              "md:hidden fixed inset-x-0 bottom-0 z-61 w-auto bg-[#1e2b3c] rounded-t-lg shadow-2xl overflow-hidden transition-all duration-200",
               dropdownClosing
                 ? "opacity-0 translate-y-4"
                 : "opacity-100 translate-y-0"

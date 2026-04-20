@@ -22,14 +22,14 @@ export default function ForbiddenPage() {
     <div className="min-h-screen bg-stone-100 dark:bg-[#0f1117] flex flex-col">
 
       {/* ── Top accent bar (mirrors navbar amber stripe) ── */}
-      <div className="h-1 w-full bg-gradient-to-r from-[#1e2433] via-[#3a4a6a] to-[#1e2433] flex-shrink-0" />
+      <div className="h-1 w-full bg-linear-to-r from-[#1e2433] via-[#3a4a6a] to-[#1e2433] shrink-0" />
 
       {/* ── Main content ── */}
       <div className="flex-1 flex items-center justify-center px-4 py-16">
         <div className="w-full max-w-lg">
 
           {/* ── Card ── */}
-          <div className="bg-white dark:bg-[#1c1f2e] rounded-3xl border border-stone-200 dark:border-[#2a2d3e] shadow-sm overflow-hidden">
+          <div className="bg-white dark:bg-[#1c1f2e] rounded-lg border border-stone-200 dark:border-[#2a2d3e] shadow-sm overflow-hidden">
 
             {/* Card header — dark navy band */}
             <div className="bg-[#1e2433] px-8 py-8 flex flex-col items-center text-center relative overflow-hidden">
@@ -80,9 +80,9 @@ export default function ForbiddenPage() {
             <div className="px-8 py-7 flex flex-col gap-5">
 
               {/* Possible reasons box */}
-              <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-2xl p-4">
+              <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
                 <div className="flex items-center gap-2 mb-2.5">
-                  <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0" />
+                  <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
                   <p className="text-sm font-bold text-amber-800 dark:text-amber-300">
                     Why am I seeing this?
                   </p>
@@ -98,7 +98,7 @@ export default function ForbiddenPage() {
                       key={reason}
                       className="flex items-start gap-2 text-[12.5px] text-amber-700 dark:text-amber-400"
                     >
-                      <span className="text-amber-400 dark:text-amber-600 mt-0.5 flex-shrink-0">•</span>
+                      <span className="text-amber-400 dark:text-amber-600 mt-0.5 shrink-0">•</span>
                       {reason}
                     </li>
                   ))}
@@ -110,7 +110,7 @@ export default function ForbiddenPage() {
                 {/* Login — primary action */}
                 <Link
                   href="/login"
-                  className="flex items-center justify-center gap-2 w-full py-3 rounded-full text-sm font-bold text-white transition-all hover:opacity-90 active:scale-[0.98]"
+                  className="flex items-center justify-center gap-2 w-full py-3 rounded-lg text-sm font-bold text-white transition-all hover:opacity-90 active:scale-[0.98]"
                   style={{ background: "linear-gradient(135deg, #1e2433 0%, #3a4a6a 100%)" }}
                 >
                   <LogIn className="w-4 h-4" />
@@ -120,7 +120,7 @@ export default function ForbiddenPage() {
                 {/* Go home */}
                 <Link
                   href="/"
-                  className="flex items-center justify-center gap-2 w-full py-3 rounded-full border-2 border-stone-200 dark:border-[#2a2d3e] text-stone-700 dark:text-stone-200 text-sm font-semibold hover:border-stone-400 dark:hover:border-stone-500 hover:bg-stone-50 dark:hover:bg-[#252837] transition-all"
+                  className="flex items-center justify-center gap-2 w-full py-3 rounded-lg border-2 border-stone-200 dark:border-[#2a2d3e] text-stone-700 dark:text-stone-200 text-sm font-semibold hover:border-stone-400 dark:hover:border-stone-500 hover:bg-stone-50 dark:hover:bg-[#252837] transition-all"
                 >
                   <Home className="w-4 h-4" />
                   Back to Home
@@ -130,7 +130,7 @@ export default function ForbiddenPage() {
                 <button
                   type="button"
                   onClick={() => router.back()}
-                  className="flex items-center justify-center gap-2 w-full py-2.5 rounded-full text-stone-500 dark:text-stone-400 text-sm font-medium hover:text-stone-700 dark:hover:text-stone-200 transition-colors"
+                  className="flex items-center justify-center gap-2 w-full py-2.5 rounded-lg text-stone-500 dark:text-stone-400 text-sm font-medium hover:text-stone-700 dark:hover:text-stone-200 transition-colors"
                 >
                   <ArrowLeft className="w-3.5 h-3.5" />
                   Go Back to Previous Page
@@ -140,7 +140,7 @@ export default function ForbiddenPage() {
               {/* Divider */}
               <div className="flex items-center gap-3">
                 <div className="flex-1 h-px bg-stone-200 dark:bg-[#2a2d3e]" />
-                <span className="text-xs text-stone-400 dark:text-stone-600 flex-shrink-0">
+                <span className="text-xs text-stone-400 dark:text-stone-600 shrink-0">
                   or explore
                 </span>
                 <div className="flex-1 h-px bg-stone-200 dark:bg-[#2a2d3e]" />
@@ -153,7 +153,7 @@ export default function ForbiddenPage() {
                     key={href}
                     href={href}
                     className={cn(
-                      "text-center text-xs font-semibold px-3 py-2.5 rounded-xl transition-all",
+                      "text-center text-xs font-semibold px-3 py-2.5 rounded-lg transition-all",
                       "bg-stone-50 dark:bg-[#13151f] border border-stone-200 dark:border-[#2a2d3e]",
                       "text-stone-600 dark:text-stone-400",
                       "hover:border-stone-400 dark:hover:border-stone-500",
@@ -183,7 +183,7 @@ export default function ForbiddenPage() {
       </div>
 
       {/* ── Bottom accent bar ── */}
-      <div className="h-1 w-full bg-gradient-to-r from-[#1e2433] via-[#3a4a6a] to-[#1e2433] flex-shrink-0" />
+      <div className="h-1 w-full bg-linear-to-r from-[#1e2433] via-[#3a4a6a] to-[#1e2433] shrink-0" />
     </div>
   );
 }

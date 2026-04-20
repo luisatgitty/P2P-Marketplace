@@ -194,10 +194,10 @@ export default function ReportActionsModal({ report, onClose, onSubmit }: Report
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
       onClick={e => e.target === e.currentTarget && onClose()}
     >
-      <div className="bg-white dark:bg-[#1c1f2e] rounded-2xl w-full max-w-4xl shadow-2xl flex flex-col max-h-[92vh] overflow-hidden">
+      <div className="bg-white dark:bg-[#1c1f2e] rounded-lg w-full max-w-4xl shadow-2xl flex flex-col max-h-[92vh] overflow-hidden">
 
         {/* ── Header ────────────────────────────────────────────────────────── */}
-        <div className="bg-[#1e2433] px-6 py-4 flex items-center justify-between shrink-0 rounded-t-2xl">
+        <div className="bg-[#1e2433] px-6 py-4 flex items-center justify-between shrink-0 rounded-t-lg">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg bg-red-500/20 border border-red-500/30 flex items-center justify-center shrink-0">
               <Gavel className="w-4 h-4 text-red-400" />
