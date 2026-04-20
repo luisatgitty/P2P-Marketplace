@@ -32,6 +32,18 @@ export type MessagesPageQuery = {
   offset?: number;
 };
 
+export type ConversationsPageQuery = {
+  limit?: number;
+  offset?: number;
+};
+
+export type ConversationsPage = {
+  conversations: Conversation[];
+  total: number;
+  limit: number;
+  offset: number;
+};
+
 export type MessagesPage = {
   messages: Message[];
   total: number;
@@ -69,6 +81,43 @@ export async function getConversations(): Promise<Conversation[]> {
     method: "GET",
   });
   return data.conversations ?? [];
+}
+
+export async function getConversationsPage(query: ConversationsPageQuery = {}): Promise<ConversationsPage> {
+  const params = new URLSearchParams();
+  if (Number.isFinite(query.limit)) {
+    params.set("limit", String(query.limit));
+  }
+  if (Number.isFinite(query.offset)) {
+    params.set("offset", String(query.offset));
+  }
+
+  const suffix = params.size > 0 ? `?${params.toString()}` : "";
+
+  try {
+    const data = await apiFetch<{ conversations: Conversation[]; total?: number; limit?: number; offset?: number }>(`/messages/conversations${suffix}`, {
+      method: "GET",
+    });
+
+    const conversations = data.conversations ?? [];
+    const total = Number(data.total ?? conversations.length);
+    const limit = Number(data.limit ?? query.limit ?? conversations.length);
+    const offset = Number(data.offset ?? query.offset ?? 0);
+
+    return {
+      conversations,
+      total,
+      limit,
+      offset,
+    };
+  } catch {
+    return {
+      conversations: [],
+      total: 0,
+      limit: Number(query.limit ?? 0),
+      offset: Number(query.offset ?? 0),
+    };
+  }
 }
 
 export async function getConversation(id: string): Promise<Conversation | null> {

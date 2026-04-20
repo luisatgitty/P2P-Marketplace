@@ -19,6 +19,7 @@ import {
   deactivateProfile,
   getProfileData,
   getUserProfileData,
+  type ProfilePageQuery,
   type ProfilePayload,
   updateProfileImages,
   updateProfileData,
@@ -44,6 +45,7 @@ type ProfileTab = "listings" | "bookmarks" | "reviews";
 type ReviewTab = "received" | "personal";
 
 const SOLD_STATUSES = new Set(["sold"]);
+const PROFILE_SCROLL_BATCH_SIZE = 16;
 
 interface ProfileForm {
   firstName: string;
@@ -404,6 +406,14 @@ export default function ProfilePage() {
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [uploadingCover, setUploadingCover] = useState(false);
   const [editSnapshot, setEditSnapshot] = useState<EditableProfileSnapshot | null>(null);
+  const [listingsTotal, setListingsTotal] = useState(0);
+  const [bookmarksTotal, setBookmarksTotal] = useState(0);
+  const [receivedReviewsTotal, setReceivedReviewsTotal] = useState(0);
+  const [personalReviewsTotal, setPersonalReviewsTotal] = useState(0);
+  const [loadingMoreListings, setLoadingMoreListings] = useState(false);
+  const [loadingMoreBookmarks, setLoadingMoreBookmarks] = useState(false);
+  const [loadingMoreReceivedReviews, setLoadingMoreReceivedReviews] = useState(false);
+  const [loadingMorePersonalReviews, setLoadingMorePersonalReviews] = useState(false);
 
   function showErrorToast(msg: string) {
     toast.error(msg, { position: "top-center" });
@@ -561,15 +571,30 @@ export default function ProfilePage() {
     const loadProfile = async () => {
       setLoadingProfile(true);
       try {
+        const initialQuery: ProfilePageQuery = {
+          listingsLimit: PROFILE_SCROLL_BATCH_SIZE,
+          listingsOffset: 0,
+          bookmarksLimit: PROFILE_SCROLL_BATCH_SIZE,
+          bookmarksOffset: 0,
+          receivedReviewsLimit: PROFILE_SCROLL_BATCH_SIZE,
+          receivedReviewsOffset: 0,
+          personalReviewsLimit: PROFILE_SCROLL_BATCH_SIZE,
+          personalReviewsOffset: 0,
+        };
+
         const payload = isViewingExternalProfile
-          ? await getUserProfileData(externalUserId)
-          : await getProfileData();
+          ? await getUserProfileData(externalUserId, initialQuery)
+          : await getProfileData(initialQuery);
 
         setProfileUser(payload.user);
         setUserListings(payload.listings);
         setBookmarkListings(isViewingExternalProfile ? [] : payload.bookmarks);
         setReceivedReviews(payload.receivedReviews ?? payload.reviews ?? []);
         setPersonalReviews(payload.personalReviews ?? []);
+        setListingsTotal(payload.listingsTotal ?? payload.listings.length);
+        setBookmarksTotal(isViewingExternalProfile ? 0 : (payload.bookmarksTotal ?? payload.bookmarks.length));
+        setReceivedReviewsTotal(payload.receivedReviewsTotal ?? (payload.receivedReviews ?? payload.reviews ?? []).length);
+        setPersonalReviewsTotal(payload.personalReviewsTotal ?? (payload.personalReviews ?? []).length);
         if (!isViewingExternalProfile) {
           saveUserData(payload.user);
         }
@@ -623,6 +648,135 @@ export default function ProfilePage() {
   const profileTabs: ProfileTab[] = isViewingExternalProfile
     ? ["listings", "reviews"]
     : ["listings", "bookmarks", "reviews"];
+  const hasMoreListings = userListings.length < listingsTotal;
+  const hasMoreBookmarks = bookmarkListings.length < bookmarksTotal;
+  const hasMoreReceivedReviews = receivedReviews.length < receivedReviewsTotal;
+  const hasMorePersonalReviews = personalReviews.length < personalReviewsTotal;
+
+  async function loadMoreListings() {
+    if (loadingProfile || loadingMoreListings || !hasMoreListings) return;
+    setLoadingMoreListings(true);
+    try {
+      const query: ProfilePageQuery = {
+        listingsLimit: PROFILE_SCROLL_BATCH_SIZE,
+        listingsOffset: userListings.length,
+      };
+      const payload = isViewingExternalProfile
+        ? await getUserProfileData(externalUserId, query)
+        : await getProfileData(query);
+      setUserListings((prev) => [...prev, ...payload.listings]);
+      setListingsTotal(payload.listingsTotal ?? listingsTotal);
+    } catch {
+      showErrorToast("Failed to load more listings");
+    } finally {
+      setLoadingMoreListings(false);
+    }
+  }
+
+  async function loadMoreBookmarks() {
+    if (isViewingExternalProfile || loadingProfile || loadingMoreBookmarks || !hasMoreBookmarks) return;
+    setLoadingMoreBookmarks(true);
+    try {
+      const payload = await getProfileData({
+        bookmarksLimit: PROFILE_SCROLL_BATCH_SIZE,
+        bookmarksOffset: bookmarkListings.length,
+      });
+      setBookmarkListings((prev) => [...prev, ...payload.bookmarks]);
+      setBookmarksTotal(payload.bookmarksTotal ?? bookmarksTotal);
+    } catch {
+      showErrorToast("Failed to load more bookmarks");
+    } finally {
+      setLoadingMoreBookmarks(false);
+    }
+  }
+
+  async function loadMoreReviews(target: ReviewTab) {
+    if (loadingProfile) return;
+
+    if (target === "received") {
+      if (loadingMoreReceivedReviews || !hasMoreReceivedReviews) return;
+      setLoadingMoreReceivedReviews(true);
+      try {
+        const query: ProfilePageQuery = {
+          receivedReviewsLimit: PROFILE_SCROLL_BATCH_SIZE,
+          receivedReviewsOffset: receivedReviews.length,
+        };
+        const payload = isViewingExternalProfile
+          ? await getUserProfileData(externalUserId, query)
+          : await getProfileData(query);
+        const next = payload.receivedReviews ?? payload.reviews ?? [];
+        setReceivedReviews((prev) => [...prev, ...next]);
+        setReceivedReviewsTotal(payload.receivedReviewsTotal ?? receivedReviewsTotal);
+      } catch {
+        showErrorToast("Failed to load more reviews");
+      } finally {
+        setLoadingMoreReceivedReviews(false);
+      }
+      return;
+    }
+
+    if (loadingMorePersonalReviews || !hasMorePersonalReviews) return;
+    setLoadingMorePersonalReviews(true);
+    try {
+      const query: ProfilePageQuery = {
+        personalReviewsLimit: PROFILE_SCROLL_BATCH_SIZE,
+        personalReviewsOffset: personalReviews.length,
+      };
+      const payload = isViewingExternalProfile
+        ? await getUserProfileData(externalUserId, query)
+        : await getProfileData(query);
+      const next = payload.personalReviews ?? [];
+      setPersonalReviews((prev) => [...prev, ...next]);
+      setPersonalReviewsTotal(payload.personalReviewsTotal ?? personalReviewsTotal);
+    } catch {
+      showErrorToast("Failed to load more reviews");
+    } finally {
+      setLoadingMorePersonalReviews(false);
+    }
+  }
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (loadingProfile) return;
+
+      const reachedBottom = window.innerHeight + window.scrollY >= document.body.offsetHeight - 320;
+      if (!reachedBottom) return;
+
+      if (profileTab === "listings" && hasMoreListings) {
+        void loadMoreListings();
+        return;
+      }
+
+      if (profileTab === "bookmarks" && !isViewingExternalProfile && hasMoreBookmarks) {
+        void loadMoreBookmarks();
+        return;
+      }
+
+      if (profileTab === "reviews" && reviewTab === "received" && hasMoreReceivedReviews) {
+        void loadMoreReviews("received");
+        return;
+      }
+
+      if (profileTab === "reviews" && reviewTab === "personal" && hasMorePersonalReviews) {
+        void loadMoreReviews("personal");
+      }
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [
+    hasMoreBookmarks,
+    hasMoreListings,
+    hasMorePersonalReviews,
+    hasMoreReceivedReviews,
+    isViewingExternalProfile,
+    loadMoreBookmarks,
+    loadMoreListings,
+    loadMoreReviews,
+    loadingProfile,
+    profileTab,
+    reviewTab,
+  ]);
 
   async function handleSave() {
     const firstNameError = isValidName(form.firstName.trim(), "First name");
@@ -954,7 +1108,7 @@ export default function ProfilePage() {
 
             {/* Name + badge */}
             <div className="flex flex-wrap items-center gap-2 mb-1">
-              <h1 className="text-xl font-bold text-stone-900 dark:text-stone-100">{fullName}</h1>
+              <h1 className="text-md md:text-xl font-bold text-stone-900 dark:text-stone-100">{fullName}</h1>
               <VerificationBadge verified={verificationState === "verified"} size={16} />
             </div>
             <p className="text-sm text-stone-400 dark:text-stone-500 mb-3">{profileUser?.bio}</p>
@@ -1193,6 +1347,12 @@ export default function ProfilePage() {
                 )}
               </div>
             )}
+            {!loadingProfile && hasMoreListings && (
+              <p className="pb-4 text-center text-xs text-stone-400 dark:text-stone-500">Scroll down to load more listings...</p>
+            )}
+            {loadingMoreListings && (
+              <p className="pb-4 text-center text-xs text-stone-400 dark:text-stone-500">Loading more listings...</p>
+            )}
           </>)}
 
           {/* Bookmarked Items */}
@@ -1200,7 +1360,15 @@ export default function ProfilePage() {
             loadingProfile
               ? <div className="text-center py-14"><p className="font-semibold text-stone-400 text-sm">Loading bookmarked items...</p></div>
               : visibleBookmarkListings.length > 0
-              ? <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 p-4">{visibleBookmarkListings.map((l) => <PostCard key={l.id} {...l} />)}</div>
+              ? <>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 p-4">{visibleBookmarkListings.map((l) => <PostCard key={l.id} {...l} />)}</div>
+                {hasMoreBookmarks && (
+                  <p className="pb-4 text-center text-xs text-stone-400 dark:text-stone-500">Scroll down to load more bookmarks...</p>
+                )}
+                {loadingMoreBookmarks && (
+                  <p className="pb-4 text-center text-xs text-stone-400 dark:text-stone-500">Loading more bookmarks...</p>
+                )}
+              </>
               : <div className="text-center py-14"><Bookmark className="w-10 h-10 text-stone-200 dark:text-stone-700 mx-auto mb-3" /><p className="font-semibold text-stone-400 text-sm">No bookmarked items yet</p></div>
           )}
 
@@ -1232,11 +1400,19 @@ export default function ProfilePage() {
               {loadingProfile ? (
                 <div className="text-center py-14"><p className="font-semibold text-stone-400 text-sm">Loading reviews...</p></div>
               ) : (reviewTab === "received" ? receivedReviews : personalReviews).length > 0 ? (
+                <>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-4">
                   {(reviewTab === "received" ? receivedReviews : personalReviews).map((review) => (
                     <ProfileReviewCard key={`${reviewTab}-${review.id}`} review={review} />
                   ))}
                 </div>
+                {((reviewTab === "received" && hasMoreReceivedReviews) || (reviewTab === "personal" && hasMorePersonalReviews)) && (
+                  <p className="pb-4 text-center text-xs text-stone-400 dark:text-stone-500">Scroll down to load more reviews...</p>
+                )}
+                {((reviewTab === "received" && loadingMoreReceivedReviews) || (reviewTab === "personal" && loadingMorePersonalReviews)) && (
+                  <p className="pb-4 text-center text-xs text-stone-400 dark:text-stone-500">Loading more reviews...</p>
+                )}
+                </>
               ) : (
                 <div className="text-center py-14 px-6">
                   <Star className="w-10 h-10 text-stone-200 dark:text-stone-700 mx-auto mb-3" />

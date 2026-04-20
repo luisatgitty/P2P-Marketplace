@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect, useCallback, type UIEvent } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import {
   Search,
   ShieldCheck,
@@ -197,16 +197,15 @@ export default function UsersPage() {
   const [sort,               setSort]               = useState<{ field: SortField; dir: SortDir }>({ field: "joined", dir: "desc" });
   const [users,              setUsers]              = useState<AdminUser[]>([]);
   const [loadingUsers,       setLoadingUsers]       = useState(true);
-  const [loadingMore,        setLoadingMore]        = useState(false);
-  const [hasMore,            setHasMore]            = useState(true);
-  const [offset,             setOffset]             = useState(0);
+  const [currentPage,        setCurrentPage]        = useState(1);
   const [totalUsersCount,    setTotalUsersCount]    = useState(0);
   const [isRefreshing,       setIsRefreshing]       = useState(false);
   const [actionLoadingUserId,setActionLoadingUserId]= useState<string | null>(null);
-  const FETCH_LIMIT = 16;
+  const FETCH_LIMIT = 15;
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
+      setCurrentPage(1);
       setDebouncedSearch(search.trim());
     }, 250);
 
@@ -216,14 +215,9 @@ export default function UsersPage() {
   }, [search]);
 
   // ── Load ──────────────────────────────────────────────────────────────────────
-  const loadUsers = useCallback(async (reset: boolean, requestedOffset = 0) => {
-    if (reset) {
-      setLoadingUsers(true);
-    } else {
-      setLoadingMore(true);
-    }
-
-    const nextOffset = reset ? 0 : requestedOffset;
+  const loadUsers = useCallback(async (pageNumber: number) => {
+    setLoadingUsers(true);
+    const nextOffset = (pageNumber - 1) * FETCH_LIMIT;
 
     try {
       const payload = await getAdminUsers({
@@ -235,28 +229,25 @@ export default function UsersPage() {
       });
 
       const received = (payload.users ?? []) as AdminUserRecord[];
-      const nextCount = reset ? received.length : nextOffset + received.length;
-
-      setUsers((prev) => (reset ? received : [...prev, ...received]));
-      setOffset(nextCount);
+      setUsers(received);
       setTotalUsersCount(payload.total);
-      setHasMore(nextCount < payload.total);
+      setCurrentPage(pageNumber);
     } catch (err) {
       const message = typeof err === "string" ? err : "Failed to load users";
       toast.error(message, { position: "top-center" });
     } finally {
       setLoadingUsers(false);
-      setLoadingMore(false);
       setIsRefreshing(false);
     }
   }, [debouncedSearch, verifFilter, statusFilter]);
 
   useEffect(() => {
-    void loadUsers(true, 0);
-  }, [debouncedSearch, verifFilter, statusFilter, loadUsers]);
+    void loadUsers(currentPage);
+  }, [currentPage, loadUsers]);
 
   // ── Sort ──────────────────────────────────────────────────────────────────────
   function toggleSort(field: SortField) {
+    setCurrentPage(1);
     setSort(s => s.field === field ? { field, dir: s.dir === "asc" ? "desc" : "asc" } : { field, dir: "asc" });
   }
 
@@ -361,17 +352,15 @@ export default function UsersPage() {
     }
   }
 
-  function handleTableScroll(event: UIEvent<HTMLDivElement>) {
-    if (loadingUsers || loadingMore || !hasMore) return;
-
-    const node = event.currentTarget;
-    const remaining = node.scrollHeight - node.scrollTop - node.clientHeight;
-    if (remaining > 120) return;
-
-    void loadUsers(false, offset);
-  }
-
   const hasActiveFilters = search || verifFilter !== "ALL" || statusFilter !== "ALL";
+  const totalPages = Math.max(1, Math.ceil(totalUsersCount / FETCH_LIMIT));
+  const paginationPages = useMemo(() => {
+    const maxButtons = 5;
+    let start = Math.max(1, currentPage - 2);
+    let end = Math.min(totalPages, start + maxButtons - 1);
+    start = Math.max(1, end - maxButtons + 1);
+    return Array.from({ length: end - start + 1 }, (_, idx) => start + idx);
+  }, [currentPage, totalPages]);
 
   // ── Sortable column header ────────────────────────────────────────────────────
   const SortableTH = ({ label, field }: { label: string; field: SortField }) => (
@@ -403,18 +392,16 @@ export default function UsersPage() {
       {/* ── Summary cards — clickable to filter by status ── */}
       <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
         {[
-          { label: "Total", count: totalUsersCount, status: "ALL",        color: "text-stone-700 dark:text-stone-200", bg: "bg-stone-100 dark:bg-[#13151f]",      border: "border-stone-200 dark:border-[#2a2d3e]", Icon: Users },
-          { label: "Verified",    count: verifiedCount,   status: "VERIFIED",   color: "text-teal-600 dark:text-teal-400",   bg: "bg-teal-50 dark:bg-teal-950/20",       border: "border-teal-200 dark:border-teal-800", Icon: ShieldCheck },
-          { label: "Pending",     count: pendingCount,    status: "PENDING",    color: "text-amber-600 dark:text-amber-400", bg: "bg-amber-50 dark:bg-amber-950/20",     border: "border-amber-200 dark:border-amber-800", Icon: Clock },
-          { label: "Unverified",  count: unverifiedCount, status: "UNVERIFIED", color: "text-stone-600 dark:text-stone-300", bg: "bg-stone-100 dark:bg-stone-800",         border: "border-stone-200 dark:border-stone-700", Icon: AlertTriangle },
-          { label: "Rejected",    count: rejectedCount,   status: "REJECTED",   color: "text-red-600 dark:text-red-400",     bg: "bg-red-50 dark:bg-red-950/20",         border: "border-red-200 dark:border-red-800", Icon: XCircle },
-        ].map(({ label, count, status, color, bg, border, Icon }) => (
+          { label: "Total", count: totalUsersCount, status: "ALL",        color: "text-stone-700 dark:text-stone-200", Icon: Users },
+          { label: "Verified",    count: verifiedCount,   status: "VERIFIED",   color: "text-teal-600 dark:text-teal-400",   Icon: ShieldCheck },
+          { label: "Pending",     count: pendingCount,    status: "PENDING",    color: "text-amber-600 dark:text-amber-400", Icon: Clock },
+          { label: "Unverified",  count: unverifiedCount, status: "UNVERIFIED", color: "text-stone-600 dark:text-stone-300", Icon: AlertTriangle },
+          { label: "Rejected",    count: rejectedCount,   status: "REJECTED",   color: "text-red-600 dark:text-red-400",     Icon: XCircle },
+        ].map(({ label, count, status, color, Icon }) => (
           <Card
             key={label}
             className={cn(
-              "p-4 rounded-lg cursor-pointer hover:shadow-sm transition-all border",
-              bg,
-              border,
+              "p-4 rounded-lg cursor-pointer hover:shadow-sm transition-all card-glass border border-stone-200 dark:border-[#2a2d3e]",
               verifFilter === status && "ring-2 ring-offset-1 ring-current",
             )}
             onClick={() => {
@@ -422,6 +409,7 @@ export default function UsersPage() {
                 if (status === "ALL") return "ALL";
                 return prev === status ? "ALL" : status;
               });
+              setCurrentPage(1);
             }}
           >
             <CardContent className="text-center">
@@ -451,7 +439,7 @@ export default function UsersPage() {
         <div className="flex gap-2 flex-wrap">
           <FilterSelect
             value={verifFilter}
-            onChange={v => { setVerif(v); }}
+            onChange={v => { setVerif(v); setCurrentPage(1); }}
             options={[
               ["ALL",        "All Verification" ],
               ["VERIFIED",   "Verified"         ],
@@ -462,7 +450,7 @@ export default function UsersPage() {
           />
           <FilterSelect
             value={statusFilter}
-            onChange={v => { setStatus(v); }}
+            onChange={v => { setStatus(v); setCurrentPage(1); }}
             options={[
               ["ALL",      "All Status" ],
               ["ACTIVE",   "Active"     ],
@@ -473,7 +461,7 @@ export default function UsersPage() {
           {hasActiveFilters && (
             <Button
               variant="outline"
-              onClick={() => { setSearch(""); setVerif("ALL"); setStatus("ALL"); }}
+              onClick={() => { setSearch(""); setVerif("ALL"); setStatus("ALL"); setCurrentPage(1); }}
               className="hover:bg-destructive/10! text-destructive! border-destructive! focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40"
             >
               <X className="w-3 h-3" /> Clear
@@ -486,7 +474,7 @@ export default function UsersPage() {
           variant="outline"
           onClick={() => {
             setIsRefreshing(true);
-            void loadUsers(true, 0);
+            void loadUsers(currentPage);
           }}
           disabled={loadingUsers}
           className="border-sky-600 text-sky-600! hover:bg-sky-600/10 focus-visible:border-sky-600 focus-visible:ring-sky-600/20 dark:border-sky-400 dark:text-sky-400! dark:hover:bg-sky-400/10 dark:focus-visible:border-sky-400 dark:focus-visible:ring-sky-400/40"
@@ -498,7 +486,7 @@ export default function UsersPage() {
       {/* ── Table ── */}
       <Card className="p-0 rounded-lg dark:bg-[#1c1f2e] dark:border-[#2a2d3e] overflow-hidden flex-1 min-h-0">
         <CardContent className="p-0 h-full min-h-0 flex flex-col">
-          <div className="overflow-auto h-full" onScroll={handleTableScroll}>
+          <div className="overflow-auto h-full">
             <Table>
               <TableHeader>
                 <TableRow className="border-stone-200 dark:border-[#2a2d3e] bg-stone-50 dark:bg-[#13151f] hover:bg-stone-50 dark:hover:bg-[#13151f]">
@@ -732,28 +720,50 @@ export default function UsersPage() {
                   ))
                 )}
 
-                {loadingMore && (
-                  <TableRow>
-                    <TableCell colSpan={15} className="py-4 text-center text-sm text-stone-400 dark:text-stone-500">
-                      Loading more users…
-                    </TableCell>
-                  </TableRow>
-                )}
-
-                {!hasMore && filtered.length > 0 && (
-                  <TableRow>
-                    <TableCell colSpan={15} className="py-4 text-center text-xs text-stone-400 dark:text-stone-500">
-                      End of user results.
-                    </TableCell>
-                  </TableRow>
-                )}
               </TableBody>
             </Table>
           </div>
 
           <Separator className="dark:bg-[#2a2d3e]" />
-          <div className="px-4 py-3 text-sm text-stone-400 dark:text-stone-500">
-            Showing {filtered.length.toLocaleString()} of {totalUsersCount.toLocaleString()} result{totalUsersCount !== 1 ? "s" : ""}
+          <div className="px-4 py-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between text-sm text-stone-400 dark:text-stone-500">
+            <span>
+              Showing {filtered.length.toLocaleString()} of {totalUsersCount.toLocaleString()} result{totalUsersCount !== 1 ? "s" : ""}
+            </span>
+            <div className="flex items-center gap-1.5 self-end sm:self-auto">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                disabled={loadingUsers || currentPage <= 1}
+                className="h-8 px-2.5"
+              >
+                Prev
+              </Button>
+              {paginationPages.map((page) => (
+                <Button
+                  key={page}
+                  type="button"
+                  variant={page === currentPage ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setCurrentPage(page)}
+                  disabled={loadingUsers}
+                  className="h-8 min-w-8 px-2"
+                >
+                  {page}
+                </Button>
+              ))}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                disabled={loadingUsers || currentPage >= totalPages}
+                className="h-8 px-2.5"
+              >
+                Next
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>

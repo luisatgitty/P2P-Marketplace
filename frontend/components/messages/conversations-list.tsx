@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { usePathname } from "next/navigation";
 import { Search, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Conversation, MessageTab } from "@/types/messaging";
-import { getConversations } from "@/services/messagingService";
+import { getConversationsPage } from "@/services/messagingService";
 import ConversationItem from "./conversation-item";
 import EmptyState from "./empty-state";
 
@@ -24,12 +24,18 @@ interface ConversationsListProps {
 }
 
 export default function ConversationsList({ activeTab }: ConversationsListProps) {
+  const PAGE_SIZE = 15;
   const pathname     = usePathname();
   const activeConvId = pathname.startsWith("/messages/") ? pathname.split("/")[2] : null;
 
   const [allConversations, setAllConversations] = useState<Conversation[]>([]);
   const [search,  setSearch]  = useState("");
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const [totalCount, setTotalCount] = useState(0);
+  const listViewportRef = useRef<HTMLDivElement>(null);
+  const loadMoreTriggerRef = useRef<HTMLDivElement>(null);
 
   const loadConvs = useCallback(async (showSkeleton = false) => {
     if (showSkeleton) {
@@ -37,26 +43,61 @@ export default function ConversationsList({ activeTab }: ConversationsListProps)
     }
 
     try {
-      const data = await getConversations();
-      setAllConversations(data);
+      const page = await getConversationsPage({ limit: PAGE_SIZE, offset: 0 });
+      setAllConversations(page.conversations);
+      setTotalCount(page.total);
+      setHasMore(page.offset + page.conversations.length < page.total);
     } catch {
       if (showSkeleton) {
         setAllConversations([]);
+        setTotalCount(0);
+        setHasMore(false);
       }
     } finally {
       if (showSkeleton) {
         setLoading(false);
       }
     }
-  }, []);
+  }, [PAGE_SIZE]);
+
+  const loadMoreConvs = useCallback(async () => {
+    if (loading || loadingMore || !hasMore) return;
+
+    setLoadingMore(true);
+    try {
+      const page = await getConversationsPage({
+        limit: PAGE_SIZE,
+        offset: allConversations.length,
+      });
+
+      setAllConversations((prev) => {
+        const seen = new Set(prev.map((item) => item.id));
+        const deduped = page.conversations.filter((item) => !seen.has(item.id));
+        return [...prev, ...deduped];
+      });
+
+      setTotalCount(page.total);
+      const nextCount = allConversations.length + page.conversations.length;
+      setHasMore(nextCount < page.total);
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [PAGE_SIZE, allConversations.length, hasMore, loading, loadingMore]);
 
   useEffect(() => { loadConvs(true); }, [loadConvs]);
 
   useEffect(() => {
-    const refresh = () => { loadConvs(false); };
+    const refresh = async () => {
+      const refreshLimit = Math.max(PAGE_SIZE, allConversations.length || PAGE_SIZE);
+      const page = await getConversationsPage({ limit: refreshLimit, offset: 0 });
+      setAllConversations(page.conversations);
+      setTotalCount(page.total);
+      setHasMore(page.offset + page.conversations.length < page.total);
+    };
+
     window.addEventListener("messages:updated", refresh);
     return () => window.removeEventListener("messages:updated", refresh);
-  }, [loadConvs]);
+  }, [PAGE_SIZE, allConversations.length]);
 
   const tabFiltered = filterByTab(allConversations, activeTab);
 
@@ -70,8 +111,39 @@ export default function ConversationsList({ activeTab }: ConversationsListProps)
       )
     : tabFiltered;
 
+  useEffect(() => {
+    if (loading || loadingMore || !hasMore) return;
+    if (search.trim()) return;
+    if (filtered.length > 0) return;
+    void loadMoreConvs();
+  }, [filtered.length, hasMore, loadMoreConvs, loading, loadingMore, search]);
+
+  useEffect(() => {
+    if (loading || loadingMore || !hasMore) return;
+    if (search.trim()) return;
+
+    const root = listViewportRef.current;
+    const target = loadMoreTriggerRef.current;
+    if (!root || !target) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (!entries[0]?.isIntersecting) return;
+        void loadMoreConvs();
+      },
+      {
+        root,
+        rootMargin: "160px 0px",
+        threshold: 0.1,
+      }
+    );
+
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [hasMore, loadMoreConvs, loading, loadingMore, search]);
+
   return (
-    <div className="flex flex-col h-full pb-12">
+    <div className="flex flex-col h-full pb-16">
 
       {/* ── Search bar ──────────────────────────────────────────────── */}
       <div className="px-3 pt-3 pb-2 border-b border-border shrink-0">
@@ -110,7 +182,7 @@ export default function ConversationsList({ activeTab }: ConversationsListProps)
       </div>
 
       {/* ── List ────────────────────────────────────────────────────── */}
-      <div className="flex-1 overflow-y-auto no-scroll">
+      <div ref={listViewportRef} className="flex-1 overflow-y-auto no-scroll">
         {loading ? (
 
           // Skeleton — staggered fade-in so it feels intentional
@@ -146,6 +218,21 @@ export default function ConversationsList({ activeTab }: ConversationsListProps)
                   isActive={conv.id === activeConvId}
                 />
               ))
+            )}
+
+            {!search.trim() && hasMore && (
+              <div
+                ref={loadMoreTriggerRef}
+                className="px-4 py-3 text-center text-xs text-stone-400 dark:text-stone-500"
+              >
+                {loadingMore ? "Loading more conversations..." : "Scroll to load more"}
+              </div>
+            )}
+
+            {!search.trim() && !hasMore && totalCount > PAGE_SIZE && (
+              <div className="px-4 py-3 text-center text-xs text-stone-400 dark:text-stone-500">
+                End of conversations.
+              </div>
             )}
           </div>
 

@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { useTheme } from "next-themes";
 import { useUser } from "@/utils/UserContext";
 import { LogoutModal } from "@/components/auth/logout-modal";
 import {
@@ -21,13 +20,12 @@ import {
   ChevronRight,
   PanelLeftClose,
   PanelLeftOpen,
-  Sun,
-  Moon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getAdminReports } from "@/services/adminReportsService";
 import { getAdminVerifications } from "@/services/adminVerificationsService";
 import { SafeImage } from "@/components/ui/safe-image";
+import { ThemeModeSwitch } from "@/components/theme-mode-switch";
 
 const BADGE_KEYS = {
   reports: "/admin/reports",
@@ -56,11 +54,15 @@ const NAV: NavItem[] = [
 const USER_MENU: NavItem[] = [
   {
     href: "/admin/admins",
-    label: "Admin Management",
+    label: "Admins",
     Icon: UserCog,
     roles: ["SUPER_ADMIN"],
   },
-  { href: "/admin/settings", label: "Settings", Icon: Settings },
+  {
+    href: "/admin/settings",
+    label: "Settings",
+    Icon: Settings 
+  },
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -75,20 +77,17 @@ interface SidebarContentProps {
 
 function SidebarContent({
   onNavigate,
-  collapsed = false,
+  collapsed = true,
   onToggleCollapse,
   onRequestLogout,
 }: SidebarContentProps) {
   const pathname = usePathname();
-  const { theme, resolvedTheme, setTheme } = useTheme();
   const { user } = useUser();
   const [dropdownOpen, setDropdown] = useState(false);
   const [badges, setBadges] = useState<Record<string, number>>({
     [BADGE_KEYS.reports]: 0,
     [BADGE_KEYS.verifications]: 0,
   });
-  const effectiveTheme = resolvedTheme ?? theme;
-  const isDarkMode = effectiveTheme === "dark";
   const roleFromUser = String(user?.role ?? "").toUpperCase();
   const currentAdminRole: "ADMIN" | "SUPER_ADMIN" | null =
     roleFromUser === "SUPER_ADMIN"
@@ -114,8 +113,8 @@ function SidebarContent({
 
         if (!active) return;
 
-        const pendingReports = reports.filter((item) => item.status === "PENDING").length;
-        const pendingVerifications = verifications.filter((item) => item.status === "PENDING").length;
+        const pendingReports = reports.reports.filter((item) => item.status === "PENDING").length;
+        const pendingVerifications = verifications.verifications.filter((item) => item.status === "PENDING").length;
 
         setBadges({
           [BADGE_KEYS.reports]: pendingReports,
@@ -150,9 +149,10 @@ function SidebarContent({
         <Image
           src="/logo.png"
           alt="P2P Marketplace"
+          loading="eager"
           width={32}
           height={32}
-          className="rounded-md shrink-0"
+          className="shrink-0"
         />
 
         {/* Text — only shown when expanded */}
@@ -219,9 +219,9 @@ function SidebarContent({
               {/* Badge: count when expanded, red dot when collapsed */}
               {badge ? (
                 collapsed ? (
-                  <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-red-500" />
+                  <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-red-500" />
                 ) : (
-                  <span className="w-5 h-5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center shrink-0">
+                  <span className="w-4 h-4 pb-0.5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
                     {badge > 9 ? "9+" : badge}
                   </span>
                 )
@@ -233,12 +233,18 @@ function SidebarContent({
         })}
       </nav>
 
+      {/* ── Theme toggle near profile ─────────────────────────────────────── */}
+      <div className={cn("shrink-0 px-3 pb-2", collapsed ? "px-2" : "px-3")}>
+        <ThemeModeSwitch
+          showLabel={!collapsed}
+          compact={collapsed}
+          className={collapsed ? "mx-auto" : undefined}
+        />
+      </div>
+
       {/* ── Bottom: user button + dropdown ──────────────────────────────── */}
       <div
-        className={cn(
-          "relative shrink-0 border-t border-white/10",
-          collapsed ? "p-2" : "p-4",
-        )}
+        className={"relative p-4 shrink-0 border-t border-white/10"}
       >
         {/* Close dropdown on outside click */}
         {dropdownOpen && (
@@ -253,10 +259,8 @@ function SidebarContent({
           <div
             className={cn(
               "absolute z-50 bottom-full mb-2",
-              // When collapsed, align to left and set a fixed width so it
-              // extends to the right of the icon-only sidebar.
-              collapsed ? "left-0 min-w-52" : "left-2 right-2",
-              "bg-[#252f45] border border-white/10 rounded-2xl shadow-2xl overflow-hidden",
+              "min-w-46 left-2 right-2",
+              "bg-[#252f45] border border-white/10 rounded-lg shadow-2xl overflow-hidden",
               // Slide-up entrance
               "animate-in fade-in slide-in-from-bottom-2 duration-150",
             )}
@@ -273,23 +277,10 @@ function SidebarContent({
                   }}
                   className="flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-slate-300 hover:bg-white/5 hover:text-white transition-colors"
                 >
-                  <Icon className="w-3.5 h-3.5 shrink-0 text-slate-400" />
+                  <Icon className="w-4 h-4 shrink-0 text-slate-400" />
                   {label}
                 </Link>
               ))}
-
-              <button
-                type="button"
-                onClick={() => setTheme(isDarkMode ? "light" : "dark")}
-                className="flex items-center gap-3 w-full px-4 py-2.5 text-sm font-medium text-slate-300 hover:bg-white/5 hover:text-white transition-colors"
-              >
-                {isDarkMode ? (
-                  <Sun className="w-3.5 h-3.5 shrink-0 text-slate-400" />
-                ) : (
-                  <Moon className="w-3.5 h-3.5 shrink-0 text-slate-400" />
-                )}
-                {isDarkMode ? "Light Mode" : "Dark Mode"}
-              </button>
             </div>
 
             {/* Log out */}
@@ -314,13 +305,13 @@ function SidebarContent({
           type="button"
           onClick={() => setDropdown((v) => !v)}
           className={cn(
-            "w-full flex items-center rounded-xl transition-all",
+            "w-full flex items-center rounded-lg transition-all",
             "hover:bg-white/5 active:bg-white/10",
-            collapsed ? "justify-center w-10 h-10 mx-auto" : "gap-3 px-2 py-2",
+            collapsed ? "justify-center w-8 h-8 mx-auto" : "gap-3",
           )}
         >
           {/* Avatar */}
-          <div className="w-9 h-9 rounded-full overflow-hidden shrink-0 ring-2 ring-white/10">
+          <div className="w-8 h-8 rounded-full overflow-hidden shrink-0 ring-2 ring-white/10">
             <SafeImage
               src={user?.profileImageUrl}
               type="profile"
@@ -365,7 +356,7 @@ export default function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(true);
   const [isSmallScreen, setIsSmallScreen] = useState(false);
   const [logoutModalOpen, setLogoutModalOpen] = useState(false);
 
@@ -379,7 +370,7 @@ export default function AdminLayout({
     return () => window.removeEventListener("resize", checkScreen);
   }, []);
 
-  const effectiveCollapsed = isSmallScreen ? true : collapsed;
+  const effectiveCollapsed = collapsed;
 
   return (
     <>
@@ -388,11 +379,11 @@ export default function AdminLayout({
         onClose={() => setLogoutModalOpen(false)}
       />
 
-      <div className="fixed inset-0 z-100 flex bg-stone-100 dark:bg-[#0f1117] overflow-hidden">
+      <div className="fixed inset-0 z-100 bg-stone-100 dark:bg-[#0f1117] overflow-hidden">
         {/* ── Sidebar ─────────────────────────────────────────────────────── */}
         <div
           className={cn(
-            "flex flex-col shrink-0 bg-[#1e2433] h-full",
+            "absolute top-0 left-0 h-full bg-[#1e2433] z-10",
             "transition-all duration-300 ease-in-out",
             effectiveCollapsed ? "w-16" : "w-60",
           )}
@@ -407,8 +398,10 @@ export default function AdminLayout({
         </div>
 
         {/* ── Main area ───────────────────────────────────────────────────── */}
-        <div className="flex-1 flex flex-col overflow-hidden">
-          <main className="flex-1 overflow-y-auto">{children}</main>
+        <div
+          className={"absolute inset-0 flex flex-col ml-0 overflow-hidden"}
+        >
+          <main className="flex-1 overflow-y-auto ml-16">{children}</main>
         </div>
       </div>
     </>

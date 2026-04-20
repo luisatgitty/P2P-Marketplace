@@ -235,7 +235,47 @@ func GetConversations(c *fiber.Ctx) error {
 		return SendErrorResponse(c, 401, err.Error(), nil)
 	}
 
-	rows, err := repository.GetConversationsByUser(userId)
+	hasLimitParam := strings.TrimSpace(c.Query("limit")) != ""
+	hasOffsetParam := strings.TrimSpace(c.Query("offset")) != ""
+	hasPagination := hasLimitParam || hasOffsetParam
+
+	limit := 15
+	if hasPagination && hasLimitParam {
+		parsedLimit, parseErr := strconv.Atoi(strings.TrimSpace(c.Query("limit")))
+		if parseErr != nil || parsedLimit <= 0 {
+			return SendErrorResponse(c, 400, "Limit must be a positive integer", parseErr)
+		}
+		if parsedLimit > 100 {
+			parsedLimit = 100
+		}
+		limit = parsedLimit
+	}
+
+	offset := 0
+	if hasPagination && hasOffsetParam {
+		parsedOffset, parseErr := strconv.Atoi(strings.TrimSpace(c.Query("offset")))
+		if parseErr != nil || parsedOffset < 0 {
+			return SendErrorResponse(c, 400, "Offset must be a non-negative integer", parseErr)
+		}
+		offset = parsedOffset
+	}
+
+	if !hasPagination {
+		rows, err := repository.GetConversationsByUser(userId)
+		if err != nil {
+			return SendErrorResponse(c, 500, err.Error(), err)
+		}
+
+		baseURL := c.BaseURL()
+		items := make([]map[string]any, 0, len(rows))
+		for _, row := range rows {
+			items = append(items, mapConversationPayload(baseURL, row))
+		}
+
+		return SendSuccessResponse(c, 200, "Conversations fetched successfully", map[string]any{"conversations": items})
+	}
+
+	rows, total, err := repository.GetConversationsByUserPage(userId, limit, offset)
 	if err != nil {
 		return SendErrorResponse(c, 500, err.Error(), err)
 	}
@@ -246,7 +286,12 @@ func GetConversations(c *fiber.Ctx) error {
 		items = append(items, mapConversationPayload(baseURL, row))
 	}
 
-	return SendSuccessResponse(c, 200, "Conversations fetched successfully", map[string]any{"conversations": items})
+	return SendSuccessResponse(c, 200, "Conversations fetched successfully", map[string]any{
+		"conversations": items,
+		"total":         total,
+		"limit":         limit,
+		"offset":        offset,
+	})
 }
 
 func GetConversation(c *fiber.Ctx) error {

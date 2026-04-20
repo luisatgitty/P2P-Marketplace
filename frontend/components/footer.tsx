@@ -56,7 +56,14 @@ export default function Footer() {
         <div className="flex flex-col gap-4">
           <div>
             <div className="flex items-center gap-2 mb-3">
-              <Image src="/logo.png" alt="P2P Marketplace" width={32} height={32} />
+              <Image
+                src="/logo.png"
+                alt="P2P Marketplace"
+                loading="lazy"
+                width={32}
+                height={32}
+                className="shrink-0"
+              />
               <span className="text-stone-100 font-semibold text-lg">P2P Marketplace</span>
             </div>
             <p className="text-stone-400 text-sm max-w-xs leading-relaxed">
@@ -66,11 +73,11 @@ export default function Footer() {
           <nav className="flex flex-wrap gap-x-2 gap-y-2">
             {LINKS.map((link) => (
               <Link
-              key={link.label}
-              href={link.href}
-              className="px-2 py-1 text-stone-400 text-sm hover:bg-amber-800 hover:text-stone-100 rounded-lg whitespace-nowrap"
+                key={link.label}
+                href={link.href}
+                className="px-2 py-1 text-stone-400 text-sm hover:bg-amber-800 hover:text-stone-100 rounded-lg whitespace-nowrap"
               >
-              {link.label}
+                {link.label}
               </Link>
             ))}
           </nav>

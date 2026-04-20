@@ -35,6 +35,61 @@ func GetNotificationsByUser(userId string) ([]model.NotificationFromDb, error) {
 	return notifications, nil
 }
 
+func GetNotificationsByUserPage(userId string, limit, offset int) ([]model.NotificationFromDb, int, error) {
+	db := middleware.DBConn
+	notifications := make([]model.NotificationFromDb, 0)
+	total := 0
+
+	countQuery := `
+		SELECT COUNT(*)
+		FROM public.notifications
+		WHERE user_id = $1
+	`
+
+	if err := db.Raw(countQuery, userId).Scan(&total).Error; err != nil {
+		return nil, 0, fmt.Errorf("Failed to count notifications")
+	}
+
+	selectQuery := `
+		SELECT
+			id,
+			user_id,
+			type,
+			message,
+			link,
+			COALESCE(is_read, FALSE) AS is_read,
+			created_at
+		FROM public.notifications
+		WHERE user_id = $1
+		ORDER BY created_at DESC
+		LIMIT $2 OFFSET $3
+	`
+
+	if err := db.Raw(selectQuery, userId, limit, offset).Scan(&notifications).Error; err != nil {
+		return nil, 0, fmt.Errorf("Failed to retrieve notifications")
+	}
+
+	return notifications, total, nil
+}
+
+func GetUnreadNotificationCountByUser(userId string) (int, error) {
+	db := middleware.DBConn
+	unreadCount := 0
+
+	countQuery := `
+		SELECT COUNT(*)
+		FROM public.notifications
+		WHERE user_id = $1
+			AND COALESCE(is_read, FALSE) = FALSE
+	`
+
+	if err := db.Raw(countQuery, userId).Scan(&unreadCount).Error; err != nil {
+		return 0, fmt.Errorf("Failed to count unread notifications")
+	}
+
+	return unreadCount, nil
+}
+
 func MarkAllNotificationsRead(userId string) error {
 	db := middleware.DBConn
 

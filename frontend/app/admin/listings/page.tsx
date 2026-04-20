@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect, useCallback, type UIEvent } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import {
   Search,
   AlertTriangle,
@@ -176,16 +176,15 @@ export default function ListingsPage() {
   const [sort,           setSort]           = useState<{ field: SortField; dir: SortDir }>({ field: "created", dir: "desc" });
   const [listings,       setListings]       = useState<AdminListing[]>([]);
   const [loadingListings,setLoadingListings]= useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [hasMore, setHasMore] = useState(true);
-  const [offset, setOffset] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [actionLoadingListingId, setActionLoadingListingId] = useState<string | null>(null);
-  const FETCH_LIMIT = 16;
+  const FETCH_LIMIT = 15;
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
+      setCurrentPage(1);
       setDebouncedSearch(search.trim());
     }, 250);
 
@@ -195,14 +194,9 @@ export default function ListingsPage() {
   }, [search]);
 
   // ── Load ──────────────────────────────────────────────────────────────────────
-  const loadListings = useCallback(async (reset: boolean, requestedOffset = 0) => {
-    if (reset) {
-      setLoadingListings(true);
-    } else {
-      setLoadingMore(true);
-    }
-
-    const nextOffset = reset ? 0 : requestedOffset;
+  const loadListings = useCallback(async (pageNumber: number) => {
+    setLoadingListings(true);
+    const nextOffset = (pageNumber - 1) * FETCH_LIMIT;
 
     try {
       const payload = await getAdminListings({
@@ -215,25 +209,21 @@ export default function ListingsPage() {
       });
 
       const received = (payload.listings ?? []) as AdminListingRecord[];
-      const nextCount = reset ? received.length : nextOffset + received.length;
-
-      setListings((prev) => (reset ? received : [...prev, ...received]));
-      setOffset(nextCount);
+      setListings(received);
       setTotalCount(payload.total);
-      setHasMore(nextCount < payload.total);
+      setCurrentPage(pageNumber);
     } catch (err) {
       const message = typeof err === "string" ? err : "Failed to load listings";
       toast.error(message, { position: "top-center" });
     } finally {
       setLoadingListings(false);
-      setLoadingMore(false);
       setIsRefreshing(false);
     }
   }, [debouncedSearch, typeFilter, statusFilter, categoryFilter]);
 
   useEffect(() => {
-    void loadListings(true, 0);
-  }, [debouncedSearch, typeFilter, statusFilter, categoryFilter, loadListings]);
+    void loadListings(currentPage);
+  }, [currentPage, loadListings]);
 
   // ── Dynamic category options ──────────────────────────────────────────────────
   const categoryOptions = useMemo(() => {
@@ -244,6 +234,7 @@ export default function ListingsPage() {
 
   // ── Sort ──────────────────────────────────────────────────────────────────────
   function toggleSort(field: SortField) {
+    setCurrentPage(1);
     setSort(s => s.field === field ? { field, dir: s.dir === "asc" ? "desc" : "asc" } : { field, dir: "desc" });
   }
 
@@ -351,17 +342,15 @@ export default function ListingsPage() {
     }
   }
 
-  function handleTableScroll(event: UIEvent<HTMLDivElement>) {
-    if (loadingListings || loadingMore || !hasMore) return;
-
-    const node = event.currentTarget;
-    const remaining = node.scrollHeight - node.scrollTop - node.clientHeight;
-    if (remaining > 120) return;
-
-    void loadListings(false, offset);
-  }
-
   const hasActiveFilters = search || typeFilter !== "ALL" || statusFilter !== "ALL" || categoryFilter !== "ALL";
+  const totalPages = Math.max(1, Math.ceil(totalCount / FETCH_LIMIT));
+  const paginationPages = useMemo(() => {
+    const maxButtons = 5;
+    let start = Math.max(1, currentPage - 2);
+    let end = Math.min(totalPages, start + maxButtons - 1);
+    start = Math.max(1, end - maxButtons + 1);
+    return Array.from({ length: end - start + 1 }, (_, idx) => start + idx);
+  }, [currentPage, totalPages]);
 
   // ── Sortable column header ────────────────────────────────────────────────────
   const SortableTH = ({ label, field }: { label: string; field: SortField }) => (
@@ -393,21 +382,21 @@ export default function ListingsPage() {
       {/* ── Summary cards — clickable to filter by status ── */}
       <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
         {[
-          { label: "Total", count: totalCount,     status: "ALL",         color: "text-stone-700 dark:text-stone-200", bg: "bg-stone-100 dark:bg-[#13151f]",       border: "border-stone-200 dark:border-[#2a2d3e]",   Icon: ShoppingBag   },
-          { label: "Available",   count: availableCount,   status: "AVAILABLE",   color: "text-teal-600 dark:text-teal-400",   bg: "bg-teal-50 dark:bg-teal-950/20",      border: "border-teal-200 dark:border-teal-800",      Icon: CheckCircle2  },
-          { label: "Unavailable", count: unavailableCount, status: "UNAVAILABLE", color: "text-amber-600 dark:text-amber-400", bg: "bg-amber-50 dark:bg-amber-950/20",    border: "border-amber-200 dark:border-amber-800",    Icon: AlertTriangle },
-          { label: "Sold",        count: soldCount,        status: "SOLD",        color: "text-stone-600 dark:text-stone-300", bg: "bg-stone-100 dark:bg-stone-800",        border: "border-stone-200 dark:border-stone-700",    Icon: ShoppingBag   },
-          { label: "Banned",      count: bannedCount,      status: "BANNED",      color: "text-red-600 dark:text-red-400",     bg: "bg-red-50 dark:bg-red-950/20",        border: "border-red-200 dark:border-red-800",        Icon: Ban           },
-          { label: "Deleted",     count: deletedCount,     status: "DELETED",     color: "text-stone-500 dark:text-stone-400", bg: "bg-stone-50 dark:bg-[#13151f]",       border: "border-stone-200 dark:border-[#2a2d3e]",   Icon: XCircle       },
-        ].map(({ label, count, status, color, bg, border, Icon }) => (
+          { label: "Total", count: totalCount,     status: "ALL",         color: "text-stone-700 dark:text-stone-200", Icon: ShoppingBag   },
+          { label: "Available",   count: availableCount,   status: "AVAILABLE",   color: "text-teal-600 dark:text-teal-400",   Icon: CheckCircle2  },
+          { label: "Unavailable", count: unavailableCount, status: "UNAVAILABLE", color: "text-amber-600 dark:text-amber-400", Icon: AlertTriangle },
+          { label: "Sold",        count: soldCount,        status: "SOLD",        color: "text-stone-600 dark:text-stone-300", Icon: ShoppingBag   },
+          { label: "Banned",      count: bannedCount,      status: "BANNED",      color: "text-red-600 dark:text-red-400",     Icon: Ban           },
+          { label: "Deleted",     count: deletedCount,     status: "DELETED",     color: "text-stone-500 dark:text-stone-400", Icon: XCircle       },
+        ].map(({ label, count, status, color, Icon }) => (
           <Card
             key={label}
             className={cn(
-              "p-4 rounded-md cursor-pointer hover:shadow-sm transition-all border",
-              bg, border,
+              "p-4 rounded-md cursor-pointer hover:shadow-sm transition-all card-glass border border-stone-200 dark:border-[#2a2d3e]",
               statusFilter === status && "ring-2 ring-offset-1 ring-current",
             )}
             onClick={() => {
+              setCurrentPage(1);
               setStatusFilter(prev => {
                 if (status === "ALL") return "ALL";
                 return prev === status ? "ALL" : status;
@@ -441,7 +430,7 @@ export default function ListingsPage() {
         <div className="flex gap-2 flex-wrap">
           <FilterSelect
             value={typeFilter}
-            onChange={v => { setTypeFilter(v); }}
+            onChange={v => { setTypeFilter(v); setCurrentPage(1); }}
             options={[
               ["ALL",     "All Types"],
               ["SELL",    "For Sale" ],
@@ -451,7 +440,7 @@ export default function ListingsPage() {
           />
           <FilterSelect
             value={categoryFilter}
-            onChange={v => { setCategoryFilter(v); }}
+            onChange={v => { setCategoryFilter(v); setCurrentPage(1); }}
             options={[
               ["ALL", "All Categories"],
               ...categoryOptions.map(c => [c, c] as [string, string]),
@@ -459,7 +448,7 @@ export default function ListingsPage() {
           />
           <FilterSelect
             value={statusFilter}
-            onChange={v => { setStatusFilter(v); }}
+            onChange={v => { setStatusFilter(v); setCurrentPage(1); }}
             options={[
               ["ALL",       "All Status" ],
               ["AVAILABLE", "Available"  ],
@@ -477,6 +466,7 @@ export default function ListingsPage() {
               onClick={() => {
                 setSearch(""); setTypeFilter("ALL");
                 setStatusFilter("ALL"); setCategoryFilter("ALL");
+                setCurrentPage(1);
               }}
               className="hover:bg-destructive/10! text-destructive! border-destructive! focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40"
             >
@@ -490,7 +480,7 @@ export default function ListingsPage() {
           variant="outline"
           onClick={() => {
             setIsRefreshing(true);
-            void loadListings(true);
+            void loadListings(currentPage);
           }}
           disabled={loadingListings}
           className="border-sky-600 text-sky-600! hover:bg-sky-600/10 focus-visible:border-sky-600 focus-visible:ring-sky-600/20 dark:border-sky-400 dark:text-sky-400! dark:hover:bg-sky-400/10 dark:focus-visible:border-sky-400 dark:focus-visible:ring-sky-400/40"
@@ -502,7 +492,7 @@ export default function ListingsPage() {
       {/* ── Table ── */}
       <Card className="p-0 rounded-md dark:bg-[#1c1f2e] dark:border-[#2a2d3e] overflow-hidden flex-1 min-h-0">
         <CardContent className="p-0 h-full min-h-0 flex flex-col">
-          <div className="overflow-auto h-full" onScroll={handleTableScroll}>
+          <div className="overflow-auto h-full">
             <Table>
               <TableHeader>
                 <TableRow className="border-stone-200 dark:border-[#2a2d3e] bg-stone-50 dark:bg-[#13151f] hover:bg-stone-50 dark:hover:bg-[#13151f]">
@@ -708,28 +698,50 @@ export default function ListingsPage() {
                   })
                 )}
 
-                {loadingMore && (
-                  <TableRow>
-                    <TableCell colSpan={14} className="py-4 text-center text-sm text-stone-400 dark:text-stone-500">
-                      Loading more listings…
-                    </TableCell>
-                  </TableRow>
-                )}
-
-                {!hasMore && filtered.length > 0 && (
-                  <TableRow>
-                    <TableCell colSpan={14} className="py-4 text-center text-xs text-stone-400 dark:text-stone-500">
-                      End of listing results.
-                    </TableCell>
-                  </TableRow>
-                )}
               </TableBody>
             </Table>
           </div>
 
           <Separator className="dark:bg-[#2a2d3e]" />
-          <div className="px-4 py-3 text-sm text-stone-400 dark:text-stone-500">
-            Showing {filtered.length.toLocaleString()} of {totalCount.toLocaleString()} result{totalCount !== 1 ? "s" : ""}
+          <div className="px-4 py-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between text-sm text-stone-400 dark:text-stone-500">
+            <span>
+              Showing {filtered.length.toLocaleString()} of {totalCount.toLocaleString()} result{totalCount !== 1 ? "s" : ""}
+            </span>
+            <div className="flex items-center gap-1.5 self-end sm:self-auto">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                disabled={loadingListings || currentPage <= 1}
+                className="h-8 px-2.5"
+              >
+                Prev
+              </Button>
+              {paginationPages.map((page) => (
+                <Button
+                  key={page}
+                  type="button"
+                  variant={page === currentPage ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setCurrentPage(page)}
+                  disabled={loadingListings}
+                  className="h-8 min-w-8 px-2"
+                >
+                  {page}
+                </Button>
+              ))}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                disabled={loadingListings || currentPage >= totalPages}
+                className="h-8 px-2.5"
+              >
+                Next
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
