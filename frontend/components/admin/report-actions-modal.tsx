@@ -213,7 +213,7 @@ export default function ReportActionsModal({ report, onClose, onSubmit }: Report
           </div>
           <div className="flex items-center gap-2">
             <span className={cn(
-              "text-xs font-bold px-2.5 py-1 rounded-full inline-flex items-center gap-1",
+              "text-xs font-bold px-2.5 py-1 rounded-md inline-flex items-center gap-1",
               report.status === "PENDING"
                 ? "bg-amber-500/20 text-amber-300 border border-amber-500/30"
                 : report.status === "RESOLVED"
@@ -221,7 +221,7 @@ export default function ReportActionsModal({ report, onClose, onSubmit }: Report
                 : "bg-stone-500/20 text-stone-300 border border-stone-500/30",
             )}>
               <span className={cn(
-                "w-1.5 h-1.5 rounded-full",
+                "w-1.5 h-1.5 rounded-lg",
                 report.status === "PENDING"  ? "bg-amber-400" :
                 report.status === "RESOLVED" ? "bg-teal-400"  : "bg-stone-400",
               )} />
@@ -345,7 +345,7 @@ export default function ReportActionsModal({ report, onClose, onSubmit }: Report
                 {/* Report reason + description */}
                 <div>
                   <SectionLabel>Report Content</SectionLabel>
-                  <div className="rounded-xl bg-stone-50 dark:bg-[#13151f] border border-stone-200 dark:border-[#2a2d3e] p-3.5">
+                  <div className="rounded-lg bg-stone-50 dark:bg-[#13151f] border border-stone-200 dark:border-[#2a2d3e] p-3.5">
                     <div className="flex items-start justify-between gap-2 mb-1.5">
                       <p className="text-xs font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest">
                         Description
@@ -402,7 +402,7 @@ export default function ReportActionsModal({ report, onClose, onSubmit }: Report
                                     type="button"
                                     onClick={() => setSelectedAction(opt.value)}
                                     className={cn(
-                                      "w-full flex items-center gap-3 px-3.5 py-3 rounded-xl border text-left transition-all duration-150",
+                                      "w-full flex items-center gap-3 px-3.5 py-3 rounded-lg border text-left transition-all duration-150",
                                       isSelected ? styles.selected : styles.idle,
                                       "bg-white dark:bg-[#13151f]",
                                     )}
@@ -455,7 +455,7 @@ export default function ReportActionsModal({ report, onClose, onSubmit }: Report
                   ) : (
                     /* Resolved — show selected action read-only */
                     <div className={cn(
-                      "flex items-center gap-3 px-3.5 py-3 rounded-xl border",
+                      "flex items-center gap-3 px-3.5 py-3 rounded-lg border",
                       selectedOpt ? SEVERITY_STYLES[selectedOpt.severity].selected : "",
                     )}>
                       {selectedOpt && (
@@ -520,7 +520,7 @@ export default function ReportActionsModal({ report, onClose, onSubmit }: Report
               {/* Severity warning for destructive actions */}
               {isPending && selectedAction && selectedOpt && (selectedOpt.severity === "high" || selectedOpt.severity === "critical") && (
                 <div className={cn(
-                  "flex items-start gap-2.5 px-3.5 py-3 rounded-xl border text-xs",
+                  "flex items-start gap-2.5 px-3.5 py-3 rounded-lg border text-xs",
                   selectedOpt.severity === "critical"
                     ? "bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800 text-red-700 dark:text-red-400"
                     : "bg-orange-50 dark:bg-orange-950/20 border-orange-200 dark:border-orange-800 text-orange-700 dark:text-orange-400",
@@ -539,12 +539,12 @@ export default function ReportActionsModal({ report, onClose, onSubmit }: Report
         </div>
 
         {/* ── Footer ────────────────────────────────────────────────────────── */}
-        <div className="shrink-0 border-t border-stone-200 dark:border-[#2a2d3e] px-6 py-4 flex items-center gap-2.5 bg-white dark:bg-[#1c1f2e] rounded-b-2xl">
+        <div className="shrink-0 border-t border-stone-200 dark:border-[#2a2d3e] px-6 py-4 flex items-center gap-2.5 bg-white dark:bg-[#1c1f2e] rounded-b-lg">
           <Button
             type="button"
             variant="outline"
             onClick={onClose}
-            className="rounded-full dark:border-[#2a2d3e] dark:text-stone-300 dark:hover:bg-[#252837]"
+            className="rounded-lg dark:border-[#2a2d3e] dark:text-stone-300 dark:hover:bg-[#252837]"
           >
             {isPending ? "Cancel" : "Close"}
           </Button>
@@ -564,7 +564,7 @@ export default function ReportActionsModal({ report, onClose, onSubmit }: Report
                 onClick={handleSubmit}
                 disabled={!canSubmit || submitting}
                 className={cn(
-                  "rounded-full font-bold disabled:opacity-40 disabled:cursor-not-allowed gap-2",
+                  "rounded-lg font-bold disabled:opacity-40 disabled:cursor-not-allowed gap-2",
                   selectedOpt?.severity === "critical"
                     ? "bg-red-600 hover:bg-red-500 text-white"
                     : selectedOpt?.severity === "high"

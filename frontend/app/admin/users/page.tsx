@@ -132,7 +132,7 @@ function VerifBadge({ status }: { status: VerifStatus }) {
     VERIFIED: "Verified", PENDING: "Pending", UNVERIFIED: "Unverified", REJECTED: "Rejected",
   };
   return (
-    <span className={cn("text-xs font-bold px-2 py-0.5 rounded-full", map[status])}>
+    <span className={cn("text-xs font-bold px-2 py-0.5 rounded-md", map[status])}>
       {label[status]}
     </span>
   );
@@ -173,7 +173,7 @@ function FilterSelect({
       <select
         value={value}
         onChange={e => onChange(e.target.value)}
-        className="pl-3 pr-8 py-2 h-9 bg-transparent border border-stone-200 dark:border-[#2a2d3e] rounded-md text-sm text-stone-700 dark:text-stone-200 outline-none focus:border-stone-400 transition-colors appearance-none cursor-pointer dark:bg-[#13151f]"
+        className="pl-3 pr-8 py-2 h-9 bg-transparent border border-stone-200 dark:border-[#2a2d3e] rounded-lg text-sm text-stone-700 dark:text-stone-200 outline-none focus:border-stone-400 transition-colors appearance-none cursor-pointer dark:bg-[#13151f]"
       >
         {options.map(([v, l]) => (
           <option key={v} value={v}>{l}</option>

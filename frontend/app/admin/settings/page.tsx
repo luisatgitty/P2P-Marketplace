@@ -135,7 +135,7 @@ function InlineFeedback({ msg, type }: { msg: string; type: "success" | "error" 
   return (
     <div
       className={cn(
-        "flex items-center gap-2.5 px-4 py-3 rounded-xl text-sm font-medium",
+        "flex items-center gap-2.5 px-4 py-3 rounded-lg text-sm font-medium",
         type === "success"
           ? "bg-teal-50 dark:bg-teal-950/30 border border-teal-200 dark:border-teal-800 text-teal-700 dark:text-teal-300"
           : "bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400",
@@ -374,7 +374,7 @@ export default function SettingsPage() {
             {showProfileImageMenu && (
               <>
                 <div className="fixed inset-0 z-10" onClick={() => setShowProfileImageMenu(false)} />
-                <div className="absolute top-full left-0 mt-2 z-20 bg-white dark:bg-[#1c1f2e] border border-stone-200 dark:border-[#2a2d3e] rounded-xl shadow-lg overflow-hidden w-44">
+                <div className="absolute top-full left-0 mt-2 z-20 bg-white dark:bg-[#1c1f2e] border border-stone-200 dark:border-[#2a2d3e] rounded-lg shadow-lg overflow-hidden w-44">
                   <button
                     type="button"
                     className="w-full flex items-center gap-2.5 px-4 py-2.5 text-xs text-stone-700 dark:text-stone-300 hover:bg-stone-50 dark:hover:bg-[#252837] transition-colors disabled:opacity-60"
@@ -588,7 +588,7 @@ export default function SettingsPage() {
             type="button"
             disabled={savingForm || !canSaveChanges}
             onClick={handleSave}
-            className="rounded-md px-6 bg-[#1e2433] hover:bg-[#2a3650] dark:bg-stone-100 dark:text-stone-900 dark:hover:bg-stone-200 text-white font-bold gap-2"
+            className="rounded-lg px-6 bg-[#1e2433] hover:bg-[#2a3650] dark:bg-stone-100 dark:text-stone-900 dark:hover:bg-stone-200 text-white font-bold gap-2"
           >
             <User className="w-4 h-4" />
             {savingForm ? "Saving…" : "Save Changes"}
@@ -597,7 +597,7 @@ export default function SettingsPage() {
       </Card>
 
       {/* ── Security reminders ── */}
-      <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-2xl p-4">
+      <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
         <div className="flex items-center gap-2 mb-2.5">
           <Lock className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
           <p className="text-sm font-bold text-amber-800 dark:text-amber-300">
