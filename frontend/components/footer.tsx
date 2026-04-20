@@ -26,19 +26,19 @@ const YoutubeIcon = () => (
 );
 
 const LINKS = [
-  { label: "Buy",          href: "/?type=sell"   },
-  { label: "Rent",         href: "/?type=rent"   },
-  { label: "Services",     href: "/?type=service"},
-  { label: "FAQ",          href: "/faq"     },
-  { label: "Privacy",      href: "/privacy" },
-  { label: "Terms",        href: "/terms"   },
+  { label: "Buy", href: "/?type=sell" },
+  { label: "Rent", href: "/?type=rent" },
+  { label: "Services", href: "/?type=service" },
+  { label: "FAQ", href: "/faq" },
+  { label: "Privacy", href: "/privacy" },
+  { label: "Terms", href: "/terms" },
 ];
 
 const SOCIALS = [
-  { icon: <TwitterIcon />,   href: "#" },
+  { icon: <TwitterIcon />, href: "#" },
   { icon: <InstagramIcon />, href: "#" },
-  { icon: <FacebookIcon />,  href: "#" },
-  { icon: <YoutubeIcon />,   href: "#" },
+  { icon: <FacebookIcon />, href: "#" },
+  { icon: <YoutubeIcon />, href: "#" },
 ];
 
 export default function Footer() {
@@ -49,48 +49,54 @@ export default function Footer() {
   }
 
   return (
-    <footer className="relative bg-[#161d2b] px-4 sm:px-6 lg:px-8 py-6 mt-auto overflow-hidden">
-      <div className="orb orb-amber-footer" />
-      <div className="orb orb-blue-footer" />
-      <div className="max-w-7xl mx-auto relative z-10">
-        <div className="flex flex-col gap-4">
-          <div>
-            <div className="flex items-center gap-2 mb-3">
-              <Image
-                src="/logo.png"
-                alt="P2P Marketplace"
-                loading="lazy"
-                width={32}
-                height={32}
-                className="shrink-0"
-              />
-              <span className="text-stone-100 font-semibold text-lg">P2P Marketplace</span>
+    <>
+      <div className="h-15 md:hidden" />
+
+      <footer className="relative mt-auto overflow-hidden bg-[#161d2b] px-4 py-6 pb-24 sm:px-6 lg:px-8 md:pb-6">
+        <div className="orb orb-amber-footer" />
+        <div className="orb orb-blue-footer" />
+        <div className="max-w-7xl mx-auto relative z-10">
+          <div className="flex flex-col gap-4">
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <Image
+                  src="/logo.png"
+                  alt="P2P Marketplace"
+                  loading="lazy"
+                  width={32}
+                  height={32}
+                  className="shrink-0"
+                />
+                <span className="text-stone-100 font-semibold text-lg">P2P Marketplace</span>
+              </div>
+              <p className="text-stone-400 text-sm max-w-xs leading-relaxed">
+                Buy, sell, rent, and avail services from people near you. Your community marketplace.
+              </p>
             </div>
-            <p className="text-stone-400 text-sm max-w-xs leading-relaxed">
-              Buy, sell, rent, and avail services from people near you. Your community marketplace.
-            </p>
+            <nav className="flex flex-wrap gap-x-2 gap-y-2">
+              {LINKS.map((link) => (
+                <Link
+                  key={link.label}
+                  href={link.href}
+                  className="px-2 py-1 text-stone-400 text-sm hover:bg-amber-800 hover:text-stone-100 rounded-lg whitespace-nowrap"
+                >
+                  {link.label}
+                </Link>
+              ))}
+            </nav>
           </div>
-          <nav className="flex flex-wrap gap-x-2 gap-y-2">
-            {LINKS.map((link) => (
-              <Link
-                key={link.label}
-                href={link.href}
-                className="px-2 py-1 text-stone-400 text-sm hover:bg-amber-800 hover:text-stone-100 rounded-lg whitespace-nowrap"
-              >
-                {link.label}
-              </Link>
-            ))}
-          </nav>
-        </div>
-        <div className="border-t border-stone-700 mt-4 pt-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p className="text-stone-500 text-sm">© {new Date().getFullYear()} P2P Marketplace. All rights reserved.</p>
-          <div className="flex items-center gap-4">
-            {SOCIALS.map((s, i) => (
-              <a key={i} href={s.href} className="text-stone-500 hover:text-stone-100 transition-colors">{s.icon}</a>
-            ))}
+          <div className="border-t border-stone-700 mt-4 pt-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <p className="text-stone-500 text-sm">© {new Date().getFullYear()} P2P Marketplace. All rights reserved.</p>
+            <div className="flex items-center gap-4">
+              {SOCIALS.map((social, index) => (
+                <a key={index} href={social.href} className="text-stone-500 hover:text-stone-100 transition-colors">
+                  {social.icon}
+                </a>
+              ))}
+            </div>
           </div>
         </div>
-      </div>
-    </footer>
+      </footer>
+    </>
   );
 }

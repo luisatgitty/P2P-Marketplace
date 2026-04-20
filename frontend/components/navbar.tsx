@@ -98,11 +98,8 @@ export default function Navbar() {
   const [notificationsHasMore, setNotificationsHasMore] = useState(false);
   const [loadingMoreNotifications, setLoadingMoreNotifications] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const mobileDropdownPanelRef = useRef<HTMLDivElement>(null);
   const notificationRef = useRef<HTMLDivElement>(null);
-  const mobileNotificationPanelRef = useRef<HTMLDivElement>(null);
   const desktopNotificationsListRef = useRef<HTMLDivElement>(null);
-  const mobileNotificationsListRef = useRef<HTMLDivElement>(null);
   const dropdownCloseTimerRef = useRef<number | null>(null);
 
   // If the user role is ADMIN or SUPER_ADMIN, show a banner at the top linking to the admin dashboard
@@ -290,15 +287,13 @@ export default function Navbar() {
     const handler = (e: MouseEvent) => {
       const targetNode = e.target as Node;
       const clickedProfileTrigger = dropdownRef.current?.contains(targetNode);
-      const clickedMobilePanel = mobileDropdownPanelRef.current?.contains(targetNode);
       const clickedNotificationTrigger = notificationRef.current?.contains(targetNode);
-      const clickedMobileNotificationPanel = mobileNotificationPanelRef.current?.contains(targetNode);
 
-      if (!clickedProfileTrigger && !clickedMobilePanel) {
+      if (!clickedProfileTrigger) {
         closeDropdown();
       }
 
-      if (!clickedNotificationTrigger && !clickedMobileNotificationPanel) {
+      if (!clickedNotificationTrigger) {
         setNotificationOpen(false);
       }
     };
@@ -359,10 +354,11 @@ export default function Navbar() {
       />
 
       {/* Amber accent stripe */}
-      <div className="fixed top-0 left-0 right-0 z-50 h-1 bg-amber-800" />
+      <div className="fixed top-0 left-0 right-0 z-50 h-1 bg-amber-800 md:block hidden" />
+      <div className="fixed bottom-0 left-0 right-0 z-50 h-1 bg-amber-800 md:hidden" />
 
       {/* Main navbar */}
-      <nav className="fixed top-1 left-0 right-0 z-50 bg-[#1a2235]/95 backdrop-blur-xs text-white shadow-lg border-b border-white/5">
+      <nav className="fixed bottom-1 left-0 right-0 z-50 bg-[#1a2235]/95 backdrop-blur-xs text-white shadow-lg border-t border-white/5 md:top-1 md:bottom-auto md:border-t-0 md:border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-3">
 
           {/* ── LEFT: Branding ─────────────────────────────────── */}
@@ -402,7 +398,7 @@ export default function Navbar() {
                 </button>
 
                 {notificationOpen && (
-                  <div className="hidden md:block absolute right-0 mt-2 w-88 max-w-[90vw] rounded-xl border border-white/10 bg-[#1e2b3c] shadow-2xl z-50 animate-in fade-in slide-in-from-top-2 duration-150 overflow-hidden">
+                  <div className="absolute right-0 bottom-full mb-2 w-[min(22rem,calc(100vw-1rem))] max-w-[90vw] rounded-xl border border-white/10 bg-[#1e2b3c] shadow-2xl z-50 animate-in fade-in slide-in-from-bottom-2 duration-150 overflow-hidden md:top-full md:bottom-auto md:mt-2 md:mb-0 md:slide-in-from-top-2 sm:w-88">
                     <div className="px-3 py-2.5 border-b border-white/10 bg-white/5 flex items-center justify-between gap-2">
                       <h3 className="text-sm font-semibold text-white">Notifications</h3>
                       <div className="flex items-center gap-2">
@@ -421,7 +417,7 @@ export default function Navbar() {
                     <div
                       ref={desktopNotificationsListRef}
                       onScroll={handleNotificationsScroll}
-                      className="max-h-96 overflow-y-auto p-2 space-y-1.5"
+                      className="max-h-[min(24rem,70vh)] overflow-y-auto p-2 space-y-1.5"
                     >
                       {notifications.length === 0 ? (
                         <div className="px-2 py-8 text-center text-sm text-stone-400">No notifications yet.</div>
@@ -481,9 +477,9 @@ export default function Navbar() {
               {(dropdownOpen || dropdownClosing) && (
                 <div
                   className={cn(
-                    "hidden md:block absolute right-0 mt-2 w-48 bg-[#1e2b3c] border border-white/10 rounded-xl shadow-2xl overflow-hidden transition-all duration-200 z-50",
+                    "absolute right-0 bottom-full mb-2 w-56 max-w-[calc(100vw-1rem)] bg-[#1e2b3c] border border-white/10 rounded-xl shadow-2xl overflow-hidden transition-all duration-200 z-50 md:top-full md:bottom-auto md:mt-2 md:mb-0",
                     dropdownClosing
-                      ? "opacity-0 -translate-y-2"
+                      ? "opacity-0 translate-y-2 md:-translate-y-2 md:translate-y-0"
                       : "opacity-100 translate-y-0"
                   )}
                 >
@@ -608,202 +604,8 @@ export default function Navbar() {
         </div>
       </nav>
 
-      {/* Mobile bottom-sheet notifications panel (outside navbar so it's fixed to viewport) */}
-      {notificationOpen && (
-        <>
-          <div
-            className="md:hidden fixed inset-0 z-62 bg-black/35"
-            onClick={() => setNotificationOpen(false)}
-          />
-
-          <div
-            ref={mobileNotificationPanelRef}
-            className="md:hidden fixed inset-x-0 bottom-0 z-63 w-auto bg-[#1e2b3c] rounded-t-xl shadow-2xl border-t border-white/10 overflow-hidden"
-          >
-            <div className="px-4 py-3 border-b border-white/10 bg-white/5 flex items-center justify-between gap-2">
-              <h3 className="text-sm font-semibold text-white">Notifications</h3>
-              <div className="flex items-center gap-2">
-                <span className="text-[11px] text-stone-400">{notifications.length} items</span>
-                <button
-                  type="button"
-                  onClick={handleMarkAllNotificationsRead}
-                  disabled={!hasUnreadNotifications}
-                  className="text-[11px] font-medium text-amber-300 hover:text-amber-200 disabled:text-stone-500 disabled:cursor-not-allowed transition-colors"
-                >
-                  Mark all as read
-                </button>
-              </div>
-            </div>
-
-            <div
-              ref={mobileNotificationsListRef}
-              onScroll={handleNotificationsScroll}
-              className="max-h-[70vh] overflow-y-auto p-2 space-y-1.5 pb-[max(0.5rem,env(safe-area-inset-bottom))]"
-            >
-              {notifications.length === 0 ? (
-                <div className="px-2 py-8 text-center text-sm text-stone-400">No notifications yet.</div>
-              ) : (
-                <>
-                  {notifications.map((notification) => (
-                    <NotificationItem
-                      key={notification.id}
-                      notification={notification}
-                      onClick={handleMarkNotificationRead}
-                    />
-                  ))}
-                  {loadingMoreNotifications && (
-                    <div className="px-2 py-2 text-center text-xs text-stone-400">Loading more...</div>
-                  )}
-                  {!notificationsHasMore && notificationsTotal > NOTIFICATIONS_PAGE_SIZE && (
-                    <div className="px-2 py-2 text-center text-xs text-stone-500">End of notifications.</div>
-                  )}
-                </>
-              )}
-            </div>
-          </div>
-        </>
-      )}
-
-      {/* Mobile bottom-sheet account panel (outside navbar so it's fixed to viewport) */}
-      {(dropdownOpen || dropdownClosing) && (
-        <>
-          <div
-            className={cn(
-              "md:hidden fixed inset-0 z-60 bg-black/35 transition-opacity duration-200",
-              dropdownClosing ? "opacity-0" : "opacity-100"
-            )}
-            onClick={closeDropdown}
-          />
-
-          <div
-            ref={mobileDropdownPanelRef}
-            className={cn(
-              "md:hidden fixed inset-x-0 bottom-0 z-61 w-auto bg-[#1e2b3c] rounded-t-xl shadow-2xl overflow-hidden transition-all duration-200",
-              dropdownClosing
-                ? "opacity-0 translate-y-4"
-                : "opacity-100 translate-y-0"
-            )}
-          >
-            {isAuth ? (
-              <>
-                {/* User info */}
-                <div className="px-4 py-3 border-b border-white/10 bg-white/5">
-                  <p className="text-sm font-semibold text-white leading-tight flex items-center gap-1.5">
-                    {user?.firstName} {user?.lastName}
-                    {<VerificationBadge verified={isVerifiedSeller} />}
-                  </p>
-                  <p className="text-xs text-stone-400 truncate mt-0.5">{user?.email}</p>
-                </div>
-
-                <div className="py-1">
-                  {isAdmin ? (
-                    <>
-                      <Link
-                        href="/admin"
-                        onClick={closeDropdown}
-                        className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-200 hover:bg-white/10 hover:text-white transition-colors"
-                      >
-                        <LayoutDashboard size={15} className="text-stone-400" />
-                        Admin Dashboard
-                      </Link>
-                    </>
-                  ) : (
-                    <>
-                      <Link
-                        href="/"
-                        onClick={closeDropdown}
-                        className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-200 hover:bg-white/10 hover:text-white transition-colors"
-                      >
-                        <Home size={15} className="text-stone-400" />
-                        Home
-                      </Link>
-                      <Link
-                        href="/profile"
-                        onClick={closeDropdown}
-                        className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-200 hover:bg-white/10 hover:text-white transition-colors"
-                      >
-                        <User size={15} className="text-stone-400" />
-                        Profile
-                      </Link>
-                      <Link
-                        href="/messages"
-                        onClick={closeDropdown}
-                        className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-200 hover:bg-white/10 hover:text-white transition-colors"
-                      >
-                        <span className="relative inline-flex">
-                          <MessageCircle size={15} className="text-stone-400" />
-                          {hasUnreadMessages && (
-                            <span className="absolute -right-1 -bottom-1 w-2 h-2 rounded-full bg-amber-500 border border-[#1e2b3c]" />
-                          )}
-                        </span>
-                        Messages
-                      </Link>
-                      {isVerifiedSeller ? (
-                        <Link
-                          href="/create"
-                          onClick={closeDropdown}
-                          className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-200 hover:bg-white/10 hover:text-white transition-colors"
-                        >
-                          <Tag size={15} className="text-stone-400" />
-                          Post a Listing
-                        </Link>
-                      ) : (
-                        <Link
-                          href="/become-seller"
-                          onClick={closeDropdown}
-                          className="flex items-center gap-3 px-4 py-2.5 text-sm text-amber-300 hover:bg-amber-500/10 hover:text-amber-200 transition-colors"
-                        >
-                          <UserPlus size={15} />
-                          Become a Seller
-                        </Link>
-                      )}
-                    </>
-                  )}
-                </div>
-
-                <div className="border-t border-white/10" />
-                <button
-                  onClick={handleLogOut}
-                  className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors"
-                >
-                  <LogOut size={15} />
-                  Log Out
-                </button>
-              </>
-            ) : (
-              <div className="py-1">
-                <Link
-                  href="/"
-                  onClick={closeDropdown}
-                  className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-200 hover:bg-white/10 hover:text-white transition-colors"
-                >
-                  <Home size={15} className="text-stone-400" />
-                  Home
-                </Link>
-                <Link
-                  href="/login"
-                  onClick={closeDropdown}
-                  className="flex items-center gap-3 px-4 py-3 text-sm font-semibold text-white hover:bg-white/10 transition-colors"
-                >
-                  <User size={15} className="text-stone-400" />
-                  Log In
-                </Link>
-                <Link
-                  href="/signup"
-                  onClick={closeDropdown}
-                  className="flex items-center gap-3 px-4 py-3 text-sm font-semibold text-amber-400 hover:bg-amber-500/10 hover:text-amber-300 transition-colors"
-                >
-                  <UserPlus size={15} />
-                  Create Account
-                </Link>
-              </div>
-            )}
-          </div>
-        </>
-      )}
-
       {/* Spacer for fixed navbar (1px stripe + 56px nav) */}
-      <div className="h-15" />
+      <div className="hidden h-15 md:block" />
     </>
   );
 }
