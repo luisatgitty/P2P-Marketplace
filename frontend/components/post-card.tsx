@@ -68,11 +68,11 @@ export default function PostCard(props: PostCardProps) {
         <div className="flex items-center justify-between gap-1 text-[10px] sm:text-[11px] text-stone-400 dark:text-stone-500">
           <div className="flex items-center gap-0.5 min-w-0">
             <MapPin size={11} className="shrink-0" />
-            <span className="truncate">{location}</span>
+            <span className="text-[10px] md:text-[11px] truncate">{location}</span>
           </div>
           <div className="flex items-center gap-0.5 shrink-0">
             <Clock size={11} />
-            <span>{formatTimeAgo(postedAt)}</span>
+            <span className="text-[10px] md:text-[11px]">{formatTimeAgo(postedAt)}</span>
           </div>
         </div>
       </Link>

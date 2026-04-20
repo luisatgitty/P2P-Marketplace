@@ -269,7 +269,7 @@ function HomePageInner() {
 
             {/* Headline */}
             <div className="max-w-xl animate-fade-in-up shrink-0">
-              <h1 className="text-2xl md:text-3xl font-bold text-stone-100">
+              <h1 className="text-2xl sm:text-3xl font-bold text-stone-100">
                 Buy, Sell, Rent & Avail Services<br />
                 <span className="text-stone-400">from people near you.</span>
               </h1>

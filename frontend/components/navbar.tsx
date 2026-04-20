@@ -375,7 +375,7 @@ export default function Navbar() {
               height={32}
               className="shrink-0"
             />
-            <span className="font-bold text-base sm:text-lg leading-tight hidden sm:block whitespace-nowrap tracking-tight">
+            <span className="font-bold text-base sm:text-lg leading-tight hidden md:block whitespace-nowrap tracking-tight">
               P2P Marketplace
             </span>
           </Link>
