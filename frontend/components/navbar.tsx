@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { Suspense, useState, useRef, useEffect, useCallback } from "react";
+import { Suspense, useState, useRef, useEffect, useCallback, type MouseEvent } from "react";
 import { useUser } from "@/utils/UserContext";
 import { useUnsavedChanges } from "@/utils/UnsavedChangesContext";
 import { useConfirmDialog } from "@/utils/ConfirmDialogContext";
@@ -37,10 +37,33 @@ const TABS = [
 // ─── Center tabs (needs Suspense because of useSearchParams) ───────────────────
 function NavTabsInner() {
   const searchParams = useSearchParams();
-  const router        = useRouter();
-  const pathname      = usePathname();
-  const activeType    = searchParams.get("type") || "all";
-  const isHomePage    = pathname === "/";
+  const router = useRouter();
+  const pathname = usePathname();
+  const { hasUnsavedChanges, setHasUnsavedChanges } = useUnsavedChanges();
+  const { openDialog } = useConfirmDialog();
+  const activeType = searchParams.get("type") || "all";
+  const isHomePage = pathname === "/";
+  const shouldConfirmNavigation = hasUnsavedChanges || pathname === "/become-seller";
+
+  const navigateWithConfirm = useCallback((href: string) => {
+    if (!shouldConfirmNavigation) {
+      router.push(href);
+      return;
+    }
+
+    openDialog({
+      title: "Discard Changes?",
+      message: "Are you sure you want to discard your changes? This action cannot be undone.",
+      confirmText: "Discard",
+      cancelText: "Cancel",
+      isDangerous: true,
+      onConfirm: () => {
+        setHasUnsavedChanges(false);
+        router.push(href);
+      },
+      onCancel: () => {},
+    });
+  }, [openDialog, router, setHasUnsavedChanges, shouldConfirmNavigation]);
 
   const handleTabClick = (value: string) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -50,7 +73,8 @@ function NavTabsInner() {
       params.set("type", value);
     }
     params.delete("page");
-    router.push(`/?${params.toString()}`);
+    const query = params.toString();
+    navigateWithConfirm(query ? `/?${query}` : "/");
   };
 
   return (
@@ -87,10 +111,11 @@ function TabsFallback() {
 export default function Navbar() {
   const NOTIFICATIONS_PAGE_SIZE = 15;
   const { isAuth, user } = useUser();
-  const { hasUnsavedChanges } = useUnsavedChanges();
+  const { hasUnsavedChanges, setHasUnsavedChanges } = useUnsavedChanges();
   const { openDialog } = useConfirmDialog();
   const pathname = usePathname();
   const router = useRouter();
+  const shouldConfirmNavigation = hasUnsavedChanges || pathname === "/become-seller";
   const isVerifiedSeller = (user?.status ?? "").toLowerCase() === "verified";
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [dropdownClosing, setDropdownClosing] = useState(false);
@@ -257,9 +282,10 @@ export default function Navbar() {
     }, 180);
   }, [dropdownOpen, dropdownClosing]);
 
-  const handleNavigateHome = useCallback(() => {
-    if (!hasUnsavedChanges) {
-      router.push("/");
+  const navigateWithConfirm = useCallback((href: string, onAfterNavigate?: () => void) => {
+    if (!shouldConfirmNavigation) {
+      onAfterNavigate?.();
+      router.push(href);
       return;
     }
 
@@ -269,10 +295,32 @@ export default function Navbar() {
       confirmText: "Discard",
       cancelText: "Cancel",
       isDangerous: true,
-      onConfirm: () => router.push("/"),
+      onConfirm: () => {
+        setHasUnsavedChanges(false);
+        onAfterNavigate?.();
+        router.push(href);
+      },
       onCancel: () => {},
     });
-  }, [hasUnsavedChanges, router, openDialog]);
+  }, [openDialog, router, setHasUnsavedChanges, shouldConfirmNavigation]);
+
+  const handleNavigateHome = useCallback(() => {
+    navigateWithConfirm("/");
+  }, [navigateWithConfirm]);
+
+  const handleProtectedLinkClick = useCallback((
+    event: MouseEvent<HTMLAnchorElement>,
+    href: string,
+    onAfterNavigate?: () => void,
+  ) => {
+    if (!shouldConfirmNavigation) {
+      onAfterNavigate?.();
+      return;
+    }
+
+    event.preventDefault();
+    navigateWithConfirm(href, onAfterNavigate);
+  }, [navigateWithConfirm, shouldConfirmNavigation]);
 
   const openDropdown = useCallback(() => {
     if (dropdownCloseTimerRef.current !== null) {
@@ -551,7 +599,7 @@ export default function Navbar() {
                             </button>
                             <Link
                               href="/profile"
-                              onClick={closeDropdown}
+                              onClick={(event) => handleProtectedLinkClick(event, "/profile", closeDropdown)}
                               className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-200 hover:bg-white/10 hover:text-white transition-colors"
                             >
                               <User size={15} className="text-stone-400" />
@@ -559,7 +607,7 @@ export default function Navbar() {
                             </Link>
                             <Link
                               href="/messages"
-                              onClick={closeDropdown}
+                              onClick={(event) => handleProtectedLinkClick(event, "/messages", closeDropdown)}
                               className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-200 hover:bg-white/10 hover:text-white transition-colors"
                             >
                               <span className="relative inline-flex">
@@ -573,7 +621,7 @@ export default function Navbar() {
                             {isVerifiedSeller ? (
                               <Link
                                 href="/create"
-                                onClick={closeDropdown}
+                                onClick={(event) => handleProtectedLinkClick(event, "/create", closeDropdown)}
                                 className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-200 hover:bg-white/10 hover:text-white transition-colors"
                               >
                                 <Tag size={15} className="text-stone-400" />
@@ -582,7 +630,7 @@ export default function Navbar() {
                             ) : (
                               <Link
                                 href="/become-seller"
-                                onClick={closeDropdown}
+                                onClick={(event) => handleProtectedLinkClick(event, "/become-seller", closeDropdown)}
                                 className="flex items-center gap-3 px-4 py-2.5 text-sm text-amber-300 hover:bg-amber-500/10 hover:text-amber-200 transition-colors"
                               >
                                 <UserPlus size={15} />
@@ -616,7 +664,7 @@ export default function Navbar() {
                       </button>
                       <Link
                         href="/login"
-                        onClick={closeDropdown}
+                        onClick={(event) => handleProtectedLinkClick(event, "/login", closeDropdown)}
                         className="flex items-center gap-3 px-4 py-3 text-sm font-semibold text-white hover:bg-white/10 transition-colors"
                       >
                         <User size={15} className="text-stone-400" />
@@ -624,7 +672,7 @@ export default function Navbar() {
                       </Link>
                       <Link
                         href="/signup"
-                        onClick={closeDropdown}
+                        onClick={(event) => handleProtectedLinkClick(event, "/signup", closeDropdown)}
                         className="flex items-center gap-3 px-4 py-3 text-sm font-semibold text-amber-400 hover:bg-amber-500/10 hover:text-amber-300 transition-colors"
                       >
                         <UserPlus size={15} />
@@ -752,7 +800,7 @@ export default function Navbar() {
                       </button>
                       <Link
                         href="/profile"
-                        onClick={closeDropdown}
+                        onClick={(event) => handleProtectedLinkClick(event, "/profile", closeDropdown)}
                         className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-200 hover:bg-white/10 hover:text-white transition-colors"
                       >
                         <User size={15} className="text-stone-400" />
@@ -760,7 +808,7 @@ export default function Navbar() {
                       </Link>
                       <Link
                         href="/messages"
-                        onClick={closeDropdown}
+                        onClick={(event) => handleProtectedLinkClick(event, "/messages", closeDropdown)}
                         className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-200 hover:bg-white/10 hover:text-white transition-colors"
                       >
                         <span className="relative inline-flex">
@@ -774,7 +822,7 @@ export default function Navbar() {
                       {isVerifiedSeller ? (
                         <Link
                           href="/create"
-                          onClick={closeDropdown}
+                          onClick={(event) => handleProtectedLinkClick(event, "/create", closeDropdown)}
                           className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-200 hover:bg-white/10 hover:text-white transition-colors"
                         >
                           <Tag size={15} className="text-stone-400" />
@@ -783,7 +831,7 @@ export default function Navbar() {
                       ) : (
                         <Link
                           href="/become-seller"
-                          onClick={closeDropdown}
+                          onClick={(event) => handleProtectedLinkClick(event, "/become-seller", closeDropdown)}
                           className="flex items-center gap-3 px-4 py-2.5 text-sm text-amber-300 hover:bg-amber-500/10 hover:text-amber-200 transition-colors"
                         >
                           <UserPlus size={15} />
@@ -817,7 +865,7 @@ export default function Navbar() {
                 </button>
                 <Link
                   href="/login"
-                  onClick={closeDropdown}
+                  onClick={(event) => handleProtectedLinkClick(event, "/login", closeDropdown)}
                   className="flex items-center gap-3 px-4 py-3 text-sm font-semibold text-white hover:bg-white/10 transition-colors"
                 >
                   <User size={15} className="text-stone-400" />
@@ -825,7 +873,7 @@ export default function Navbar() {
                 </Link>
                 <Link
                   href="/signup"
-                  onClick={closeDropdown}
+                  onClick={(event) => handleProtectedLinkClick(event, "/signup", closeDropdown)}
                   className="flex items-center gap-3 px-4 py-3 text-sm font-semibold text-amber-400 hover:bg-amber-500/10 hover:text-amber-300 transition-colors"
                 >
                   <UserPlus size={15} />

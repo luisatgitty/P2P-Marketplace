@@ -2111,13 +2111,15 @@ export default function ListingForm({
             </div>
 
             <div className="flex items-center gap-4">
-              <Button
-                variant={'destructive'}
-                onClick={discardProgress}
-                className="hover:bg-red-600 dark:hover:bg-red-600 font-bold"
-              >
-                <X size={14} /> Discard
-              </Button>
+              {hasUnsavedChanges && (
+                <Button
+                  variant={'destructive'}
+                  onClick={discardProgress}
+                  className="hover:bg-red-600 dark:hover:bg-red-600 font-bold"
+                >
+                  <X size={14} /> Discard
+                </Button>
+              )}
 
               {step < 2 ? (
                 <Button
