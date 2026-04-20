@@ -32,7 +32,7 @@ export interface PostCardProps {
 export default function PostCard(props: PostCardProps) {
   const { id, title, price, priceUnit, type, status, sellStatus, location, postedAt, imageUrl } = props;
   return (
-    <article className="group relative flex flex-col bg-white dark:bg-[#1e2a3a] rounded-xl border border-stone-200 dark:border-white/10 overflow-hidden shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
+    <article className="group relative flex flex-col bg-white dark:bg-[#1e2a3a] rounded-lg border border-stone-200 dark:border-white/10 overflow-hidden shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
 
       {/* Image */}
       <div className="relative aspect-square overflow-hidden bg-stone-100 dark:bg-[#151f2e] shrink-0 block">
@@ -43,14 +43,14 @@ export default function PostCard(props: PostCardProps) {
           label={title}
           className="w-full h-full"
         />
-        <div className="absolute top-2 left-2">
+        <div className="absolute top-1 left-2">
           <ListingTypeBadge
             type={type}
             status={status}
             sellStatus={sellStatus}
             variant="solid"
-            className="text-[9px] sm:text-[10px] font-extrabold rounded-md"
-            soldClassName="text-[9px] sm:text-[10px] font-extrabold rounded-md"
+            className="text-[9px] sm:text-[10px] font-extrabold rounded-sm"
+            soldClassName="text-[9px] sm:text-[10px] font-extrabold rounded-sm"
           />
         </div>
       </div>
@@ -68,11 +68,11 @@ export default function PostCard(props: PostCardProps) {
         <div className="flex items-center justify-between gap-1 text-[10px] sm:text-[11px] text-stone-400 dark:text-stone-500">
           <div className="flex items-center gap-0.5 min-w-0">
             <MapPin size={11} className="shrink-0" />
-            <span className="truncate">{location}</span>
+            <span className="text-[10px] md:text-[11px] truncate">{location}</span>
           </div>
           <div className="flex items-center gap-0.5 shrink-0">
             <Clock size={11} />
-            <span>{formatTimeAgo(postedAt)}</span>
+            <span className="text-[10px] md:text-[11px]">{formatTimeAgo(postedAt)}</span>
           </div>
         </div>
       </Link>

@@ -202,7 +202,7 @@ function SidebarContent({
               onClick={onNavigate}
               title={collapsed ? label : undefined}
               className={cn(
-                "relative flex items-center rounded-xl transition-all",
+                "relative flex items-center rounded-lg transition-all",
                 collapsed
                   ? "justify-center w-10 h-10"
                   : "gap-3 px-3 py-2.5 w-full text-sm font-medium",

@@ -50,10 +50,10 @@ export default function OfferModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 sm:p-0 bg-black/60 backdrop-blur-sm"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div className="bg-white dark:bg-[#1c1f2e] rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden">
+      <div className="bg-white dark:bg-[#1c1f2e] rounded-lg w-full max-w-sm shadow-2xl overflow-hidden">
         <div className="bg-[#1e2433] px-6 py-5">
           <h2 className="text-white font-bold text-lg">{title}</h2>
           <p className="text-slate-400 text-sm mt-1 truncate">{subtitle}</p>
@@ -66,7 +66,7 @@ export default function OfferModal({
               <span>Listed at {formatPrice(listedPrice)}</span>
             </div>
 
-            <div className="flex items-center border-2 border-stone-200 dark:border-[#2a2d3e] rounded-xl overflow-hidden focus-within:border-stone-400 dark:focus-within:border-stone-500 transition-colors">
+            <div className="flex items-center border-2 border-stone-200 dark:border-[#2a2d3e] rounded-lg overflow-hidden focus-within:border-stone-400 dark:focus-within:border-stone-500 transition-colors">
               <span className="px-4 text-stone-400 dark:text-stone-500 font-semibold text-sm bg-stone-50 dark:bg-[#13151f] py-3 border-r border-stone-200 dark:border-[#2a2d3e]">
                 ₱
               </span>
@@ -83,7 +83,7 @@ export default function OfferModal({
                 <button
                   key={preset.label}
                   onClick={() => onOfferAmountChange(preset.value)}
-                  className="flex-1 text-xs py-1.5 rounded-full border border-stone-200 dark:border-[#2a2d3e] text-stone-500 dark:text-stone-400 hover:border-stone-400 hover:text-stone-700 dark:hover:text-stone-200 transition-colors"
+                  className="flex-1 text-xs py-1.5 rounded-lg border border-stone-200 dark:border-[#2a2d3e] text-stone-500 dark:text-stone-400 hover:border-stone-400 hover:text-stone-700 dark:hover:text-white dark:hover:bg-slate-800 transition-colors"
                 >
                   {preset.label}
                 </button>
@@ -99,21 +99,21 @@ export default function OfferModal({
               onChange={(e) => onNoteChange(limitMessageInputLength(e.target.value))}
               maxLength={MESSAGE_MAX_LENGTH}
               placeholder={notePlaceholder}
-              className="w-full bg-stone-50 dark:bg-[#13151f] border border-stone-200 dark:border-[#2a2d3e] rounded-xl px-3 py-2.5 text-sm text-stone-800 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-600 outline-none focus:border-stone-400 dark:focus:border-stone-500 resize-none"
+              className="w-full bg-stone-50 dark:bg-[#13151f] border border-stone-200 dark:border-[#2a2d3e] rounded-lg px-3 py-2.5 text-sm text-stone-800 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-600 outline-none focus:border-stone-400 dark:focus:border-stone-500 resize-none"
             />
           </div>
 
           <div className="flex gap-2">
             <button
               onClick={onClose}
-              className="flex-1 py-3 rounded-full border border-stone-200 dark:border-[#2a2d3e] text-stone-600 dark:text-stone-300 text-sm font-semibold hover:bg-stone-50 dark:hover:bg-[#252837] transition-colors"
+              className="flex-1 py-3 rounded-lg border border-stone-200 dark:border-[#2a2d3e] text-stone-600 dark:text-stone-300 text-sm font-semibold hover:bg-stone-50 dark:hover:bg-[#252837] transition-colors"
             >
               Cancel
             </button>
             <button
               onClick={onSubmit}
               disabled={submitting || submitDisabled}
-              className="flex-1 py-3 rounded-full bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 text-sm font-bold hover:opacity-90 transition-opacity disabled:opacity-60"
+              className="flex-1 py-3 rounded-lg bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 text-sm font-bold hover:opacity-90 transition-opacity disabled:opacity-60"
             >
               {submitting ? "Submitting..." : submitLabel}
             </button>

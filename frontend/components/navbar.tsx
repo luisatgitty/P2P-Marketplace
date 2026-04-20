@@ -375,7 +375,7 @@ export default function Navbar() {
               height={32}
               className="shrink-0"
             />
-            <span className="font-bold text-base sm:text-lg leading-tight hidden sm:block whitespace-nowrap tracking-tight">
+            <span className="font-bold text-base sm:text-lg leading-tight hidden md:block whitespace-nowrap tracking-tight">
               P2P Marketplace
             </span>
           </Link>
@@ -397,25 +397,22 @@ export default function Navbar() {
                 >
                   <Bell size={18} className="text-stone-400" />
                   {hasUnreadNotifications && (
-                    <span className="absolute right-0 bottom-0 w-2.5 h-2.5 rounded-full bg-amber-500 border border-[#1a2235]" />
+                    <span className="absolute right-0 bottom-0 w-2.5 h-2.5 rounded-full bg-amber-600 border border-[#1a2235]" />
                   )}
                 </button>
 
                 {notificationOpen && (
-                  <div className="hidden md:block absolute right-0 mt-2 w-88 max-w-[90vw] rounded-xl border border-white/10 bg-[#1e2b3c] shadow-2xl z-50 animate-in fade-in slide-in-from-top-2 duration-150 overflow-hidden">
+                  <div className="hidden md:block absolute right-0 mt-2 w-88 max-w-[90vw] rounded-lg border border-white/10 bg-[#1e2b3c] shadow-2xl z-50 animate-in fade-in slide-in-from-top-2 duration-150 overflow-hidden">
                     <div className="px-3 py-2.5 border-b border-white/10 bg-white/5 flex items-center justify-between gap-2">
                       <h3 className="text-sm font-semibold text-white">Notifications</h3>
-                      <div className="flex items-center gap-2">
-                        <span className="text-[11px] text-stone-400">{notifications.length} items</span>
-                        <button
-                          type="button"
-                          onClick={handleMarkAllNotificationsRead}
-                          disabled={!hasUnreadNotifications}
-                          className="text-[11px] font-medium text-amber-300 hover:text-amber-200 disabled:text-stone-500 disabled:cursor-not-allowed transition-colors"
-                        >
-                          Mark all as read
-                        </button>
-                      </div>
+                      <button
+                        type="button"
+                        onClick={handleMarkAllNotificationsRead}
+                        disabled={!hasUnreadNotifications}
+                        className="text-xs font-medium text-amber-600 hover:text-amber-500 disabled:text-stone-500 disabled:cursor-not-allowed transition-colors"
+                      >
+                        Mark all as read
+                      </button>
                     </div>
 
                     <div
@@ -468,7 +465,7 @@ export default function Navbar() {
                   />
                   </div>
                   {isAuth && hasUnreadMessages && (
-                    <span className="absolute bottom-0 right-0 z-10 w-2.5 h-2.5 rounded-full bg-amber-500 border border-[#1a2235]" />
+                    <span className="absolute bottom-0 right-0 z-10 w-2.5 h-2.5 rounded-full bg-amber-600 border border-[#1a2235]" />
                   )}
                 </div>
                 <ChevronDown
@@ -481,7 +478,7 @@ export default function Navbar() {
               {(dropdownOpen || dropdownClosing) && (
                 <div
                   className={cn(
-                    "hidden md:block absolute right-0 mt-2 w-48 bg-[#1e2b3c] border border-white/10 rounded-xl shadow-2xl overflow-hidden transition-all duration-200 z-50",
+                    "hidden md:block absolute right-0 mt-2 w-48 bg-[#1e2b3c] border border-white/10 rounded-lg shadow-2xl overflow-hidden transition-all duration-200 z-50",
                     dropdownClosing
                       ? "opacity-0 -translate-y-2"
                       : "opacity-100 translate-y-0"
@@ -536,7 +533,7 @@ export default function Navbar() {
                               <span className="relative inline-flex">
                                 <MessageCircle size={15} className="text-stone-400" />
                                 {hasUnreadMessages && (
-                                  <span className="absolute -right-1 -bottom-1 w-2 h-2 rounded-full bg-amber-500 border border-[#1e2b3c]" />
+                                  <span className="absolute -right-1 -bottom-1 w-2 h-2 rounded-full bg-amber-600 border border-[#1e2b3c]" />
                                 )}
                               </span>
                               Messages
@@ -554,7 +551,7 @@ export default function Navbar() {
                               <Link
                                 href="/become-seller"
                                 onClick={closeDropdown}
-                                className="flex items-center gap-3 px-4 py-2.5 text-sm text-amber-300 hover:bg-amber-500/10 hover:text-amber-200 transition-colors"
+                                className="flex items-center gap-3 px-4 py-2.5 text-sm text-amber-600 hover:bg-amber-500/10 hover:text-amber-400 transition-colors"
                               >
                                 <UserPlus size={15} />
                                 Become a Seller
@@ -594,7 +591,7 @@ export default function Navbar() {
                       <Link
                         href="/signup"
                         onClick={closeDropdown}
-                        className="flex items-center gap-3 px-4 py-3 text-sm font-semibold text-amber-400 hover:bg-amber-500/10 hover:text-amber-300 transition-colors"
+                        className="flex items-center gap-3 px-4 py-3 text-sm font-semibold text-amber-600 hover:bg-amber-600/10 transition-colors"
                       >
                         <UserPlus size={15} />
                         Create Account
@@ -618,7 +615,7 @@ export default function Navbar() {
 
           <div
             ref={mobileNotificationPanelRef}
-            className="md:hidden fixed inset-x-0 bottom-0 z-63 w-auto bg-[#1e2b3c] rounded-t-xl shadow-2xl border-t border-white/10 overflow-hidden"
+            className="md:hidden fixed inset-x-0 bottom-0 z-63 w-auto bg-[#1e2b3c] rounded-t-lg shadow-2xl border-t border-white/10 overflow-hidden"
           >
             <div className="px-4 py-3 border-b border-white/10 bg-white/5 flex items-center justify-between gap-2">
               <h3 className="text-sm font-semibold text-white">Notifications</h3>
@@ -628,7 +625,7 @@ export default function Navbar() {
                   type="button"
                   onClick={handleMarkAllNotificationsRead}
                   disabled={!hasUnreadNotifications}
-                  className="text-[11px] font-medium text-amber-300 hover:text-amber-200 disabled:text-stone-500 disabled:cursor-not-allowed transition-colors"
+                  className="text-xs font-medium text-amber-600 hover:text-amber-500 disabled:text-stone-500 disabled:cursor-not-allowed transition-colors"
                 >
                   Mark all as read
                 </button>
@@ -678,7 +675,7 @@ export default function Navbar() {
           <div
             ref={mobileDropdownPanelRef}
             className={cn(
-              "md:hidden fixed inset-x-0 bottom-0 z-61 w-auto bg-[#1e2b3c] rounded-t-xl shadow-2xl overflow-hidden transition-all duration-200",
+              "md:hidden fixed inset-x-0 bottom-0 z-61 w-auto bg-[#1e2b3c] rounded-t-lg shadow-2xl overflow-hidden transition-all duration-200",
               dropdownClosing
                 ? "opacity-0 translate-y-4"
                 : "opacity-100 translate-y-0"
@@ -733,7 +730,7 @@ export default function Navbar() {
                         <span className="relative inline-flex">
                           <MessageCircle size={15} className="text-stone-400" />
                           {hasUnreadMessages && (
-                            <span className="absolute -right-1 -bottom-1 w-2 h-2 rounded-full bg-amber-500 border border-[#1e2b3c]" />
+                            <span className="absolute -right-1 -bottom-1 w-2 h-2 rounded-full bg-amber-600 border border-[#1e2b3c]" />
                           )}
                         </span>
                         Messages
@@ -751,7 +748,7 @@ export default function Navbar() {
                         <Link
                           href="/become-seller"
                           onClick={closeDropdown}
-                          className="flex items-center gap-3 px-4 py-2.5 text-sm text-amber-300 hover:bg-amber-500/10 hover:text-amber-200 transition-colors"
+                          className="flex items-center gap-3 px-4 py-2.5 text-sm text-amber-600 hover:bg-amber-600/10 hover:text-amber-400 transition-colors"
                         >
                           <UserPlus size={15} />
                           Become a Seller
@@ -791,7 +788,7 @@ export default function Navbar() {
                 <Link
                   href="/signup"
                   onClick={closeDropdown}
-                  className="flex items-center gap-3 px-4 py-3 text-sm font-semibold text-amber-400 hover:bg-amber-500/10 hover:text-amber-300 transition-colors"
+                  className="flex items-center gap-3 px-4 py-3 text-sm font-semibold text-amber-600 hover:bg-amber-600/10 hover:text-amber-400 transition-colors"
                 >
                   <UserPlus size={15} />
                   Create Account

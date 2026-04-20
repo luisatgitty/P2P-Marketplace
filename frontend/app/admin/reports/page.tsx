@@ -76,7 +76,7 @@ function FilterSelect({
       <select
         value={value}
         onChange={e => onChange(e.target.value)}
-        className="pl-3 pr-8 py-2 h-9 bg-transparent border border-stone-200 dark:border-[#2a2d3e] rounded-md text-sm text-stone-700 dark:text-stone-200 outline-none focus:border-stone-400 transition-colors appearance-none cursor-pointer dark:bg-[#13151f]"
+        className="pl-3 pr-8 py-2 h-9 bg-transparent border border-stone-200 dark:border-[#2a2d3e] rounded-lg text-sm text-stone-700 dark:text-stone-200 outline-none focus:border-stone-400 transition-colors appearance-none cursor-pointer dark:bg-[#13151f]"
       >
         {options.map(([v, l]) => (
           <option key={v} value={v}>{l}</option>
@@ -314,7 +314,7 @@ export default function ReportsPage() {
           <Card
             key={label}
             className={cn(
-              "p-4 rounded-md cursor-pointer hover:shadow-sm transition-all card-glass border border-stone-200 dark:border-[#2a2d3e]",
+              "p-4 rounded-lg cursor-pointer hover:shadow-sm transition-all card-glass border border-stone-200 dark:border-[#2a2d3e]",
               statusFilter === status && "ring-2 ring-offset-1 ring-current",
             )}
             onClick={() => {
@@ -524,7 +524,7 @@ export default function ReportsPage() {
                           {/* Status badge */}
                           <TableCell className="py-3.5 whitespace-nowrap">
                             <span className={cn(
-                              "text-xs font-bold px-2 py-0.5 rounded-full",
+                              "text-xs font-bold px-2 py-0.5 rounded-md",
                               STATUS_CONFIG[report.status].cls,
                             )}>
                               {STATUS_CONFIG[report.status].label}

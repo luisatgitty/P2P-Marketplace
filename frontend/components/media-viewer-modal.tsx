@@ -59,8 +59,8 @@ export function MediaViewerModal({
       }}
       thumbnails={{
         position: "bottom",
-        width: 72,
-        height: 72,
+        width: 52,
+        height: 52,
         border: 1,
         borderRadius: 8,
         gap: 8,

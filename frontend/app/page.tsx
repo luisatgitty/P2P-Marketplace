@@ -36,17 +36,19 @@ function FilterSelect({
   className?: string;
 } & Omit<React.SelectHTMLAttributes<HTMLSelectElement>, "value" | "onChange" | "children" | "className">) {
   return (
-    <select
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      {...props}
-      className={cn(
-        "w-full rounded-lg border border-stone-200 dark:border-white/10 bg-white dark:bg-[#1e2a3a] text-stone-700 dark:text-stone-300 text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500 transition-colors appearance-none",
-        className
-      )}
-    >
-      {children}
-    </select>
+    <div className="relative flex-1 min-w-44">
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        {...props}
+        className={cn(
+          "w-full rounded-lg border border-stone-200 dark:border-white/10 bg-white dark:bg-[#1e2a3a] text-stone-700 dark:text-stone-300 text-sm px-3 py-2 transition-colors appearance-none",
+          className
+        )}
+      >
+        {children}
+      </select>
+    </div>
   );
 }
 
@@ -267,7 +269,7 @@ function HomePageInner() {
 
             {/* Headline */}
             <div className="max-w-xl animate-fade-in-up shrink-0">
-              <h1 className="text-2xl md:text-3xl font-bold text-stone-100">
+              <h1 className="text-2xl sm:text-3xl font-bold text-stone-100">
                 Buy, Sell, Rent & Avail Services<br />
                 <span className="text-stone-400">from people near you.</span>
               </h1>
@@ -317,131 +319,145 @@ function HomePageInner() {
       <section id="listings" className="bg-stone-50 dark:bg-[#111827] border-b border-stone-200 dark:border-white/10 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
 
-          {/* Search row */}
-          <div className="flex gap-2 mb-3">
-            <div className="relative flex-1">
-              <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400 pointer-events-none" />
-              <Input
-                type="text"
-                placeholder="Search listings..."
-                value={keyword}
-                onChange={(e) => setKeyword(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                className="pl-9 pr-4 bg-white dark:bg-[#1e2a3a] border-stone-200 dark:border-white/10 rounded-lg text-sm focus-visible:ring-amber-500"
-              />
-            </div>
-            <Button
-              onClick={handleSearch}
-              className="bg-amber-700 hover:bg-amber-600 text-white rounded-lg px-5 shrink-0 text-sm font-semibold"
-            >
-              <Search size={14} className="mr-1.5" /> Search
-            </Button>
-          </div>
+            <div className="flex flex-col gap-2 xl:flex-row xl:items-end">
+              <div className="flex items-end gap-2 xl:flex-1">
+                {/* Search row */}
+                <div className="relative flex-1">
+                <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400 pointer-events-none" />
+                <Input
+                  type="text"
+                  placeholder="Search listings..."
+                  value={keyword}
+                  onChange={(e) => setKeyword(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                  className="pl-9 text-sm"
+                />
+                </div>
 
-          {/* Filter row */}
-          <div className="flex flex-wrap gap-2 items-end">
-            {/* Category */}
-            <div className="relative min-w-35 flex-1">
-              <FilterSelect value={category} onChange={setCategory}>
-                <option value="">All Categories</option>
-                {CATEGORIES.map((c) => <option key={c}>{c}</option>)}
-              </FilterSelect>
-              <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
-                <SlidersHorizontal size={12} className="text-stone-400" />
+                {/* Clear button */}
+                {hasActiveFilters && (
+                  <Button
+                    variant="ghost"
+                    onClick={handleClear}
+                    className="text-stone-500 hover:text-red-500 xl:hidden"
+                  >
+                    <X size={13} /> Clear Filters
+                  </Button>
+                )}
+
+                {/* Search button */}
+                <Button
+                  onClick={handleSearch}
+                  className="bg-amber-700 hover:bg-amber-600 text-white rounded-lg xl:hidden"
+                >
+                  <Search size={14} /> Search
+                </Button>
               </div>
-            </div>
 
-            {/* Province */}
-            <div className="relative min-w-32.5 flex-1">
-              <FilterSelect
-                value={provinceCode}
-                onChange={(code) => {
-                  const selected = provinceOptions.find((p) => p.code === code);
-                  setProvinceCode(code);
-                  setProvinceName(selected?.name ?? "Province");
-                  setCityCode("");
-                  setCityName("City/Municipality");
-                  setCityOptions([]);
-                  setFetchedCitiesProvinceCode("");
-                }}
-                disabled={loadingProvinces}
-                onMouseDown={(e) => {
-                  if (!hasFetchedProvinces) {
-                    e.preventDefault();
-                    void loadProvincesOnDemand();
-                  }
-                }}
-                className={cn(loadingProvinces && "cursor-wait")}
-              >
-                <option value="">{loadingProvinces ? "Loading provinces..." : "Province"}</option>
-                {provinceOptions.map((item) => <option key={item.code} value={item.code}>{item.name}</option>)}
-              </FilterSelect>
-            </div>
+              {/* <div className="flex flex-wrap gap-2 items-end xl:flex-nowrap"> */}
+              <div className="flex flex-wrap gap-2 items-end xl:flex-nowrap">
+                {/* Category */}
+                <FilterSelect value={category} onChange={setCategory}>
+                  <option value="">All Categories</option>
+                  {CATEGORIES.map((c) => <option key={c}>{c}</option>)}
+                </FilterSelect>
 
-            {/* City/Municipality */}
-            <div className="relative min-w-32.5 flex-1">
-              <FilterSelect
-                value={cityCode}
-                onChange={(code) => {
-                  const selected = cityOptions.find((c) => c.code === code);
-                  setCityCode(code);
-                  setCityName(selected?.name ?? "City/Municipality");
-                }}
-                disabled={!provinceCode || loadingCities}
-                onMouseDown={(e) => {
-                  if (!provinceCode) {
-                    e.preventDefault();
-                    return;
-                  }
+                {/* Province */}
+                <FilterSelect
+                  value={provinceCode}
+                  onChange={(code) => {
+                    const selected = provinceOptions.find((p) => p.code === code);
+                    setProvinceCode(code);
+                    setProvinceName(selected?.name ?? "Province");
+                    setCityCode("");
+                    setCityName("City/Municipality");
+                    setCityOptions([]);
+                    setFetchedCitiesProvinceCode("");
+                  }}
+                  disabled={loadingProvinces}
+                  onMouseDown={(e) => {
+                    if (!hasFetchedProvinces) {
+                      e.preventDefault();
+                      void loadProvincesOnDemand();
+                    }
+                  }}
+                  className={cn(loadingProvinces && "cursor-wait")}
+                >
+                  <option value="">{loadingProvinces ? "Loading provinces..." : "Province"}</option>
+                  {provinceOptions.map((item) => <option key={item.code} value={item.code}>{item.name}</option>)}
+                </FilterSelect>
 
-                  if (fetchedCitiesProvinceCode !== provinceCode) {
-                    e.preventDefault();
-                    void loadCitiesOnDemand();
-                  }
-                }}
-                className={cn((!provinceCode || loadingCities) && "cursor-wait")}
-              >
-                <option value="">
-                  {!provinceCode
-                    ? "Select province first"
-                    : loadingCities
-                      ? "Loading cities/municipalities..."
-                      : "City/Municipality"}
-                </option>
-                {cityOptions.map((item) => <option key={item.code} value={item.code}>{item.name}</option>)}
-              </FilterSelect>
-            </div>
+                {/* City/Municipality */}
+                <FilterSelect
+                  value={cityCode}
+                  onChange={(code) => {
+                    const selected = cityOptions.find((c) => c.code === code);
+                    setCityCode(code);
+                    setCityName(selected?.name ?? "City/Municipality");
+                  }}
+                  disabled={!provinceCode || loadingCities}
+                  onMouseDown={(e) => {
+                    if (!provinceCode) {
+                      e.preventDefault();
+                      return;
+                    }
 
-            {/* Price range */}
-            <div className="flex items-center gap-1.5 shrink-0">
-              <Input
-                type="number"
-                placeholder="Min ₱"
-                value={priceMin}
-                onChange={(e) => setPriceMin(e.target.value)}
-                className="w-24 text-sm bg-white dark:bg-[#1e2a3a] border-stone-200 dark:border-white/10 rounded-lg focus-visible:ring-amber-500"
-              />
-              <span className="text-stone-400 text-sm shrink-0">–</span>
-              <Input
-                type="number"
-                placeholder="Max ₱"
-                value={priceMax}
-                onChange={(e) => setPriceMax(e.target.value)}
-                className="w-24 text-sm bg-white dark:bg-[#1e2a3a] border-stone-200 dark:border-white/10 rounded-lg focus-visible:ring-amber-500"
-              />
-            </div>
+                    if (fetchedCitiesProvinceCode !== provinceCode) {
+                      e.preventDefault();
+                      void loadCitiesOnDemand();
+                    }
+                  }}
+                  className={cn((!provinceCode || loadingCities) && "cursor-wait")}
+                >
+                  <option value="">
+                    {!provinceCode
+                      ? "Select province first"
+                      : loadingCities
+                        ? "Loading cities/municipalities..."
+                        : "City/Municipality"}
+                  </option>
+                  {cityOptions.map((item) => <option key={item.code} value={item.code}>{item.name}</option>)}
+                </FilterSelect>
 
-            {/* Clear button */}
-            {hasActiveFilters && (
+                {/* Price range */}
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <Input
+                    type="number"
+                    placeholder="Min ₱"
+                    value={priceMin}
+                    onChange={(e) => setPriceMin(e.target.value)}
+                    className="w-26 text-sm bg-white dark:bg-[#1e2a3a] border-stone-200 dark:border-white/10 rounded-lg"
+                  />
+                  <span className="text-stone-400 text-sm shrink-0">–</span>
+                  <Input
+                    type="number"
+                    placeholder="Max ₱"
+                    value={priceMax}
+                    onChange={(e) => setPriceMax(e.target.value)}
+                    className="w-26 text-sm bg-white dark:bg-[#1e2a3a] border-stone-200 dark:border-white/10 rounded-lg"
+                  />
+                </div>
+              </div>
+
+              {/* Clear button */}
+              {hasActiveFilters && (
+                <Button
+                  variant="ghost"
+                  onClick={handleClear}
+                  className="text-stone-500 hover:text-red-500 hidden xl:flex"
+                >
+                  <X size={13} /> Clear Filters
+                </Button>
+              )}
+
+              {/* Search button */}
               <Button
-                variant="ghost"
-                onClick={handleClear}
-                className="text-stone-500 hover:text-red-500 text-sm rounded-lg px-3 py-2 shrink-0"
+                onClick={handleSearch}
+                className="bg-amber-700 hover:bg-amber-600 text-white rounded-lg hidden xl:flex"
               >
-                <X size={13} className="mr-1" /> Clear Filters
+                <Search size={14} /> Search
               </Button>
-            )}
-          </div>
+            </div>
         </div>
       </section>
 

@@ -28,7 +28,7 @@ export default function ListingConditionBadge({ condition, className }: ListingC
   return (
     <span
       className={cn(
-        "inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-full",
+        "inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-md",
         colorClass,
         className
       )}

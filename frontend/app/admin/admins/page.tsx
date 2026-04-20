@@ -143,10 +143,10 @@ function AddAdminModal({ onClose, onAdd }: AddModalProps) {
       className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm"
       onClick={e => e.target === e.currentTarget && onClose()}
     >
-      <div className="bg-white dark:bg-[#1c1f2e] rounded-t-3xl sm:rounded-2xl w-full sm:max-w-md shadow-2xl flex flex-col max-h-[90vh]">
+      <div className="bg-white dark:bg-[#1c1f2e] rounded-lg w-full sm:max-w-md shadow-2xl flex flex-col max-h-[90vh]">
 
         {/* Header */}
-        <div className="bg-[#1e2433] px-6 py-5 flex items-start justify-between shrink-0 rounded-t-3xl sm:rounded-t-2xl">
+        <div className="bg-[#1e2433] px-6 py-5 flex items-start justify-between shrink-0 rounded-t-lg">
           <div className="flex items-center gap-2">
             <UserCog className="w-4 h-4 text-violet-400" />
             <h2 className="text-white font-bold text-base">Add New Admin</h2>
@@ -246,7 +246,7 @@ function AddAdminModal({ onClose, onAdd }: AddModalProps) {
                   type="button"
                   onClick={() => setRole(r)}
                   className={cn(
-                    "flex items-center gap-2.5 px-4 py-3 rounded-xl border text-sm font-semibold text-left transition-all",
+                    "flex items-center gap-2.5 px-4 py-3 rounded-lg border text-sm font-semibold text-left transition-all",
                     role === r
                       ? "bg-[#1e2433] border-[#3a4a6a] text-white"
                       : "bg-stone-50 dark:bg-[#13151f] border-stone-200 dark:border-[#2a2d3e] text-stone-600 dark:text-stone-300 hover:border-stone-400",
@@ -324,7 +324,7 @@ function AddAdminModal({ onClose, onAdd }: AddModalProps) {
           )}
 
           {/* Note */}
-          <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-xl p-3 text-xs text-amber-700 dark:text-amber-400">
+          <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3 text-xs text-amber-700 dark:text-amber-400">
             <strong className="font-bold">Note:</strong> The new admin should change their password immediately on first login.
           </div>
         </div>
@@ -335,7 +335,7 @@ function AddAdminModal({ onClose, onAdd }: AddModalProps) {
             type="button"
             variant="outline"
             onClick={onClose}
-            className="flex-1 rounded-full dark:border-[#2a2d3e] dark:text-stone-300 dark:hover:bg-[#252837]"
+            className="flex-1 rounded-lg dark:border-[#2a2d3e] dark:text-stone-300 dark:hover:bg-[#252837]"
           >
             Cancel
           </Button>
@@ -343,7 +343,7 @@ function AddAdminModal({ onClose, onAdd }: AddModalProps) {
             type="button"
             onClick={handleSubmit}
             disabled={saving}
-            className="flex-1 rounded-full bg-[#1e2433] hover:bg-[#2a3650] dark:bg-stone-100 dark:text-stone-900 dark:hover:bg-stone-200 text-white font-bold"
+            className="flex-1 rounded-lg bg-[#1e2433] hover:bg-[#2a3650] dark:bg-stone-100 dark:text-stone-900 dark:hover:bg-stone-200 text-white font-bold"
           >
             {saving ? "Creating…" : "Create Admin"}
           </Button>
@@ -616,7 +616,7 @@ export default function AdminsPage() {
 
       {/* ── Success banner ── */}
       {addSuccess && (
-        <div className="flex items-center gap-2.5 px-4 py-3 bg-teal-50 dark:bg-teal-950/30 border border-teal-200 dark:border-teal-800 rounded-xl text-sm text-teal-700 dark:text-teal-300">
+        <div className="flex items-center gap-2.5 px-4 py-3 bg-teal-50 dark:bg-teal-950/30 border border-teal-200 dark:border-teal-800 rounded-lg text-sm text-teal-700 dark:text-teal-300">
           <CheckCircle2 className="w-4 h-4 shrink-0" /> {addSuccess}
         </div>
       )}
@@ -652,7 +652,7 @@ export default function AdminsPage() {
           <Card
             key={label}
             className={cn(
-              "p-4 rounded-md cursor-pointer hover:shadow-sm transition-all border",
+              "p-4 rounded-lg cursor-pointer hover:shadow-sm transition-all border",
               bg,
               border,
               roleFilter === role && "ring-2 ring-offset-1 ring-current",
@@ -694,7 +694,7 @@ export default function AdminsPage() {
           <select
             value={roleFilter}
             onChange={e => { setRoleFilter(e.target.value); setCurrentPage(1); }}
-            className="pl-3 pr-8 py-2 h-9 bg-transparent border border-stone-200 dark:border-[#2a2d3e] rounded-md text-sm text-stone-700 dark:text-stone-200 outline-none focus:border-stone-400 transition-colors appearance-none cursor-pointer dark:bg-[#13151f]"
+            className="pl-3 pr-8 py-2 h-9 bg-transparent border border-stone-200 dark:border-[#2a2d3e] rounded-lg text-sm text-stone-700 dark:text-stone-200 outline-none focus:border-stone-400 transition-colors appearance-none cursor-pointer dark:bg-[#13151f]"
           >
             <option value="ALL">All Roles</option>
             <option value="ADMIN">Admin</option>
@@ -713,7 +713,7 @@ export default function AdminsPage() {
           <select
             value={statusFilter}
             onChange={e => { setStatusFilter(e.target.value); setCurrentPage(1); }}
-            className="pl-3 pr-8 py-2 h-9 bg-transparent border border-stone-200 dark:border-[#2a2d3e] rounded-md text-sm text-stone-700 dark:text-stone-200 outline-none focus:border-stone-400 transition-colors appearance-none cursor-pointer dark:bg-[#13151f]"
+            className="pl-3 pr-8 py-2 h-9 bg-transparent border border-stone-200 dark:border-[#2a2d3e] rounded-lg text-sm text-stone-700 dark:text-stone-200 outline-none focus:border-stone-400 transition-colors appearance-none cursor-pointer dark:bg-[#13151f]"
           >
             <option value="ALL">All Status</option>
             <option value="ACTIVE">Active</option>

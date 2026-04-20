@@ -53,7 +53,7 @@ export function LogoutModal({ open, onClose }: LogoutModalProps) {
       onClick={(e) => e.target === e.currentTarget && handleCancel()}
     >
       {/* ── Modal card ── */}
-      <div className="bg-[#1c1f2e] rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden animate-in fade-in slide-in-from-bottom-4 sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-200">
+      <div className="bg-[#1c1f2e] rounded-lg w-full max-w-sm shadow-2xl overflow-hidden animate-in fade-in slide-in-from-bottom-4 sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-200">
         {state !== "done" && (
           <>
             <div className="bg-[#1e2433] px-7 py-7 flex flex-col items-center text-center">
@@ -80,7 +80,7 @@ export function LogoutModal({ open, onClose }: LogoutModalProps) {
 
             <div className="bg-white dark:bg-[#1c1f2e] px-6 py-5 flex flex-col gap-3">
               {/* Session info chip */}
-              <div className="flex items-center gap-3 bg-stone-50 dark:bg-[#13151f] border border-stone-200 dark:border-[#2a2d3e] rounded-xl px-3.5 py-2.5">
+              <div className="flex items-center gap-3 bg-stone-50 dark:bg-[#13151f] border border-stone-200 dark:border-[#2a2d3e] rounded-lg px-3.5 py-2.5">
                 {/* Avatar */}
                 <div className="w-9 h-9 rounded-full overflow-hidden border border-stone-200 dark:border-[#2a2d3e] bg-stone-200 dark:bg-stone-700 shrink-0 relative">
                   <SafeImage
@@ -115,7 +115,7 @@ export function LogoutModal({ open, onClose }: LogoutModalProps) {
                 onClick={handleConfirm}
                 disabled={state === "loading"}
                 className={cn(
-                  "w-full flex items-center justify-center gap-2 py-3 rounded-full",
+                  "w-full flex items-center justify-center gap-2 py-3 rounded-lg",
                   "bg-red-600 hover:bg-red-700 text-white text-sm font-bold",
                   "transition-all active:scale-[0.98]",
                   "disabled:opacity-70 disabled:cursor-not-allowed",
@@ -124,7 +124,7 @@ export function LogoutModal({ open, onClose }: LogoutModalProps) {
                 {state === "loading" ? (
                   <>
                     {/* Inline spinner */}
-                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-lg animate-spin" />
                     <span>Signing out…</span>
                   </>
                 ) : (
@@ -150,7 +150,7 @@ export function LogoutModal({ open, onClose }: LogoutModalProps) {
                 onClick={handleCancel}
                 disabled={state === "loading"}
                 className={cn(
-                  "w-full py-3 rounded-full border-2 border-stone-200 dark:border-[#2a2d3e]",
+                  "w-full py-3 rounded-lg border-2 border-stone-200 dark:border-[#2a2d3e]",
                   "text-stone-600 dark:text-stone-300 text-sm font-semibold",
                   "hover:border-stone-400 dark:hover:border-stone-500",
                   "hover:bg-stone-50 dark:hover:bg-[#252837]",
