@@ -83,7 +83,7 @@ export default function OfferModal({
                 <button
                   key={preset.label}
                   onClick={() => onOfferAmountChange(preset.value)}
-                  className="flex-1 text-xs py-1.5 rounded-lg border border-stone-200 dark:border-[#2a2d3e] text-stone-500 dark:text-stone-400 hover:border-stone-400 hover:text-stone-700 dark:hover:text-stone-200 transition-colors"
+                  className="flex-1 text-xs py-1.5 rounded-lg border border-stone-200 dark:border-[#2a2d3e] text-stone-500 dark:text-stone-400 hover:border-stone-400 hover:text-stone-700 dark:hover:text-white dark:hover:bg-slate-800 transition-colors"
                 >
                   {preset.label}
                 </button>

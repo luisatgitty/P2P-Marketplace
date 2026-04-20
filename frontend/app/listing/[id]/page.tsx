@@ -823,7 +823,7 @@ export default function ListingDetailPage() {
                         {isSell && (
                           <button
                             onClick={handleBuy}
-                            className="flex items-center justify-center gap-2 w-full py-3 rounded-lg border-2 border-stone-200 dark:border-[#2a2d3e] text-stone-700 dark:text-stone-200 bg-white dark:bg-transparent text-sm font-bold hover:border-stone-400 dark:hover:border-stone-500 hover:bg-stone-50 dark:hover:bg-[#252837] transition-all active:scale-[0.98]">
+                            className="flex items-center justify-center gap-2 w-full py-3 rounded-lg text-sm font-bold text-white bg-slate-700 hover:bg-slate-600 transition-colors active:scale-[0.98]">
                             <Zap className="w-4 h-4" /> Make an Offer
                           </button>
                         )}
@@ -998,13 +998,12 @@ export default function ListingDetailPage() {
             <>
               <button
                 onClick={handleMessage}
-                className="flex-1 flex items-center justify-center gap-2 py-3 rounded-full border-2 border-stone-200 dark:border-[#2a2d3e] text-stone-700 dark:text-stone-200 text-sm font-semibold">
+                className="flex-1 flex items-center justify-center gap-2 py-3 rounded-lg border-2 border-stone-200 dark:border-[#2a2d3e] text-stone-700 dark:text-stone-200 text-sm font-semibold">
                 <MessageCircle className="w-4 h-4" /> Message
               </button>
               <button
                 onClick={handleBuy}
-                className="flex-1 flex items-center justify-center gap-2 py-3 rounded-full text-white text-sm font-bold"
-                style={{ background: "linear-gradient(135deg, #1e2433, #3a4a6a)" }}>
+                className="flex-1 flex items-center justify-center gap-2 py-3 rounded-lg bg-[#3A4A6A] text-white text-sm font-bold">
                 <Zap className="w-4 h-4" />
                 {isSell ? "Offer" : isRent ? "Rent" : "Book"}
               </button>
