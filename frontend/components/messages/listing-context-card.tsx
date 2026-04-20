@@ -8,24 +8,25 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import type { ConversationListing } from "@/types/messaging";
 import {
-  createListingReview,
-  deleteListingReview,
-  getMyListingReview,
-  markListingAsComplete,
-  updateListingReview,
   type ListingReviewPayload,
 } from "@/services/listingDetailService";
-import {
-  openOrCreateConversationFromListing,
-  toggleConversationDealAgreement,
-  updateConversationOfferAsOwner,
-} from "@/services/messagingService";
+import { type ScheduleRequestPayload } from "@/services/messagingService";
 import { ConfirmActionModal } from "@/components/confirm-action-modal"; 
 import OfferModal from "@/components/offer-modal";
 import { ScheduleModal } from "@/components/schedule-modal";
 import { Separator } from "@/components/ui/separator";
 import { ImageLink } from "../image-link";
 import { formatPrice } from "@/utils/string-builder";
+import {
+  getListingContextActionState,
+  loadListingReview,
+  runDealToggle,
+  runMarkListingAsComplete,
+  runOfferUpdate,
+  runReviewDelete,
+  runReviewUpsert,
+  runScheduleUpdate,
+} from "./listing-context-actions";
 
 interface ListingContextCardProps {
   conversationId?: string;
@@ -59,19 +60,20 @@ export default function ListingContextCard({
   const [reviewDeleting, setReviewDeleting] = useState(false);
   const [existingReview, setExistingReview] = useState<ListingReviewPayload | null>(null);
 
-  const normalizedStatus = String(listing.status ?? "").trim().toUpperCase();
-  const normalizedTransactionStatus = String(listing.transactionStatus ?? "").trim().toUpperCase();
-  const isSold = normalizedStatus === "SOLD";
-  const isListingBlocked = normalizedStatus === "BANNED" || normalizedStatus === "DELETED";
-  const shouldHideButtons = hideActionButtons || isListingBlocked;
-  const hasTransaction = normalizedTransactionStatus !== "";
-  const isTransactionConfirmed = normalizedTransactionStatus === "CONFIRMED";
-  const canMarkAsComplete = isSeller && isTransactionConfirmed && (listing.listingType !== "SELL" || !isSold);
-  const canDeal = !isSold && hasTransaction && (normalizedTransactionStatus === "PENDING" || normalizedTransactionStatus === "CONFIRMED");
-  const hasAgreed = Boolean(listing.userAgreed);
-  const canReview = !isSeller && Boolean(listing.canReview);
-  const offeredPrice = Number(listing.offer ?? 0) > 0 ? Number(listing.offer) : listing.price;
-  const scheduleValue = String(listing.schedule ?? "").trim();
+  const {
+    normalizedTransactionStatus,
+    isSold,
+    shouldHideButtons,
+    hasTransaction,
+    canMarkAsComplete,
+    canDeal,
+    hasAgreed,
+    canReview,
+    offeredPrice,
+    scheduleValue,
+    canEditPrice,
+    canEditSchedule,
+  } = getListingContextActionState(listing, isSeller, hideActionButtons);
   const [ newPrice, setNewPrice ] = useState(offeredPrice);
   const isOfferChanged = Math.trunc(newPrice) !== Math.trunc(offeredPrice) || !hasTransaction;
   const REVIEW_MAX_LENGTH = 500;
@@ -87,7 +89,7 @@ export default function ListingContextCard({
 
       setReviewLoading(true);
       try {
-        const payload = await getMyListingReview(listing.id);
+        const payload = await loadListingReview(listing.id);
         if (!mounted) return;
         setExistingReview(payload);
       } catch (err) {
@@ -149,15 +151,14 @@ export default function ListingContextCard({
 
     setReviewSubmitting(true);
     try {
-      if (isEditing) {
-        const updated = await updateListingReview(listing.id, rating, trimmedComment);
-        setExistingReview(updated);
-        toast.success("Review updated successfully.", { position: "top-center" });
-      } else {
-        const created = await createListingReview(listing.id, rating, trimmedComment);
-        setExistingReview(created);
-        toast.success("Review submitted. Thank you for your feedback.", { position: "top-center" });
-      }
+      const savedReview = await runReviewUpsert({
+        listingId: listing.id,
+        rating,
+        comment: trimmedComment,
+        existingReview,
+      });
+      setExistingReview(savedReview);
+      toast.success(isEditing ? "Review updated successfully." : "Review submitted. Thank you for your feedback.", { position: "top-center" });
       handleCloseReviewModal();
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err || "Failed to submit review.");
@@ -175,7 +176,7 @@ export default function ListingContextCard({
 
     setReviewDeleting(true);
     try {
-      await deleteListingReview(listing.id);
+      await runReviewDelete(listing.id);
       setExistingReview(null);
       toast.success("Review deleted successfully.", { position: "top-center" });
       handleCloseReviewModal();
@@ -192,7 +193,7 @@ export default function ListingContextCard({
 
     setMarkingComplete(true);
     try {
-      await markListingAsComplete(listing.id);
+      await runMarkListingAsComplete(listing.id);
       toast.success(listing.listingType === "SELL" ? "Listing marked as sold." : "Listing marked as complete.", { position: "top-center" });
       setConfirmOpen(false);
       await onMarkedComplete?.();
@@ -217,11 +218,13 @@ export default function ListingContextCard({
 
     setPriceSubmitting(true);
     try {
-      if (isSeller && conversationId) {
-        await updateConversationOfferAsOwner(conversationId, Math.trunc(newPrice), offerMessage);
-      } else {
-        await openOrCreateConversationFromListing(listing.id, Math.trunc(newPrice), offerMessage);
-      }
+      await runOfferUpdate({
+        listingId: listing.id,
+        conversationId,
+        isSeller,
+        offerPrice: newPrice,
+        offerMessage,
+      });
       await onOfferUpdated?.();
       toast.success("Offer updated successfully.", { position: "top-center" });
       setEditPriceOpen(false);
@@ -247,7 +250,7 @@ export default function ListingContextCard({
 
     setDealSubmitting(true);
     try {
-      await toggleConversationDealAgreement(conversationId);
+      await runDealToggle(conversationId);
       await onOfferUpdated?.();
       toast.success("Deal agreement updated.", { position: "top-center" });
     } catch (err) {
@@ -258,21 +261,9 @@ export default function ListingContextCard({
     }
   }
 
-  const handleEditScheduleAction = async (payload: {
-    startDate: string;
-    endDate: string;
-    startTime: string;
-    endTime: string;
-    message: string;
-  }) => {
+  const handleEditScheduleAction = async (payload: ScheduleRequestPayload) => {
     try {
-      await openOrCreateConversationFromListing(listing.id, undefined, undefined, {
-        startDate: payload.startDate,
-        endDate: payload.endDate,
-        startTime: payload.startTime,
-        endTime: payload.endTime,
-        message: payload.message,
-      });
+      await runScheduleUpdate(listing.id, payload);
       await onOfferUpdated?.();
       setEditScheduleOpen(false);
       toast.success("Schedule request sent.", { position: "top-center" });
@@ -297,8 +288,7 @@ export default function ListingContextCard({
           label={listing.title}
           className="w-11 h-11"
         />
-
-        {/* Details */}
+        
         <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold text-stone-800 dark:text-stone-100 truncate leading-tight">
             {listing.title}
@@ -310,104 +300,108 @@ export default function ListingContextCard({
           </div>
         </div>
 
-        <Separator orientation="vertical" />
+        {/* Hidden in mobile */}
+        <div className="hidden sm:flex flex-1 gap-4">
 
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-stone-800 dark:text-stone-100 truncate leading-tight">
-            {listing.listingType === "SELL"
-              ? "Offered Price"
-              : "Provided Schedule"}
-          </p>
-          <div className="flex items-center gap-1.5 mt-0.5">
-            <span className="text-xs font-bold text-amber-700 dark:text-amber-500">
-              {
-                listing.listingType === "SELL"
-                  ? isSold || hasTransaction && (normalizedTransactionStatus === "PENDING" || normalizedTransactionStatus === "CONFIRMED")
-                    ? formatPrice(offeredPrice)
-                    : "No offer yet"
-                  : (scheduleValue || "No schedule yet")
-              }
-            </span>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-stone-800 dark:text-stone-100 truncate leading-tight">
+              {listing.listingType === "SELL"
+                ? "Offered Price"
+                : "Provided Schedule"}
+            </p>
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <span className="text-xs font-bold text-amber-700 dark:text-amber-500">
+                {
+                  listing.listingType === "SELL"
+                    ? isSold || hasTransaction && (normalizedTransactionStatus === "PENDING" || normalizedTransactionStatus === "CONFIRMED")
+                      ? formatPrice(offeredPrice)
+                      : "No offer yet"
+                    : (scheduleValue || "No schedule yet")
+                }
+              </span>
+            </div>
           </div>
+
+          {/* Details */}
+
+          {/* Edit Price Button */}
+          {canEditPrice && (
+            <button
+              type="button"
+              onClick={() => setEditPriceOpen(true)}
+              disabled={reviewLoading}
+              className="px-2.5 py-2 rounded-md text-[11px] font-semibold text-white bg-blue-700 hover:bg-blue-600 transition-colors shrink-0 disabled:opacity-60 disabled:cursor-not-allowed"
+              title="Edit offered price"
+            >
+              {!isSold && hasTransaction && (normalizedTransactionStatus === "PENDING" || normalizedTransactionStatus === "CONFIRMED")
+                ? "Edit Price"
+                : "Offer Price"}
+            </button>
+          )}
+
+          {/* Edit Schedule Button */}
+          
+          {canEditSchedule && (
+            <button
+              type="button"
+              onClick={() => setEditScheduleOpen(true)}
+              disabled={reviewLoading}
+              className="px-2.5 py-2 rounded-md text-[11px] font-semibold text-white bg-blue-700 hover:bg-blue-600 transition-colors shrink-0 disabled:opacity-60 disabled:cursor-not-allowed"
+              title="Edit schedule"
+            >
+              {hasTransaction && (normalizedTransactionStatus === "PENDING" || normalizedTransactionStatus === "CONFIRMED")
+                ? "Edit Schedule"
+                : "Provide Schedule"
+              }
+            </button>
+          )}
+
+          {/* Deal Button */}
+          {!shouldHideButtons && canDeal && (
+            <button
+              type="button"
+              onClick={handleDealAction}
+              disabled={dealSubmitting}
+              className={`px-2.5 py-2 rounded-md text-[11px] font-semibold text-white transition-colors shrink-0 disabled:opacity-60 disabled:cursor-not-allowed ${hasAgreed ? "bg-emerald-700 hover:bg-emerald-600" : "bg-blue-700 hover:bg-blue-600"}`}
+              title="Deal with the offer"
+            >
+              {dealSubmitting
+                ? "Saving..."
+                : hasAgreed
+                  ? "Agreed"
+                  : "Deal"}
+            </button>
+          )}
+
+          {/* Mark as complete button */}
+          {!shouldHideButtons && canMarkAsComplete && (
+            <button
+              type="button"
+              onClick={() => setConfirmOpen(true)}
+              className="px-2.5 py-2 rounded-md text-[11px] font-semibold text-white bg-amber-700 hover:bg-amber-600 transition-colors shrink-0"
+              title={listing.listingType === "SELL" ? "Mark as Sold" : "Mark as Fulfilled"}
+            >
+              {listing.listingType === "SELL" ? "Mark as Sold" : "Mark as Fulfilled"}
+            </button>
+          )}
+
+          {/* Review button */}
+          {!shouldHideButtons && canReview && (
+            <button
+              type="button"
+              onClick={handleOpenReviewModal}
+              disabled={reviewLoading}
+              className="px-2.5 py-2 rounded-md text-[11px] font-semibold text-white bg-blue-700 hover:bg-blue-600 transition-colors shrink-0 disabled:opacity-60 disabled:cursor-not-allowed"
+              title={existingReview ? "Edit your review" : "Review this item"}
+            >
+              {reviewLoading
+                ? "Loading..."
+                : existingReview
+                  ? "Edit Review"
+                  : "Review"}
+            </button>
+          )}
         </div>
-
-        {/* Edit Price Button */}
-        {!shouldHideButtons && listing.listingType === "SELL" && !isSold && (
-          <button
-            type="button"
-            onClick={() => setEditPriceOpen(true)}
-            disabled={reviewLoading}
-            className="px-2.5 py-2 rounded-md text-[11px] font-semibold text-white bg-blue-700 hover:bg-blue-600 transition-colors shrink-0 disabled:opacity-60 disabled:cursor-not-allowed"
-            title="Edit offered price"
-          >
-            {!isSold && hasTransaction && (normalizedTransactionStatus === "PENDING" || normalizedTransactionStatus === "CONFIRMED")
-              ? "Edit Price"
-              : "Offer Price"}
-          </button>
-        )}
-
-        {/* Edit Schedule Button */}
-        
-        {!shouldHideButtons && (listing.listingType === "RENT" || listing.listingType === "SERVICE") && (
-          <button
-            type="button"
-            onClick={() => setEditScheduleOpen(true)}
-            disabled={reviewLoading}
-            className="px-2.5 py-2 rounded-md text-[11px] font-semibold text-white bg-blue-700 hover:bg-blue-600 transition-colors shrink-0 disabled:opacity-60 disabled:cursor-not-allowed"
-            title="Edit schedule"
-          >
-            {hasTransaction && (normalizedTransactionStatus === "PENDING" || normalizedTransactionStatus === "CONFIRMED")
-              ? "Edit Schedule"
-              : "Provide Schedule"
-            }
-          </button>
-        )}
-
-        {/* Deal Button */}
-        {!shouldHideButtons && canDeal && (
-          <button
-            type="button"
-            onClick={handleDealAction}
-            disabled={dealSubmitting}
-            className={`px-2.5 py-2 rounded-md text-[11px] font-semibold text-white transition-colors shrink-0 disabled:opacity-60 disabled:cursor-not-allowed ${hasAgreed ? "bg-emerald-700 hover:bg-emerald-600" : "bg-blue-700 hover:bg-blue-600"}`}
-            title="Deal with the offer"
-          >
-            {dealSubmitting
-              ? "Saving..."
-              : hasAgreed
-                ? "Agreed"
-                : "Deal"}
-          </button>
-        )}
-
-        {/* Mark as complete button */}
-        {!shouldHideButtons && canMarkAsComplete && (
-          <button
-            type="button"
-            onClick={() => setConfirmOpen(true)}
-            className="px-2.5 py-2 rounded-md text-[11px] font-semibold text-white bg-amber-700 hover:bg-amber-600 transition-colors shrink-0"
-            title={listing.listingType === "SELL" ? "Mark as Sold" : "Mark as Fulfilled"}
-          >
-            {listing.listingType === "SELL" ? "Mark as Sold" : "Mark as Fulfilled"}
-          </button>
-        )}
-
-        {/* Review button */}
-        {!shouldHideButtons && canReview && (
-          <button
-            type="button"
-            onClick={handleOpenReviewModal}
-            disabled={reviewLoading}
-            className="px-2.5 py-2 rounded-md text-[11px] font-semibold text-white bg-blue-700 hover:bg-blue-600 transition-colors shrink-0 disabled:opacity-60 disabled:cursor-not-allowed"
-            title={existingReview ? "Edit your review" : "Review this item"}
-          >
-            {reviewLoading
-              ? "Loading..."
-              : existingReview
-                ? "Edit Review"
-                : "Review"}
-          </button>
-        )}
         
       </div>
       <ConfirmActionModal
