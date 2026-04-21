@@ -179,18 +179,20 @@ var ReportReasons = []string{
 	"Spam / Duplicate",
 	"Listing Issue",
 	"Transaction Issue",
+	"Offensive Language",
 	"Other",
 }
 
 var reportReasonAliases = map[string]string{
-	"prohibited":        "Prohibited",
-	"prohibited item":   "Prohibited",
-	"spam / duplicate":  "Spam / Duplicate",
-	"listing issue":     "Listing Issue",
-	"\"listing issue":   "Listing Issue",
-	"transaction issue": "Transaction Issue",
-	"other":             "Other",
-	"scam / fraud":      "Scam / Fraud",
+	"prohibited":         "Prohibited",
+	"prohibited item":    "Prohibited",
+	"spam / duplicate":   "Spam / Duplicate",
+	"listing issue":      "Listing Issue",
+	"\"listing issue":    "Listing Issue",
+	"transaction issue":  "Transaction Issue",
+	"offensive language": "Offensive Language",
+	"other":              "Other",
+	"scam / fraud":       "Scam / Fraud",
 }
 
 func NormalizeReportReason(reason string) string {
@@ -216,6 +218,13 @@ func NormalizeReportReason(reason string) string {
 // ─── Admin Moderation ──────────────────────────────
 const (
 	AdminReasonMaxLength = 500
+)
+
+// ─── Automated Moderation ─────────────────────────
+const (
+	SystemGeneratedActorID          = "00000000-0000-0000-0000-000000000000"
+	SystemModerationReportReason    = "Offensive Language"
+	SystemModerationShadowBanPeriod = 7 * 24 * time.Hour
 )
 
 var AdminReportActionTypes = []string{

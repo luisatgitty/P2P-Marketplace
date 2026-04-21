@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"p2p_marketplace/backend/config"
 	"p2p_marketplace/backend/middleware"
 	"p2p_marketplace/backend/model"
 
@@ -63,6 +64,8 @@ func CreateListing(userId string, body model.CreateListingBody) (string, error) 
 		tx.Rollback()
 		return "", err
 	}
+
+	moderation := middleware.ModerateListingContent(body.Title, body.Description)
 
 	var listingId string
 	insertListingQuery := `
@@ -116,11 +119,82 @@ func CreateListing(userId string, body model.CreateListingBody) (string, error) 
 		return "", err
 	}
 
+	if len(moderation.DetectedWords) > 0 {
+		if err := applyAutomatedModerationTx(tx, listingId, userId, moderation.DetectedWords); err != nil {
+			fmt.Println("[MODERATION] failed to auto-shadow-ban listing:", err.Error())
+		}
+	}
+
 	if err := tx.Commit().Error; err != nil {
 		return "", err
 	}
 
 	return listingId, nil
+}
+
+func applyAutomatedModerationTx(tx *gorm.DB, listingId, ownerUserId string, detectedWords []string) error {
+	if strings.TrimSpace(listingId) == "" || strings.TrimSpace(ownerUserId) == "" {
+		return fmt.Errorf("missing listing or owner id for moderation")
+	}
+
+	bannedUntil := time.Now().Add(config.SystemModerationShadowBanPeriod)
+	updateQuery := `
+		UPDATE public.listings
+		SET
+			status = 'BANNED',
+			banned_until = $2,
+			action_by_id = $3,
+			updated_at = now()
+		WHERE id = $1
+	`
+
+	if err := tx.Exec(updateQuery, listingId, bannedUntil, config.SystemGeneratedActorID).Error; err != nil {
+		return fmt.Errorf("failed to apply automated moderation listing state")
+	}
+
+	description := fmt.Sprintf("Auto-moderation detected forbidden words: %s", strings.Join(detectedWords, ", "))
+	if len(description) > config.ReportDescriptionMaxLength {
+		description = description[:config.ReportDescriptionMaxLength]
+	}
+
+	reason := config.NormalizeReportReason(config.SystemModerationReportReason)
+	if reason == "" {
+		reason = config.SystemModerationReportReason
+	}
+
+	insertReportQuery := `
+		INSERT INTO public.reports (
+			reporter_id,
+			reported_user_id,
+			reported_listing_id,
+			reason,
+			description,
+			status,
+			created_at
+		)
+		VALUES (
+			$1,
+			$2,
+			$3,
+			$4,
+			NULLIF($5, ''),
+			'PENDING',
+			now()
+		)
+	`
+
+	if err := tx.Exec(
+		insertReportQuery,
+		config.SystemGeneratedActorID,
+		ownerUserId,
+		listingId,
+		reason,
+		description,
+	).Error; err != nil {
+		return fmt.Errorf("failed to create automated moderation report")
+	}
+
+	return nil
 }
 
 func getOrCreateCategoryIDTx(tx *gorm.DB, category string) (string, error) {
