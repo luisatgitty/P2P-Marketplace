@@ -1,8 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useMemo, useRef, useState, useEffect } from "react";
 import { useUser }           from "@/utils/UserContext";
+import { useUnsavedChanges } from "@/utils/UnsavedChangesContext";
+import { useConfirmDialog }  from "@/utils/ConfirmDialogContext";
 import { Button }            from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input }             from "@/components/ui/input";
@@ -30,6 +33,7 @@ import {
   Send,
   ShieldCheck,
   Smartphone,
+  X,
 } from "lucide-react";
 import { getDeviceInfo } from "@/utils/device";
 import {
@@ -196,7 +200,10 @@ function CameraInput({ label, capture, file, inputRef, onChange }: CameraInputPr
 
 // ── Main page ──────────────────────────────────────────────────────────────────
 export default function BecomeSellerPage() {
+  const router = useRouter();
   const { user, saveUserData } = useUser();
+  const { setHasUnsavedChanges } = useUnsavedChanges();
+  const { openDialog } = useConfirmDialog();
 
   // Device
   const [isMobile,  setIsMobile]  = useState(false);
@@ -251,6 +258,10 @@ export default function BecomeSellerPage() {
   const hasFullLocation        = [user?.locationBrgy, user?.locationCity, user?.locationProv]
     .every(v => Boolean((v ?? "").trim()));
   const hasProfileSetupRequirement = hasPhoneNumber && hasFullLocation;
+  const initialPhoneNumber = useMemo(
+    () => normalizeToLocalPhoneDigits(user?.phoneNumber),
+    [user?.phoneNumber],
+  );
 
   // ── Derived booleans ────────────────────────────────────────────────────────
   const phoneComplete = phoneNumber.replace(/\D/g, "").length === PHONE_DIGITS;
@@ -320,11 +331,64 @@ export default function BecomeSellerPage() {
   // Pre-fill phone from user profile
   useEffect(() => {
     if (hasPrefilledPhone.current) return;
-    const normalized = normalizeToLocalPhoneDigits(user?.phoneNumber);
-    if (!normalized) return;
-    setPhoneNumber(normalized);
+    if (!initialPhoneNumber) return;
+    setPhoneNumber(initialPhoneNumber);
     hasPrefilledPhone.current = true;
-  }, [user?.phoneNumber]);
+  }, [initialPhoneNumber]);
+
+  const hasUnsavedChanges = useMemo(
+    () =>
+      agreed ||
+      Boolean(idType) ||
+      Boolean(firstName.trim()) ||
+      Boolean(lastName.trim()) ||
+      Boolean(dob.trim()) ||
+      Boolean(idNumber.trim()) ||
+      idFront instanceof File ||
+      idBack instanceof File ||
+      selfie instanceof File ||
+      phoneNumber !== initialPhoneNumber ||
+      Boolean(otpValue) ||
+      showOtp ||
+      otpVerified,
+    [
+      agreed,
+      idType,
+      firstName,
+      lastName,
+      dob,
+      idNumber,
+      idFront,
+      idBack,
+      selfie,
+      phoneNumber,
+      initialPhoneNumber,
+      otpValue,
+      showOtp,
+      otpVerified,
+    ],
+  );
+
+  useEffect(() => {
+    setHasUnsavedChanges(hasUnsavedChanges);
+  }, [hasUnsavedChanges, setHasUnsavedChanges]);
+
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (!hasUnsavedChanges) return;
+      e.preventDefault();
+      e.returnValue = "";
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [hasUnsavedChanges]);
+
+  useEffect(() => {
+    return () => {
+      setHasUnsavedChanges(false);
+    };
+  }, [setHasUnsavedChanges]);
 
   // ── Helpers ──────────────────────────────────────────────────────────────────
   function showToastMsg(msg: string) {
@@ -577,6 +641,7 @@ export default function BecomeSellerPage() {
         selfieImage,
       });
 
+      setHasUnsavedChanges(false);
       setSubmitted(true);
       if (user) saveUserData({ ...user, status: "PENDING" });
       showToastMsg("Application submitted! Under review.");
@@ -601,6 +666,21 @@ export default function BecomeSellerPage() {
       }
       setStep(s => (s - 1) as VerifyStep);
     }
+  }
+
+  function discardProgress() {
+    openDialog({
+      title: "Discard Changes?",
+      message: "Are you sure you want to discard your changes? This action cannot be undone.",
+      confirmText: "Discard",
+      cancelText: "Cancel",
+      isDangerous: true,
+      onConfirm: () => {
+        setHasUnsavedChanges(false);
+        router.push("/");
+      },
+      onCancel: () => {},
+    });
   }
 
   // ── Terminal states ────────────────────────────────────────────────────────
@@ -1008,6 +1088,13 @@ export default function BecomeSellerPage() {
                 Step {step} of {TOTAL}
               </span>
               <div className="flex gap-2">
+                <Button
+                  variant="destructive"
+                  onClick={discardProgress}
+                  className="rounded-full text-sm font-bold hover:bg-red-600 dark:hover:bg-red-600"
+                >
+                  <X className="w-4 h-4" /> Discard
+                </Button>
                 {step > 1 && (
                   <Button
                     variant="outline"

@@ -2,8 +2,10 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { Suspense, useState, useRef, useEffect, useCallback } from "react";
+import { Suspense, useState, useRef, useEffect, useCallback, type MouseEvent } from "react";
 import { useUser } from "@/utils/UserContext";
+import { useUnsavedChanges } from "@/utils/UnsavedChangesContext";
+import { useConfirmDialog } from "@/utils/ConfirmDialogContext";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { getConversations } from "@/services/messagingService";
 import {
@@ -35,10 +37,33 @@ const TABS = [
 // ─── Center tabs (needs Suspense because of useSearchParams) ───────────────────
 function NavTabsInner() {
   const searchParams = useSearchParams();
-  const router        = useRouter();
-  const pathname      = usePathname();
-  const activeType    = searchParams.get("type") || "all";
-  const isHomePage    = pathname === "/";
+  const router = useRouter();
+  const pathname = usePathname();
+  const { hasUnsavedChanges, setHasUnsavedChanges } = useUnsavedChanges();
+  const { openDialog } = useConfirmDialog();
+  const activeType = searchParams.get("type") || "all";
+  const isHomePage = pathname === "/";
+  const shouldConfirmNavigation = hasUnsavedChanges || pathname === "/become-seller";
+
+  const navigateWithConfirm = useCallback((href: string) => {
+    if (!shouldConfirmNavigation) {
+      router.push(href);
+      return;
+    }
+
+    openDialog({
+      title: "Discard Changes?",
+      message: "Are you sure you want to discard your changes? This action cannot be undone.",
+      confirmText: "Discard",
+      cancelText: "Cancel",
+      isDangerous: true,
+      onConfirm: () => {
+        setHasUnsavedChanges(false);
+        router.push(href);
+      },
+      onCancel: () => {},
+    });
+  }, [openDialog, router, setHasUnsavedChanges, shouldConfirmNavigation]);
 
   const handleTabClick = (value: string) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -48,7 +73,8 @@ function NavTabsInner() {
       params.set("type", value);
     }
     params.delete("page");
-    router.push(`/?${params.toString()}`);
+    const query = params.toString();
+    navigateWithConfirm(query ? `/?${query}` : "/");
   };
 
   return (
@@ -85,7 +111,11 @@ function TabsFallback() {
 export default function Navbar() {
   const NOTIFICATIONS_PAGE_SIZE = 15;
   const { isAuth, user } = useUser();
+  const { hasUnsavedChanges, setHasUnsavedChanges } = useUnsavedChanges();
+  const { openDialog } = useConfirmDialog();
   const pathname = usePathname();
+  const router = useRouter();
+  const shouldConfirmNavigation = hasUnsavedChanges || pathname === "/become-seller";
   const isVerifiedSeller = (user?.status ?? "").toLowerCase() === "verified";
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [dropdownClosing, setDropdownClosing] = useState(false);
@@ -252,6 +282,46 @@ export default function Navbar() {
     }, 180);
   }, [dropdownOpen, dropdownClosing]);
 
+  const navigateWithConfirm = useCallback((href: string, onAfterNavigate?: () => void) => {
+    if (!shouldConfirmNavigation) {
+      onAfterNavigate?.();
+      router.push(href);
+      return;
+    }
+
+    openDialog({
+      title: "Discard Changes?",
+      message: "Are you sure you want to discard your changes? This action cannot be undone.",
+      confirmText: "Discard",
+      cancelText: "Cancel",
+      isDangerous: true,
+      onConfirm: () => {
+        setHasUnsavedChanges(false);
+        onAfterNavigate?.();
+        router.push(href);
+      },
+      onCancel: () => {},
+    });
+  }, [openDialog, router, setHasUnsavedChanges, shouldConfirmNavigation]);
+
+  const handleNavigateHome = useCallback(() => {
+    navigateWithConfirm("/");
+  }, [navigateWithConfirm]);
+
+  const handleProtectedLinkClick = useCallback((
+    event: MouseEvent<HTMLAnchorElement>,
+    href: string,
+    onAfterNavigate?: () => void,
+  ) => {
+    if (!shouldConfirmNavigation) {
+      onAfterNavigate?.();
+      return;
+    }
+
+    event.preventDefault();
+    navigateWithConfirm(href, onAfterNavigate);
+  }, [navigateWithConfirm, shouldConfirmNavigation]);
+
   const openDropdown = useCallback(() => {
     if (dropdownCloseTimerRef.current !== null) {
       window.clearTimeout(dropdownCloseTimerRef.current);
@@ -366,7 +436,12 @@ export default function Navbar() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-3">
 
           {/* ── LEFT: Branding ─────────────────────────────────── */}
-          <Link href="/" className="flex items-center gap-2 shrink-0 min-w-0">
+          <button
+            onClick={() => {
+              handleNavigateHome();
+            }}
+            className="flex items-center gap-2 shrink-0 min-w-0 hover:opacity-80 transition-opacity"
+          >
             <Image
               src="/logo.png"
               alt="P2P Marketplace"
@@ -375,10 +450,10 @@ export default function Navbar() {
               height={32}
               className="shrink-0"
             />
-            <span className="font-bold text-base sm:text-lg leading-tight hidden md:block whitespace-nowrap tracking-tight">
+            <span className="font-bold text-base sm:text-lg leading-tight hidden sm:block whitespace-nowrap tracking-tight">
               P2P Marketplace
             </span>
-          </Link>
+          </button>
 
           {/* ── CENTER: Tab navigation ──────────────────────────── */}
           <Suspense fallback={<TabsFallback />}>
@@ -397,7 +472,7 @@ export default function Navbar() {
                 >
                   <Bell size={18} className="text-stone-400" />
                   {hasUnreadNotifications && (
-                    <span className="absolute right-0 bottom-0 w-2.5 h-2.5 rounded-full bg-amber-600 border border-[#1a2235]" />
+                    <span className="absolute right-0 bottom-0 w-2.5 h-2.5 rounded-full bg-amber-500 border border-[#1a2235]" />
                   )}
                 </button>
 
@@ -405,14 +480,17 @@ export default function Navbar() {
                   <div className="hidden md:block absolute right-0 mt-2 w-88 max-w-[90vw] rounded-lg border border-white/10 bg-[#1e2b3c] shadow-2xl z-50 animate-in fade-in slide-in-from-top-2 duration-150 overflow-hidden">
                     <div className="px-3 py-2.5 border-b border-white/10 bg-white/5 flex items-center justify-between gap-2">
                       <h3 className="text-sm font-semibold text-white">Notifications</h3>
-                      <button
-                        type="button"
-                        onClick={handleMarkAllNotificationsRead}
-                        disabled={!hasUnreadNotifications}
-                        className="text-xs font-medium text-amber-600 hover:text-amber-500 disabled:text-stone-500 disabled:cursor-not-allowed transition-colors"
-                      >
-                        Mark all as read
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[11px] text-stone-400">{notifications.length} items</span>
+                        <button
+                          type="button"
+                          onClick={handleMarkAllNotificationsRead}
+                          disabled={!hasUnreadNotifications}
+                          className="text-[11px] font-medium text-amber-300 hover:text-amber-200 disabled:text-stone-500 disabled:cursor-not-allowed transition-colors"
+                        >
+                          Mark all as read
+                        </button>
+                      </div>
                     </div>
 
                     <div
@@ -465,7 +543,7 @@ export default function Navbar() {
                   />
                   </div>
                   {isAuth && hasUnreadMessages && (
-                    <span className="absolute bottom-0 right-0 z-10 w-2.5 h-2.5 rounded-full bg-amber-600 border border-[#1a2235]" />
+                    <span className="absolute bottom-0 right-0 z-10 w-2.5 h-2.5 rounded-full bg-amber-500 border border-[#1a2235]" />
                   )}
                 </div>
                 <ChevronDown
@@ -509,17 +587,19 @@ export default function Navbar() {
                           </>
                         ) : (
                           <>
-                            <Link
-                              href="/"
-                              onClick={closeDropdown}
-                              className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-200 hover:bg-white/10 hover:text-white transition-colors"
+                            <button
+                              onClick={() => {
+                                handleNavigateHome();
+                                closeDropdown();
+                              }}
+                              className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-200 hover:bg-white/10 hover:text-white transition-colors w-full text-left"
                             >
                               <Home size={15} className="text-stone-400" />
                               Home
-                            </Link>
+                            </button>
                             <Link
                               href="/profile"
-                              onClick={closeDropdown}
+                              onClick={(event) => handleProtectedLinkClick(event, "/profile", closeDropdown)}
                               className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-200 hover:bg-white/10 hover:text-white transition-colors"
                             >
                               <User size={15} className="text-stone-400" />
@@ -527,13 +607,13 @@ export default function Navbar() {
                             </Link>
                             <Link
                               href="/messages"
-                              onClick={closeDropdown}
+                              onClick={(event) => handleProtectedLinkClick(event, "/messages", closeDropdown)}
                               className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-200 hover:bg-white/10 hover:text-white transition-colors"
                             >
                               <span className="relative inline-flex">
                                 <MessageCircle size={15} className="text-stone-400" />
                                 {hasUnreadMessages && (
-                                  <span className="absolute -right-1 -bottom-1 w-2 h-2 rounded-full bg-amber-600 border border-[#1e2b3c]" />
+                                  <span className="absolute -right-1 -bottom-1 w-2 h-2 rounded-full bg-amber-500 border border-[#1e2b3c]" />
                                 )}
                               </span>
                               Messages
@@ -541,7 +621,7 @@ export default function Navbar() {
                             {isVerifiedSeller ? (
                               <Link
                                 href="/create"
-                                onClick={closeDropdown}
+                                onClick={(event) => handleProtectedLinkClick(event, "/create", closeDropdown)}
                                 className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-200 hover:bg-white/10 hover:text-white transition-colors"
                               >
                                 <Tag size={15} className="text-stone-400" />
@@ -550,8 +630,8 @@ export default function Navbar() {
                             ) : (
                               <Link
                                 href="/become-seller"
-                                onClick={closeDropdown}
-                                className="flex items-center gap-3 px-4 py-2.5 text-sm text-amber-600 hover:bg-amber-500/10 hover:text-amber-400 transition-colors"
+                                onClick={(event) => handleProtectedLinkClick(event, "/become-seller", closeDropdown)}
+                                className="flex items-center gap-3 px-4 py-2.5 text-sm text-amber-300 hover:bg-amber-500/10 hover:text-amber-200 transition-colors"
                               >
                                 <UserPlus size={15} />
                                 Become a Seller
@@ -572,17 +652,19 @@ export default function Navbar() {
                     </>
                   ) : (
                     <div className="py-1">
-                      <Link
-                        href="/"
-                        onClick={closeDropdown}
-                        className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-200 hover:bg-white/10 hover:text-white transition-colors"
+                      <button
+                        onClick={() => {
+                          handleNavigateHome();
+                          closeDropdown();
+                        }}
+                        className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-200 hover:bg-white/10 hover:text-white transition-colors w-full text-left"
                       >
                         <Home size={15} className="text-stone-400" />
                         Home
-                      </Link>
+                      </button>
                       <Link
                         href="/login"
-                        onClick={closeDropdown}
+                        onClick={(event) => handleProtectedLinkClick(event, "/login", closeDropdown)}
                         className="flex items-center gap-3 px-4 py-3 text-sm font-semibold text-white hover:bg-white/10 transition-colors"
                       >
                         <User size={15} className="text-stone-400" />
@@ -590,8 +672,8 @@ export default function Navbar() {
                       </Link>
                       <Link
                         href="/signup"
-                        onClick={closeDropdown}
-                        className="flex items-center gap-3 px-4 py-3 text-sm font-semibold text-amber-600 hover:bg-amber-600/10 transition-colors"
+                        onClick={(event) => handleProtectedLinkClick(event, "/signup", closeDropdown)}
+                        className="flex items-center gap-3 px-4 py-3 text-sm font-semibold text-amber-400 hover:bg-amber-500/10 hover:text-amber-300 transition-colors"
                       >
                         <UserPlus size={15} />
                         Create Account
@@ -625,7 +707,7 @@ export default function Navbar() {
                   type="button"
                   onClick={handleMarkAllNotificationsRead}
                   disabled={!hasUnreadNotifications}
-                  className="text-xs font-medium text-amber-600 hover:text-amber-500 disabled:text-stone-500 disabled:cursor-not-allowed transition-colors"
+                  className="text-[11px] font-medium text-amber-300 hover:text-amber-200 disabled:text-stone-500 disabled:cursor-not-allowed transition-colors"
                 >
                   Mark all as read
                 </button>
@@ -706,17 +788,19 @@ export default function Navbar() {
                     </>
                   ) : (
                     <>
-                      <Link
-                        href="/"
-                        onClick={closeDropdown}
-                        className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-200 hover:bg-white/10 hover:text-white transition-colors"
+                      <button
+                        onClick={() => {
+                          handleNavigateHome();
+                          closeDropdown();
+                        }}
+                        className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-200 hover:bg-white/10 hover:text-white transition-colors w-full text-left"
                       >
                         <Home size={15} className="text-stone-400" />
                         Home
-                      </Link>
+                      </button>
                       <Link
                         href="/profile"
-                        onClick={closeDropdown}
+                        onClick={(event) => handleProtectedLinkClick(event, "/profile", closeDropdown)}
                         className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-200 hover:bg-white/10 hover:text-white transition-colors"
                       >
                         <User size={15} className="text-stone-400" />
@@ -724,13 +808,13 @@ export default function Navbar() {
                       </Link>
                       <Link
                         href="/messages"
-                        onClick={closeDropdown}
+                        onClick={(event) => handleProtectedLinkClick(event, "/messages", closeDropdown)}
                         className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-200 hover:bg-white/10 hover:text-white transition-colors"
                       >
                         <span className="relative inline-flex">
                           <MessageCircle size={15} className="text-stone-400" />
                           {hasUnreadMessages && (
-                            <span className="absolute -right-1 -bottom-1 w-2 h-2 rounded-full bg-amber-600 border border-[#1e2b3c]" />
+                            <span className="absolute -right-1 -bottom-1 w-2 h-2 rounded-full bg-amber-500 border border-[#1e2b3c]" />
                           )}
                         </span>
                         Messages
@@ -738,7 +822,7 @@ export default function Navbar() {
                       {isVerifiedSeller ? (
                         <Link
                           href="/create"
-                          onClick={closeDropdown}
+                          onClick={(event) => handleProtectedLinkClick(event, "/create", closeDropdown)}
                           className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-200 hover:bg-white/10 hover:text-white transition-colors"
                         >
                           <Tag size={15} className="text-stone-400" />
@@ -747,8 +831,8 @@ export default function Navbar() {
                       ) : (
                         <Link
                           href="/become-seller"
-                          onClick={closeDropdown}
-                          className="flex items-center gap-3 px-4 py-2.5 text-sm text-amber-600 hover:bg-amber-600/10 hover:text-amber-400 transition-colors"
+                          onClick={(event) => handleProtectedLinkClick(event, "/become-seller", closeDropdown)}
+                          className="flex items-center gap-3 px-4 py-2.5 text-sm text-amber-300 hover:bg-amber-500/10 hover:text-amber-200 transition-colors"
                         >
                           <UserPlus size={15} />
                           Become a Seller
@@ -769,17 +853,19 @@ export default function Navbar() {
               </>
             ) : (
               <div className="py-1">
-                <Link
-                  href="/"
-                  onClick={closeDropdown}
-                  className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-200 hover:bg-white/10 hover:text-white transition-colors"
+                <button
+                  onClick={() => {
+                    handleNavigateHome();
+                    closeDropdown();
+                  }}
+                  className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-200 hover:bg-white/10 hover:text-white transition-colors w-full text-left"
                 >
                   <Home size={15} className="text-stone-400" />
                   Home
-                </Link>
+                </button>
                 <Link
                   href="/login"
-                  onClick={closeDropdown}
+                  onClick={(event) => handleProtectedLinkClick(event, "/login", closeDropdown)}
                   className="flex items-center gap-3 px-4 py-3 text-sm font-semibold text-white hover:bg-white/10 transition-colors"
                 >
                   <User size={15} className="text-stone-400" />
@@ -787,8 +873,8 @@ export default function Navbar() {
                 </Link>
                 <Link
                   href="/signup"
-                  onClick={closeDropdown}
-                  className="flex items-center gap-3 px-4 py-3 text-sm font-semibold text-amber-600 hover:bg-amber-600/10 hover:text-amber-400 transition-colors"
+                  onClick={(event) => handleProtectedLinkClick(event, "/signup", closeDropdown)}
+                  className="flex items-center gap-3 px-4 py-3 text-sm font-semibold text-amber-400 hover:bg-amber-500/10 hover:text-amber-300 transition-colors"
                 >
                   <UserPlus size={15} />
                   Create Account

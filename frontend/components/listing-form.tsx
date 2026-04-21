@@ -17,6 +17,8 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useUser } from "@/utils/UserContext";
+import { useUnsavedChanges } from "@/utils/UnsavedChangesContext";
+import { useConfirmDialog } from "@/utils/ConfirmDialogContext";
 import {
   getBarangaysByCity,
   getCitiesByProvince,
@@ -856,6 +858,8 @@ export default function ListingForm({
 }: ListingFormProps) {
   const router = useRouter();
   const { user } = useUser();
+  const { setHasUnsavedChanges } = useUnsavedChanges();
+  const { openDialog } = useConfirmDialog();
   const cfg = FORM_CONFIG[type];
   const initialAvailableDate = parseISODate(initialData?.availability ?? "");
   const now = new Date();
@@ -863,6 +867,7 @@ export default function ListingForm({
   const [step, setStep] = useState(0);
   const [submitting, setSub] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [hasUnsavedChanges, setHasUnsavedChangesLocal] = useState(false);
 
   // Common
   const [title, setTitle] = useState(initialData?.title ?? "");
@@ -928,6 +933,78 @@ export default function ListingForm({
 
   const pHolderIncludes = "Add what's included with your listing...";
   const pHolderHighlights = "Add what makes your listing stand out...";
+
+  // Track unsaved changes
+  useEffect(() => {
+    const hasChanges = !!(
+      title ||
+      category ||
+      price ||
+      description ||
+      highlights.length > 0 ||
+      locationCity ||
+      locationProv ||
+      locationBrgy ||
+      condition ||
+      deliveryMethod ||
+      minPeriod ||
+      availability ||
+      deposit ||
+      dayoff.length > 0 ||
+      turnaround ||
+      serviceArea ||
+      arrangement ||
+      inclusions.length > 0 ||
+      images.length > 0 ||
+      amenities.length > 0 ||
+      timeWindows.length > 0
+    );
+    setHasUnsavedChangesLocal(hasChanges);
+    setHasUnsavedChanges(hasChanges);
+  }, [
+    title,
+    category,
+    price,
+    description,
+    highlights,
+    locationCity,
+    locationProv,
+    locationBrgy,
+    condition,
+    deliveryMethod,
+    minPeriod,
+    availability,
+    deposit,
+    dayoff,
+    turnaround,
+    serviceArea,
+    arrangement,
+    inclusions,
+    images,
+    amenities,
+    timeWindows,
+    setHasUnsavedChanges,
+  ]);
+
+  // Warn before leaving page if there are unsaved changes
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasUnsavedChanges) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [hasUnsavedChanges]);
+
+  // Cleanup unsaved changes on unmount
+  useEffect(() => {
+    return () => {
+      setHasUnsavedChanges(false);
+    };
+  }, [setHasUnsavedChanges]);
 
   // Default location from user profile for create flow only.
   useEffect(() => {
@@ -1093,11 +1170,38 @@ export default function ListingForm({
   };
 
   const discardProgress = () => {
-    const confirmed = window.confirm(
-      "Are you sure you want to discard your changes?",
-    );
-    if (!confirmed) return;
-    router.back();
+    openDialog({
+      title: "Discard Changes?",
+      message: "Are you sure you want to discard your changes? This action cannot be undone.",
+      confirmText: "Discard",
+      cancelText: "Cancel",
+      isDangerous: true,
+      onConfirm: () => {
+        setHasUnsavedChanges(false);
+        router.back();
+      },
+      onCancel: () => {},
+    });
+  };
+
+  const handleNavigateBack = () => {
+    if (!hasUnsavedChanges) {
+      router.push(isEdit ? `/listing/${listingId}` : "/create");
+      return;
+    }
+
+    openDialog({
+      title: "Discard Changes?",
+      message: "Are you sure you want to discard your changes? This action cannot be undone.",
+      confirmText: "Discard",
+      cancelText: "Cancel",
+      isDangerous: true,
+      onConfirm: () => {
+        setHasUnsavedChanges(false);
+        router.push(isEdit ? `/listing/${listingId}` : "/create");
+      },
+      onCancel: () => {},
+    });
   };
   
   const submit = async (e: React.FormEvent) => {
@@ -1212,6 +1316,7 @@ export default function ListingForm({
         );
       }
 
+      setHasUnsavedChanges(false);
       const savedListingId = parsedJson?.data?.listingId;
       router.push(`/listing/${savedListingId ?? listingId ?? "1"}`);
     } catch (err) {
@@ -1997,9 +2102,7 @@ export default function ListingForm({
               ) : (
                 <Button
                   variant={'ghost'}
-                  onClick={() =>
-                    router.push(isEdit ? `/listing/${listingId}` : "/create")
-                  }
+                  onClick={handleNavigateBack}
                 >
                   <ChevronLeft size={16} />{" "}
                   {isEdit ? "Back to listing" : "Change type"}
@@ -2008,13 +2111,15 @@ export default function ListingForm({
             </div>
 
             <div className="flex items-center gap-4">
-              <Button
-                variant={'destructive'}
-                onClick={discardProgress}
-                className="hover:bg-red-600 dark:hover:bg-red-600 font-bold"
-              >
-                <X size={14} /> Discard
-              </Button>
+              {hasUnsavedChanges && (
+                <Button
+                  variant={'destructive'}
+                  onClick={discardProgress}
+                  className="hover:bg-red-600 dark:hover:bg-red-600 font-bold"
+                >
+                  <X size={14} /> Discard
+                </Button>
+              )}
 
               {step < 2 ? (
                 <Button

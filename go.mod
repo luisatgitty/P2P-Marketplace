@@ -3,7 +3,7 @@ module p2p_marketplace
 go 1.25.0
 
 require (
-	github.com/resend/resend-go/v2 v2.28.0
+	github.com/tink-crypto/tink-go/v2 v2.6.0
 	gorm.io/driver/postgres v1.6.0
 )
 
@@ -18,7 +18,7 @@ require (
 	github.com/philhofer/fwd v1.1.3-0.20240916144458-20a13a1f6b7c // indirect
 	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/savsgio/gotils v0.0.0-20230208104028-c358bd845dee // indirect
-	github.com/tink-crypto/tink-go/v2 v2.6.0 // indirect
+	github.com/stretchr/testify v1.8.2 // indirect
 	github.com/tinylib/msgp v1.2.5 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasthttp v1.51.0 // indirect

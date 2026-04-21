@@ -77,16 +77,16 @@ export function NotificationItem({ notification, onClick }: NotificationItemProp
 
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-2">
-            <p className="text-xs font-semibold uppercase tracking-wide text-stone-400 truncate">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-stone-400 truncate">
               {notification.type.replaceAll("_", " ")}
             </p>
-            <span className="text-xs text-stone-500 shrink-0">{formatTimeAgo(notification.created_at)}</span>
+            <span className="text-[10px] text-stone-500 shrink-0">{formatTimeAgo(notification.created_at)}</span>
           </div>
 
           <p className="text-sm text-stone-200 leading-snug mt-0.5 line-clamp-2">{notification.message}</p>
         </div>
 
-        {!notification.is_read && <span className="mt-1 h-1.5 w-1.5 rounded-full bg-amber-600 shrink-0" />}
+        {!notification.is_read && <span className="mt-1 h-1.5 w-1.5 rounded-full bg-amber-400 shrink-0" />}
       </div>
     </button>
   );

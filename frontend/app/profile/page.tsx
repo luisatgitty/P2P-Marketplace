@@ -985,7 +985,7 @@ export default function ProfilePage() {
         <div className="bg-white dark:bg-[#1c1f2e] rounded-lg border border-stone-200 dark:border-[#2a2d3e] shadow-sm overflow-hidden mb-4">
 
           {/* Cover photo */}
-          <div className={cn("relative min-h-36 bg-linear-to-r from-[#1a0e00] via-[#1a2235] to-[#0b0f1a] overflow-hidden group", !isViewingExternalProfile && "cursor-pointer")} onClick={() => !isViewingExternalProfile && cover.trigger()}>
+          <div className={cn("relative aspect-7/1 bg-linear-to-r from-[#1a0e00] via-[#1a2235] to-[#0b0f1a] overflow-hidden group", !isViewingExternalProfile && "cursor-pointer")} onClick={() => !isViewingExternalProfile && cover.trigger()}>
             {cover.src
               ? <SafeImage
                 src={cover.src}
@@ -1110,7 +1110,7 @@ export default function ProfilePage() {
 
             {/* Name + badge */}
             <div className="flex flex-wrap items-center gap-2 mb-1">
-              <h1 className="text-lg font-bold text-stone-900 dark:text-stone-100">{fullName}</h1>
+              <h1 className="text-xl font-bold text-stone-900 dark:text-stone-100">{fullName}</h1>
               <VerificationBadge verified={verificationState === "verified"} size={16} />
             </div>
             <p className="text-sm text-stone-400 dark:text-stone-500 mb-3">{profileUser?.bio}</p>
