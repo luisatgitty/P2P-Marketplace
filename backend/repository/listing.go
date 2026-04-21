@@ -1121,7 +1121,7 @@ func GetListingTimeWindows(listingId string) ([]model.ListingTimeWindow, error) 
 	return rows, nil
 }
 
-func GetRelatedListings(listingId, categoryId, listingType, excludeUserId string) ([]model.ProfileListingFromDb, error) {
+func GetRelatedListings(listingId, categoryId, listingType, locationProv, excludeUserId string) ([]model.ProfileListingFromDb, error) {
 	db := middleware.DBConn
 	related := make([]model.ProfileListingFromDb, 0)
 
@@ -1156,16 +1156,18 @@ func GetRelatedListings(listingId, categoryId, listingType, excludeUserId string
 			WHERE r.reviewed_user_id = l.user_id
 		) rv ON TRUE
 		WHERE l.id <> $1
-			AND (l.category_id = $2 OR l.listing_type::text = $3)
+			AND l.category_id = $2
+			AND l.listing_type::text = $3
+			AND LOWER(TRIM(COALESCE(l.location_province, ''))) = LOWER(TRIM(COALESCE($4, '')))
 			AND l.status = 'AVAILABLE'
 			AND u.is_active = TRUE
 			AND (u.account_locked_until IS NULL OR u.account_locked_until <= now())
 	`
 
 	query := baseQuery
-	args := []any{listingId, categoryId, strings.ToUpper(listingType)}
+	args := []any{listingId, categoryId, strings.ToUpper(listingType), locationProv}
 	if strings.TrimSpace(excludeUserId) != "" {
-		query += "\n\t\t\tAND l.user_id <> $4"
+		query += "\n\t\t\tAND l.user_id <> $5"
 		args = append(args, excludeUserId)
 	}
 

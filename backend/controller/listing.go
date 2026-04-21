@@ -201,7 +201,7 @@ func GetListingById(c *fiber.Ctx) error {
 	}
 
 	userId := getOptionalUserIdFromSession(c)
-	related, err := repository.GetRelatedListings(listingId, listing.CategoryID, listing.Type, userId)
+	related, err := repository.GetRelatedListings(listingId, listing.CategoryID, listing.Type, listing.LocationProv, userId)
 	if err != nil {
 		return SendErrorResponse(c, 500, err.Error(), err)
 	}
