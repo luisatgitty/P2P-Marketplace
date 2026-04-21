@@ -1091,7 +1091,7 @@ export default function BecomeSellerPage() {
                 <Button
                   variant="destructive"
                   onClick={discardProgress}
-                  className="rounded-full text-sm font-bold hover:bg-red-600 dark:hover:bg-red-600"
+                  className="rounded-lg text-sm font-bold hover:bg-red-600 dark:hover:bg-red-600"
                 >
                   <X className="w-4 h-4" /> Discard
                 </Button>

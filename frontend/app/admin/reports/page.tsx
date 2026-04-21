@@ -406,7 +406,7 @@ export default function ReportsPage() {
                 <TableHeader>
                   <TableRow className="border-stone-200 dark:border-[#2a2d3e] bg-stone-50 dark:bg-[#13151f] hover:bg-stone-50 dark:hover:bg-[#13151f]">
                       <SortableTH label="Reporter" field="reporter" />
-                      <SortableTH label="Listing Owner" field="listingOwner" />
+                      <SortableTH label="Reported User" field="listingOwner" />
                       <SortableTH label="Reported Listing" field="reportedListing" />
                     <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest">
                       Reason
