@@ -6,7 +6,11 @@ import Link from "next/link";
 import {
   MapPin, Star, MessageCircle, Bookmark, Share2,
   ChevronLeft, ChevronRight, Flag, Eye, Clock, Package,
-  CheckCircle, Phone, Zap, ArrowLeft, Truck, AlertTriangle, Expand
+  CheckCircle, Phone, Zap, ArrowLeft, Truck, AlertTriangle, Expand,
+  User,
+  Pen,
+  EyeOff,
+  Trash
 } from "lucide-react";
 import { useUser } from "@/utils/UserContext";
 import { addListingBookmark, deleteListing, getListingDetailById, removeListingBookmark, submitListingReport, toggleListingVisibility } from "@/services/listingDetailService";
@@ -20,6 +24,7 @@ import { ScheduleModal } from "@/components/schedule-modal";
 import { ReportModal } from "@/components/report-modal";
 import OfferModal from "@/components/offer-modal";
 import { openOrCreateConversationFromListing } from "@/services/messagingService";
+import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { SafeImage } from "@/components/ui/safe-image";
@@ -583,24 +588,30 @@ export default function ListingDetailPage() {
                 {/* Nav arrows */}
                 {images.length > 1 && (
                   <>
-                    <button
+                    <Button
+                      variant={'ghost'}
                       onClick={() => setImgIdx((i) => (i - 1 + images.length) % images.length)}
-                      className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 bg-white/80 dark:bg-black/50 rounded-lg flex items-center justify-center shadow-md hover:bg-white dark:hover:bg-black/70 transition-colors opacity-0 group-hover:opacity-100">
-                      <ChevronLeft className="w-5 h-5 text-stone-700 dark:text-stone-200" />
-                    </button>
-                    <button
+                      className="absolute left-3 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100">
+                      <ChevronLeft className="w-5 h-5" />
+                    </Button>
+                    <Button
+                      variant={'ghost'}
                       onClick={() => setImgIdx((i) => (i + 1) % images.length)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 bg-white/80 dark:bg-black/50 rounded-lg flex items-center justify-center shadow-md hover:bg-white dark:hover:bg-black/70 transition-colors opacity-0 group-hover:opacity-100">
-                      <ChevronRight className="w-5 h-5 text-stone-700 dark:text-stone-200" />
-                    </button>
+                      className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100">
+                      <ChevronRight className="w-5 h-5" />
+                    </Button>
                   </>
                 )}
 
                 {/* Dot indicators */}
                 {images.length > 1 && (
-                  <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5">
+                  <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5">
                     {images.map((_, i) => (
-                      <button key={i} onClick={() => setImgIdx(i)}
+                      <Button
+                        variant={'ghost'}
+                        size={'icon-xs'}
+                        key={i}
+                        onClick={() => setImgIdx(i)}
                         className={cn("w-1.5 h-1.5 rounded-full transition-all", i === imgIdx ? "bg-white w-4" : "bg-white/50")} />
                     ))}
                   </div>
@@ -608,13 +619,14 @@ export default function ListingDetailPage() {
 
                 {/* Fullscreen gallery */}
                 {galleryMediaItems.length > 0 && (
-                  <button
+                  <Button
+                    variant={'ghost'}
                     onClick={() => setMediaViewerIndex(Math.min(imgIdx, galleryMediaItems.length - 1))}
-                    className="absolute bottom-3 right-3 w-9 h-9 bg-black/55 rounded-lg flex items-center justify-center text-white hover:bg-black/75 transition-colors"
+                    className="absolute bottom-2 right-2"
                     aria-label="Open fullscreen gallery"
                   >
                     <Expand className="w-4 h-4" />
-                  </button>
+                  </Button>
                 )}
               </div>
 
@@ -622,9 +634,11 @@ export default function ListingDetailPage() {
               {images.length > 1 && (
                 <div className="flex gap-2 p-3 overflow-x-auto">
                   {images.map((img, i) => (
-                    <button key={i} onClick={() => setImgIdx(i)}
+                    <Button
+                      key={i}
+                      onClick={() => setImgIdx(i)}
                       className={cn(
-                        "relative shrink-0 w-16 h-16 rounded-xl overflow-hidden border-2 transition-all",
+                        "relative shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 transition-all",
                         i === imgIdx ? "border-slate-800 dark:border-stone-300" : "border-transparent opacity-60 hover:opacity-100"
                       )}>
                       <SafeImage
@@ -633,7 +647,7 @@ export default function ListingDetailPage() {
                         alt={`Photo ${i + 1}`}
                         fill
                       />
-                    </button>
+                    </Button>
                   ))}
                 </div>
               )}
@@ -730,22 +744,24 @@ export default function ListingDetailPage() {
                 <div className="flex items-start justify-between gap-2 mb-2">
                   <h1 className="text-lg font-bold text-stone-900 dark:text-stone-50 leading-tight">{listing.title}</h1>
                   <div className="flex gap-1.5 shrink-0">
-                    <button
+                    <Button
+                      variant={'secondary'}
                       onClick={handleToggleBookmark}
                       disabled={isBookmarking}
                       className={cn(
-                        "w-9 h-9 rounded-lg flex items-center justify-center border transition-all disabled:opacity-60 disabled:cursor-not-allowed",
+                        "w-9 h-9 rounded-lg border disabled:opacity-60 disabled:cursor-not-allowed",
                         isBookmarked
                           ? "border-rose-200 bg-rose-50 dark:bg-rose-900/30 dark:border-rose-800 text-rose-500"
-                          : "border-stone-200 dark:border-[#2a2d3e] text-stone-400 dark:text-stone-500 hover:border-rose-200 hover:text-rose-400"
+                          : "bg-transparent text-stone-400 dark:text-stone-500"
                       )}>
                       <Bookmark className={cn("w-4 h-4", isBookmarked && "fill-rose-500")} />
-                    </button>
-                    <button
+                    </Button>
+                    <Button
+                      variant={'secondary'}
                       onClick={() => toast.info("Link copied to clipboard!", { position: "top-center" })}
-                      className="w-9 h-9 rounded-lg flex items-center justify-center border border-stone-200 dark:border-[#2a2d3e] text-stone-400 dark:text-stone-500 hover:border-stone-400 dark:hover:border-stone-500 transition-all">
+                      className="w-9 h-9 rounded-lg bg-transparent border border-stone-200 dark:border-[#2a2d3e] text-stone-400 dark:text-stone-500">
                       <Share2 className="w-4 h-4" />
-                    </button>
+                    </Button>
                   </div>
                 </div>
 
@@ -763,88 +779,113 @@ export default function ListingDetailPage() {
 
                 {/* ── CTA buttons ── */}
                 {isOwnListing ? (
-                  <div className="flex flex-col gap-2">
-                    {isDeletedState || isBannedState || isSold ? (
-                      <button
+                  <div className="flex flex-col gap-3">
+                    {isDeletedState || isSold ? (
+                      <Button
                         disabled
                         className="flex items-center justify-center gap-2 w-full py-3 rounded-lg bg-stone-400/80 text-white text-sm font-bold cursor-not-allowed opacity-95"
                       >
                         <AlertTriangle className="w-4 h-4" /> Unavailable
-                      </button>
+                      </Button>
                     ) : (
                       <>
                         {/* Edit Listing Button */}
-                        <Link
-                          href={`/listing/${id}/edit`}
+                        <Button
+                          variant={'default'}
+                          size={'lg'}
+                          onClick={() => {router.push(`/listing/${id}/edit`)}}
                           className="flex items-center justify-center gap-2 w-full py-3 rounded-lg bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 text-sm font-bold hover:opacity-90 transition-opacity">
+                          <Pen className="w-4 h-4" />
                           Edit Listing
-                        </Link>
+                        </Button>
 
                         {/* Hide Listing Button */}
-                        <button
+                        <Button
+                          variant={'outline'}
+                          size={'lg'}
                           onClick={handleListingVisibility}
                           disabled={toggling}
-                          className="flex items-center justify-center w-full py-2.5 rounded-lg border-2 border-stone-200 dark:border-[#2a2d3e] text-stone-700 dark:text-stone-200 bg-white dark:bg-transparent text-sm font-semibold hover:border-stone-400 dark:hover:border-stone-500 hover:bg-stone-50 dark:hover:bg-[#252837] transition-all"
+                          className="rounded-lg border-stone-200 dark:border-[#2a2d3e] text-stone-700 dark:text-stone-200 bg-white dark:bg-transparent text-sm font-semibold hover:border-stone-400 dark:hover:border-stone-500 hover:bg-stone-50 dark:hover:bg-[#252837] transition-all"
                         >
-                          {isListingAvailable ? "Hide Listing" : "Show Listing"}
-                        </button>
+                          {isListingAvailable ? (
+                            <>
+                              <EyeOff className="w-4 h-4" /> Hide Listing
+                            </>
+                          ) : (
+                            <>
+                              <Eye className="w-4 h-4" /> Show Listing
+                            </>
+                          )}
+                        </Button>
 
                         {/* Remove Listing Button */}
-                        <button
+                        <Button
+                          variant={'destructive'}
+                          size={'lg'}
                           onClick={handleRemoveListing}
                           disabled={deleting}
-                          className="flex items-center justify-center gap-2 w-full py-3 rounded-lg border border-red-200 dark:border-red-800 text-red-500 dark:text-red-400 text-sm font-semibold hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                          className="rounded-lg disabled:opacity-60 disabled:cursor-not-allowed"
                         >
+                          <Trash className="w-4 h-4" />
                           {deleting ? "Removing..." : "Remove Listing"}
-                        </button>
+                        </Button>
                       </>
                     )}
                   </div>
                 ) : (
-                  <div className="flex flex-col gap-2">
+                  <div className="flex flex-col gap-4">
                     {visitorUnavailableState ? (
-                      <button
+                      <Button
+                        variant={'outline'}
+                        size={'lg'}
                         disabled
                         className="flex items-center justify-center gap-2 w-full py-3 rounded-lg bg-stone-400/80 text-white text-sm font-bold cursor-not-allowed opacity-95"
                       >
                         <AlertTriangle className="w-4 h-4" /> Unavailable
-                      </button>
+                      </Button>
                     ) : isSold ? (
-                      <button
+                      <Button
+                        variant={'outline'}
+                        size={'lg'}
                         disabled
                         className="flex items-center justify-center gap-2 w-full py-3 rounded-lg bg-emerald-600/90 text-white text-sm font-bold cursor-not-allowed opacity-95"
                       >
                         <CheckCircle className="w-4 h-4" /> Sold
-                      </button>
+                      </Button>
                     ) : (
                       <>
                         {isSell && (
-                          <button
+                          <Button
+                            size={'lg'}
                             onClick={handleBuy}
                             className="flex items-center justify-center gap-2 w-full py-3 rounded-lg text-sm font-bold text-white bg-slate-700 hover:bg-slate-600 transition-colors active:scale-[0.98]">
                             <Zap className="w-4 h-4" /> Make an Offer
-                          </button>
+                          </Button>
                         )}
                         {isRent && (
-                          <button
+                          <Button
+                            size={'lg'}
                             onClick={handleBuy}
                             className="flex items-center justify-center gap-2 w-full py-3 rounded-lg text-sm font-bold text-white bg-teal-700 hover:bg-teal-600 transition-colors active:scale-[0.98]">
                             <Package className="w-4 h-4" /> Request to Rent
-                          </button>
+                          </Button>
                         )}
                         {isService && (
-                          <button
+                          <Button
+                            size={'lg'}
                             onClick={handleBuy}
                             className="flex items-center justify-center gap-2 w-full py-3 rounded-lg text-sm font-bold text-white bg-violet-700 hover:bg-violet-600 transition-colors active:scale-[0.98]">
                             <CheckCircle className="w-4 h-4" /> Book Service
-                          </button>
+                          </Button>
                         )}
-                        <button
+                        <Button
+                          variant={'outline'}
+                          size={'lg'}
                           onClick={handleMessage}
                           disabled={messaging}
                           className="flex items-center justify-center gap-2 w-full py-3 rounded-lg border-2 border-stone-200 dark:border-[#2a2d3e] text-stone-700 dark:text-stone-200 text-sm font-semibold hover:border-stone-400 dark:hover:border-stone-500 hover:bg-stone-50 dark:hover:bg-[#252837] transition-all">
                           <MessageCircle className="w-4 h-4" /> {messaging ? "Opening chat..." : "Message Seller"}
-                        </button>
+                        </Button>
                       </>
                     )}
                   </div>
@@ -881,19 +922,24 @@ export default function ListingDetailPage() {
                 </div>
 
                 {/* View Profile Button */}
-                <Link
-                  href={sellerProfileHref}
+                <Button
+                  variant={'outline'}
+                  size={'lg'}
+                  onClick={() => router.push(sellerProfileHref)}
                   className="flex items-center justify-center w-full py-2.5 rounded-lg border-2 border-stone-200 dark:border-[#2a2d3e] text-stone-700 dark:text-stone-200 bg-white dark:bg-transparent text-sm font-semibold hover:border-stone-400 dark:hover:border-stone-500 hover:bg-stone-50 dark:hover:bg-[#252837] transition-all">
+                  <User className="w-4 h-4" />
                   {isOwnListing ? "View My Profile" : "View Seller Profile"}
-                </Link>
+                </Button>
 
                 {/* Contact Button */}
-                <button
+                <Button
+                  variant={'outline'}
+                  size={'lg'}
                   onClick={handleShowContactNumber}
                   disabled={isFetchingContact}
-                  className="flex items-center justify-center gap-2 w-full py-3 rounded-lg border-2 border-stone-200 dark:border-[#2a2d3e] text-stone-700 dark:text-stone-200 bg-white dark:bg-transparent text-sm font-bold hover:border-stone-400 dark:hover:border-stone-500 hover:bg-stone-50 dark:hover:bg-[#252837] transition-all active:scale-[0.98]">
-                  <Phone className="w-3.5 h-3.5" /> {shownContactNumber ?? (isFetchingContact ? "Loading Number..." : "Show Contact Number")}
-                </button>
+                  className="flex items-center justify-center gap-2 w-full py-3 rounded-lg border-2 border-stone-200 dark:border-[#2a2d3e] text-stone-700 dark:text-stone-200 bg-white dark:bg-transparent text-sm font-semibold hover:border-stone-400 dark:hover:border-stone-500 hover:bg-stone-50 dark:hover:bg-[#252837] transition-all active:scale-[0.98]">
+                  <Phone className="w-4 h-4" /> {shownContactNumber ?? (isFetchingContact ? "Loading Number..." : "Contact Number")}
+                </Button>
               </div>
 
               {/* ── Safety Tips ── */}
@@ -978,32 +1024,40 @@ export default function ListingDetailPage() {
       {!isOwnListing && (
         <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white dark:bg-[#1c1f2e] border-t border-stone-200 dark:border-[#2a2d3e] px-4 py-3 flex gap-3 shadow-lg">
           {visitorUnavailableState ? (
-            <button
+            <Button
+              variant={'outline'}
+              size={'lg'}
               disabled
               className="flex-1 flex items-center justify-center gap-2 py-3 rounded-full bg-stone-400/80 text-white text-sm font-bold cursor-not-allowed opacity-95"
             >
               <AlertTriangle className="w-4 h-4" /> Unavailable
-            </button>
+            </Button>
           ) : isSold ? (
-            <button
+            <Button
+              variant={'outline'}
+              size={'lg'}
               disabled
               className="flex-1 flex items-center justify-center gap-2 py-3 rounded-full bg-emerald-600/90 text-white text-sm font-bold cursor-not-allowed opacity-95"
             >
               <CheckCircle className="w-4 h-4" /> Sold
-            </button>
+            </Button>
           ) : (
             <>
-              <button
+              <Button
+                variant={'outline'}
+                size={'lg'}
                 onClick={handleMessage}
                 className="flex-1 flex items-center justify-center gap-2 py-3 rounded-lg border-2 border-stone-200 dark:border-[#2a2d3e] text-stone-700 dark:text-stone-200 text-sm font-semibold">
                 <MessageCircle className="w-4 h-4" /> Message
-              </button>
-              <button
+              </Button>
+
+              <Button
+                size={'lg'}
                 onClick={handleBuy}
                 className="flex-1 flex items-center justify-center gap-2 py-3 rounded-lg bg-[#3A4A6A] text-white text-sm font-bold">
                 <Zap className="w-4 h-4" />
                 {isSell ? "Offer" : isRent ? "Rent" : "Book"}
-              </button>
+              </Button>
             </>
           )}
         </div>

@@ -6,12 +6,12 @@ import {
   ShieldX, ChevronDown, CheckCircle2, Gavel,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Button }            from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ImageLink } from "@/components/image-link";
-import { Label }             from "@/components/ui/label";
-import { Separator }         from "@/components/ui/separator";
-import { Textarea }          from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
+import { Textarea } from "@/components/ui/textarea";
 import { AdminReport, ReportActionType } from "@/types/admin";
 import { formatPrice } from "@/utils/string-builder";
 

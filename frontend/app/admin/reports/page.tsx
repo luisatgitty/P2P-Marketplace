@@ -24,10 +24,10 @@ import {
 } from "@/services/adminReportsService";
 
 // ── shadcn components ──────────────────────────────────────────────────────────
-import { Button }            from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Input }             from "@/components/ui/input";
-import { Separator }         from "@/components/ui/separator";
+import { Input } from "@/components/ui/input";
+import { Separator } from "@/components/ui/separator";
 import {
   Table,
   TableBody,
