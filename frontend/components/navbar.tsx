@@ -18,7 +18,7 @@ import { LogoutModal } from "@/components/auth/logout-modal";
 import {
   MessageCircle, LogOut, User, Home,
   ChevronDown, Tag, Store, Wrench, LayoutGrid, UserPlus,
-  Bell, LayoutDashboard,
+  Bell, LayoutDashboard, Menu, X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SafeImage } from "@/components/ui/safe-image";
@@ -35,7 +35,12 @@ const TABS = [
 ];
 
 // ─── Center tabs (needs Suspense because of useSearchParams) ───────────────────
-function NavTabsInner() {
+type NavTabsInnerProps = {
+  vertical?: boolean;
+  onNavigate?: () => void;
+};
+
+function NavTabsInner({ vertical = false, onNavigate }: NavTabsInnerProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
@@ -74,21 +79,26 @@ function NavTabsInner() {
     }
     params.delete("page");
     const query = params.toString();
+    onNavigate?.();
     navigateWithConfirm(query ? `/?${query}` : "/");
   };
 
   return (
-    <div className="flex items-center gap-0.5 sm:gap-1">
+    <div className={cn(
+      vertical ? "flex flex-col gap-1" : "flex items-center gap-0.5 sm:gap-1"
+    )}>
       {TABS.map((tab) => {
         const isActive = isHomePage && activeType === tab.value;
         return (
           <button
             key={tab.value}
             onClick={() => handleTabClick(tab.value)}
-            className={cn("tab-nav-base", 
+            className={cn(
+              "tab-nav-base",
+              vertical && "w-full justify-start rounded-xl px-3 py-2.5 text-sm",
               isActive ? "tab-nav-active" : "tab-nav-inactive")}>
             <tab.icon size={14} className="shrink-0" />
-            <span className="hidden sm:inline">{tab.label}</span>
+            <span className={cn(vertical ? "inline" : "hidden sm:inline")}>{tab.label}</span>
           </button>
         );
       })}
@@ -107,6 +117,16 @@ function TabsFallback() {
   );
 }
 
+function MobileTabsFallback() {
+  return (
+    <div className="flex flex-col gap-2">
+      {TABS.map((tab) => (
+        <div key={tab.value} className="h-10 rounded-xl bg-white/5 animate-pulse" />
+      ))}
+    </div>
+  );
+}
+
 // ─── Main Navbar ───────────────────────────────────────────────────────────────
 export default function Navbar() {
   const NOTIFICATIONS_PAGE_SIZE = 15;
@@ -120,6 +140,7 @@ export default function Navbar() {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [dropdownClosing, setDropdownClosing] = useState(false);
   const [notificationOpen, setNotificationOpen] = useState(false);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [logoutModalOpen, setLogoutModalOpen] = useState(false);
   const [hasUnreadMessages, setHasUnreadMessages] = useState(false);
   const [notifications, setNotifications] = useState<NotificationItemData[]>([]);
@@ -128,7 +149,7 @@ export default function Navbar() {
   const [notificationsHasMore, setNotificationsHasMore] = useState(false);
   const [loadingMoreNotifications, setLoadingMoreNotifications] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const mobileDropdownPanelRef = useRef<HTMLDivElement>(null);
+  const mobileSidebarPanelRef = useRef<HTMLDivElement>(null);
   const notificationRef = useRef<HTMLDivElement>(null);
   const mobileNotificationPanelRef = useRef<HTMLDivElement>(null);
   const desktopNotificationsListRef = useRef<HTMLDivElement>(null);
@@ -269,6 +290,7 @@ export default function Navbar() {
     setDropdownOpen(false);
     setDropdownClosing(false);
     setNotificationOpen(false);
+    setMobileSidebarOpen(false);
   }
 
   const closeDropdown = useCallback(() => {
@@ -360,16 +382,20 @@ export default function Navbar() {
     const handler = (e: MouseEvent) => {
       const targetNode = e.target as Node;
       const clickedProfileTrigger = dropdownRef.current?.contains(targetNode);
-      const clickedMobilePanel = mobileDropdownPanelRef.current?.contains(targetNode);
       const clickedNotificationTrigger = notificationRef.current?.contains(targetNode);
       const clickedMobileNotificationPanel = mobileNotificationPanelRef.current?.contains(targetNode);
+      const clickedMobileSidebarPanel = mobileSidebarPanelRef.current?.contains(targetNode);
 
-      if (!clickedProfileTrigger && !clickedMobilePanel) {
+      if (!clickedProfileTrigger) {
         closeDropdown();
       }
 
       if (!clickedNotificationTrigger && !clickedMobileNotificationPanel) {
         setNotificationOpen(false);
+      }
+
+      if (!clickedMobileSidebarPanel) {
+        setMobileSidebarOpen(false);
       }
     };
     document.addEventListener("mousedown", handler);
@@ -456,9 +482,11 @@ export default function Navbar() {
           </button>
 
           {/* ── CENTER: Tab navigation ──────────────────────────── */}
-          <Suspense fallback={<TabsFallback />}>
-            <NavTabsInner />
-          </Suspense>
+          <div className="hidden md:block">
+            <Suspense fallback={<TabsFallback />}>
+              <NavTabsInner />
+            </Suspense>
+          </div>
 
           {/* ── RIGHT: Actions ──────────────────────────────────── */}
           <div className="flex items-center gap-1 shrink-0">
@@ -525,8 +553,17 @@ export default function Navbar() {
 
             <ThemeModeSwitch compact className="shrink-0" />
 
+            <button
+              onClick={() => setMobileSidebarOpen(true)}
+              className="md:hidden flex items-center justify-center p-2 rounded-lg hover:bg-white/10 transition-colors"
+              aria-label="Open menu"
+              aria-expanded={mobileSidebarOpen}
+            >
+              <Menu size={18} className="text-stone-300" />
+            </button>
+
             {/* Profile dropdown */}
-            <div className="relative" ref={dropdownRef}>
+            <div className="relative hidden md:block" ref={dropdownRef}>
               <button
                 onClick={toggleDropdown}
                 className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg hover:bg-white/10 transition-colors"
@@ -687,37 +724,52 @@ export default function Navbar() {
         </div>
       </nav>
 
-      {/* Mobile bottom-sheet notifications panel (outside navbar so it's fixed to viewport) */}
-      {notificationOpen && (
-        <>
-          <div
-            className="md:hidden fixed inset-0 z-62 bg-black/35"
-            onClick={() => setNotificationOpen(false)}
-          />
+      {/* Mobile notifications sidebar */}
+      <>
+        <div
+          className={cn(
+            "md:hidden fixed inset-0 z-62 bg-black/35 transition-opacity duration-300 ease-out",
+            notificationOpen ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"
+          )}
+          onClick={() => setNotificationOpen(false)}
+        />
 
-          <div
-            ref={mobileNotificationPanelRef}
-            className="md:hidden fixed inset-x-0 bottom-0 z-63 w-auto bg-[#1e2b3c] rounded-t-lg shadow-2xl border-t border-white/10 overflow-hidden"
-          >
-            <div className="px-4 py-3 border-b border-white/10 bg-white/5 flex items-center justify-between gap-2">
-              <h3 className="text-sm font-semibold text-white">Notifications</h3>
-              <div className="flex items-center gap-2">
-                <span className="text-[11px] text-stone-400">{notifications.length} items</span>
+        <div
+          ref={mobileNotificationPanelRef}
+          className={cn(
+            "md:hidden fixed right-0 top-1 bottom-0 z-63 flex w-[min(86vw,22rem)] flex-col border-l border-white/10 bg-[#1e2b3c] shadow-2xl overflow-hidden transition-transform duration-300 ease-out will-change-transform",
+            notificationOpen ? "translate-x-0" : "translate-x-full"
+          )}
+        >
+            <div className="border-b border-white/10 bg-white/5 px-4 py-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <h3 className="text-sm font-semibold text-white">Notifications</h3>
+                  <p className="mt-1 text-[11px] text-stone-400">{notifications.length} items</p>
+                </div>
                 <button
                   type="button"
-                  onClick={handleMarkAllNotificationsRead}
-                  disabled={!hasUnreadNotifications}
-                  className="text-[11px] font-medium text-amber-300 hover:text-amber-200 disabled:text-stone-500 disabled:cursor-not-allowed transition-colors"
+                  onClick={() => setNotificationOpen(false)}
+                  className="rounded-lg p-2 text-stone-300 hover:bg-white/10 transition-colors"
+                  aria-label="Close notifications"
                 >
-                  Mark all as read
+                  <X size={18} />
                 </button>
               </div>
+              <button
+                type="button"
+                onClick={handleMarkAllNotificationsRead}
+                disabled={!hasUnreadNotifications}
+                className="mt-3 text-[11px] font-medium text-amber-300 hover:text-amber-200 disabled:text-stone-500 disabled:cursor-not-allowed transition-colors"
+              >
+                Mark all as read
+              </button>
             </div>
 
             <div
               ref={mobileNotificationsListRef}
               onScroll={handleNotificationsScroll}
-              className="max-h-[70vh] overflow-y-auto p-2 space-y-1.5 pb-[max(0.5rem,env(safe-area-inset-bottom))]"
+              className="flex-1 overflow-y-auto px-3 py-3 space-y-1.5 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
             >
               {notifications.length === 0 ? (
                 <div className="px-2 py-8 text-center text-sm text-stone-400">No notifications yet.</div>
@@ -740,33 +792,64 @@ export default function Navbar() {
               )}
             </div>
           </div>
-        </>
-      )}
+      </>
 
-      {/* Mobile bottom-sheet account panel (outside navbar so it's fixed to viewport) */}
-      {(dropdownOpen || dropdownClosing) && (
-        <>
-          <div
-            className={cn(
-              "md:hidden fixed inset-0 z-60 bg-black/35 transition-opacity duration-200",
-              dropdownClosing ? "opacity-0" : "opacity-100"
-            )}
-            onClick={closeDropdown}
-          />
+      {/* Mobile sidebar menu */}
+      <>
+        <div
+          className={cn(
+            "md:hidden fixed inset-0 z-60 bg-black/40 transition-opacity duration-300 ease-out",
+            mobileSidebarOpen ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"
+          )}
+          onClick={() => setMobileSidebarOpen(false)}
+        />
 
-          <div
-            ref={mobileDropdownPanelRef}
-            className={cn(
-              "md:hidden fixed inset-x-0 bottom-0 z-61 w-auto bg-[#1e2b3c] rounded-t-lg shadow-2xl overflow-hidden transition-all duration-200",
-              dropdownClosing
-                ? "opacity-0 translate-y-4"
-                : "opacity-100 translate-y-0"
-            )}
-          >
+        <div
+          ref={mobileSidebarPanelRef}
+          className={cn(
+            "md:hidden fixed left-0 top-1 bottom-0 z-61 flex w-[min(86vw,22rem)] flex-col border-r border-white/10 bg-[#1e2b3c] shadow-2xl transition-transform duration-300 ease-out will-change-transform",
+            mobileSidebarOpen ? "translate-x-0" : "-translate-x-full"
+          )}
+        >
+            <div className="relative border-b border-white/10 bg-white/5 px-4 py-4 pr-14">
+              <div className="flex items-start gap-3 min-w-0">
+                <div className="mt-0.5 rounded-xl bg-white/5 p-2">
+                  <Image
+                    src="/logo.png"
+                    alt="P2P Marketplace"
+                    width={24}
+                    height={24}
+                  />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-white truncate">P2P Marketplace</p>
+                  <p className="mt-1 text-xs leading-5 text-stone-400">Browse and manage your account</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setMobileSidebarOpen(false)}
+                className="absolute right-3 top-3 rounded-lg p-2 text-stone-300 hover:bg-white/10 transition-colors"
+                aria-label="Close menu"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto px-4 py-4">
+              <div className="mb-5">
+                <p className="px-3 pb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-stone-500">
+                  Browse
+                </p>
+                <Suspense fallback={<MobileTabsFallback />}>
+                  <NavTabsInner vertical onNavigate={() => setMobileSidebarOpen(false)} />
+                </Suspense>
+              </div>
+
             {isAuth ? (
               <>
                 {/* User info */}
-                <div className="px-4 py-3 border-b border-white/10 bg-white/5">
+                <div className="mb-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
                   <p className="text-sm font-semibold text-white leading-tight flex items-center gap-1.5">
                     {user?.firstName} {user?.lastName}
                     {<VerificationBadge verified={isVerifiedSeller} />}
@@ -775,12 +858,15 @@ export default function Navbar() {
                 </div>
 
                 <div className="py-1">
+                  <p className="px-3 pb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-stone-500">
+                    Account
+                  </p>
                   {isAdmin ? (
                     <>
                       <Link
                         href="/admin"
-                        onClick={closeDropdown}
-                        className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-200 hover:bg-white/10 hover:text-white transition-colors"
+                        onClick={() => setMobileSidebarOpen(false)}
+                        className="flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm text-stone-200 hover:bg-white/10 hover:text-white transition-colors"
                       >
                         <LayoutDashboard size={15} className="text-stone-400" />
                         Admin Dashboard
@@ -791,25 +877,25 @@ export default function Navbar() {
                       <button
                         onClick={() => {
                           handleNavigateHome();
-                          closeDropdown();
+                          setMobileSidebarOpen(false);
                         }}
-                        className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-200 hover:bg-white/10 hover:text-white transition-colors w-full text-left"
+                        className="flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm text-stone-200 hover:bg-white/10 hover:text-white transition-colors w-full text-left"
                       >
                         <Home size={15} className="text-stone-400" />
                         Home
                       </button>
                       <Link
                         href="/profile"
-                        onClick={(event) => handleProtectedLinkClick(event, "/profile", closeDropdown)}
-                        className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-200 hover:bg-white/10 hover:text-white transition-colors"
+                        onClick={(event) => handleProtectedLinkClick(event, "/profile", () => setMobileSidebarOpen(false))}
+                        className="flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm text-stone-200 hover:bg-white/10 hover:text-white transition-colors"
                       >
                         <User size={15} className="text-stone-400" />
                         Profile
                       </Link>
                       <Link
                         href="/messages"
-                        onClick={(event) => handleProtectedLinkClick(event, "/messages", closeDropdown)}
-                        className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-200 hover:bg-white/10 hover:text-white transition-colors"
+                        onClick={(event) => handleProtectedLinkClick(event, "/messages", () => setMobileSidebarOpen(false))}
+                        className="flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm text-stone-200 hover:bg-white/10 hover:text-white transition-colors"
                       >
                         <span className="relative inline-flex">
                           <MessageCircle size={15} className="text-stone-400" />
@@ -822,8 +908,8 @@ export default function Navbar() {
                       {isVerifiedSeller ? (
                         <Link
                           href="/create"
-                          onClick={(event) => handleProtectedLinkClick(event, "/create", closeDropdown)}
-                          className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-200 hover:bg-white/10 hover:text-white transition-colors"
+                          onClick={(event) => handleProtectedLinkClick(event, "/create", () => setMobileSidebarOpen(false))}
+                          className="flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm text-stone-200 hover:bg-white/10 hover:text-white transition-colors"
                         >
                           <Tag size={15} className="text-stone-400" />
                           Post a Listing
@@ -831,8 +917,8 @@ export default function Navbar() {
                       ) : (
                         <Link
                           href="/become-seller"
-                          onClick={(event) => handleProtectedLinkClick(event, "/become-seller", closeDropdown)}
-                          className="flex items-center gap-3 px-4 py-2.5 text-sm text-amber-300 hover:bg-amber-500/10 hover:text-amber-200 transition-colors"
+                          onClick={(event) => handleProtectedLinkClick(event, "/become-seller", () => setMobileSidebarOpen(false))}
+                          className="flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm text-amber-300 hover:bg-amber-500/10 hover:text-amber-200 transition-colors"
                         >
                           <UserPlus size={15} />
                           Become a Seller
@@ -842,10 +928,10 @@ export default function Navbar() {
                   )}
                 </div>
 
-                <div className="border-t border-white/10" />
+                <div className="mt-4 border-t border-white/10 pt-4" />
                 <button
                   onClick={handleLogOut}
-                  className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors"
+                  className="flex items-center gap-3 w-full rounded-xl px-4 py-2.5 text-sm text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors"
                 >
                   <LogOut size={15} />
                   Log Out
@@ -853,37 +939,40 @@ export default function Navbar() {
               </>
             ) : (
               <div className="py-1">
+                <p className="px-3 pb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-stone-500">
+                  Account
+                </p>
                 <button
                   onClick={() => {
                     handleNavigateHome();
-                    closeDropdown();
+                    setMobileSidebarOpen(false);
                   }}
-                  className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-200 hover:bg-white/10 hover:text-white transition-colors w-full text-left"
+                  className="flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm text-stone-200 hover:bg-white/10 hover:text-white transition-colors w-full text-left"
                 >
                   <Home size={15} className="text-stone-400" />
                   Home
                 </button>
                 <Link
                   href="/login"
-                  onClick={(event) => handleProtectedLinkClick(event, "/login", closeDropdown)}
-                  className="flex items-center gap-3 px-4 py-3 text-sm font-semibold text-white hover:bg-white/10 transition-colors"
+                  onClick={(event) => handleProtectedLinkClick(event, "/login", () => setMobileSidebarOpen(false))}
+                  className="flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold text-white hover:bg-white/10 transition-colors"
                 >
                   <User size={15} className="text-stone-400" />
                   Log In
                 </Link>
                 <Link
                   href="/signup"
-                  onClick={(event) => handleProtectedLinkClick(event, "/signup", closeDropdown)}
-                  className="flex items-center gap-3 px-4 py-3 text-sm font-semibold text-amber-400 hover:bg-amber-500/10 hover:text-amber-300 transition-colors"
+                  onClick={(event) => handleProtectedLinkClick(event, "/signup", () => setMobileSidebarOpen(false))}
+                  className="flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold text-amber-400 hover:bg-amber-500/10 hover:text-amber-300 transition-colors"
                 >
                   <UserPlus size={15} />
                   Create Account
                 </Link>
               </div>
             )}
+            </div>
           </div>
-        </>
-      )}
+      </>
 
       {/* Spacer for fixed navbar (1px stripe + 56px nav) */}
       <div className="h-15" />
