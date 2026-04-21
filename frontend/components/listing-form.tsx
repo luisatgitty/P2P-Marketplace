@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, KeyboardEvent, useEffect } from "react";
+import { useState, useRef, KeyboardEvent, useEffect, Children, isValidElement, type ReactElement, type OptionHTMLAttributes, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -15,6 +15,14 @@ import {
   Info,
   Plus,
 } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@/components/ui/select'
 import { cn } from "@/lib/utils";
 import { useUser } from "@/utils/UserContext";
 import { useUnsavedChanges } from "@/utils/UnsavedChangesContext";
@@ -362,31 +370,73 @@ function StyledSelect({
   onChange,
   children,
   className,
-  ...props
+  disabled,
 }: {
   value: string;
   onChange: (v: string) => void;
   children: React.ReactNode;
   className?: string;
-} & Omit<
-  React.SelectHTMLAttributes<HTMLSelectElement>,
-  "value" | "onChange" | "children" | "className"
->) {
+  disabled?: boolean;
+}) {
+  const optionElements = Children.toArray(children).filter((child): child is ReactElement<OptionHTMLAttributes<HTMLOptionElement>> => {
+    return isValidElement<OptionHTMLAttributes<HTMLOptionElement>>(child) && child.type === "option";
+  });
+
+  const getText = (node: ReactNode): string => {
+    if (typeof node === "string" || typeof node === "number") return String(node);
+    if (Array.isArray(node)) return node.map(getText).join("").trim();
+    if (isValidElement<{ children?: ReactNode }>(node)) return getText(node.props.children);
+    return "";
+  };
+
+  const placeholderOption = optionElements.find((optionElement) => {
+    const optionValue = typeof optionElement.props.value === "string"
+      ? optionElement.props.value
+      : getText(optionElement.props.children);
+    return optionValue === "";
+  });
+
+  const placeholder = placeholderOption
+    ? getText(placeholderOption.props.children)
+    : "Select";
+
+  const items = optionElements
+    .map((optionElement) => {
+      const optionValue = typeof optionElement.props.value === "string"
+        ? optionElement.props.value
+        : getText(optionElement.props.children);
+      return {
+        value: optionValue,
+        label: optionElement.props.children,
+        disabled: Boolean(optionElement.props.disabled),
+      };
+    })
+    .filter((item) => item.value !== "");
+
   return (
-    <select
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      {...props}
-      className={cn(
-        "w-full rounded-lg border border-stone-200 dark:border-[#2a2d3e]",
-        "bg-white dark:bg-[#13151f] text-stone-800 dark:text-stone-100 text-sm",
-        "px-3.5 py-2.5 outline-none appearance-none transition-colors",
-        "focus:border-stone-400 dark:focus:border-stone-500",
-        className,
-      )}
+    <Select
+      value={value || undefined}
+      onValueChange={onChange}
+      disabled={disabled}
     >
-      {children}
-    </select>
+      <SelectTrigger
+        className={cn(
+          "w-full rounded-lg",
+          className,
+        )}
+      >
+        <SelectValue placeholder={placeholder} />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectGroup>
+          {items.map((item) => (
+            <SelectItem key={item.value} value={item.value} disabled={item.disabled}>
+              {item.label}
+            </SelectItem>
+          ))}
+        </SelectGroup>
+      </SelectContent>
+    </Select>
   );
 }
 
@@ -1568,7 +1618,8 @@ export default function ListingForm({
   const renderS0 = () => (
     <>
       <Section>
-        {/* Title */}
+
+        {/* Listing Title */}
         <div>
           <FieldLabel required>Listing Title</FieldLabel>
           <StyledInput
@@ -1587,8 +1638,9 @@ export default function ListingForm({
           <ErrMsg msg={errors.title} />
         </div>
 
-        {/* Category + Price */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+          {/* Category */}
           <div>
             <FieldLabel required>Category</FieldLabel>
             <StyledSelect value={category} onChange={setCategory}>
@@ -1599,11 +1651,13 @@ export default function ListingForm({
             </StyledSelect>
             <ErrMsg msg={errors.category} />
           </div>
+
           <div>
             <FieldLabel required>Price</FieldLabel>
-            <div className="flex gap-2">
+            <div className="flex gap-4">
+              {/* Price */}
               <div className="flex rounded-lg shadow-xs">
-                <span className='border-input bg-background text-muted-foreground inline-flex items-center rounded-l-lg border px-3 text-sm'>
+                <span className='border-input bg-background text-muted-foreground font-bold inline-flex items-center rounded-l-lg border px-3 text-sm'>
                   ₱
                 </span>
                 <Input
@@ -1628,6 +1682,8 @@ export default function ListingForm({
                   className='-ms-px rounded-l-none shadow-none h-full'
                 />
               </div>
+
+              {/* Price Unit */}
               <StyledSelect
                 value={priceUnit}
                 onChange={setPriceUnit}
@@ -1637,6 +1693,7 @@ export default function ListingForm({
                   <option key={u}>{u}</option>
                 ))}
               </StyledSelect>
+              
             </div>
             <ErrMsg msg={errors.priceUnit} />
             <ErrMsg msg={errors.price} />
