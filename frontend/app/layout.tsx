@@ -3,6 +3,7 @@ import { DM_Sans, Geist_Mono, Inter } from "next/font/google";
 import { UserProvider } from "@/utils/UserContext";
 import { UnsavedChangesProvider } from "@/utils/UnsavedChangesContext";
 import { ConfirmDialogProvider } from "@/utils/ConfirmDialogContext";
+import QueryProvider from "@/components/query-provider";
 import { ThemeProvider } from "next-themes";
 import { Toaster } from "@/components/ui/sonner"
 import AppChrome from "@/components/app-chrome";
@@ -34,20 +35,22 @@ export default function RootLayout({ children }:
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${inter.variable} ${dmSans.variable} antialiased`}>
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-          <UserProvider>
-            <UnsavedChangesProvider>
-              <ConfirmDialogProvider>
-                <AppChrome slot="top" />
-                <main className="flex-1">
-                  {children}
-                </main>
-                <Toaster />
-                <AppChrome slot="bottom" />
-              </ConfirmDialogProvider>
-            </UnsavedChangesProvider>
-          </UserProvider>
-        </ThemeProvider>
+        <QueryProvider>
+          <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+            <UserProvider>
+              <UnsavedChangesProvider>
+                <ConfirmDialogProvider>
+                  <AppChrome slot="top" />
+                  <main className="flex-1">
+                    {children}
+                  </main>
+                  <Toaster />
+                  <AppChrome slot="bottom" />
+                </ConfirmDialogProvider>
+              </UnsavedChangesProvider>
+            </UserProvider>
+          </ThemeProvider>
+        </QueryProvider>
       </body>
     </html>
   );

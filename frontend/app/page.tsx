@@ -1,9 +1,10 @@
 "use client";
 
-import { Suspense, useState, useEffect, useRef, useCallback } from "react";
+import { Suspense, useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import PostCard from "@/components/post-card";
-import { getHomeListings, type HomeListing } from "@/services/listingFeedService";
+import { useInfiniteQuery } from "@tanstack/react-query";
+import { getHomeListings, type HomeListingsResponse } from "@/services/listingFeedService";
 import { getProvinces, getCitiesByProvince, type LocationOption } from "@/services/locationService";
 import { useUser } from "@/utils/UserContext";
 import { Search, X, PackageSearch } from "lucide-react";
@@ -20,8 +21,6 @@ import {
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { CATEGORIES } from "@/types/listings";
-
-type ListingWithMeta = HomeListing;
 
 const SORT_OPTIONS = [
   { value: "recommended", label: "Recommended" },
@@ -87,13 +86,6 @@ function HomePageInner() {
   const pathname     = usePathname();
   const { user, isAuth } = useUser();
   const typeFromUrl  = (searchParams.get("type") || DEFAULT_TYPE) as string;
-
-  const [allListings, setAllListings] = useState<ListingWithMeta[]>([]);
-  const [loadingListings, setLoadingListings] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [hasMore, setHasMore] = useState(true);
-  const [offset, setOffset] = useState(0);
-  const [totalCount, setTotalCount] = useState(0);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
 
   // ── Filter state (staging = what's in the form, applied = what's actually active)
@@ -119,6 +111,67 @@ function HomePageInner() {
   });
 
   const [sort, setSort] = useState(DEFAULT_SORT);
+
+  const queryString = searchParams.toString();
+  const queryFilters = useMemo(() => ({
+    type: (searchParams.get("type") ?? DEFAULT_TYPE).trim() || DEFAULT_TYPE,
+    keyword: (searchParams.get("keyword") ?? "").trim(),
+    category: (searchParams.get("category") ?? DEFAULT_CATEGORY).trim() || DEFAULT_CATEGORY,
+    condition: (searchParams.get("condition") ?? DEFAULT_CONDITION).trim() || DEFAULT_CONDITION,
+    province: (searchParams.get("province") ?? DEFAULT_PROVINCE).trim() || DEFAULT_PROVINCE,
+    city: (searchParams.get("city") ?? DEFAULT_CITY).trim() || DEFAULT_CITY,
+    priceMin: (searchParams.get("priceMin") ?? "").trim(),
+    priceMax: (searchParams.get("priceMax") ?? "").trim(),
+    sort: (searchParams.get("sort") ?? DEFAULT_SORT).trim() || DEFAULT_SORT,
+  }), [searchParams]);
+
+  const {
+    data,
+    isPending,
+    isFetchingNextPage,
+    hasNextPage,
+    fetchNextPage,
+  } = useInfiniteQuery<HomeListingsResponse>({
+    queryKey: ["home-listings", queryString],
+    queryFn: async ({ pageParam }) => {
+      const offset = typeof pageParam === "number" ? pageParam : 0;
+      return getHomeListings({
+        type: queryFilters.type,
+        keyword: queryFilters.keyword,
+        category: queryFilters.category,
+        condition: queryFilters.condition,
+        province: queryFilters.province,
+        city: queryFilters.city,
+        priceMin: queryFilters.priceMin,
+        priceMax: queryFilters.priceMax,
+        sort: queryFilters.sort,
+        limit: FETCH_LIMIT,
+        offset,
+      });
+    },
+    initialPageParam: 0,
+    getNextPageParam: (lastPage, allPages) => {
+      const loadedCount = allPages.reduce((sum, page) => sum + page.listings.length, 0);
+      const cappedTotal = Math.min(lastPage.total, 150);
+      if (loadedCount >= cappedTotal) return undefined;
+      if (loadedCount >= 150) return undefined;
+      return loadedCount;
+    },
+    staleTime: 5 * 60 * 1000,
+    placeholderData: (prev) => prev,
+  });
+
+  const allListings = useMemo(
+    () => data?.pages.flatMap((page) => page.listings ?? []) ?? [],
+    [data],
+  );
+  const totalCount = useMemo(() => {
+    const backendTotal = data?.pages[0]?.total ?? 0;
+    return Math.min(backendTotal, 150);
+  }, [data]);
+  const loadingListings = isPending;
+  const loadingMore = isFetchingNextPage;
+  const hasMore = Boolean(hasNextPage);
 
   const applyUrlState = useCallback((params: URLSearchParams) => {
     const nextKeyword = (params.get("keyword") ?? "").trim();
@@ -198,54 +251,6 @@ function HomePageInner() {
     applyUrlState(new URLSearchParams(searchParams.toString()));
   }, [applyUrlState, searchParams]);
 
-  const loadListings = useCallback(async (reset: boolean, requestedOffset = 0) => {
-    if (reset) {
-      setLoadingListings(true);
-    } else {
-      setLoadingMore(true);
-    }
-
-    const nextOffset = reset ? 0 : requestedOffset;
-
-    try {
-      const payload = await getHomeListings({
-        type: typeFromUrl,
-        keyword: applied.keyword,
-        category: applied.category,
-        condition: applied.condition,
-        province: applied.province,
-        city: applied.city,
-        priceMin: applied.priceMin,
-        priceMax: applied.priceMax,
-        sort,
-        limit: FETCH_LIMIT,
-        offset: nextOffset,
-      });
-
-      const received = payload.listings ?? [];
-      const nextCount = reset ? received.length : nextOffset + received.length;
-
-      setAllListings((prev) => (reset ? received : [...prev, ...received]));
-      setOffset(nextCount);
-      setTotalCount(payload.total);
-      setHasMore(nextCount < payload.total);
-    } catch {
-      if (reset) {
-        setAllListings([]);
-        setOffset(0);
-        setTotalCount(0);
-        setHasMore(false);
-      }
-    } finally {
-      setLoadingListings(false);
-      setLoadingMore(false);
-    }
-  }, [typeFromUrl, applied, sort]);
-
-  useEffect(() => {
-    void loadListings(true, 0);
-  }, [typeFromUrl, applied, sort, loadListings]);
-
   useEffect(() => {
     const sentinel = sentinelRef.current;
     if (!sentinel) return;
@@ -255,7 +260,7 @@ function HomePageInner() {
       if (!first?.isIntersecting) return;
       if (loadingListings || loadingMore || !hasMore) return;
 
-      void loadListings(false, offset);
+      void fetchNextPage();
     }, {
       root: null,
       rootMargin: "220px 0px",
@@ -264,7 +269,7 @@ function HomePageInner() {
 
     observer.observe(sentinel);
     return () => observer.disconnect();
-  }, [loadListings, hasMore, loadingListings, loadingMore, offset]);
+  }, [fetchNextPage, hasMore, loadingListings, loadingMore]);
 
   // ── Actions ────────────────────────────────────────────────────────────────
   const handleSearch = () => {
