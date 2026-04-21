@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useState, useEffect, useRef, useCallback } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import PostCard from "@/components/post-card";
 import { getHomeListings, type HomeListing } from "@/services/listingFeedService";
 import { getProvinces, getCitiesByProvince, type LocationOption } from "@/services/locationService";
@@ -31,6 +31,12 @@ const SORT_OPTIONS = [
 ];
 
 const FETCH_LIMIT = 25;
+const DEFAULT_PROVINCE = "Province";
+const DEFAULT_CITY = "City/Municipality";
+const DEFAULT_CATEGORY = "All Categories";
+const DEFAULT_CONDITION = "Any Condition";
+const DEFAULT_SORT = "recommended";
+const DEFAULT_TYPE = "all";
 
 // ─── Select styled helper ───────────────────────────────────────────────────────
 function FilterSelect({
@@ -78,8 +84,9 @@ function FilterSelect({
 function HomePageInner() {
   const searchParams = useSearchParams();
   const router       = useRouter();
+  const pathname     = usePathname();
   const { user, isAuth } = useUser();
-  const typeFromUrl  = (searchParams.get("type") || "all") as string;
+  const typeFromUrl  = (searchParams.get("type") || DEFAULT_TYPE) as string;
 
   const [allListings, setAllListings] = useState<ListingWithMeta[]>([]);
   const [loadingListings, setLoadingListings] = useState(true);
@@ -91,12 +98,12 @@ function HomePageInner() {
 
   // ── Filter state (staging = what's in the form, applied = what's actually active)
   const [keyword,  setKeyword]  = useState("");
-  const [category, setCategory] = useState("All Categories");
-  const [condition, setCond]    = useState("Any Condition");
+  const [category, setCategory] = useState(DEFAULT_CATEGORY);
+  const [condition, setCond]    = useState(DEFAULT_CONDITION);
   const [provinceCode, setProvinceCode] = useState("");
   const [cityCode, setCityCode] = useState("");
-  const [provinceName, setProvinceName] = useState("Province");
-  const [cityName, setCityName] = useState("City/Municipality");
+  const [provinceName, setProvinceName] = useState(DEFAULT_PROVINCE);
+  const [cityName, setCityName] = useState(DEFAULT_CITY);
   const [priceMin, setPriceMin] = useState("");
   const [priceMax, setPriceMax] = useState("");
   const [provinceOptions, setProvinceOptions] = useState<LocationOption[]>([]);
@@ -107,11 +114,89 @@ function HomePageInner() {
   const [fetchedCitiesProvinceCode, setFetchedCitiesProvinceCode] = useState("");
 
   const [applied, setApplied] = useState({
-    keyword: "", category: "All Categories", condition: "Any Condition",
-    province: "Province", city: "City/Municipality", priceMin: "", priceMax: "",
+    keyword: "", category: DEFAULT_CATEGORY, condition: DEFAULT_CONDITION,
+    province: DEFAULT_PROVINCE, city: DEFAULT_CITY, priceMin: "", priceMax: "",
   });
 
-  const [sort, setSort] = useState("recommended");
+  const [sort, setSort] = useState(DEFAULT_SORT);
+
+  const applyUrlState = useCallback((params: URLSearchParams) => {
+    const nextKeyword = (params.get("keyword") ?? "").trim();
+    const nextCategory = (params.get("category") ?? DEFAULT_CATEGORY).trim() || DEFAULT_CATEGORY;
+    const nextCondition = (params.get("condition") ?? DEFAULT_CONDITION).trim() || DEFAULT_CONDITION;
+    const nextProvince = (params.get("province") ?? DEFAULT_PROVINCE).trim() || DEFAULT_PROVINCE;
+    const nextCity = (params.get("city") ?? DEFAULT_CITY).trim() || DEFAULT_CITY;
+    const nextPriceMin = (params.get("priceMin") ?? "").trim();
+    const nextPriceMax = (params.get("priceMax") ?? "").trim();
+    const nextSort = (params.get("sort") ?? DEFAULT_SORT).trim() || DEFAULT_SORT;
+
+    setKeyword(nextKeyword);
+    setCategory(nextCategory);
+    setCond(nextCondition);
+    setProvinceName(nextProvince);
+    setCityName(nextCity);
+    setPriceMin(nextPriceMin);
+    setPriceMax(nextPriceMax);
+    setSort(nextSort);
+
+    setApplied({
+      keyword: nextKeyword,
+      category: nextCategory,
+      condition: nextCondition,
+      province: nextProvince,
+      city: nextCity,
+      priceMin: nextPriceMin,
+      priceMax: nextPriceMax,
+    });
+  }, []);
+
+  const updateUrlFromState = useCallback((next: {
+    keyword?: string;
+    category?: string;
+    condition?: string;
+    province?: string;
+    city?: string;
+    priceMin?: string;
+    priceMax?: string;
+    sort?: string;
+    type?: string;
+  }, mode: "replace" | "push" = "replace") => {
+    const params = new URLSearchParams(searchParams.toString());
+
+    const setOrDelete = (key: string, value: string, defaultValue = "") => {
+      const trimmedValue = value.trim();
+      const trimmedDefault = defaultValue.trim();
+      if (trimmedValue === "" || trimmedValue.toLowerCase() === trimmedDefault.toLowerCase()) {
+        params.delete(key);
+        return;
+      }
+      params.set(key, trimmedValue);
+    };
+
+    if (next.keyword !== undefined) setOrDelete("keyword", next.keyword, "");
+    if (next.category !== undefined) setOrDelete("category", next.category, DEFAULT_CATEGORY);
+    if (next.condition !== undefined) setOrDelete("condition", next.condition, DEFAULT_CONDITION);
+    if (next.province !== undefined) setOrDelete("province", next.province, DEFAULT_PROVINCE);
+    if (next.city !== undefined) setOrDelete("city", next.city, DEFAULT_CITY);
+    if (next.priceMin !== undefined) setOrDelete("priceMin", next.priceMin, "");
+    if (next.priceMax !== undefined) setOrDelete("priceMax", next.priceMax, "");
+    if (next.sort !== undefined) setOrDelete("sort", next.sort, DEFAULT_SORT);
+    if (next.type !== undefined) setOrDelete("type", next.type, DEFAULT_TYPE);
+
+    const queryString = params.toString();
+    const href = queryString ? `${pathname}?${queryString}` : pathname;
+
+    if (mode === "push") {
+      router.push(href, { scroll: false });
+      return;
+    }
+
+    router.replace(href, { scroll: false });
+  }, [pathname, router, searchParams]);
+
+  useEffect(() => {
+    applyUrlState(new URLSearchParams(searchParams.toString()));
+  }, [applyUrlState, searchParams]);
 
   const loadListings = useCallback(async (reset: boolean, requestedOffset = 0) => {
     if (reset) {
@@ -183,19 +268,39 @@ function HomePageInner() {
 
   // ── Actions ────────────────────────────────────────────────────────────────
   const handleSearch = () => {
-    setApplied({ keyword, category, condition, province: provinceName, city: cityName, priceMin, priceMax });
+    updateUrlFromState({
+      keyword,
+      category,
+      condition,
+      province: provinceName,
+      city: cityName,
+      priceMin,
+      priceMax,
+      sort,
+      type: typeFromUrl,
+    }, "push");
   };
 
   const handleClear = () => {
-    setKeyword(""); setCategory("All Categories"); setCond("Any Condition");
+    setKeyword(""); setCategory(DEFAULT_CATEGORY); setCond(DEFAULT_CONDITION);
     setProvinceCode(""); setCityCode("");
-    setProvinceName("Province"); setCityName("City/Municipality");
+    setProvinceName(DEFAULT_PROVINCE); setCityName(DEFAULT_CITY);
     setCityOptions([]); setFetchedCitiesProvinceCode("");
     setPriceMin(""); setPriceMax("");
-    setApplied({ keyword: "", category: "All Categories", condition: "Any Condition", province: "Province", city: "City/Municipality", priceMin: "", priceMax: "" });
+    updateUrlFromState({
+      keyword: "",
+      category: DEFAULT_CATEGORY,
+      condition: DEFAULT_CONDITION,
+      province: DEFAULT_PROVINCE,
+      city: DEFAULT_CITY,
+      priceMin: "",
+      priceMax: "",
+      sort,
+      type: typeFromUrl,
+    });
   };
 
-  const loadProvincesOnDemand = async () => {
+  const loadProvincesOnDemand = useCallback(async () => {
     if (hasFetchedProvinces || loadingProvinces) return;
 
     setLoadingProvinces(true);
@@ -209,9 +314,9 @@ function HomePageInner() {
     } finally {
       setLoadingProvinces(false);
     }
-  };
+  }, [hasFetchedProvinces, loadingProvinces]);
 
-  const loadCitiesOnDemand = async (targetProvinceCode?: string) => {
+  const loadCitiesOnDemand = useCallback(async (targetProvinceCode?: string) => {
     const effectiveProvinceCode = targetProvinceCode ?? provinceCode;
     if (!effectiveProvinceCode || loadingCities) return;
     if (fetchedCitiesProvinceCode === effectiveProvinceCode) return;
@@ -227,7 +332,46 @@ function HomePageInner() {
     } finally {
       setLoadingCities(false);
     }
-  };
+  }, [fetchedCitiesProvinceCode, loadingCities, provinceCode]);
+
+  useEffect(() => {
+    const normalizedProvince = provinceName.trim();
+    if (!normalizedProvince || normalizedProvince.toLowerCase() === DEFAULT_PROVINCE.toLowerCase()) {
+      if (provinceCode !== "") {
+        setProvinceCode("");
+      }
+      return;
+    }
+
+    if (!hasFetchedProvinces && !loadingProvinces) {
+      void loadProvincesOnDemand();
+      return;
+    }
+
+    const selected = provinceOptions.find(
+      (item) => item.name.trim().toLowerCase() === normalizedProvince.toLowerCase(),
+    );
+    if (selected && selected.code !== provinceCode) {
+      setProvinceCode(selected.code);
+    }
+  }, [hasFetchedProvinces, loadProvincesOnDemand, loadingProvinces, provinceCode, provinceName, provinceOptions]);
+
+  useEffect(() => {
+    const normalizedCity = cityName.trim();
+    if (!normalizedCity || normalizedCity.toLowerCase() === DEFAULT_CITY.toLowerCase()) {
+      if (cityCode !== "") {
+        setCityCode("");
+      }
+      return;
+    }
+
+    const selected = cityOptions.find(
+      (item) => item.name.trim().toLowerCase() === normalizedCity.toLowerCase(),
+    );
+    if (selected && selected.code !== cityCode) {
+      setCityCode(selected.code);
+    }
+  }, [cityCode, cityName, cityOptions]);
 
   useEffect(() => {
     if (!provinceCode) return;
@@ -235,7 +379,7 @@ function HomePageInner() {
     if (loadingCities) return;
 
     void loadCitiesOnDemand(provinceCode);
-  }, [provinceCode, fetchedCitiesProvinceCode, loadingCities]);
+  }, [provinceCode, fetchedCitiesProvinceCode, loadingCities, loadCitiesOnDemand]);
 
   const hasActiveFilters = Object.values(applied).some(
     (v, i) => v !== ["", "All Categories", "Any Condition", "Province", "City/Municipality", "", ""][i]
@@ -350,7 +494,11 @@ function HomePageInner() {
                   type="text"
                   placeholder="Search listings..."
                   value={keyword}
-                  onChange={(e) => setKeyword(e.target.value)}
+                  onChange={(e) => {
+                    const nextKeyword = e.target.value;
+                    setKeyword(nextKeyword);
+                    updateUrlFromState({ keyword: nextKeyword });
+                  }}
                   onKeyDown={(e) => e.key === "Enter" && handleSearch()}
                   className="pl-9 text-sm"
                 />
@@ -379,7 +527,10 @@ function HomePageInner() {
               {/* <div className="flex flex-wrap gap-2 items-end xl:flex-nowrap"> */}
               <div className="flex flex-wrap gap-2 items-end xl:flex-nowrap">
                 {/* Category */}
-                <FilterSelect value={category} onChange={setCategory}>
+                <FilterSelect value={category} onChange={(nextCategory) => {
+                  setCategory(nextCategory);
+                  updateUrlFromState({ category: nextCategory });
+                }}>
                   <SelectItem value="All Categories">All Categories</SelectItem>
                   {CATEGORIES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
                 </FilterSelect>
@@ -390,21 +541,24 @@ function HomePageInner() {
                   onChange={(code) => {
                     if (code === "__province__") {
                       setProvinceCode("");
-                      setProvinceName("Province");
+                      setProvinceName(DEFAULT_PROVINCE);
                       setCityCode("");
-                      setCityName("City/Municipality");
+                      setCityName(DEFAULT_CITY);
                       setCityOptions([]);
                       setFetchedCitiesProvinceCode("");
+                      updateUrlFromState({ province: DEFAULT_PROVINCE, city: DEFAULT_CITY });
                       return;
                     }
 
                     const selected = provinceOptions.find((p) => p.code === code);
+                    const nextProvinceName = selected?.name ?? DEFAULT_PROVINCE;
                     setProvinceCode(code);
-                    setProvinceName(selected?.name ?? "Province");
+                    setProvinceName(nextProvinceName);
                     setCityCode("");
-                    setCityName("City/Municipality");
+                    setCityName(DEFAULT_CITY);
                     setCityOptions([]);
                     setFetchedCitiesProvinceCode("");
+                    updateUrlFromState({ province: nextProvinceName, city: DEFAULT_CITY });
                   }}
                   disabled={loadingProvinces}
                   onOpenChange={(open) => {
@@ -424,13 +578,16 @@ function HomePageInner() {
                   onChange={(code) => {
                     if (code === "__city__") {
                       setCityCode("");
-                      setCityName("City/Municipality");
+                      setCityName(DEFAULT_CITY);
+                      updateUrlFromState({ city: DEFAULT_CITY });
                       return;
                     }
 
                     const selected = cityOptions.find((c) => c.code === code);
+                    const nextCityName = selected?.name ?? DEFAULT_CITY;
                     setCityCode(code);
-                    setCityName(selected?.name ?? "City/Municipality");
+                    setCityName(nextCityName);
+                    updateUrlFromState({ city: nextCityName });
                   }}
                   disabled={!provinceCode || loadingCities}
                   onOpenChange={(open) => {
@@ -464,7 +621,11 @@ function HomePageInner() {
                     type="number"
                     placeholder="Min ₱"
                     value={priceMin}
-                    onChange={(e) => setPriceMin(e.target.value)}
+                    onChange={(e) => {
+                      const nextPriceMin = e.target.value;
+                      setPriceMin(nextPriceMin);
+                      updateUrlFromState({ priceMin: nextPriceMin });
+                    }}
                     className="w-26 text-sm bg-white dark:bg-[#1e2a3a] border-stone-200 dark:border-white/10 rounded-lg"
                   />
                   <span className="text-stone-400 text-sm shrink-0">–</span>
@@ -472,7 +633,11 @@ function HomePageInner() {
                     type="number"
                     placeholder="Max ₱"
                     value={priceMax}
-                    onChange={(e) => setPriceMax(e.target.value)}
+                    onChange={(e) => {
+                      const nextPriceMax = e.target.value;
+                      setPriceMax(nextPriceMax);
+                      updateUrlFromState({ priceMax: nextPriceMax });
+                    }}
                     className="w-26 text-sm bg-white dark:bg-[#1e2a3a] border-stone-200 dark:border-white/10 rounded-lg"
                   />
                 </div>
@@ -512,7 +677,10 @@ function HomePageInner() {
             variant={'ghost'}
             size={'sm'}
               key={opt.value}
-              onClick={() => { setSort(opt.value); }}
+              onClick={() => {
+                setSort(opt.value);
+                updateUrlFromState({ sort: opt.value }, "replace");
+              }}
               className={cn(
                 "tab-page-base",
                 sort === opt.value
