@@ -32,7 +32,12 @@ function ConversationShell({ children }: { children: React.ReactNode }) {
     <div className="flex flex-col h-full overflow-hidden bg-[#faf6f0] dark:bg-[#0b0f1a]">
       {conversation ? (
         <>
-          <ChatHeader conversation={conversation} onDelete={onDelete} onMarkedComplete={onMarkedComplete} />
+          <ChatHeader
+            conversation={conversation}
+            onDelete={onDelete}
+            onMarkedComplete={onMarkedComplete}
+            onOfferUpdated={onOfferUpdated}
+          />
           <div className="relative flex-1 overflow-hidden">
             <div className="absolute top-2 left-0 right-0 z-20 pointer-events-auto">
               <ListingContextCard

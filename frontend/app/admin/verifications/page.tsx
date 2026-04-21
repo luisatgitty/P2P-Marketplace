@@ -145,7 +145,7 @@ function IdImageCard({
         {label}
       </p>
       {resolvedUrl ? (
-        <div className="relative w-full rounded-xl overflow-hidden border border-stone-200 dark:border-[#2a2d3e] bg-stone-100 dark:bg-[#13151f] hover:opacity-95 transition-opacity">
+        <div className="relative w-full rounded-lg overflow-hidden border border-stone-200 dark:border-[#2a2d3e] bg-stone-100 dark:bg-[#13151f] hover:opacity-95 transition-opacity">
           <SafeImage
             src={resolvedUrl}
             type="id"
@@ -162,7 +162,7 @@ function IdImageCard({
                 event.stopPropagation();
                 onOpenFullscreen();
               }}
-              className="absolute bottom-2 right-2 w-8 h-8 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black/80 transition-colors"
+              className="absolute bottom-2 right-2 w-8 h-8 rounded-md bg-black/60 text-white flex items-center justify-center hover:bg-black/80 transition-colors"
               aria-label={`Open ${label} fullscreen`}
             >
               <Expand className="w-3.5 h-3.5" />
@@ -170,7 +170,7 @@ function IdImageCard({
           )}
         </div>
       ) : (
-        <div className='aspect-4/3 rounded-xl bg-stone-100 dark:bg-[#13151f] border-2 border-dashed border-stone-200 dark:border-[#2a2d3e] flex flex-col items-center justify-center gap-2'>
+        <div className='aspect-4/3 rounded-lg bg-stone-100 dark:bg-[#13151f] border-2 border-dashed border-stone-200 dark:border-[#2a2d3e] flex flex-col items-center justify-center gap-2'>
           <IdCard className='w-9 h-9 text-stone-300 dark:text-stone-600' />
           <span className='text-xs font-medium text-stone-400 dark:text-stone-500'>
             No image
@@ -191,7 +191,7 @@ function FilterSelect({ value, onChange, options }: {
       <select
         value={value}
         onChange={e => onChange(e.target.value)}
-        className="pl-3 pr-8 py-2 h-9 bg-transparent border border-stone-200 dark:border-[#2a2d3e] rounded-md text-sm text-stone-700 dark:text-stone-200 outline-none focus:border-stone-400 transition-colors appearance-none cursor-pointer dark:bg-[#13151f]"
+        className="pl-3 pr-8 py-2 h-9 bg-transparent border border-stone-200 dark:border-[#2a2d3e] rounded-lg text-sm text-stone-700 dark:text-stone-200 outline-none focus:border-stone-400 transition-colors appearance-none cursor-pointer dark:bg-[#13151f]"
       >
         {options.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
       </select>
@@ -266,10 +266,10 @@ function DetailModal({ verif, onClose, onApprove, onReject, actionLoading = fals
       onClick={e => e.target === e.currentTarget && onClose()}
     >
       {/* ── Modal shell — max-w-5xl two-column ── */}
-      <div className="bg-white dark:bg-[#1c1f2e] rounded-2xl w-full max-w-5xl shadow-2xl flex flex-col max-h-[92vh] overflow-hidden">
+      <div className="bg-white dark:bg-[#1c1f2e] rounded-lg w-full max-w-5xl shadow-2xl flex flex-col max-h-[92vh] overflow-hidden">
 
         {/* ── Header ─────────────────────────────────────────────────────────── */}
-        <div className="bg-[#1e2433] px-6 py-4 flex items-center justify-between shrink-0 rounded-t-2xl">
+        <div className="bg-[#1e2433] px-6 py-4 flex items-center justify-between shrink-0 rounded-t-lg">
           <div className="flex items-center gap-3 min-w-0">
             <IdCard className="w-4 h-4 text-amber-400 shrink-0" />
             <div className="min-w-0">
@@ -279,7 +279,7 @@ function DetailModal({ verif, onClose, onApprove, onReject, actionLoading = fals
               </p>
             </div>
             <span className={cn(
-              "ml-2 text-xs font-bold px-2.5 py-1 rounded-full inline-flex items-center gap-1 shrink-0",
+              "ml-2 text-xs font-bold px-2.5 py-1 rounded-md inline-flex items-center gap-1 shrink-0",
               sc.cls,
             )}>
               <Icon className="w-3 h-3" /> {sc.label}
@@ -417,7 +417,7 @@ function DetailModal({ verif, onClose, onApprove, onReject, actionLoading = fals
                     }
                   </button>
                   {hardwareOpen && (
-                    <pre className="text-sm leading-relaxed font-mono bg-stone-100 dark:bg-[#13151f] border border-stone-200 dark:border-[#2a2d3e] rounded-xl p-3 overflow-x-auto text-stone-600 dark:text-stone-300 whitespace-pre-wrap break-all">
+                    <pre className="text-sm leading-relaxed font-mono bg-stone-100 dark:bg-[#13151f] border border-stone-200 dark:border-[#2a2d3e] rounded-lg p-3 overflow-x-auto text-stone-600 dark:text-stone-300 whitespace-pre-wrap break-all">
                       {hardwarePretty}
                     </pre>
                   )}
@@ -429,7 +429,7 @@ function DetailModal({ verif, onClose, onApprove, onReject, actionLoading = fals
             {verif.reason && (
               <>
                 <Separator className="dark:bg-[#2a2d3e]" />
-                <div className="rounded-xl bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 p-3.5 space-y-1.5">
+                <div className="rounded-lg bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 p-3.5 space-y-1.5">
                   <SectionLabel>Reason</SectionLabel>
                   <p className="text-sm text-red-600 dark:text-red-400 leading-relaxed">
                     {verif.reason}
@@ -498,11 +498,11 @@ function DetailModal({ verif, onClose, onApprove, onReject, actionLoading = fals
         </div>
 
         {/* ── Footer actions ───────────────────────────────────────────────────── */}
-        <div className="shrink-0 border-t border-stone-200 dark:border-[#2a2d3e] px-6 py-4 flex items-center gap-2.5 rounded-b-2xl bg-white dark:bg-[#1c1f2e]">
+        <div className="shrink-0 border-t border-stone-200 dark:border-[#2a2d3e] px-6 py-4 flex items-center gap-2.5 rounded-b-lg bg-white dark:bg-[#1c1f2e]">
           <Button
             type="button" variant="outline"
             onClick={onClose}
-            className="rounded-full dark:border-[#2a2d3e] dark:text-stone-300 dark:hover:bg-[#252837]"
+            className="rounded-lg dark:border-[#2a2d3e] dark:text-stone-300 dark:hover:bg-[#252837]"
           >
             Close
           </Button>
@@ -513,7 +513,7 @@ function DetailModal({ verif, onClose, onApprove, onReject, actionLoading = fals
                 type="button" variant="outline"
                 disabled={!hasReason || actionLoading}
                 onClick={() => void onReject(verif.id, rejectReason.trim())}
-                className="rounded-full border-red-200 dark:border-red-800 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 hover:text-red-600 hover:border-red-300 disabled:opacity-40 disabled:cursor-not-allowed"
+                className="rounded-lg border-red-200 dark:border-red-800 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 hover:text-red-600 hover:border-red-300 disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 <XCircle className="w-4 h-4 mr-1.5" />
                 Reject
@@ -522,7 +522,7 @@ function DetailModal({ verif, onClose, onApprove, onReject, actionLoading = fals
                 type="button"
                 disabled={!hasReason || actionLoading}
                 onClick={() => void onApprove(verif.id, rejectReason.trim())}
-                className="rounded-full bg-teal-700 hover:bg-teal-600 text-white font-bold"
+                className="rounded-lg bg-teal-700 hover:bg-teal-600 text-white font-bold"
               >
                 <CheckCircle2 className="w-4 h-4 mr-1.5" />
                 Approve
@@ -821,7 +821,7 @@ export default function VerificationsPage() {
           <Card
             key={label}
             className={cn(
-              "p-4 rounded-md cursor-pointer hover:shadow-sm transition-all card-glass border border-stone-200 dark:border-[#2a2d3e]",
+              "p-4 rounded-lg cursor-pointer hover:shadow-sm transition-all card-glass border border-stone-200 dark:border-[#2a2d3e]",
               statusFilter === status && "ring-2 ring-offset-1 ring-current",
             )}
             onClick={() => {
@@ -968,7 +968,7 @@ export default function VerificationsPage() {
 
                         {/* Status */}
                         <TableCell className="py-3.5 whitespace-nowrap">
-                          <span className={cn("inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full", sc.cls)}>
+                          <span className={cn("inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-md", sc.cls)}>
                             <StatusIcon className="w-2.5 h-2.5" /> {sc.label}
                           </span>
                         </TableCell>

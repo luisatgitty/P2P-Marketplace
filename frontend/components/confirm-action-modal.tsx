@@ -28,7 +28,7 @@ export function ConfirmActionModal({
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div className="bg-white dark:bg-[#1c1f2e] rounded-2xl w-full max-w-sm shadow-2xl p-6">
+      <div className="bg-white dark:bg-[#1c1f2e] rounded-lg w-full max-w-sm shadow-2xl p-6">
         <h2 className="font-bold text-stone-900 dark:text-stone-50 text-lg mb-2">{title}</h2>
         <p className="text-sm text-stone-600 dark:text-stone-300 mb-6">{message}</p>
 

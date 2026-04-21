@@ -66,7 +66,7 @@ const IMAGE_CONFIG: Record<
     fallback: brokenImage,
     alt: 'Listing thumbnail',
     class:
-      'w-full h-full rounded-md object-cover bg-stone-200 border-2 border-stone-900',
+      'w-full h-full rounded-lg object-cover bg-stone-200',
   },
   card: {
     fallback: brokenImage,

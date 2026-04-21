@@ -1,8 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useMemo, useRef, useState, useEffect } from "react";
 import { useUser }           from "@/utils/UserContext";
+import { useUnsavedChanges } from "@/utils/UnsavedChangesContext";
+import { useConfirmDialog }  from "@/utils/ConfirmDialogContext";
 import { Button }            from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input }             from "@/components/ui/input";
@@ -30,6 +33,7 @@ import {
   Send,
   ShieldCheck,
   Smartphone,
+  X,
 } from "lucide-react";
 import { getDeviceInfo } from "@/utils/device";
 import {
@@ -160,7 +164,7 @@ function CameraInput({ label, capture, file, inputRef, onChange }: CameraInputPr
         onClick={() => inputRef.current?.click()}
         onKeyDown={e => e.key === "Enter" && inputRef.current?.click()}
         className={cn(
-          "flex flex-col items-center justify-center gap-2 p-5 rounded-xl border-2 border-dashed cursor-pointer transition-colors",
+          "flex flex-col items-center justify-center gap-2 p-5 rounded-lg border-2 border-dashed cursor-pointer transition-colors",
           file
             ? "border-teal-400 bg-teal-50 dark:bg-teal-950/20"
             : "border-stone-200 dark:border-[#2a2d3e] hover:border-stone-400 dark:hover:border-stone-500 bg-stone-50 dark:bg-[#13151f]",
@@ -196,7 +200,10 @@ function CameraInput({ label, capture, file, inputRef, onChange }: CameraInputPr
 
 // ── Main page ──────────────────────────────────────────────────────────────────
 export default function BecomeSellerPage() {
+  const router = useRouter();
   const { user, saveUserData } = useUser();
+  const { setHasUnsavedChanges } = useUnsavedChanges();
+  const { openDialog } = useConfirmDialog();
 
   // Device
   const [isMobile,  setIsMobile]  = useState(false);
@@ -251,6 +258,10 @@ export default function BecomeSellerPage() {
   const hasFullLocation        = [user?.locationBrgy, user?.locationCity, user?.locationProv]
     .every(v => Boolean((v ?? "").trim()));
   const hasProfileSetupRequirement = hasPhoneNumber && hasFullLocation;
+  const initialPhoneNumber = useMemo(
+    () => normalizeToLocalPhoneDigits(user?.phoneNumber),
+    [user?.phoneNumber],
+  );
 
   // ── Derived booleans ────────────────────────────────────────────────────────
   const phoneComplete = phoneNumber.replace(/\D/g, "").length === PHONE_DIGITS;
@@ -320,11 +331,64 @@ export default function BecomeSellerPage() {
   // Pre-fill phone from user profile
   useEffect(() => {
     if (hasPrefilledPhone.current) return;
-    const normalized = normalizeToLocalPhoneDigits(user?.phoneNumber);
-    if (!normalized) return;
-    setPhoneNumber(normalized);
+    if (!initialPhoneNumber) return;
+    setPhoneNumber(initialPhoneNumber);
     hasPrefilledPhone.current = true;
-  }, [user?.phoneNumber]);
+  }, [initialPhoneNumber]);
+
+  const hasUnsavedChanges = useMemo(
+    () =>
+      agreed ||
+      Boolean(idType) ||
+      Boolean(firstName.trim()) ||
+      Boolean(lastName.trim()) ||
+      Boolean(dob.trim()) ||
+      Boolean(idNumber.trim()) ||
+      idFront instanceof File ||
+      idBack instanceof File ||
+      selfie instanceof File ||
+      phoneNumber !== initialPhoneNumber ||
+      Boolean(otpValue) ||
+      showOtp ||
+      otpVerified,
+    [
+      agreed,
+      idType,
+      firstName,
+      lastName,
+      dob,
+      idNumber,
+      idFront,
+      idBack,
+      selfie,
+      phoneNumber,
+      initialPhoneNumber,
+      otpValue,
+      showOtp,
+      otpVerified,
+    ],
+  );
+
+  useEffect(() => {
+    setHasUnsavedChanges(hasUnsavedChanges);
+  }, [hasUnsavedChanges, setHasUnsavedChanges]);
+
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (!hasUnsavedChanges) return;
+      e.preventDefault();
+      e.returnValue = "";
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [hasUnsavedChanges]);
+
+  useEffect(() => {
+    return () => {
+      setHasUnsavedChanges(false);
+    };
+  }, [setHasUnsavedChanges]);
 
   // ── Helpers ──────────────────────────────────────────────────────────────────
   function showToastMsg(msg: string) {
@@ -577,6 +641,7 @@ export default function BecomeSellerPage() {
         selfieImage,
       });
 
+      setHasUnsavedChanges(false);
       setSubmitted(true);
       if (user) saveUserData({ ...user, status: "PENDING" });
       showToastMsg("Application submitted! Under review.");
@@ -601,6 +666,21 @@ export default function BecomeSellerPage() {
       }
       setStep(s => (s - 1) as VerifyStep);
     }
+  }
+
+  function discardProgress() {
+    openDialog({
+      title: "Discard Changes?",
+      message: "Are you sure you want to discard your changes? This action cannot be undone.",
+      confirmText: "Discard",
+      cancelText: "Cancel",
+      isDangerous: true,
+      onConfirm: () => {
+        setHasUnsavedChanges(false);
+        router.push("/");
+      },
+      onCancel: () => {},
+    });
   }
 
   // ── Terminal states ────────────────────────────────────────────────────────
@@ -688,7 +768,7 @@ export default function BecomeSellerPage() {
                 </div>
 
                 <div className={cn(
-                  "flex items-start gap-3 p-4 rounded-xl border",
+                  "flex items-start gap-3 p-4 rounded-lg border",
                   isMobile
                     ? "border-teal-200 dark:border-teal-800 bg-teal-50 dark:bg-teal-950/20"
                     : "border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/20",
@@ -717,7 +797,7 @@ export default function BecomeSellerPage() {
                 </div>
 
                 <div className={cn(
-                  "flex items-start gap-3 p-4 rounded-xl border",
+                  "flex items-start gap-3 p-4 rounded-lg border",
                   hasProfileSetupRequirement
                     ? "border-teal-200 dark:border-teal-800 bg-teal-50 dark:bg-teal-950/20"
                     : "border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/20",
@@ -760,7 +840,7 @@ export default function BecomeSellerPage() {
                     { Icon: Camera,  iconCls: "text-stone-500 dark:text-stone-400", title: "Selfie with your ID",    desc: "A live photo of you holding your ID, captured using your smartphone camera" },
                     { Icon: Phone,   iconCls: "text-stone-500 dark:text-stone-400", title: "Verified Phone Number",  desc: "A valid PH mobile number for OTP verification and buyer contact" },
                   ].map(({ Icon, iconCls, title, desc }) => (
-                    <div key={title} className="flex items-start gap-3 p-4 border border-stone-200 dark:border-[#2a2d3e] rounded-xl bg-stone-50 dark:bg-[#13151f]">
+                    <div key={title} className="flex items-start gap-3 p-4 border border-stone-200 dark:border-[#2a2d3e] rounded-lg bg-stone-50 dark:bg-[#13151f]">
                       <Icon className={cn("w-5 h-5 shrink-0 mt-0.5", iconCls)} />
                       <div>
                         <p className="font-semibold text-sm text-stone-800 dark:text-stone-200">{title}</p>
@@ -813,7 +893,7 @@ export default function BecomeSellerPage() {
                       id="idType"
                       value={idType}
                       onChange={e => setIdType(e.target.value as IdType)}
-                      className="w-full pl-9 pr-8 py-2.5 rounded-xl text-sm border bg-stone-50 dark:bg-[#13151f] border-stone-200 dark:border-[#2a2d3e] text-stone-800 dark:text-stone-100 outline-none focus:border-stone-400 dark:focus:border-stone-500 transition-colors appearance-none cursor-pointer"
+                      className="w-full pl-9 pr-8 py-2.5 rounded-lg text-sm border bg-stone-50 dark:bg-[#13151f] border-stone-200 dark:border-[#2a2d3e] text-stone-800 dark:text-stone-100 outline-none focus:border-stone-400 dark:focus:border-stone-500 transition-colors appearance-none cursor-pointer"
                     >
                       {ID_OPTIONS.map(opt => (
                         <option key={opt.value} value={opt.value} disabled={opt.value === ""}>{opt.label}</option>
@@ -864,7 +944,7 @@ export default function BecomeSellerPage() {
                 </p>
 
                 {step2Err && (
-                  <div className="flex items-center gap-2 px-3 py-2.5 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-xl text-xs text-red-600 dark:text-red-400">
+                  <div className="flex items-center gap-2 px-3 py-2.5 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-lg text-xs text-red-600 dark:text-red-400">
                     <AlertTriangle className="w-3.5 h-3.5 shrink-0" /> {step2Err}
                   </div>
                 )}
@@ -900,7 +980,7 @@ export default function BecomeSellerPage() {
                     />
                     {/* ── CHANGED: button now shows loading state and calls real API ── */}
                     <Button
-                      className="rounded-full bg-stone-900 hover:bg-stone-800 text-white font-bold gap-2 disabled:opacity-50"
+                      className="rounded-lg bg-stone-900 hover:bg-stone-800 text-white font-bold gap-2 disabled:opacity-50"
                       onClick={() => void handleSendOtp()}
                       disabled={!phoneComplete || sendingOtp}
                     >
@@ -1008,18 +1088,25 @@ export default function BecomeSellerPage() {
                 Step {step} of {TOTAL}
               </span>
               <div className="flex gap-2">
+                <Button
+                  variant="destructive"
+                  onClick={discardProgress}
+                  className="rounded-full text-sm font-bold hover:bg-red-600 dark:hover:bg-red-600"
+                >
+                  <X className="w-4 h-4" /> Discard
+                </Button>
                 {step > 1 && (
                   <Button
                     variant="outline"
                     onClick={prev}
-                    className="rounded-full text-sm dark:border-[#2a2d3e] dark:text-stone-300 dark:hover:bg-[#252837] disabled:opacity-50"
+                    className="rounded-lg text-sm dark:border-[#2a2d3e] dark:text-stone-300 dark:hover:bg-[#252837] disabled:opacity-50"
                     disabled={!canResend || sendingOtp}
                   >
                     Back
                   </Button>
                 )}
                 <Button
-                  className="rounded-full bg-stone-900 hover:bg-stone-800 text-white text-sm font-bold disabled:opacity-50"
+                  className="rounded-lg bg-stone-900 hover:bg-stone-800 text-white text-sm font-bold disabled:opacity-50"
                   onClick={() => void next()}
                   disabled={isNextDisabled}
                   title={!isMobile ? "Please open this page on a smartphone with a camera to continue" : undefined}

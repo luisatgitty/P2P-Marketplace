@@ -115,7 +115,7 @@ function AttachmentGrid({
           />
           <div className="absolute inset-0 flex items-center justify-center bg-black/30">
             <div className="w-10 h-10 rounded-full bg-white/90 flex items-center justify-center shadow-md">
-              <Play size={16} className="text-stone-800 ml-0.5" fill="currentColor" />
+              <Play size={16} className="text-stone-800" fill="currentColor" />
             </div>
           </div>
         </>
@@ -184,7 +184,7 @@ function ReplyQuote({ replyTo, isMe }: {
   return (
     <div
       className={cn(
-        "flex gap-2 px-3 pt-2 pb-1 rounded-t-xl text-xs",
+        "flex gap-2 px-3 pt-2 pb-1 rounded-t-lg text-xs",
         isMe
           ? "bg-amber-800/40"
           : "bg-stone-100 dark:bg-stone-700/40"
@@ -228,7 +228,7 @@ function ReactionPicker({
       className={cn(
         "fixed z-50",
         "flex items-center gap-1 px-2 py-1.5",
-        "bg-white dark:bg-[#1c1f2e] border border-border rounded-full shadow-xl",
+        "bg-white dark:bg-[#1c1f2e] border border-border rounded-lg shadow-xl",
         "animate-in fade-in zoom-in-95 duration-100"
       )}
     >
@@ -238,8 +238,8 @@ function ReactionPicker({
           onClick={() => { onSelect(currentReaction === type ? null : type); onClose(); }}
           title={label}
           className={cn(
-            "text-lg leading-none p-1 rounded-full transition-all duration-100",
-            "hover:scale-125 hover:bg-stone-100 dark:hover:bg-white/10",
+            "text-lg leading-none p-1 rounded-lg transition-all duration-100",
+            "hover:scale-150",
             currentReaction === type && "bg-amber-100 dark:bg-amber-900/30 scale-110"
           )}
         >
@@ -307,7 +307,7 @@ function ContextMenu({
       style={style}
       className={cn(
         "fixed z-50 w-36",
-        "bg-white dark:bg-[#1c1f2e] border border-border rounded-xl shadow-xl overflow-hidden",
+        "bg-white dark:bg-[#1c1f2e] border border-border rounded-lg shadow-xl overflow-hidden",
         "animate-in fade-in slide-in-from-bottom-1 duration-100"
       )}
     >
@@ -358,7 +358,7 @@ function ReactionSummary({
         <span
           key={type}
           className={cn(
-            "inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[11px]",
+            "inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-lg text-[11px]",
             "bg-white dark:bg-[#252837] border border-border shadow-sm leading-none"
           )}
         >
@@ -430,7 +430,7 @@ export default function MessageBubble({
   if (message.isUnsent) {
     return (
       <div className={cn("flex my-0.5", isMe ? "justify-end" : "justify-start")}>
-        <p className="italic text-xs text-stone-400 dark:text-stone-600 px-3.5 py-2 rounded-2xl border border-dashed border-stone-200 dark:border-stone-700">
+        <p className="italic text-xs text-stone-400 dark:text-stone-600 px-3.5 py-2 rounded-lg border border-dashed border-stone-200 dark:border-stone-700">
           {isMe ? "You unsent a message." : "This message was unsent."}
         </p>
       </div>
@@ -594,7 +594,7 @@ export default function MessageBubble({
         <button
           ref={reactionTriggerRef}
           onClick={() => { setShowMenu(false); setShowReactionPicker((v) => !v); }}
-          className="p-1.5 rounded-full text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-white/10 transition-colors"
+          className="p-1.5 rounded-lg text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-white/10 transition-colors"
           aria-label="React"
         >
           <SmilePlus size={15} />
@@ -615,7 +615,7 @@ export default function MessageBubble({
         <button
           ref={menuTriggerRef}
           onClick={() => { setShowReactionPicker(false); setShowMenu((v) => !v); }}
-          className="p-1.5 rounded-full text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-white/10 transition-colors"
+          className="p-1.5 rounded-lg text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-white/10 transition-colors"
           aria-label="More options"
         >
           <MoreHorizontal size={15} />
@@ -664,8 +664,8 @@ export default function MessageBubble({
           className={cn(
             hasAttachments ? "w-full overflow-hidden" : "w-fit max-w-full overflow-hidden",
             // If there's a reply quote, connect the top corners to it
-            message.replyTo ? "rounded-b-2xl rounded-t-none" : "rounded-2xl",
-            isMe ? "rounded-br-sm" : "rounded-bl-sm",
+            message.replyTo ? "rounded-b-lg rounded-t-none" : "rounded-lg",
+            isMe ? "rounded-br-lg" : "rounded-bl-lg",
             // Background
             hasAttachments && !hasContent
               ? "bg-transparent"   // attachments-only: no bubble bg
@@ -676,7 +676,7 @@ export default function MessageBubble({
         >
           {/* Attachment grid */}
           {hasAttachments && (
-            <div className={cn(hasContent && "rounded-t-xl px-1 pt-1 overflow-hidden")}>
+            <div className={cn(hasContent && "rounded-t-lg px-1 pt-1 overflow-hidden")}>
               <AttachmentGrid attachments={message.attachments!} onMediaClick={onOpenMediaViewer} />
             </div>
           )}

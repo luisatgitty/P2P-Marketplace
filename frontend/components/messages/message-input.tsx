@@ -201,15 +201,15 @@ return (
     {/* ── Reply banner ───────────────────────────────────────────────── */}
     {replyTo && (
       <div className={cn(
-        "flex items-center gap-2 px-3 py-2 mb-2 rounded-xl",
+        "flex items-center gap-2 px-3 py-2 ml-16 mr-10 mb-2 rounded-lg",
         "bg-stone-50 dark:bg-[#13151f] border border-border"
       )}>
         <CornerUpLeft size={13} className="text-amber-600 dark:text-amber-500 shrink-0" />
         <div className="flex-1 min-w-0">
-          <p className="text-[10px] font-semibold text-amber-700 dark:text-amber-500 leading-none mb-0.5">
+          <p className="text-xs font-semibold text-amber-700 dark:text-amber-500 leading-none mb-0.5">
             Replying to {replyTo.senderName}
           </p>
-          <p className="text-xs text-stone-500 dark:text-stone-400 truncate">
+          <p className="text-sm text-stone-500 dark:text-stone-400 truncate">
             {replyTo.contentPreview}
           </p>
         </div>

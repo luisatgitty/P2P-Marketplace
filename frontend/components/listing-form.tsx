@@ -17,6 +17,8 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useUser } from "@/utils/UserContext";
+import { useUnsavedChanges } from "@/utils/UnsavedChangesContext";
+import { useConfirmDialog } from "@/utils/ConfirmDialogContext";
 import {
   getBarangaysByCity,
   getCitiesByProvince,
@@ -376,7 +378,7 @@ function StyledSelect({
       onChange={(e) => onChange(e.target.value)}
       {...props}
       className={cn(
-        "w-full rounded-md border border-stone-200 dark:border-[#2a2d3e]",
+        "w-full rounded-lg border border-stone-200 dark:border-[#2a2d3e]",
         "bg-white dark:bg-[#13151f] text-stone-800 dark:text-stone-100 text-sm",
         "px-3.5 py-2.5 outline-none appearance-none transition-colors",
         "focus:border-stone-400 dark:focus:border-stone-500",
@@ -409,7 +411,7 @@ function StyledTextarea({
       rows={rows}
       maxLength={maxLength}
       className={cn(
-        "w-full rounded-xl border border-stone-200 dark:border-[#2a2d3e]",
+        "w-full rounded-lg border border-stone-200 dark:border-[#2a2d3e]",
         "bg-white dark:bg-[#13151f] text-stone-800 dark:text-stone-100 text-sm",
         "px-3.5 py-2.5 resize-y outline-none transition-colors",
         "focus:border-stone-400 dark:focus:border-stone-500",
@@ -428,7 +430,7 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <div className="bg-white dark:bg-[#1c1f2e] rounded-2xl border border-stone-200 dark:border-[#2a2d3e] shadow-sm p-5 sm:p-6 flex flex-col gap-5">
+    <div className="bg-white dark:bg-[#1c1f2e] rounded-lg border border-stone-200 dark:border-[#2a2d3e] shadow-sm p-5 sm:p-6 flex flex-col gap-5">
       {title && (
         <h3 className="text-sm font-bold text-stone-700 dark:text-stone-300 pb-2.5 border-b border-stone-100 dark:border-[#2a2d3e]">
           {title}
@@ -453,7 +455,7 @@ function SectionWithCount({
   required?: boolean;
 }) {
   return (
-    <div className="bg-white dark:bg-[#1c1f2e] rounded-2xl border border-stone-200 dark:border-[#2a2d3e] shadow-sm p-5 sm:p-6 flex flex-col gap-5">
+    <div className="bg-white dark:bg-[#1c1f2e] rounded-lg border border-stone-200 dark:border-[#2a2d3e] shadow-sm p-5 sm:p-6 flex flex-col gap-5">
       {title && (
         <h3 className="text-sm font-bold text-stone-700 dark:text-stone-300 pb-2.5 border-b border-stone-100 dark:border-[#2a2d3e]">
           {title}{" "}
@@ -494,7 +496,7 @@ function RadioOption({
       type="button"
       onClick={onClick}
       className={cn(
-        "flex items-center gap-3 w-full rounded-xl border-2 px-4 py-3 text-left transition-all",
+        "flex items-center gap-3 w-full rounded-lg border-2 px-3 py-2 text-left transition-all",
         selected
           ? `${cfg.accentBorder} ${cfg.accentBg}`
           : "border-stone-200 dark:border-[#2a2d3e] hover:border-stone-300 dark:hover:border-stone-600",
@@ -522,7 +524,7 @@ function RadioOption({
         >
           {label}
         </p>
-        <p className="text-xs text-stone-400 dark:text-stone-500 mt-0.5">
+        <p className="text-xs text-stone-400 dark:text-stone-500">
           {hint}
         </p>
       </div>
@@ -578,7 +580,7 @@ function TagInput({
           {tags.map((tag, i) => (
             <div
               key={tag}
-              className="flex items-center gap-2 px-3 py-2.5 rounded-xl border border-stone-200 dark:border-[#2a2d3e] bg-stone-50 dark:bg-[#13151f]"
+              className="flex items-center gap-2 px-3 py-2.5 rounded-lg border border-stone-200 dark:border-[#2a2d3e] bg-stone-50 dark:bg-[#13151f]"
             >
               <CheckCircle2
                 size={13}
@@ -671,7 +673,7 @@ function ImageUploadZone({
             handleFiles(e.dataTransfer.files);
           }}
           className={cn(
-            "w-full rounded-2xl border-2 border-dashed border-stone-200 dark:border-[#2a2d3e]",
+            "w-full rounded-lg border-2 border-dashed border-stone-200 dark:border-[#2a2d3e]",
             "bg-stone-50 dark:bg-[#13151f] text-stone-400",
             "hover:border-stone-400 dark:hover:border-stone-500 transition-colors",
             "p-8 flex flex-col items-center gap-3 cursor-pointer",
@@ -702,7 +704,7 @@ function ImageUploadZone({
           {images.map((img, i) => (
             <div
               key={img.preview}
-              className="relative group aspect-square rounded-xl overflow-hidden bg-stone-100 dark:bg-[#13151f]"
+              className="relative group aspect-square rounded-lg overflow-hidden bg-stone-100 dark:bg-[#13151f]"
             >
               <img
                 src={img.preview}
@@ -727,7 +729,7 @@ function ImageUploadZone({
             <button
               type="button"
               onClick={() => fileRef.current?.click()}
-              className="aspect-square rounded-xl border-2 border-dashed border-stone-200 dark:border-[#2a2d3e] flex items-center justify-center text-stone-400 hover:border-stone-400 transition-colors"
+              className="aspect-square rounded-lg border-2 border-dashed border-stone-200 dark:border-[#2a2d3e] flex items-center justify-center text-stone-400 hover:border-stone-400 transition-colors"
             >
               <Plus size={18} />
             </button>
@@ -856,6 +858,8 @@ export default function ListingForm({
 }: ListingFormProps) {
   const router = useRouter();
   const { user } = useUser();
+  const { setHasUnsavedChanges } = useUnsavedChanges();
+  const { openDialog } = useConfirmDialog();
   const cfg = FORM_CONFIG[type];
   const initialAvailableDate = parseISODate(initialData?.availability ?? "");
   const now = new Date();
@@ -863,6 +867,7 @@ export default function ListingForm({
   const [step, setStep] = useState(0);
   const [submitting, setSub] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [hasUnsavedChanges, setHasUnsavedChangesLocal] = useState(false);
 
   // Common
   const [title, setTitle] = useState(initialData?.title ?? "");
@@ -928,6 +933,78 @@ export default function ListingForm({
 
   const pHolderIncludes = "Add what's included with your listing...";
   const pHolderHighlights = "Add what makes your listing stand out...";
+
+  // Track unsaved changes
+  useEffect(() => {
+    const hasChanges = !!(
+      title ||
+      category ||
+      price ||
+      description ||
+      highlights.length > 0 ||
+      locationCity ||
+      locationProv ||
+      locationBrgy ||
+      condition ||
+      deliveryMethod ||
+      minPeriod ||
+      availability ||
+      deposit ||
+      dayoff.length > 0 ||
+      turnaround ||
+      serviceArea ||
+      arrangement ||
+      inclusions.length > 0 ||
+      images.length > 0 ||
+      amenities.length > 0 ||
+      timeWindows.length > 0
+    );
+    setHasUnsavedChangesLocal(hasChanges);
+    setHasUnsavedChanges(hasChanges);
+  }, [
+    title,
+    category,
+    price,
+    description,
+    highlights,
+    locationCity,
+    locationProv,
+    locationBrgy,
+    condition,
+    deliveryMethod,
+    minPeriod,
+    availability,
+    deposit,
+    dayoff,
+    turnaround,
+    serviceArea,
+    arrangement,
+    inclusions,
+    images,
+    amenities,
+    timeWindows,
+    setHasUnsavedChanges,
+  ]);
+
+  // Warn before leaving page if there are unsaved changes
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasUnsavedChanges) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [hasUnsavedChanges]);
+
+  // Cleanup unsaved changes on unmount
+  useEffect(() => {
+    return () => {
+      setHasUnsavedChanges(false);
+    };
+  }, [setHasUnsavedChanges]);
 
   // Default location from user profile for create flow only.
   useEffect(() => {
@@ -1093,11 +1170,38 @@ export default function ListingForm({
   };
 
   const discardProgress = () => {
-    const confirmed = window.confirm(
-      "Are you sure you want to discard your changes?",
-    );
-    if (!confirmed) return;
-    router.back();
+    openDialog({
+      title: "Discard Changes?",
+      message: "Are you sure you want to discard your changes? This action cannot be undone.",
+      confirmText: "Discard",
+      cancelText: "Cancel",
+      isDangerous: true,
+      onConfirm: () => {
+        setHasUnsavedChanges(false);
+        router.back();
+      },
+      onCancel: () => {},
+    });
+  };
+
+  const handleNavigateBack = () => {
+    if (!hasUnsavedChanges) {
+      router.push(isEdit ? `/listing/${listingId}` : "/create");
+      return;
+    }
+
+    openDialog({
+      title: "Discard Changes?",
+      message: "Are you sure you want to discard your changes? This action cannot be undone.",
+      confirmText: "Discard",
+      cancelText: "Cancel",
+      isDangerous: true,
+      onConfirm: () => {
+        setHasUnsavedChanges(false);
+        router.push(isEdit ? `/listing/${listingId}` : "/create");
+      },
+      onCancel: () => {},
+    });
   };
   
   const submit = async (e: React.FormEvent) => {
@@ -1212,6 +1316,7 @@ export default function ListingForm({
         );
       }
 
+      setHasUnsavedChanges(false);
       const savedListingId = parsedJson?.data?.listingId;
       router.push(`/listing/${savedListingId ?? listingId ?? "1"}`);
     } catch (err) {
@@ -1311,7 +1416,7 @@ export default function ListingForm({
     <Section title="Availability & Schedule">
       <div className="flex flex-col gap-5">
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_180px]">
-          <div className="rounded-2xl border border-stone-200 bg-stone-50 p-4 dark:border-[#2a2d3e] dark:bg-[#13151f]">
+          <div className="rounded-lg border border-stone-200 bg-stone-50 p-4 dark:border-[#2a2d3e] dark:bg-[#13151f]">
             <div className="mb-3 flex items-center justify-between gap-3">
               <p className="text-[11px] font-bold uppercase tracking-widest text-stone-500 dark:text-stone-400">
                 Available From
@@ -1354,7 +1459,7 @@ export default function ListingForm({
             <ErrMsg msg={errors.availability} />
           </div>
 
-          <div className="rounded-2xl border border-stone-200 bg-white p-4 dark:border-[#2a2d3e] dark:bg-[#13151f]">
+          <div className="rounded-lg border border-stone-200 bg-white p-4 dark:border-[#2a2d3e] dark:bg-[#13151f]">
             <p className="mb-2 text-[11px] font-bold uppercase tracking-widest text-stone-500 dark:text-stone-400">
               Days Off
             </p>
@@ -1379,7 +1484,7 @@ export default function ListingForm({
           </div>
         </div>
 
-        <div className="rounded-2xl border border-stone-200 bg-stone-50 p-4 dark:border-[#2a2d3e] dark:bg-[#13151f]">
+        <div className="rounded-lg border border-stone-200 bg-stone-50 p-4 dark:border-[#2a2d3e] dark:bg-[#13151f]">
           <p className="mb-3 text-[11px] font-bold uppercase tracking-widest text-stone-500 dark:text-stone-400">
             Time Window{" "}
             <span
@@ -1433,7 +1538,7 @@ export default function ListingForm({
               {timeWindows.map((slot) => (
                 <div
                   key={slot.id}
-                  className="flex items-center justify-between gap-2 rounded-xl border border-stone-200 bg-white px-3 py-2 text-sm dark:border-[#2a2d3e] dark:bg-[#1c1f2e]"
+                  className="flex items-center justify-between gap-2 rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm dark:border-[#2a2d3e] dark:bg-[#1c1f2e]"
                 >
                   <span className="font-semibold text-stone-700 dark:text-stone-200">
                     {toTwelveHour(slot.start)} - {toTwelveHour(slot.end)}
@@ -1441,7 +1546,7 @@ export default function ListingForm({
                   <button
                     type="button"
                     onClick={() => removeTimeWindow(slot.id)}
-                    className="rounded-md p-1 text-stone-400 transition-colors hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-950/20"
+                    className="rounded-lg p-1 text-stone-400 transition-colors hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-950/20"
                     aria-label="Remove window time"
                   >
                     <X size={12} />
@@ -1497,8 +1602,8 @@ export default function ListingForm({
           <div>
             <FieldLabel required>Price</FieldLabel>
             <div className="flex gap-2">
-              <div className="flex rounded-md shadow-xs">
-                <span className='border-input bg-background text-muted-foreground inline-flex items-center rounded-l-md border px-3 text-sm'>
+              <div className="flex rounded-lg shadow-xs">
+                <span className='border-input bg-background text-muted-foreground inline-flex items-center rounded-l-lg border px-3 text-sm'>
                   ₱
                 </span>
                 <Input
@@ -1970,7 +2075,7 @@ export default function ListingForm({
 
       <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
         {/* Step indicator */}
-        <div className="bg-white dark:bg-[#1c1f2e] rounded-2xl border border-stone-200 dark:border-[#2a2d3e] shadow-sm p-5 mb-5">
+        <div className="bg-white dark:bg-[#1c1f2e] rounded-lg border border-stone-200 dark:border-[#2a2d3e] shadow-sm p-5 mb-5">
           <StepIndicator steps={cfg.steps} current={step} cfg={cfg} />
         </div>
 
@@ -1997,9 +2102,7 @@ export default function ListingForm({
               ) : (
                 <Button
                   variant={'ghost'}
-                  onClick={() =>
-                    router.push(isEdit ? `/listing/${listingId}` : "/create")
-                  }
+                  onClick={handleNavigateBack}
                 >
                   <ChevronLeft size={16} />{" "}
                   {isEdit ? "Back to listing" : "Change type"}
@@ -2008,13 +2111,15 @@ export default function ListingForm({
             </div>
 
             <div className="flex items-center gap-4">
-              <Button
-                variant={'destructive'}
-                onClick={discardProgress}
-                className="hover:bg-red-600 dark:hover:bg-red-600 font-bold"
-              >
-                <X size={14} /> Discard
-              </Button>
+              {hasUnsavedChanges && (
+                <Button
+                  variant={'destructive'}
+                  onClick={discardProgress}
+                  className="hover:bg-red-600 dark:hover:bg-red-600 font-bold"
+                >
+                  <X size={14} /> Discard
+                </Button>
+              )}
 
               {step < 2 ? (
                 <Button

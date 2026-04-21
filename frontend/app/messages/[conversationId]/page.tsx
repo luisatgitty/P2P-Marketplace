@@ -121,7 +121,7 @@ function EditModal({
   return (
     <div className="fixed inset-0 z-100 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm p-4">
       <div className={cn(
-        "w-full max-w-md bg-white dark:bg-[#1c1f2e] rounded-2xl shadow-2xl border border-border",
+        "w-full max-w-md bg-white dark:bg-[#1c1f2e] rounded-lg shadow-2xl border border-border",
         "animate-in fade-in slide-in-from-bottom-4 duration-200"
       )}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-border">
@@ -139,7 +139,7 @@ function EditModal({
             }}
             rows={3}
             className={cn(
-              "w-full resize-none rounded-xl px-3.5 py-2.5 text-sm outline-none",
+              "w-full resize-none rounded-lg px-3.5 py-2.5 text-sm outline-none",
               "bg-stone-50 dark:bg-[#13151f] border border-border",
               "text-stone-800 dark:text-stone-100 focus:ring-1 focus:ring-amber-500/50"
             )}

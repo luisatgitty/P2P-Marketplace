@@ -50,7 +50,7 @@ export default function NotFoundPage() {
         <div className="w-full max-w-lg">
 
           {/* ── Card ── */}
-          <div className="bg-white dark:bg-[#1c1f2e] rounded-3xl border border-stone-200 dark:border-[#2a2d3e] shadow-sm overflow-hidden">
+          <div className="bg-white dark:bg-[#1c1f2e] rounded-lg border border-stone-200 dark:border-[#2a2d3e] shadow-sm overflow-hidden">
 
             {/* Card header */}
             <div className="bg-[#1e2433] px-8 py-10 flex flex-col items-center text-center relative overflow-hidden">
@@ -114,7 +114,7 @@ export default function NotFoundPage() {
               <div className="flex flex-col gap-2.5">
                 <Link
                   href="/"
-                  className="flex items-center justify-center gap-2 w-full py-3 rounded-full text-sm font-bold text-white transition-all hover:opacity-90 active:scale-[0.98]"
+                  className="flex items-center justify-center gap-2 w-full py-3 rounded-lg text-sm font-bold text-white transition-all hover:opacity-90 active:scale-[0.98]"
                   style={{ background: "linear-gradient(135deg, #1e2433 0%, #3a4a6a 100%)" }}
                 >
                   <Home className="w-4 h-4" />
@@ -123,7 +123,7 @@ export default function NotFoundPage() {
 
                 <Link
                   href="/"
-                  className="flex items-center justify-center gap-2 w-full py-3 rounded-full border-2 border-stone-200 dark:border-[#2a2d3e] text-stone-700 dark:text-stone-200 text-sm font-semibold hover:border-stone-400 dark:hover:border-stone-500 hover:bg-stone-50 dark:hover:bg-[#252837] transition-all"
+                  className="flex items-center justify-center gap-2 w-full py-3 rounded-lg border-2 border-stone-200 dark:border-[#2a2d3e] text-stone-700 dark:text-stone-200 text-sm font-semibold hover:border-stone-400 dark:hover:border-stone-500 hover:bg-stone-50 dark:hover:bg-[#252837] transition-all"
                 >
                   <Compass className="w-4 h-4" />
                   Browse All Listings
@@ -133,7 +133,7 @@ export default function NotFoundPage() {
               {/* Divider */}
               <div className="flex items-center gap-3">
                 <div className="flex-1 h-px bg-stone-200 dark:bg-[#2a2d3e]" />
-                <span className="text-xs text-stone-400 dark:text-stone-600 flex-shrink-0">
+                <span className="text-xs text-stone-400 dark:text-stone-600 shrink-0">
                   or browse by type
                 </span>
                 <div className="flex-1 h-px bg-stone-200 dark:bg-[#2a2d3e]" />
@@ -146,12 +146,12 @@ export default function NotFoundPage() {
                     key={href}
                     href={href}
                     className={cn(
-                      "flex flex-col items-center gap-2 px-2 py-4 rounded-2xl border text-center transition-all",
+                      "flex flex-col items-center gap-2 px-2 py-4 rounded-lg border text-center transition-all",
                       bg, border, hover,
                     )}
                   >
                     <div className={cn(
-                      "w-9 h-9 rounded-xl flex items-center justify-center",
+                      "w-9 h-9 rounded-lg flex items-center justify-center",
                       "bg-white dark:bg-[#1c1f2e]",
                       "border border-stone-200 dark:border-[#2a2d3e]",
                     )}>
@@ -159,7 +159,7 @@ export default function NotFoundPage() {
                     </div>
                     <div>
                       <p className={cn("text-xs font-bold leading-tight", color)}>{label}</p>
-                      <p className="text-[10px] text-stone-400 dark:text-stone-500 mt-0.5 leading-tight">
+                      <p className="text-[11px] text-stone-400 dark:text-stone-500 mt-0.5 leading-tight">
                         {desc}
                       </p>
                     </div>

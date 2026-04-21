@@ -35,7 +35,7 @@ export default function MessagesTabNav({
             onClick={() => onTabChange(id)}
             aria-current={activeTab === id ? "page" : undefined}
             className={cn(
-              "relative flex flex-none items-center rounded-md px-2",
+              "relative flex flex-none items-center rounded-lg px-2",
               "data-[state=active]:bg-slate-800 data-[state=active]:dark:bg-amber-800 data-[state=active]:text-white"
             )}
           >
