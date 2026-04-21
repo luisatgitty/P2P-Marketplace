@@ -31,7 +31,7 @@ export default function EmptyState({ tab, hasSearch }: EmptyStateProps) {
 
   return (
     <div className="flex flex-col items-center justify-center gap-3 py-16 px-6 text-center">
-      <div className="w-14 h-14 rounded-2xl bg-stone-100 dark:bg-[#252837] flex items-center justify-center">
+      <div className="w-14 h-14 rounded-lg bg-stone-100 dark:bg-[#252837] flex items-center justify-center">
         <Icon size={24} className="text-stone-400 dark:text-stone-500" />
       </div>
       <p className="text-sm font-semibold text-stone-700 dark:text-stone-300">{title}</p>

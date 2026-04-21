@@ -164,7 +164,7 @@ function CameraInput({ label, capture, file, inputRef, onChange }: CameraInputPr
         onClick={() => inputRef.current?.click()}
         onKeyDown={e => e.key === "Enter" && inputRef.current?.click()}
         className={cn(
-          "flex flex-col items-center justify-center gap-2 p-5 rounded-xl border-2 border-dashed cursor-pointer transition-colors",
+          "flex flex-col items-center justify-center gap-2 p-5 rounded-lg border-2 border-dashed cursor-pointer transition-colors",
           file
             ? "border-teal-400 bg-teal-50 dark:bg-teal-950/20"
             : "border-stone-200 dark:border-[#2a2d3e] hover:border-stone-400 dark:hover:border-stone-500 bg-stone-50 dark:bg-[#13151f]",
@@ -768,7 +768,7 @@ export default function BecomeSellerPage() {
                 </div>
 
                 <div className={cn(
-                  "flex items-start gap-3 p-4 rounded-xl border",
+                  "flex items-start gap-3 p-4 rounded-lg border",
                   isMobile
                     ? "border-teal-200 dark:border-teal-800 bg-teal-50 dark:bg-teal-950/20"
                     : "border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/20",
@@ -797,7 +797,7 @@ export default function BecomeSellerPage() {
                 </div>
 
                 <div className={cn(
-                  "flex items-start gap-3 p-4 rounded-xl border",
+                  "flex items-start gap-3 p-4 rounded-lg border",
                   hasProfileSetupRequirement
                     ? "border-teal-200 dark:border-teal-800 bg-teal-50 dark:bg-teal-950/20"
                     : "border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/20",
@@ -840,7 +840,7 @@ export default function BecomeSellerPage() {
                     { Icon: Camera,  iconCls: "text-stone-500 dark:text-stone-400", title: "Selfie with your ID",    desc: "A live photo of you holding your ID, captured using your smartphone camera" },
                     { Icon: Phone,   iconCls: "text-stone-500 dark:text-stone-400", title: "Verified Phone Number",  desc: "A valid PH mobile number for OTP verification and buyer contact" },
                   ].map(({ Icon, iconCls, title, desc }) => (
-                    <div key={title} className="flex items-start gap-3 p-4 border border-stone-200 dark:border-[#2a2d3e] rounded-xl bg-stone-50 dark:bg-[#13151f]">
+                    <div key={title} className="flex items-start gap-3 p-4 border border-stone-200 dark:border-[#2a2d3e] rounded-lg bg-stone-50 dark:bg-[#13151f]">
                       <Icon className={cn("w-5 h-5 shrink-0 mt-0.5", iconCls)} />
                       <div>
                         <p className="font-semibold text-sm text-stone-800 dark:text-stone-200">{title}</p>
@@ -893,7 +893,7 @@ export default function BecomeSellerPage() {
                       id="idType"
                       value={idType}
                       onChange={e => setIdType(e.target.value as IdType)}
-                      className="w-full pl-9 pr-8 py-2.5 rounded-xl text-sm border bg-stone-50 dark:bg-[#13151f] border-stone-200 dark:border-[#2a2d3e] text-stone-800 dark:text-stone-100 outline-none focus:border-stone-400 dark:focus:border-stone-500 transition-colors appearance-none cursor-pointer"
+                      className="w-full pl-9 pr-8 py-2.5 rounded-lg text-sm border bg-stone-50 dark:bg-[#13151f] border-stone-200 dark:border-[#2a2d3e] text-stone-800 dark:text-stone-100 outline-none focus:border-stone-400 dark:focus:border-stone-500 transition-colors appearance-none cursor-pointer"
                     >
                       {ID_OPTIONS.map(opt => (
                         <option key={opt.value} value={opt.value} disabled={opt.value === ""}>{opt.label}</option>
@@ -944,7 +944,7 @@ export default function BecomeSellerPage() {
                 </p>
 
                 {step2Err && (
-                  <div className="flex items-center gap-2 px-3 py-2.5 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-xl text-xs text-red-600 dark:text-red-400">
+                  <div className="flex items-center gap-2 px-3 py-2.5 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-lg text-xs text-red-600 dark:text-red-400">
                     <AlertTriangle className="w-3.5 h-3.5 shrink-0" /> {step2Err}
                   </div>
                 )}
@@ -980,7 +980,7 @@ export default function BecomeSellerPage() {
                     />
                     {/* ── CHANGED: button now shows loading state and calls real API ── */}
                     <Button
-                      className="rounded-full bg-stone-900 hover:bg-stone-800 text-white font-bold gap-2 disabled:opacity-50"
+                      className="rounded-lg bg-stone-900 hover:bg-stone-800 text-white font-bold gap-2 disabled:opacity-50"
                       onClick={() => void handleSendOtp()}
                       disabled={!phoneComplete || sendingOtp}
                     >
@@ -1099,14 +1099,14 @@ export default function BecomeSellerPage() {
                   <Button
                     variant="outline"
                     onClick={prev}
-                    className="rounded-full text-sm dark:border-[#2a2d3e] dark:text-stone-300 dark:hover:bg-[#252837] disabled:opacity-50"
+                    className="rounded-lg text-sm dark:border-[#2a2d3e] dark:text-stone-300 dark:hover:bg-[#252837] disabled:opacity-50"
                     disabled={!canResend || sendingOtp}
                   >
                     Back
                   </Button>
                 )}
                 <Button
-                  className="rounded-full bg-stone-900 hover:bg-stone-800 text-white text-sm font-bold disabled:opacity-50"
+                  className="rounded-lg bg-stone-900 hover:bg-stone-800 text-white text-sm font-bold disabled:opacity-50"
                   onClick={() => void next()}
                   disabled={isNextDisabled}
                   title={!isMobile ? "Please open this page on a smartphone with a camera to continue" : undefined}

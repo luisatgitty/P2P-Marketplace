@@ -289,7 +289,7 @@ export default function DashboardPage() {
             <div className="flex items-start justify-between mb-3">
               <div
                 className={cn(
-                  "w-10 h-10 rounded-xl flex items-center justify-center shrink-0",
+                  "w-10 h-10 rounded-lg flex items-center justify-center shrink-0",
                   bg,
                 )}
               >
@@ -346,7 +346,7 @@ export default function DashboardPage() {
               </p>
             </div>
             <span className={cn(
-              "text-sm font-bold px-2.5 py-1 rounded-full",
+              "text-sm font-bold px-2.5 py-1 rounded-lg",
               weeklyTrend === "up" && "text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-950/30",
               weeklyTrend === "down" && "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30",
               weeklyTrend === "neutral" && "text-stone-500 dark:text-stone-400 bg-stone-100 dark:bg-stone-800/60",
@@ -364,7 +364,7 @@ export default function DashboardPage() {
                   {count}
                 </span>
                 <div
-                  className="w-full rounded-t-md bg-[#1e2433] dark:bg-stone-300 transition-all duration-300"
+                  className="w-full rounded-t-lg bg-[#1e2433] dark:bg-stone-300 transition-all duration-300"
                   style={{
                     height: `${(count / maxWeekly) * 100}%`,
                     minHeight: 6,
@@ -387,7 +387,7 @@ export default function DashboardPage() {
             {userHealthCards.map(({ Icon, label, value, color }) => (
               <div
                 key={label}
-                className="bg-stone-50 dark:bg-[#13151f] rounded-xl p-2.5 text-center flex flex-col items-center justify-center"
+                className="bg-stone-50 dark:bg-[#13151f] rounded-lg p-2.5 text-center flex flex-col items-center justify-center"
               >
                 <Icon className={cn("w-4 h-4 mx-auto mb-1", color)} />
                 <p className="text-sm font-bold text-stone-800 dark:text-stone-100">
@@ -414,7 +414,7 @@ export default function DashboardPage() {
               </p>
             </div>
             <span className={cn(
-              "text-sm font-bold px-2.5 py-1 rounded-full",
+              "text-sm font-bold px-2.5 py-1 rounded-lg",
               weeklyListingsTrend === "up" && "text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-950/30",
               weeklyListingsTrend === "down" && "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30",
               weeklyListingsTrend === "neutral" && "text-stone-500 dark:text-stone-400 bg-stone-100 dark:bg-stone-800/60",
@@ -432,7 +432,7 @@ export default function DashboardPage() {
                   {count}
                 </span>
                 <div
-                  className="w-full rounded-t-md bg-[#1e2433] dark:bg-stone-300 transition-all duration-300"
+                  className="w-full rounded-t-lg bg-[#1e2433] dark:bg-stone-300 transition-all duration-300"
                   style={{
                     height: `${(count / maxWeeklyListings) * 100}%`,
                     minHeight: 6,

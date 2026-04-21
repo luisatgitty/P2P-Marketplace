@@ -1,6 +1,7 @@
 package config
 
 import (
+	"strings"
 	"time"
 )
 
@@ -174,11 +175,42 @@ const (
 
 var ReportReasons = []string{
 	"Scam / Fraud",
-	"Prohibited item",
-	"Fake / Counterfeit",
-	"Wrong category",
+	"Prohibited",
 	"Spam / Duplicate",
+	"Listing Issue",
+	"Transaction Issue",
 	"Other",
+}
+
+var reportReasonAliases = map[string]string{
+	"prohibited":        "Prohibited",
+	"prohibited item":   "Prohibited",
+	"spam / duplicate":  "Spam / Duplicate",
+	"listing issue":     "Listing Issue",
+	"\"listing issue":   "Listing Issue",
+	"transaction issue": "Transaction Issue",
+	"other":             "Other",
+	"scam / fraud":      "Scam / Fraud",
+}
+
+func NormalizeReportReason(reason string) string {
+	trimmedReason := strings.TrimSpace(reason)
+	if trimmedReason == "" {
+		return ""
+	}
+
+	lookupKey := strings.ToLower(trimmedReason)
+	if canonical, exists := reportReasonAliases[lookupKey]; exists {
+		return canonical
+	}
+
+	for _, allowedReason := range ReportReasons {
+		if strings.EqualFold(trimmedReason, allowedReason) {
+			return allowedReason
+		}
+	}
+
+	return ""
 }
 
 // ─── Admin Moderation ──────────────────────────────

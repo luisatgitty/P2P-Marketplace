@@ -56,7 +56,12 @@ export function ThemeModeSwitch({
         <span
           className={cn(
             "absolute top-0.5 left-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-white text-slate-700 shadow-sm transition-transform duration-200",
-            mounted && isDarkMode ? "translate-x-2" : "translate-x-0",
+            mounted && isDarkMode
+            // Switch between 2px and 5px translation to better center the icon when label is hidden vs shown
+              ? showLabel && !compact
+                ? "translate-x-5"
+                : "translate-x-2"
+              : "translate-x-0",
           )}
         >
           {mounted && isDarkMode ? (

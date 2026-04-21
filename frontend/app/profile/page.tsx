@@ -142,8 +142,8 @@ function formatOverallRating(rating?: number, reviewCount?: number): string {
 function AddListingCard() {
   return (
     <Link href="/create" className="block group">
-      <div className="bg-white dark:bg-[#1c1f2e] rounded-2xl overflow-hidden border border-dashed border-stone-300 dark:border-[#3a3e52] hover:-translate-y-1 hover:shadow-md transition-all duration-200 h-full">
-        <div className="relative aspect-4/3 bg-stone-50 dark:bg-[#13151f] flex items-center justify-center">
+      <div className="bg-white dark:bg-[#1c1f2e] rounded-lg overflow-hidden border border-dashed border-stone-300 dark:border-[#3a3e52] hover:-translate-y-1 hover:shadow-md transition-all duration-200 h-full">
+        <div className="relative aspect-square bg-stone-50 dark:bg-[#13151f] flex items-center justify-center">
           <div className="w-11 h-11 rounded-full bg-stone-900 dark:bg-stone-200 text-white dark:text-stone-900 flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform duration-200">
             <Plus className="w-5 h-5" />
           </div>
@@ -175,7 +175,7 @@ function ProfileReviewCard({ review }: { review: ProfileReviewItem }) {
   })();
 
   return (
-    <div className="bg-white dark:bg-[#1c1f2e] rounded-2xl border border-stone-200 dark:border-[#2a2d3e] shadow-sm p-4">
+    <div className="bg-white dark:bg-[#1c1f2e] rounded-lg border border-stone-200 dark:border-[#2a2d3e] shadow-sm p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
           <ImageLink
@@ -213,7 +213,7 @@ function ProfileReviewCard({ review }: { review: ProfileReviewItem }) {
         <p className="mt-3 text-sm leading-relaxed text-stone-700 dark:text-stone-200">{review.comment}</p>
       )}
 
-      <div className="mt-3 flex items-center gap-3 rounded-xl border border-stone-200 dark:border-[#2a2d3e] bg-stone-50 dark:bg-[#13151f] p-2.5 hover:border-stone-300 dark:hover:border-[#3a3e52] transition-colors">
+      <div className="mt-3 flex items-center gap-3 rounded-lg border border-stone-200 dark:border-[#2a2d3e] bg-stone-50 dark:bg-[#13151f] p-2.5 hover:border-stone-300 dark:hover:border-[#3a3e52] transition-colors">
         <ImageLink
           href={`/listing/${review.listing.id}`}
           src={review.listing.imageUrl}
@@ -982,7 +982,7 @@ export default function ProfilePage() {
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
 
         {/* ── Profile header card ── */}
-        <div className="bg-white dark:bg-[#1c1f2e] rounded-2xl border border-stone-200 dark:border-[#2a2d3e] shadow-sm overflow-hidden mb-4">
+        <div className="bg-white dark:bg-[#1c1f2e] rounded-lg border border-stone-200 dark:border-[#2a2d3e] shadow-sm overflow-hidden mb-4">
 
           {/* Cover photo */}
           <div className={cn("relative aspect-7/1 bg-linear-to-r from-[#1a0e00] via-[#1a2235] to-[#0b0f1a] overflow-hidden group", !isViewingExternalProfile && "cursor-pointer")} onClick={() => !isViewingExternalProfile && cover.trigger()}>
@@ -1063,7 +1063,7 @@ export default function ProfilePage() {
                 {!isViewingExternalProfile && showAvatarMenu && (
                   <>
                     <div className="fixed inset-0 z-10" onClick={() => setShowAvatarMenu(false)} />
-                    <div className="absolute top-full left-0 mt-2 z-20 bg-white dark:bg-[#1c1f2e] border border-stone-200 dark:border-[#2a2d3e] rounded-xl shadow-lg overflow-hidden w-44">
+                    <div className="absolute top-full left-0 mt-2 z-20 bg-white dark:bg-[#1c1f2e] border border-stone-200 dark:border-[#2a2d3e] rounded-lg shadow-lg overflow-hidden w-44">
                       <button
                         className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-stone-700 dark:text-stone-300 hover:bg-stone-50 dark:hover:bg-[#252837] transition-colors"
                         onClick={() => { avatar.trigger(); setShowAvatarMenu(false); }}
@@ -1096,8 +1096,10 @@ export default function ProfilePage() {
 
               {/* Action buttons */}
               {!isViewingExternalProfile && <div className="flex items-center gap-2 pb-1">
-                <Button variant="outline" size="sm"
-                  className="text-xs rounded-full border-stone-200 dark:border-[#2a2d3e] text-stone-600 dark:text-stone-300 hover:border-stone-400 dark:hover:border-stone-500 dark:bg-transparent dark:hover:bg-[#252837]"
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-xs rounded-lg border-stone-200 dark:border-[#2a2d3e] text-stone-600 dark:text-stone-300 hover:border-stone-400 dark:hover:border-stone-500 dark:bg-transparent dark:hover:bg-[#252837]"
                   onClick={handleEditProfileClick}
                   disabled={loadingEditProfile}>
                   <Edit2 className="w-3 h-3" />
@@ -1127,7 +1129,7 @@ export default function ProfilePage() {
 
         {/* ── Edit profile form ── */}
         {!isViewingExternalProfile && editOpen && (
-          <div className="bg-white dark:bg-[#1c1f2e] rounded-2xl border border-stone-200 dark:border-[#2a2d3e] shadow-sm mb-5">
+          <div className="bg-white dark:bg-[#1c1f2e] rounded-lg border border-stone-200 dark:border-[#2a2d3e] shadow-sm mb-5">
             <div className="flex items-center justify-between px-6 py-4 border-b border-stone-200 dark:border-[#2a2d3e]">
               <h2 className="font-bold text-stone-900 dark:text-stone-100 text-sm">Edit Profile</h2>
             </div>
@@ -1260,12 +1262,12 @@ export default function ProfilePage() {
                 </div>
               </div>
               <div className="flex justify-end gap-2 mt-5 pt-4 border-t border-stone-200 dark:border-[#2a2d3e]">
-                <Button variant="outline" size="sm" className="rounded-full dark:border-[#2a2d3e] dark:text-stone-300 dark:hover:bg-[#252837]" onClick={() => setEditOpen(false)}>Discard</Button>
-                <Button size="sm" className="rounded-full bg-stone-900 hover:bg-stone-800 text-white" onClick={handleSave} disabled={saving || uploadingAvatar || uploadingCover}>
+                <Button variant="outline" className="rounded-lg dark:border-[#2a2d3e] dark:text-stone-300 dark:hover:bg-[#252837]" onClick={() => setEditOpen(false)}>Discard</Button>
+                <Button className="bg-stone-900 hover:bg-stone-800 text-white" onClick={handleSave} disabled={saving || uploadingAvatar || uploadingCover}>
                   {saving ? "Saving…" : uploadingAvatar || uploadingCover ? "Uploading image..." : "Save Changes"}
                 </Button>
               </div>
-              <div className="mt-4 rounded-xl border border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-950/20 p-3">
+              <div className="mt-4 rounded-lg border border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-950/20 p-3">
                 <p className="text-xs font-semibold text-red-600 dark:text-red-400 flex items-center gap-1.5 mb-1">
                   <AlertTriangle className="w-3.5 h-3.5" /> Danger Zone
                 </p>
@@ -1274,7 +1276,6 @@ export default function ProfilePage() {
                 </p>
                 <Button
                   variant="outline"
-                  size="sm"
                   className="w-full border-red-300 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40"
                   onClick={handleDeactivateAccount}
                   disabled={deactivating}
@@ -1286,7 +1287,7 @@ export default function ProfilePage() {
           </div>
         )}
 
-        <div className="bg-white dark:bg-[#1c1f2e] rounded-2xl border border-stone-200 dark:border-[#2a2d3e] shadow-sm overflow-hidden">
+        <div className="bg-white dark:bg-[#1c1f2e] rounded-lg border border-stone-200 dark:border-[#2a2d3e] shadow-sm overflow-hidden">
           {/* Tab bar */}
           <div className="flex border-b border-stone-200 dark:border-[#2a2d3e]">
             {profileTabs.map((t) => (

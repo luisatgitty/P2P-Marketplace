@@ -151,7 +151,7 @@ function FilterSelect({
       <select
         value={value}
         onChange={e => onChange(e.target.value)}
-        className="pl-3 pr-8 py-2 h-9 bg-transparent border border-stone-200 dark:border-[#2a2d3e] rounded-md text-sm text-stone-700 dark:text-stone-200 outline-none focus:border-stone-400 transition-colors appearance-none cursor-pointer dark:bg-[#13151f]"
+        className="pl-3 pr-8 py-2 h-9 bg-transparent border border-stone-200 dark:border-[#2a2d3e] rounded-lg text-sm text-stone-700 dark:text-stone-200 outline-none focus:border-stone-400 transition-colors appearance-none cursor-pointer dark:bg-[#13151f]"
       >
         {options.map(([v, l]) => (
           <option key={v} value={v}>{l}</option>
@@ -392,7 +392,7 @@ export default function ListingsPage() {
           <Card
             key={label}
             className={cn(
-              "p-4 rounded-md cursor-pointer hover:shadow-sm transition-all card-glass border border-stone-200 dark:border-[#2a2d3e]",
+              "p-4 rounded-lg cursor-pointer hover:shadow-sm transition-all card-glass border border-stone-200 dark:border-[#2a2d3e]",
               statusFilter === status && "ring-2 ring-offset-1 ring-current",
             )}
             onClick={() => {
@@ -490,7 +490,7 @@ export default function ListingsPage() {
       </div>
 
       {/* ── Table ── */}
-      <Card className="p-0 rounded-md dark:bg-[#1c1f2e] dark:border-[#2a2d3e] overflow-hidden flex-1 min-h-0">
+      <Card className="p-0 rounded-lg dark:bg-[#1c1f2e] dark:border-[#2a2d3e] overflow-hidden flex-1 min-h-0">
         <CardContent className="p-0 h-full min-h-0 flex flex-col">
           <div className="overflow-auto h-full">
             <Table>
@@ -590,7 +590,7 @@ export default function ListingsPage() {
                         {/* Type Badge */}
                         <TableCell className="py-3.5 whitespace-nowrap">
                           <span className={cn(
-                            "inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full",
+                            "inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-md",
                             tc.cls,
                           )}>
                             <Icon className="w-2.5 h-2.5" /> {tc.label}
@@ -615,7 +615,7 @@ export default function ListingsPage() {
                         {/* Status badge */}
                         <TableCell className="py-3.5 whitespace-nowrap">
                           <span className={cn(
-                            "text-xs font-bold px-2 py-0.5 rounded-full",
+                            "text-xs font-bold px-2 py-0.5 rounded-md",
                             STATUS_CONFIG[listing.status],
                           )}>
                             {listing.status.charAt(0) + listing.status.slice(1).toLowerCase()}

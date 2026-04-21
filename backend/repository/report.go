@@ -16,14 +16,8 @@ func CreateListingReport(reporterId, listingId, reportedUserId, reason, descript
 		return "", fmt.Errorf("Report reason is required")
 	}
 
-	reasonAllowed := false
-	for _, allowedReason := range config.ReportReasons {
-		if trimmedReason == allowedReason {
-			reasonAllowed = true
-			break
-		}
-	}
-	if !reasonAllowed {
+	normalizedReason := config.NormalizeReportReason(trimmedReason)
+	if normalizedReason == "" {
 		return "", fmt.Errorf("Invalid report reason")
 	}
 
@@ -100,7 +94,7 @@ func CreateListingReport(reporterId, listingId, reportedUserId, reason, descript
 		RETURNING id
 	`
 
-	if err := db.Raw(insertQuery, reporterId, targetReportedUserId, listingId, trimmedReason, trimmedDescription).Scan(&reportId).Error; err != nil {
+	if err := db.Raw(insertQuery, reporterId, targetReportedUserId, listingId, normalizedReason, trimmedDescription).Scan(&reportId).Error; err != nil {
 		if strings.Contains(strings.ToLower(err.Error()), "uniq_reports_reporter_listing_user") || strings.Contains(strings.ToLower(err.Error()), "duplicate key") {
 			return "", fmt.Errorf("You already have a pending report for this listing")
 		}

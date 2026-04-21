@@ -71,7 +71,7 @@ export function NotificationItem({ notification, onClick }: NotificationItemProp
       )}
     >
       <div className="flex items-start gap-2.5">
-        <div className="mt-0.5 shrink-0 h-6 w-6 rounded-md bg-white/5 border border-white/10 flex items-center justify-center">
+        <div className="mt-0.5 shrink-0 h-6 w-6 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center">
           {getNotificationIcon(notification.type)}
         </div>
 
