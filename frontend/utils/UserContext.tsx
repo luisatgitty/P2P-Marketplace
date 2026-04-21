@@ -167,18 +167,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     let mounted = true;
 
     const hydrateAuthState = async () => {
-      const hasSessionCookie = document.cookie.includes("session_token=");
       const storedUserRaw = localStorage.getItem(STORAGE_KEY);
-
-      if (!hasSessionCookie) {
-        localStorage.removeItem(STORAGE_KEY);
-        setRoleCookie("");
-        if (!mounted) return;
-        setUser(null);
-        setIsAuth(false);
-        setIsLoading(false);
-        return;
-      }
 
       if (storedUserRaw) {
         try {
@@ -433,17 +422,27 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const onPageShow = () => {
       const storedUser = localStorage.getItem(STORAGE_KEY);
-      const hasSession = document.cookie.includes("session_token");
 
-      if (!storedUser || !hasSession) {
-        setUser(null);
-        setIsAuth(false);
-        setRoleCookie("");
-
-        if (!isPublicRoute) {
-          router.replace("/login");
-        }
+      if (storedUser) {
+        return;
       }
+
+      void sendGetRequest("/auth/me", true)
+        .then((me) => {
+          setUser(me);
+          setIsAuth(true);
+          setRoleCookie(me.role);
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(me));
+        })
+        .catch(() => {
+          setUser(null);
+          setIsAuth(false);
+          setRoleCookie("");
+
+          if (!isPublicRoute) {
+            router.replace("/login");
+          }
+        });
     };
 
     window.addEventListener("pageshow", onPageShow);
