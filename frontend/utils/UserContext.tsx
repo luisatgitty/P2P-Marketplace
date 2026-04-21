@@ -161,8 +161,69 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // Bootstrap auth state once on app load.
+  // This prevents indefinite loading for guests and keeps authenticated users hydrated.
   useEffect(() => {
-    // if (!isAuth) return;
+    let mounted = true;
+
+    const hydrateAuthState = async () => {
+      const hasSessionCookie = document.cookie.includes("session_token=");
+      const storedUserRaw = localStorage.getItem(STORAGE_KEY);
+
+      if (!hasSessionCookie) {
+        localStorage.removeItem(STORAGE_KEY);
+        setRoleCookie("");
+        if (!mounted) return;
+        setUser(null);
+        setIsAuth(false);
+        setIsLoading(false);
+        return;
+      }
+
+      if (storedUserRaw) {
+        try {
+          const parsedUser = JSON.parse(storedUserRaw) as User;
+          if (mounted) {
+            setUser(parsedUser);
+            setIsAuth(true);
+          }
+          setRoleCookie(parsedUser.role);
+        } catch {
+          localStorage.removeItem(STORAGE_KEY);
+        }
+      }
+
+      try {
+        const me = await sendGetRequest("/auth/me", true);
+        if (!mounted) return;
+
+        setUser(me);
+        setIsAuth(true);
+        setRoleCookie(me.role);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(me));
+      } catch {
+        if (!mounted) return;
+
+        localStorage.removeItem(STORAGE_KEY);
+        setRoleCookie("");
+        setUser(null);
+        setIsAuth(false);
+      } finally {
+        if (mounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    void hydrateAuthState();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isAuth) return;
 
     let ws: WebSocket | null = null;
     let pingInterval: ReturnType<typeof setInterval> | null = null;
