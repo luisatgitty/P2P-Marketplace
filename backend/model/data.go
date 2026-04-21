@@ -241,17 +241,18 @@ type HomeListingFromDb struct {
 }
 
 type ListingsFilter struct {
-	Type      string
-	Keyword   string
-	Category  string
-	Condition string
-	Province  string
-	City      string
-	PriceMin  *int
-	PriceMax  *int
-	Sort      string
-	Limit     int
-	Offset    int
+	Type         string
+	Keyword      string
+	Category     string
+	Condition    string
+	Province     string
+	UserProvince string
+	City         string
+	PriceMin     *int
+	PriceMax     *int
+	Sort         string
+	Limit        int
+	Offset       int
 }
 
 type AdminDashboardStatsFromDb struct {

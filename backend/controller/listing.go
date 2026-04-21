@@ -562,8 +562,8 @@ func GetListings(c *fiber.Ctx) error {
 		if parseErr != nil || parsedLimit <= 0 {
 			return SendErrorResponse(c, 400, "limit must be a valid positive number", parseErr)
 		}
-		if parsedLimit > 100 {
-			parsedLimit = 100
+		if parsedLimit > 25 {
+			parsedLimit = 25
 		}
 		limit = parsedLimit
 	}
@@ -623,6 +623,13 @@ func GetListings(c *fiber.Ctx) error {
 		Sort:      strings.TrimSpace(c.Query("sort")),
 		Limit:     limit,
 		Offset:    offset,
+	}
+
+	if strings.TrimSpace(userId) != "" {
+		profile, profileErr := repository.GetProfileUserById(userId)
+		if profileErr == nil {
+			filters.UserProvince = strings.TrimSpace(profile.LocationProv)
+		}
 	}
 
 	listings, total, err := repository.GetAllListings(userId, filters)

@@ -27,8 +27,7 @@ const SORT_OPTIONS = [
   { value: "recommended", label: "Recommended" },
   { value: "latest",      label: "Latest"       },
   { value: "cheapest",    label: "Cheapest"     },
-  { value: "expensive",   label: "Most Expensive"},
-  { value: "top-rated",   label: "Top Rated"    },
+  { value: "expensive",   label: "Most Expensive"}
 ];
 
 const FETCH_LIMIT = 25;

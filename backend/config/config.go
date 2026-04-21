@@ -110,9 +110,9 @@ var ListingCategories = []string{
 
 var ListingSellPriceUnits = []string{
 	"Fixed Price",
+	"Starting Price",
 	"Negotiable",
 	"Contact for Price",
-	"Starting Price",
 }
 
 var ListingRentPriceUnits = []string{
