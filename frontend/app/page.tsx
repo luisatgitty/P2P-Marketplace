@@ -6,13 +6,20 @@ import PostCard from "@/components/post-card";
 import { getHomeListings, type HomeListing } from "@/services/listingFeedService";
 import { getProvinces, getCitiesByProvince, type LocationOption } from "@/services/locationService";
 import { useUser } from "@/utils/UserContext";
-import { Search, SlidersHorizontal, X, PackageSearch } from "lucide-react";
+import { Search, X, PackageSearch } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@/components/ui/select'
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { CATEGORIES } from "@/types/listings";
-import Link from "next/link";
 
 type ListingWithMeta = HomeListing;
 
@@ -28,26 +35,42 @@ const FETCH_LIMIT = 25;
 
 // ─── Select styled helper ───────────────────────────────────────────────────────
 function FilterSelect({
-  value, onChange, children, className, ...props
+  value,
+  onChange,
+  children,
+  placeholder,
+  className,
+  disabled,
+  onOpenChange,
 }: {
   value: string;
   onChange: (v: string) => void;
   children: React.ReactNode;
+  placeholder?: string;
   className?: string;
-} & Omit<React.SelectHTMLAttributes<HTMLSelectElement>, "value" | "onChange" | "children" | "className">) {
+  disabled?: boolean;
+  onOpenChange?: (open: boolean) => void;
+}) {
   return (
     <div className="relative flex-1 min-w-44">
-      <select
+      <Select
         value={value}
-        onChange={(e) => onChange(e.target.value)}
-        {...props}
-        className={cn(
-          "w-full rounded-lg border border-stone-200 dark:border-white/10 bg-white dark:bg-[#1e2a3a] text-stone-700 dark:text-stone-300 text-sm px-3 py-2 transition-colors appearance-none",
-          className
-        )}
+        onValueChange={onChange}
+        disabled={disabled}
+        onOpenChange={onOpenChange}
       >
-        {children}
-      </select>
+        <SelectTrigger
+          className={cn(
+            "w-full rounded-lg text-sm",
+            className,
+          )}
+        >
+          <SelectValue placeholder={placeholder} />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectGroup>{children}</SelectGroup>
+        </SelectContent>
+      </Select>
     </div>
   );
 }
@@ -281,7 +304,7 @@ function HomePageInner() {
               <div className="flex gap-3 mt-6">
                 <Button
                   onClick={viewRandomListing}
-                  className="bg-amber-700 hover:bg-amber-600 text-white"
+                  className="bg-amber-700 hover:bg-amber-500 text-white"
                 >
                   Feeling Lucky
                 </Button>
@@ -348,7 +371,7 @@ function HomePageInner() {
                 {/* Search button */}
                 <Button
                   onClick={handleSearch}
-                  className="bg-amber-700 hover:bg-amber-600 text-white rounded-lg xl:hidden"
+                  className="bg-amber-700 hover:bg-amber-500 text-white rounded-lg xl:hidden"
                 >
                   <Search size={14} /> Search
                 </Button>
@@ -358,14 +381,24 @@ function HomePageInner() {
               <div className="flex flex-wrap gap-2 items-end xl:flex-nowrap">
                 {/* Category */}
                 <FilterSelect value={category} onChange={setCategory}>
-                  <option value="">All Categories</option>
-                  {CATEGORIES.map((c) => <option key={c}>{c}</option>)}
+                  <SelectItem value="All Categories">All Categories</SelectItem>
+                  {CATEGORIES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
                 </FilterSelect>
 
                 {/* Province */}
                 <FilterSelect
-                  value={provinceCode}
+                  value={provinceCode || "__province__"}
                   onChange={(code) => {
+                    if (code === "__province__") {
+                      setProvinceCode("");
+                      setProvinceName("Province");
+                      setCityCode("");
+                      setCityName("City/Municipality");
+                      setCityOptions([]);
+                      setFetchedCitiesProvinceCode("");
+                      return;
+                    }
+
                     const selected = provinceOptions.find((p) => p.code === code);
                     setProvinceCode(code);
                     setProvinceName(selected?.name ?? "Province");
@@ -375,48 +408,55 @@ function HomePageInner() {
                     setFetchedCitiesProvinceCode("");
                   }}
                   disabled={loadingProvinces}
-                  onMouseDown={(e) => {
-                    if (!hasFetchedProvinces) {
-                      e.preventDefault();
+                  onOpenChange={(open) => {
+                    if (open && !hasFetchedProvinces) {
                       void loadProvincesOnDemand();
                     }
                   }}
                   className={cn(loadingProvinces && "cursor-wait")}
                 >
-                  <option value="">{loadingProvinces ? "Loading provinces..." : "Province"}</option>
-                  {provinceOptions.map((item) => <option key={item.code} value={item.code}>{item.name}</option>)}
+                  <SelectItem value="__province__">{loadingProvinces ? "Loading provinces..." : "Province"}</SelectItem>
+                  {provinceOptions.map((item) => <SelectItem key={item.code} value={item.code}>{item.name}</SelectItem>)}
                 </FilterSelect>
 
                 {/* City/Municipality */}
                 <FilterSelect
-                  value={cityCode}
+                  value={cityCode || "__city__"}
                   onChange={(code) => {
+                    if (code === "__city__") {
+                      setCityCode("");
+                      setCityName("City/Municipality");
+                      return;
+                    }
+
                     const selected = cityOptions.find((c) => c.code === code);
                     setCityCode(code);
                     setCityName(selected?.name ?? "City/Municipality");
                   }}
                   disabled={!provinceCode || loadingCities}
-                  onMouseDown={(e) => {
+                  onOpenChange={(open) => {
+                    if (!open) {
+                      return;
+                    }
+
                     if (!provinceCode) {
-                      e.preventDefault();
                       return;
                     }
 
                     if (fetchedCitiesProvinceCode !== provinceCode) {
-                      e.preventDefault();
                       void loadCitiesOnDemand();
                     }
                   }}
                   className={cn((!provinceCode || loadingCities) && "cursor-wait")}
                 >
-                  <option value="">
+                  <SelectItem value="__city__">
                     {!provinceCode
                       ? "Select province first"
                       : loadingCities
                         ? "Loading cities/municipalities..."
                         : "City/Municipality"}
-                  </option>
-                  {cityOptions.map((item) => <option key={item.code} value={item.code}>{item.name}</option>)}
+                  </SelectItem>
+                  {cityOptions.map((item) => <SelectItem key={item.code} value={item.code}>{item.name}</SelectItem>)}
                 </FilterSelect>
 
                 {/* Price range */}
@@ -453,7 +493,7 @@ function HomePageInner() {
               {/* Search button */}
               <Button
                 onClick={handleSearch}
-                className="bg-amber-700 hover:bg-amber-600 text-white rounded-lg hidden xl:flex"
+                className="bg-amber-700 hover:bg-amber-500 text-white rounded-lg hidden xl:flex"
               >
                 <Search size={14} /> Search
               </Button>
@@ -469,7 +509,9 @@ function HomePageInner() {
         <div className="flex items-center gap-1 flex-wrap">
           <span className="text-sm text-stone-400 mr-2 hidden sm:inline">Sort:</span>
           {SORT_OPTIONS.map((opt) => (
-            <button
+            <Button
+            variant={'ghost'}
+            size={'sm'}
               key={opt.value}
               onClick={() => { setSort(opt.value); }}
               className={cn(
@@ -480,7 +522,7 @@ function HomePageInner() {
               )}
             >
               {opt.label}
-            </button>
+            </Button>
           ))}
         </div>
       </div>
@@ -504,12 +546,13 @@ function HomePageInner() {
             <p className="text-sm text-stone-400 dark:text-stone-500 mt-1 max-w-xs">
               Try adjusting your search keyword or filters to find what you&apos;re looking for.
             </p>
-            <button
+            <Button
+            variant={'link'}
               onClick={handleClear}
-              className="mt-4 text-sm font-medium text-amber-700 dark:text-amber-500 hover:underline"
+              className=" text-amber-700 dark:text-amber-500"
             >
               Clear all filters
-            </button>
+            </Button>
           </div>
         )}
 
