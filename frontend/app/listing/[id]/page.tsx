@@ -31,6 +31,7 @@ import { SafeImage } from "@/components/ui/safe-image";
 import { ImageLink } from "@/components/image-link";
 import { formatPrice, formatTimeAgo } from "@/utils/string-builder";
 import { MediaViewerModal, type MediaViewerItem } from "@/components/media-viewer-modal";
+import { AppRouterInstance } from "next/dist/shared/lib/app-router-context.shared-runtime";
 
 // ── ExtraDetail — mirrors every field the listing form collects ────────────────
 interface ExtraDetail {
@@ -525,28 +526,7 @@ export default function ListingDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-stone-100 dark:bg-[#111827]">
-
-      {/* ── Breadcrumb ── */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-5 pb-3">
-        <div className="flex items-center gap-2 text-xs text-stone-400 dark:text-stone-500">
-          <Link href="/" className="hover:text-stone-600 dark:hover:text-stone-300 transition-colors flex items-center gap-1">
-            <ArrowLeft className="w-3 h-3" /> Home
-          </Link>
-          <span>/</span>
-          <Link
-            href={`/?type=${listing.type}`}
-            className="hover:text-stone-600 dark:hover:text-stone-300 transition-colors"
-          >
-            {TYPE_LABEL[listing.type]}
-          </Link>
-          <span>/</span>
-          <span className="capitalize text-stone-500 dark:text-stone-400">{listing.category}</span>
-          <span>/</span>
-          <span className="text-stone-700 dark:text-stone-300 truncate max-w-45">{listing.title}</span>
-        </div>
-      </div>
-
+    <div className="min-h-screen bg-stone-100 dark:bg-[#111827] mt-6">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 pb-8">
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6">
 
@@ -638,7 +618,7 @@ export default function ListingDetailPage() {
                       key={i}
                       onClick={() => setImgIdx(i)}
                       className={cn(
-                        "relative shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 transition-all",
+                        "relative shrink-0 w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-lg overflow-hidden border sm:border-2 transition-all",
                         i === imgIdx ? "border-slate-800 dark:border-stone-300" : "border-transparent opacity-60 hover:opacity-100"
                       )}>
                       <SafeImage
@@ -651,6 +631,11 @@ export default function ListingDetailPage() {
                   ))}
                 </div>
               )}
+            </div>
+
+            {/* ── Listing card (mobile) ── */}
+            <div className="sm:hidden">
+              {displayListingCard(listing, handleToggleBookmark, isBookmarking, isBookmarked, isOwnListing, isDeletedState, isSold, router, id, handleListingVisibility, toggling, isListingAvailable, handleRemoveListing, deleting, visitorUnavailableState, isSell, handleBuy, isRent, isService, handleMessage, messaging)}
             </div>
 
             {/* ── Description + Highlights ── */}
@@ -739,157 +724,9 @@ export default function ListingDetailPage() {
           <div className="flex flex-col gap-4">
             <div className="lg:sticky lg:top-20">
 
-              {/* ── Price + title card ── */}
-              <div className="bg-white dark:bg-[#1c1f2e] rounded-lg border border-stone-200 dark:border-[#2a2d3e] shadow-sm p-5 mb-4">
-                <div className="flex items-start justify-between gap-2 mb-2">
-                  <h1 className="text-lg font-bold text-stone-900 dark:text-stone-50 leading-tight">{listing.title}</h1>
-                  <div className="flex gap-1.5 shrink-0">
-                    <Button
-                      variant={'secondary'}
-                      onClick={handleToggleBookmark}
-                      disabled={isBookmarking}
-                      className={cn(
-                        "w-9 h-9 rounded-lg border disabled:opacity-60 disabled:cursor-not-allowed",
-                        isBookmarked
-                          ? "border-rose-200 bg-rose-50 dark:bg-rose-900/30 dark:border-rose-800 text-rose-500"
-                          : "bg-transparent text-stone-400 dark:text-stone-500"
-                      )}>
-                      <Bookmark className={cn("w-4 h-4", isBookmarked && "fill-rose-500")} />
-                    </Button>
-                    <Button
-                      variant={'secondary'}
-                      onClick={() => toast.info("Link copied to clipboard!", { position: "top-center" })}
-                      className="w-9 h-9 rounded-lg bg-transparent border border-stone-200 dark:border-[#2a2d3e] text-stone-400 dark:text-stone-500">
-                      <Share2 className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
-
-                {/* Price */}
-                <div className="flex items-baseline gap-1.5 mb-1">
-                  <span className="text-2xl font-extrabold text-amber-700 dark:text-amber-500">{formatPrice(listing.price)}</span>
-                  {listing.priceUnit && <span className="text-black dark:text-white text-sm">{listing.priceUnit}</span>}
-                </div>
-
-                {/* Location + posted */}
-                <div className="flex flex-wrap items-center gap-3 text-sm text-black dark:text-white mb-4">
-                  <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{listing.location}</span>
-                  <span className="flex items-center gap-1"><Clock className="w-3 h-3" />Posted {formatTimeAgo(listing.postedAt)}</span>
-                </div>
-
-                {/* ── CTA buttons ── */}
-                {isOwnListing ? (
-                  <div className="flex flex-col gap-3">
-                    {isDeletedState || isSold ? (
-                      <Button
-                        disabled
-                        className="flex items-center justify-center gap-2 w-full py-3 rounded-lg bg-stone-400/80 text-white text-sm font-bold cursor-not-allowed opacity-95"
-                      >
-                        <AlertTriangle className="w-4 h-4" /> Unavailable
-                      </Button>
-                    ) : (
-                      <>
-                        {/* Edit Listing Button */}
-                        <Button
-                          variant={'default'}
-                          size={'lg'}
-                          onClick={() => {router.push(`/listing/${id}/edit`)}}
-                          className="flex items-center justify-center gap-2 w-full py-3 rounded-lg bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 text-sm font-bold hover:opacity-90 transition-opacity">
-                          <Pen className="w-4 h-4" />
-                          Edit Listing
-                        </Button>
-
-                        {/* Hide Listing Button */}
-                        <Button
-                          variant={'outline'}
-                          size={'lg'}
-                          onClick={handleListingVisibility}
-                          disabled={toggling}
-                          className="rounded-lg border-stone-200 dark:border-[#2a2d3e] text-stone-700 dark:text-stone-200 bg-white dark:bg-transparent text-sm font-semibold hover:border-stone-400 dark:hover:border-stone-500 hover:bg-stone-50 dark:hover:bg-[#252837] transition-all"
-                        >
-                          {isListingAvailable ? (
-                            <>
-                              <EyeOff className="w-4 h-4" /> Hide Listing
-                            </>
-                          ) : (
-                            <>
-                              <Eye className="w-4 h-4" /> Show Listing
-                            </>
-                          )}
-                        </Button>
-
-                        {/* Remove Listing Button */}
-                        <Button
-                          variant={'destructive'}
-                          size={'lg'}
-                          onClick={handleRemoveListing}
-                          disabled={deleting}
-                          className="rounded-lg disabled:opacity-60 disabled:cursor-not-allowed"
-                        >
-                          <Trash className="w-4 h-4" />
-                          {deleting ? "Removing..." : "Remove Listing"}
-                        </Button>
-                      </>
-                    )}
-                  </div>
-                ) : (
-                  <div className="flex flex-col gap-4">
-                    {visitorUnavailableState ? (
-                      <Button
-                        variant={'outline'}
-                        size={'lg'}
-                        disabled
-                        className="flex items-center justify-center gap-2 w-full py-3 rounded-lg bg-stone-400/80 text-white text-sm font-bold cursor-not-allowed opacity-95"
-                      >
-                        <AlertTriangle className="w-4 h-4" /> Unavailable
-                      </Button>
-                    ) : isSold ? (
-                      <Button
-                        variant={'outline'}
-                        size={'lg'}
-                        disabled
-                        className="flex items-center justify-center gap-2 w-full py-3 rounded-lg bg-emerald-600/90 text-white text-sm font-bold cursor-not-allowed opacity-95"
-                      >
-                        <CheckCircle className="w-4 h-4" /> Sold
-                      </Button>
-                    ) : (
-                      <>
-                        {isSell && (
-                          <Button
-                            size={'lg'}
-                            onClick={handleBuy}
-                            className="flex items-center justify-center gap-2 w-full py-3 rounded-lg text-sm font-bold text-white bg-slate-700 hover:bg-slate-600 transition-colors active:scale-[0.98]">
-                            <Zap className="w-4 h-4" /> Make an Offer
-                          </Button>
-                        )}
-                        {isRent && (
-                          <Button
-                            size={'lg'}
-                            onClick={handleBuy}
-                            className="flex items-center justify-center gap-2 w-full py-3 rounded-lg text-sm font-bold text-white bg-teal-700 hover:bg-teal-600 transition-colors active:scale-[0.98]">
-                            <Package className="w-4 h-4" /> Request to Rent
-                          </Button>
-                        )}
-                        {isService && (
-                          <Button
-                            size={'lg'}
-                            onClick={handleBuy}
-                            className="flex items-center justify-center gap-2 w-full py-3 rounded-lg text-sm font-bold text-white bg-violet-700 hover:bg-violet-600 transition-colors active:scale-[0.98]">
-                            <CheckCircle className="w-4 h-4" /> Book Service
-                          </Button>
-                        )}
-                        <Button
-                          variant={'outline'}
-                          size={'lg'}
-                          onClick={handleMessage}
-                          disabled={messaging}
-                          className="flex items-center justify-center gap-2 w-full py-3 rounded-lg border-2 border-stone-200 dark:border-[#2a2d3e] text-stone-700 dark:text-stone-200 text-sm font-semibold hover:border-stone-400 dark:hover:border-stone-500 hover:bg-stone-50 dark:hover:bg-[#252837] transition-all">
-                          <MessageCircle className="w-4 h-4" /> {messaging ? "Opening chat..." : "Message Seller"}
-                        </Button>
-                      </>
-                    )}
-                  </div>
-                )}
+              {/* ── Listing card (desktop) ── */}
+              <div className="hidden sm:flex mb-4">
+                {displayListingCard(listing, handleToggleBookmark, isBookmarking, isBookmarked, isOwnListing, isDeletedState, isSold, router, id, handleListingVisibility, toggling, isListingAvailable, handleRemoveListing, deleting, visitorUnavailableState, isSell, handleBuy, isRent, isService, handleMessage, messaging)}
               </div>
 
               {/* ── Seller card ── */}
@@ -1021,7 +858,7 @@ export default function ListingDetailPage() {
       )}
 
       {/* ── Mobile sticky bar ── */}
-      {!isOwnListing && (
+      {!isOwnListing ? (
         <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white dark:bg-[#1c1f2e] border-t border-stone-200 dark:border-[#2a2d3e] px-4 py-3 flex gap-3 shadow-lg">
           {visitorUnavailableState ? (
             <Button
@@ -1061,7 +898,215 @@ export default function ListingDetailPage() {
             </>
           )}
         </div>
+      ) : (
+        <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white dark:bg-[#1c1f2e] border-t border-stone-200 dark:border-[#2a2d3e] px-4 py-3 flex gap-3 shadow-lg">
+          {isDeletedState || isSold ? (
+            <Button
+              disabled
+              className="flex-1 flex items-center justify-center gap-2 w-full py-3 rounded-lg bg-stone-400/80 text-white text-sm font-bold cursor-not-allowed opacity-95"
+            >
+              <AlertTriangle className="w-4 h-4" /> Unavailable
+            </Button>
+          ) : (
+            <>
+              {/* Edit Listing Button */}
+              <Button
+                variant={'default'}
+                size={'lg'}
+                onClick={() => {router.push(`/listing/${id}/edit`)}}
+                className="flex-1 flex items-center justify-center gap-2 w-full py-3 rounded-lg bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 text-sm font-bold hover:opacity-90 transition-opacity">
+                <Pen className="w-4 h-4" />
+                Edit
+              </Button>
+
+              {/* Hide Listing Button */}
+              <Button
+                variant={'outline'}
+                size={'lg'}
+                onClick={handleListingVisibility}
+                disabled={toggling}
+                className="flex-1 flex rounded-lg border-stone-200 dark:border-[#2a2d3e] text-stone-700 dark:text-stone-200 bg-white dark:bg-transparent text-sm font-semibold hover:border-stone-400 dark:hover:border-stone-500 hover:bg-stone-50 dark:hover:bg-[#252837] transition-all"
+              >
+                {isListingAvailable ? (
+                  <>
+                    <EyeOff className="w-4 h-4" /> Hide
+                  </>
+                ) : (
+                  <>
+                    <Eye className="w-4 h-4" /> Show
+                  </>
+                )}
+              </Button>
+
+              {/* Remove Listing Button */}
+              <Button
+                variant={'destructive'}
+                size={'lg'}
+                onClick={handleRemoveListing}
+                disabled={deleting}
+                className="flex-1 flex rounded-lg disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                <Trash className="w-4 h-4" />
+                {deleting ? "Removing..." : "Remove"}
+              </Button>
+            </>
+          )}
+        </div>
       )}
     </div>
   );
 }
+function displayListingCard(listing: PostCardProps, handleToggleBookmark: () => Promise<void>, isBookmarking: boolean, isBookmarked: boolean, isOwnListing: boolean, isDeletedState: boolean, isSold: boolean, router: AppRouterInstance, id: string, handleListingVisibility: () => Promise<void>, toggling: boolean, isListingAvailable: boolean, handleRemoveListing: () => Promise<void>, deleting: boolean, visitorUnavailableState: boolean, isSell: boolean, handleBuy: () => void, isRent: boolean, isService: boolean, handleMessage: () => Promise<void>, messaging: boolean) {
+  return <div className="bg-white dark:bg-[#1c1f2e] rounded-lg border border-stone-200 dark:border-[#2a2d3e] shadow-sm p-5">
+    <div className="flex items-start justify-between gap-2 mb-2">
+      <h1 className="text-lg font-bold text-stone-900 dark:text-stone-50 leading-tight">{listing.title}</h1>
+      <div className="flex gap-1.5 shrink-0">
+        <Button
+          variant={'secondary'}
+          onClick={handleToggleBookmark}
+          disabled={isBookmarking}
+          className={cn(
+            "w-9 h-9 rounded-lg border disabled:opacity-60 disabled:cursor-not-allowed",
+            isBookmarked
+              ? "border-rose-200 bg-rose-50 dark:bg-rose-900/30 dark:border-rose-800 text-rose-500"
+              : "bg-transparent text-stone-400 dark:text-stone-500"
+          )}>
+          <Bookmark className={cn("w-4 h-4", isBookmarked && "fill-rose-500")} />
+        </Button>
+        <Button
+          variant={'secondary'}
+          onClick={() => toast.info("Link copied to clipboard!", { position: "top-center" })}
+          className="w-9 h-9 rounded-lg bg-transparent border border-stone-200 dark:border-[#2a2d3e] text-stone-400 dark:text-stone-500">
+          <Share2 className="w-4 h-4" />
+        </Button>
+      </div>
+    </div>
+
+    {/* Price */}
+    <div className="flex items-baseline gap-1.5 mb-1">
+      <span className="text-2xl font-extrabold text-amber-700 dark:text-amber-500">{formatPrice(listing.price)}</span>
+      {listing.priceUnit && <span className="text-black dark:text-white text-sm">{listing.priceUnit}</span>}
+    </div>
+
+    {/* Location + posted */}
+    <div className="flex flex-wrap items-center gap-3 text-sm text-black dark:text-white mb-4">
+      <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{listing.location}</span>
+      <span className="flex items-center gap-1"><Clock className="w-3 h-3" />Posted {formatTimeAgo(listing.postedAt)}</span>
+    </div>
+
+    {/* ── CTA buttons ── */}
+    {isOwnListing ? (
+      <div className="flex flex-col gap-3">
+        {isDeletedState || isSold ? (
+          <Button
+            disabled
+            className="flex items-center justify-center gap-2 w-full py-3 rounded-lg bg-stone-400/80 text-white text-sm font-bold cursor-not-allowed opacity-95"
+          >
+            <AlertTriangle className="w-4 h-4" /> Unavailable
+          </Button>
+        ) : (
+          <>
+            {/* Edit Listing Button */}
+            <Button
+              variant={'default'}
+              size={'lg'}
+              onClick={() => { router.push(`/listing/${id}/edit`); } }
+              className="flex items-center justify-center gap-2 w-full py-3 rounded-lg bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 text-sm font-bold hover:opacity-90 transition-opacity">
+              <Pen className="w-4 h-4" />
+              Edit Listing
+            </Button>
+
+            {/* Hide Listing Button */}
+            <Button
+              variant={'outline'}
+              size={'lg'}
+              onClick={handleListingVisibility}
+              disabled={toggling}
+              className="rounded-lg border-stone-200 dark:border-[#2a2d3e] text-stone-700 dark:text-stone-200 bg-white dark:bg-transparent text-sm font-semibold hover:border-stone-400 dark:hover:border-stone-500 hover:bg-stone-50 dark:hover:bg-[#252837] transition-all"
+            >
+              {isListingAvailable ? (
+                <>
+                  <EyeOff className="w-4 h-4" /> Hide Listing
+                </>
+              ) : (
+                <>
+                  <Eye className="w-4 h-4" /> Show Listing
+                </>
+              )}
+            </Button>
+
+            {/* Remove Listing Button */}
+            <Button
+              variant={'destructive'}
+              size={'lg'}
+              onClick={handleRemoveListing}
+              disabled={deleting}
+              className="rounded-lg disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              <Trash className="w-4 h-4" />
+              {deleting ? "Removing..." : "Remove Listing"}
+            </Button>
+          </>
+        )}
+      </div>
+    ) : (
+      <div className="flex flex-col gap-4">
+        {visitorUnavailableState ? (
+          <Button
+            variant={'outline'}
+            size={'lg'}
+            disabled
+            className="flex items-center justify-center gap-2 w-full py-3 rounded-lg bg-stone-400/80 text-white text-sm font-bold cursor-not-allowed opacity-95"
+          >
+            <AlertTriangle className="w-4 h-4" /> Unavailable
+          </Button>
+        ) : isSold ? (
+          <Button
+            variant={'outline'}
+            size={'lg'}
+            disabled
+            className="flex items-center justify-center gap-2 w-full py-3 rounded-lg bg-emerald-600/90 text-white text-sm font-bold cursor-not-allowed opacity-95"
+          >
+            <CheckCircle className="w-4 h-4" /> Sold
+          </Button>
+        ) : (
+          <>
+            {isSell && (
+              <Button
+                size={'lg'}
+                onClick={handleBuy}
+                className="flex items-center justify-center gap-2 w-full py-3 rounded-lg text-sm font-bold text-white bg-slate-700 hover:bg-slate-600 transition-colors active:scale-[0.98]">
+                <Zap className="w-4 h-4" /> Make an Offer
+              </Button>
+            )}
+            {isRent && (
+              <Button
+                size={'lg'}
+                onClick={handleBuy}
+                className="flex items-center justify-center gap-2 w-full py-3 rounded-lg text-sm font-bold text-white bg-teal-700 hover:bg-teal-600 transition-colors active:scale-[0.98]">
+                <Package className="w-4 h-4" /> Request to Rent
+              </Button>
+            )}
+            {isService && (
+              <Button
+                size={'lg'}
+                onClick={handleBuy}
+                className="flex items-center justify-center gap-2 w-full py-3 rounded-lg text-sm font-bold text-white bg-violet-700 hover:bg-violet-600 transition-colors active:scale-[0.98]">
+                <CheckCircle className="w-4 h-4" /> Book Service
+              </Button>
+            )}
+            <Button
+              variant={'outline'}
+              size={'lg'}
+              onClick={handleMessage}
+              disabled={messaging}
+              className="flex items-center justify-center gap-2 w-full py-3 rounded-lg border-2 border-stone-200 dark:border-[#2a2d3e] text-stone-700 dark:text-stone-200 text-sm font-semibold hover:border-stone-400 dark:hover:border-stone-500 hover:bg-stone-50 dark:hover:bg-[#252837] transition-all">
+              <MessageCircle className="w-4 h-4" /> {messaging ? "Opening chat..." : "Message Seller"}
+            </Button>
+          </>
+        )}
+      </div>
+    )}
+  </div>;
+}
+
