@@ -422,6 +422,17 @@ export function isValidName(name: string, field: string): string | null {
   return null;
 }
 
+export function isValidPrice(value: string, min?: number, max?: number): boolean {
+  const nextNumber = Number(value);
+  min = min ?? LISTING_LIMITS.priceMinValue;
+  max = max ?? LISTING_LIMITS.priceMaxValue;
+  
+  if (!Number.isFinite(nextNumber)) return false;
+  if (nextNumber > max) return false;
+  if (nextNumber < min) return false;
+  return true;
+}
+
 export function validateSignupForm(form: SignupForm) {
   if (!form) return "Form data is required";
 

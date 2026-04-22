@@ -41,6 +41,7 @@ import {
 import {
   LISTING_LIMITS,
   validateListingStep,
+  isValidPrice,
 } from "@/utils/validation";
 import {
   BookingCalendar,
@@ -1680,11 +1681,7 @@ export default function ListingForm({
                       return;
                     }
 
-                    const nextNumber = Number(nextValue);
-                    if (!Number.isFinite(nextNumber)) return;
-                    if (nextNumber < LISTING_LIMITS.priceMinValue) return;
-                    if (nextNumber > LISTING_LIMITS.priceMaxValue) return;
-
+                    if (!isValidPrice(nextValue)) return;
                     setPrice(nextValue);
                   }}
                   onKeyDown={(e) => {
@@ -1861,11 +1858,7 @@ export default function ListingForm({
                         return;
                       }
 
-                      const nextNumber = Number(nextValue);
-                      if (!Number.isFinite(nextNumber)) return;
-                      if (nextNumber > LISTING_LIMITS.minPeriodMaxLength) return;
-                      if (nextNumber < LISTING_LIMITS.minPeriodMinLength) return;
-
+                      if (!isValidPrice(nextValue, LISTING_LIMITS.minPeriodMinLength, LISTING_LIMITS.minPeriodMaxLength)) return;
                       setMinPer(nextValue);
                     }}
                     onKeyDown={(e) => {

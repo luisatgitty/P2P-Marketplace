@@ -21,6 +21,7 @@ import {
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { CATEGORIES } from "@/types/listings";
+import { isValidPrice } from "@/utils/validation";
 
 const SORT_OPTIONS = [
   { value: "recommended", label: "Recommended" },
@@ -628,8 +629,19 @@ function HomePageInner() {
                     value={priceMin}
                     onChange={(e) => {
                       const nextPriceMin = e.target.value;
+                      if (!nextPriceMin) {
+                        setPriceMin("");
+                        updateUrlFromState({ priceMin: nextPriceMin });
+                        return;
+                      }
+                      if (!isValidPrice(nextPriceMin)) return;
                       setPriceMin(nextPriceMin);
                       updateUrlFromState({ priceMin: nextPriceMin });
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "-" || e.key === "+" || e.key === "e" || e.key === "E" || e.key === ".") {
+                        e.preventDefault();
+                      }
                     }}
                     className="w-26 text-sm bg-white dark:bg-[#1e2a3a] border-stone-200 dark:border-white/10 rounded-lg"
                   />
@@ -640,8 +652,19 @@ function HomePageInner() {
                     value={priceMax}
                     onChange={(e) => {
                       const nextPriceMax = e.target.value;
+                      if (!nextPriceMax) {
+                        setPriceMax("");
+                        updateUrlFromState({ priceMax: nextPriceMax });
+                        return;
+                      }
+                      if (!isValidPrice(nextPriceMax)) return;
                       setPriceMax(nextPriceMax);
                       updateUrlFromState({ priceMax: nextPriceMax });
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "-" || e.key === "+" || e.key === "e" || e.key === "E" || e.key === ".") {
+                        e.preventDefault();
+                      }
                     }}
                     className="w-26 text-sm bg-white dark:bg-[#1e2a3a] border-stone-200 dark:border-white/10 rounded-lg"
                   />
