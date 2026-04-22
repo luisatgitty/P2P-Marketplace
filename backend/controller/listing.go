@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"p2p_marketplace/backend/config"
 	"p2p_marketplace/backend/middleware"
@@ -419,7 +420,7 @@ func ReportListing(c *fiber.Ctx) error {
 	}
 
 	trimmedDescription := strings.TrimSpace(body.Description)
-	if len(trimmedDescription) > config.ReportDescriptionMaxLength {
+	if utf8.RuneCountInString(trimmedDescription) > config.ReportDescriptionMaxLength {
 		return SendErrorResponse(c, 400, "Report details must be at most 500 characters", nil)
 	}
 
@@ -484,7 +485,7 @@ func CreateListingReview(c *fiber.Ctx) error {
 		return SendErrorResponse(c, 400, "Rating must be between 1 and 5", nil)
 	}
 
-	if len(strings.TrimSpace(body.Comment)) > config.ReviewCommentMaxLength {
+	if utf8.RuneCountInString(strings.TrimSpace(body.Comment)) > config.ReviewCommentMaxLength {
 		return SendErrorResponse(c, 400, "Review comment must be at most 500 characters", nil)
 	}
 
@@ -520,7 +521,7 @@ func UpdateListingReview(c *fiber.Ctx) error {
 		return SendErrorResponse(c, 400, "Rating must be between 1 and 5", nil)
 	}
 
-	if len(strings.TrimSpace(body.Comment)) > config.ReviewCommentMaxLength {
+	if utf8.RuneCountInString(strings.TrimSpace(body.Comment)) > config.ReviewCommentMaxLength {
 		return SendErrorResponse(c, 400, "Review comment must be at most 500 characters", nil)
 	}
 

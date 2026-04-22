@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"p2p_marketplace/backend/config"
 	"p2p_marketplace/backend/middleware"
@@ -444,10 +445,10 @@ func CreateConversationFromListing(c *fiber.Ctx) error {
 	startTime := strings.TrimSpace(body.StartTime)
 	endTime := strings.TrimSpace(body.EndTime)
 	scheduleMessage := strings.TrimSpace(body.ScheduleMessage)
-	if len(offerMessage) > config.MessageContentMaxLength {
+	if utf8.RuneCountInString(offerMessage) > config.MessageContentMaxLength {
 		return SendErrorResponse(c, 400, fmt.Sprintf("Offer message must not exceed %d characters", config.MessageContentMaxLength), nil)
 	}
-	if len(scheduleMessage) > config.MessageContentMaxLength {
+	if utf8.RuneCountInString(scheduleMessage) > config.MessageContentMaxLength {
 		return SendErrorResponse(c, 400, fmt.Sprintf("Schedule message must not exceed %d characters", config.MessageContentMaxLength), nil)
 	}
 	hasScheduleRequest := startDate != "" || endDate != ""
@@ -526,7 +527,7 @@ func UpdateConversationOfferByOwner(c *fiber.Ctx) error {
 		return SendErrorResponse(c, 400, "Offer price must be greater than 0", nil)
 	}
 	offerMessage := strings.TrimSpace(body.OfferMessage)
-	if len(offerMessage) > config.MessageContentMaxLength {
+	if utf8.RuneCountInString(offerMessage) > config.MessageContentMaxLength {
 		return SendErrorResponse(c, 400, fmt.Sprintf("Offer message must not exceed %d characters", config.MessageContentMaxLength), nil)
 	}
 
@@ -582,7 +583,7 @@ func SendMessage(c *fiber.Ctx) error {
 	if err := c.BodyParser(&body); err != nil {
 		return SendErrorResponse(c, 400, "Invalid request body. Please contact support.", err)
 	}
-	if len(strings.TrimSpace(body.Content)) > config.MessageContentMaxLength {
+	if utf8.RuneCountInString(strings.TrimSpace(body.Content)) > config.MessageContentMaxLength {
 		return SendErrorResponse(c, 400, fmt.Sprintf("Message content must not exceed %d characters", config.MessageContentMaxLength), nil)
 	}
 	if strings.TrimSpace(body.Content) == "" && len(body.Attachments) == 0 {
@@ -716,7 +717,7 @@ func EditMessage(c *fiber.Ctx) error {
 	if err := c.BodyParser(&body); err != nil {
 		return SendErrorResponse(c, 400, "Invalid request body. Please contact support.", err)
 	}
-	if len(strings.TrimSpace(body.Content)) > config.MessageContentMaxLength {
+	if utf8.RuneCountInString(strings.TrimSpace(body.Content)) > config.MessageContentMaxLength {
 		return SendErrorResponse(c, 400, fmt.Sprintf("Message content must not exceed %d characters", config.MessageContentMaxLength), nil)
 	}
 	if strings.TrimSpace(body.Content) == "" {

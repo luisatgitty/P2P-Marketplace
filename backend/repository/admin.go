@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"p2p_marketplace/backend/config"
 	"p2p_marketplace/backend/middleware"
@@ -1264,7 +1265,7 @@ func SetAdminReportAction(reportId, adminUserId, action, reason string) error {
 	if trimmedReason == "" {
 		return fmt.Errorf("Reason is required")
 	}
-	if len(trimmedReason) > config.AdminReasonMaxLength {
+	if utf8.RuneCountInString(trimmedReason) > config.AdminReasonMaxLength {
 		return fmt.Errorf("Reason must not exceed %d characters", config.AdminReasonMaxLength)
 	}
 
@@ -1693,7 +1694,7 @@ func SetAdminVerificationStatus(verificationId, reviewedById, status, reason str
 		tx.Rollback()
 		return fmt.Errorf("Reason is required")
 	}
-	if len(trimmedReason) > config.AdminReasonMaxLength {
+	if utf8.RuneCountInString(trimmedReason) > config.AdminReasonMaxLength {
 		tx.Rollback()
 		return fmt.Errorf("Reason must not exceed %d characters", config.AdminReasonMaxLength)
 	}

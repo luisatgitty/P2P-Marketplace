@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 	"unicode"
+	"unicode/utf8"
 
 	"p2p_marketplace/backend/config"
 	"p2p_marketplace/backend/model"
@@ -48,12 +49,12 @@ func ValidateSignUpInput(rcvUser *model.UserFromBody) error {
 }
 func validateUserName(name string, field string) error {
 	// Check if name is at least the minimum length
-	if len(name) < config.NameMinLength {
+	if utf8.RuneCountInString(name) < config.NameMinLength {
 		return fmt.Errorf("%s must be at least %d characters", field, config.NameMinLength)
 	}
 
 	// Check if name is not more than the maximum length
-	if len(name) > config.NameMaxLength {
+	if utf8.RuneCountInString(name) > config.NameMaxLength {
 		return fmt.Errorf("%s must not exceed %d characters", field, config.NameMaxLength)
 	}
 
@@ -69,7 +70,7 @@ func validateUserName(name string, field string) error {
 
 func ValidateEmail(email string) error {
 	// Validate email length
-	if len(email) > config.EmailMaxLength || len(email) < config.EmailMinLength {
+	if utf8.RuneCountInString(email) > config.EmailMaxLength || utf8.RuneCountInString(email) < config.EmailMinLength {
 		return fmt.Errorf("Invalid email length")
 	}
 
@@ -78,10 +79,10 @@ func ValidateEmail(email string) error {
 	if len(parts) != 2 {
 		return fmt.Errorf("Invalid email format")
 	}
-	if len(parts[0]) > config.EmailLocalMaxLength {
+	if utf8.RuneCountInString(parts[0]) > config.EmailLocalMaxLength {
 		return fmt.Errorf("Invalid email local part length")
 	}
-	if len(parts[1]) > config.EmailDomainMaxLength {
+	if utf8.RuneCountInString(parts[1]) > config.EmailDomainMaxLength {
 		return fmt.Errorf("Invalid email domain part length")
 	}
 
@@ -94,10 +95,10 @@ func ValidateEmail(email string) error {
 }
 
 func ValidatePasswordLength(password string) error {
-	if len(password) < config.PwdMinLength {
+	if utf8.RuneCountInString(password) < config.PwdMinLength {
 		return fmt.Errorf("Password must be at least %d characters", config.PwdMinLength)
 	}
-	if len(password) > config.PwdMaxLength {
+	if utf8.RuneCountInString(password) > config.PwdMaxLength {
 		return fmt.Errorf("Password must not exceed %d characters", config.PwdMaxLength)
 	}
 	return nil
@@ -202,7 +203,7 @@ func ValidateUpdateProfileInput(body *model.UpdateProfileBody) error {
 		return err
 	}
 
-	if len(body.Bio) > config.ProfileBioMaxLength {
+	if utf8.RuneCountInString(body.Bio) > config.ProfileBioMaxLength {
 		return fmt.Errorf("Bio must not exceed %d characters", config.ProfileBioMaxLength)
 	}
 
@@ -225,22 +226,22 @@ func ValidateUpdateProfileInput(body *model.UpdateProfileBody) error {
 	}
 
 	if body.LocationProv != "" {
-		if len(body.LocationProv) < config.ProfileLocationMinLength || len(body.LocationProv) > config.ProfileLocationMaxLength {
+		if utf8.RuneCountInString(body.LocationProv) < config.ProfileLocationMinLength || utf8.RuneCountInString(body.LocationProv) > config.ProfileLocationMaxLength {
 			return fmt.Errorf("Province must be between %d and %d characters", config.ProfileLocationMinLength, config.ProfileLocationMaxLength)
 		}
 	}
 
 	if body.LocationCity != "" {
-		if len(body.LocationCity) < config.ProfileLocationMinLength || len(body.LocationCity) > config.ProfileLocationMaxLength {
+		if utf8.RuneCountInString(body.LocationCity) < config.ProfileLocationMinLength || utf8.RuneCountInString(body.LocationCity) > config.ProfileLocationMaxLength {
 			return fmt.Errorf("City / municipality must be between %d and %d characters", config.ProfileLocationMinLength, config.ProfileLocationMaxLength)
 		}
 	}
 
-	if body.LocationBrgy != "" && len(body.LocationBrgy) > config.ProfileLocationMaxLength {
+	if body.LocationBrgy != "" && utf8.RuneCountInString(body.LocationBrgy) > config.ProfileLocationMaxLength {
 		return fmt.Errorf("Barangay must not exceed %d characters", config.ProfileLocationMaxLength)
 	}
 
-	if body.CurrentPassword != "" && len(body.CurrentPassword) > config.PwdMaxLength {
+	if body.CurrentPassword != "" && utf8.RuneCountInString(body.CurrentPassword) > config.PwdMaxLength {
 		return fmt.Errorf("Current password must not exceed %d characters", config.PwdMaxLength)
 	}
 
@@ -270,7 +271,7 @@ func ValidateSubmitVerificationInput(body *model.SubmitVerificationBody) error {
 	if body.IdType == "" {
 		return fmt.Errorf("ID type is required")
 	}
-	if len(body.IdType) < config.VerificationIdTypeMinLength || len(body.IdType) > config.VerificationIdTypeMaxLength {
+	if utf8.RuneCountInString(body.IdType) < config.VerificationIdTypeMinLength || utf8.RuneCountInString(body.IdType) > config.VerificationIdTypeMaxLength {
 		return fmt.Errorf("ID type must be between %d and %d characters", config.VerificationIdTypeMinLength, config.VerificationIdTypeMaxLength)
 	}
 	if !containsExactOption(body.IdType, config.VerificationIdTypes) {
@@ -280,7 +281,7 @@ func ValidateSubmitVerificationInput(body *model.SubmitVerificationBody) error {
 	if body.IdNumber == "" {
 		return fmt.Errorf("ID number is required")
 	}
-	if len(body.IdNumber) < config.VerificationIdNumberMinLength || len(body.IdNumber) > config.VerificationIdNumberMaxLength {
+	if utf8.RuneCountInString(body.IdNumber) < config.VerificationIdNumberMinLength || utf8.RuneCountInString(body.IdNumber) > config.VerificationIdNumberMaxLength {
 		return fmt.Errorf("ID number must be between %d and %d characters", config.VerificationIdNumberMinLength, config.VerificationIdNumberMaxLength)
 	}
 
@@ -321,14 +322,14 @@ func ValidateSubmitVerificationInput(body *model.SubmitVerificationBody) error {
 		}
 	}
 
-	if len(body.UserAgent) > config.VerificationUserAgentMaxLength {
-		body.UserAgent = body.UserAgent[:config.VerificationUserAgentMaxLength]
+	if utf8.RuneCountInString(body.UserAgent) > config.VerificationUserAgentMaxLength {
+		body.UserAgent = truncateStringByRuneLimit(body.UserAgent, config.VerificationUserAgentMaxLength)
 	}
-	if len(body.IpAddress) > config.VerificationIpAddressMaxLength {
-		body.IpAddress = body.IpAddress[:config.VerificationIpAddressMaxLength]
+	if utf8.RuneCountInString(body.IpAddress) > config.VerificationIpAddressMaxLength {
+		body.IpAddress = truncateStringByRuneLimit(body.IpAddress, config.VerificationIpAddressMaxLength)
 	}
-	if len(body.HardwareInfo) > config.VerificationHardwareMaxLength {
-		body.HardwareInfo = body.HardwareInfo[:config.VerificationHardwareMaxLength]
+	if utf8.RuneCountInString(body.HardwareInfo) > config.VerificationHardwareMaxLength {
+		body.HardwareInfo = truncateStringByRuneLimit(body.HardwareInfo, config.VerificationHardwareMaxLength)
 	}
 
 	if body.IdImageFront == nil || strings.TrimSpace(body.IdImageFront.Data) == "" {
@@ -407,7 +408,7 @@ func ValidateCreateListingInput(body *model.CreateListingBody, isEdit bool) erro
 	if body.Title == "" {
 		return fmt.Errorf("Title is required")
 	}
-	if len(body.Title) < config.ListingTitleMinLength || len(body.Title) > config.ListingTitleMaxLength {
+	if utf8.RuneCountInString(body.Title) < config.ListingTitleMinLength || utf8.RuneCountInString(body.Title) > config.ListingTitleMaxLength {
 		return fmt.Errorf("Title must be between %d and %d characters", config.ListingTitleMinLength, config.ListingTitleMaxLength)
 	}
 
@@ -443,20 +444,20 @@ func ValidateCreateListingInput(body *model.CreateListingBody, isEdit bool) erro
 	if body.Description == "" {
 		return fmt.Errorf("Description is required")
 	}
-	if len(body.Description) < config.ListingDescriptionMinLength || len(body.Description) > config.ListingDescriptionMaxLength {
+	if utf8.RuneCountInString(body.Description) < config.ListingDescriptionMinLength || utf8.RuneCountInString(body.Description) > config.ListingDescriptionMaxLength {
 		return fmt.Errorf("Description must be between %d and %d characters", config.ListingDescriptionMinLength, config.ListingDescriptionMaxLength)
 	}
 
 	if body.LocationCity == "" || body.LocationProv == "" {
 		return fmt.Errorf("City and province are required")
 	}
-	if len(body.LocationCity) < config.ListingLocationMinLength || len(body.LocationCity) > config.ListingLocationMaxLength {
+	if utf8.RuneCountInString(body.LocationCity) < config.ListingLocationMinLength || utf8.RuneCountInString(body.LocationCity) > config.ListingLocationMaxLength {
 		return fmt.Errorf("City must be between %d and %d characters", config.ListingLocationMinLength, config.ListingLocationMaxLength)
 	}
-	if len(body.LocationProv) < config.ListingLocationMinLength || len(body.LocationProv) > config.ListingLocationMaxLength {
+	if utf8.RuneCountInString(body.LocationProv) < config.ListingLocationMinLength || utf8.RuneCountInString(body.LocationProv) > config.ListingLocationMaxLength {
 		return fmt.Errorf("Province must be between %d and %d characters", config.ListingLocationMinLength, config.ListingLocationMaxLength)
 	}
-	if body.LocationBrgy != "" && len(body.LocationBrgy) > config.ListingLocationMaxLength {
+	if body.LocationBrgy != "" && utf8.RuneCountInString(body.LocationBrgy) > config.ListingLocationMaxLength {
 		return fmt.Errorf("Barangay must not exceed %d characters", config.ListingLocationMaxLength)
 	}
 
@@ -556,7 +557,7 @@ func ValidateCreateListingInput(body *model.CreateListingBody, isEdit bool) erro
 		if _, err := time.Parse("2006-01-02", body.RentData.Availability); err != nil {
 			return fmt.Errorf("Invalid availability date")
 		}
-		if len(body.RentData.Deposit) > config.ListingDepositMaxLength {
+		if utf8.RuneCountInString(body.RentData.Deposit) > config.ListingDepositMaxLength {
 			return fmt.Errorf("Deposit must not exceed %d characters", config.ListingDepositMaxLength)
 		}
 		if len(body.Amenities) == 0 {
@@ -587,16 +588,16 @@ func ValidateCreateListingInput(body *model.CreateListingBody, isEdit bool) erro
 		if body.ServiceData.Turnaround == "" {
 			return fmt.Errorf("Turnaround is required")
 		}
-		if len(body.ServiceData.Turnaround) < config.ListingTurnaroundMinLength || len(body.ServiceData.Turnaround) > config.ListingTurnaroundMaxLength {
+		if utf8.RuneCountInString(body.ServiceData.Turnaround) < config.ListingTurnaroundMinLength || utf8.RuneCountInString(body.ServiceData.Turnaround) > config.ListingTurnaroundMaxLength {
 			return fmt.Errorf("Turnaround must be between %d and %d characters", config.ListingTurnaroundMinLength, config.ListingTurnaroundMaxLength)
 		}
 		if body.ServiceData.ServiceArea == "" {
 			return fmt.Errorf("Service area is required")
 		}
-		if len(body.ServiceData.ServiceArea) < config.ListingServiceAreaMinLength || len(body.ServiceData.ServiceArea) > config.ListingServiceAreaMaxLength {
+		if utf8.RuneCountInString(body.ServiceData.ServiceArea) < config.ListingServiceAreaMinLength || utf8.RuneCountInString(body.ServiceData.ServiceArea) > config.ListingServiceAreaMaxLength {
 			return fmt.Errorf("Service area must be between %d and %d characters", config.ListingServiceAreaMinLength, config.ListingServiceAreaMaxLength)
 		}
-		if len(body.ServiceData.Arrangement) > config.ListingArrangementMaxLength {
+		if utf8.RuneCountInString(body.ServiceData.Arrangement) > config.ListingArrangementMaxLength {
 			return fmt.Errorf("Arrangement must not exceed %d characters", config.ListingArrangementMaxLength)
 		}
 		if len(body.Inclusions) == 0 {
@@ -619,7 +620,7 @@ func validateListingTags(tags []string, label string) error {
 		if value == "" {
 			return fmt.Errorf("%s entries must not be empty", label)
 		}
-		if len(value) < config.ListingTagMinLength || len(value) > config.ListingTagMaxLength {
+		if utf8.RuneCountInString(value) < config.ListingTagMinLength || utf8.RuneCountInString(value) > config.ListingTagMaxLength {
 			return fmt.Errorf("%s entries must be between %d and %d characters", label, config.ListingTagMinLength, config.ListingTagMaxLength)
 		}
 	}
@@ -655,4 +656,15 @@ func containsExactCategory(value string, categories []string) bool {
 		}
 	}
 	return false
+}
+
+func truncateStringByRuneLimit(value string, maxLen int) string {
+	if maxLen <= 0 {
+		return ""
+	}
+	runes := []rune(value)
+	if len(runes) <= maxLen {
+		return value
+	}
+	return string(runes[:maxLen])
 }

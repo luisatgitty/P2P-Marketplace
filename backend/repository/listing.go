@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"p2p_marketplace/backend/config"
 	"p2p_marketplace/backend/middleware"
@@ -152,8 +153,8 @@ func applyAutomatedModerationTx(tx *gorm.DB, listingId, ownerUserId string, dete
 	}
 
 	description := fmt.Sprintf("Auto-moderation detected forbidden words: %s", strings.Join(detectedWords, ", "))
-	if len(description) > config.ReportDescriptionMaxLength {
-		description = description[:config.ReportDescriptionMaxLength]
+	if utf8.RuneCountInString(description) > config.ReportDescriptionMaxLength {
+		description = truncateToMaxRunes(description, config.ReportDescriptionMaxLength)
 	}
 
 	reason := config.NormalizeReportReason(config.SystemModerationReportReason)
@@ -365,6 +366,17 @@ func parseMinRentalPeriod(minPeriod string) (int, error) {
 		return 0, fmt.Errorf("Minimum rental period must be between %d and %d", config.ListingMinPeriodMinValue, config.ListingMinPeriodMaxValue)
 	}
 	return parsed, nil
+}
+
+func truncateToMaxRunes(value string, maxLen int) string {
+	if maxLen <= 0 {
+		return ""
+	}
+	runes := []rune(value)
+	if len(runes) <= maxLen {
+		return value
+	}
+	return string(runes[:maxLen])
 }
 
 func saveListingImagesTx(tx *gorm.DB, listingId string, images []model.ListingImageBody) error {

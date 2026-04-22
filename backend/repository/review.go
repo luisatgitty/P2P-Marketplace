@@ -3,6 +3,7 @@ package repository
 import (
 	"fmt"
 	"strings"
+	"unicode/utf8"
 
 	"p2p_marketplace/backend/config"
 	"p2p_marketplace/backend/middleware"
@@ -119,7 +120,7 @@ func CreateListingReview(reviewerId, listingId string, rating int, comment strin
 		return review, fmt.Errorf("Rating must be between 1 and 5")
 	}
 
-	if len(strings.TrimSpace(comment)) > config.ReviewCommentMaxLength {
+	if utf8.RuneCountInString(strings.TrimSpace(comment)) > config.ReviewCommentMaxLength {
 		return review, fmt.Errorf("Review comment must be at most 500 characters")
 	}
 
@@ -199,7 +200,7 @@ func UpdateListingReview(reviewerId, listingId string, rating int, comment strin
 		return review, fmt.Errorf("Rating must be between 1 and 5")
 	}
 
-	if len(strings.TrimSpace(comment)) > config.ReviewCommentMaxLength {
+	if utf8.RuneCountInString(strings.TrimSpace(comment)) > config.ReviewCommentMaxLength {
 		return review, fmt.Errorf("Review comment must be at most 500 characters")
 	}
 

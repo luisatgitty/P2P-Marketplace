@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"p2p_marketplace/backend/config"
 	"p2p_marketplace/backend/middleware"
@@ -772,7 +773,7 @@ func CreateMessage(userId, conversationId, content, replyToMessageId string, att
 	if trimmed == "" && len(attachments) == 0 {
 		return created, fmt.Errorf("Message content is required")
 	}
-	if len(trimmed) > config.MessageContentMaxLength {
+	if utf8.RuneCountInString(trimmed) > config.MessageContentMaxLength {
 		return created, fmt.Errorf("Message content must not exceed %d characters", config.MessageContentMaxLength)
 	}
 
@@ -1093,7 +1094,7 @@ func EditMessageContent(userId, conversationId, messageId, content string) error
 	if trimmed == "" {
 		return fmt.Errorf("Message content is required")
 	}
-	if len(trimmed) > config.MessageContentMaxLength {
+	if utf8.RuneCountInString(trimmed) > config.MessageContentMaxLength {
 		return fmt.Errorf("Message content must not exceed %d characters", config.MessageContentMaxLength)
 	}
 
@@ -2067,7 +2068,7 @@ func formatAmountWithCommas(amount int) string {
 func insertConversationMessageTx(tx *gorm.DB, conversationId, senderId, receiverId, content string) (model.MessageFromDb, error) {
 	var created model.MessageFromDb
 	trimmedContent := strings.TrimSpace(content)
-	if len(trimmedContent) > config.MessageContentMaxLength {
+	if utf8.RuneCountInString(trimmedContent) > config.MessageContentMaxLength {
 		return created, fmt.Errorf("Message content must not exceed %d characters", config.MessageContentMaxLength)
 	}
 
