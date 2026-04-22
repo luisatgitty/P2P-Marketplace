@@ -1002,15 +1002,15 @@ export default function ProfilePage() {
               />}
             {!isViewingExternalProfile && (
               <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
-                <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-2 text-white text-sm font-medium bg-black/40 px-4 py-2 rounded-full">
+                <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-2 text-white text-sm font-medium bg-black/40 px-4 py-2 rounded-lg">
                   <Camera className="w-4 h-4" /> {cover.src ? "Change Cover" : "Upload Cover Photo"}
                 </div>
               </div>
             )}
             {/* Remove cover button */}
             {!isViewingExternalProfile && cover.src && (
-              <button
-                onClick={async (e) => {
+              <Button
+                onClick={async (e) => { 
                   e.stopPropagation();
                   try {
                     await cover.remove();
@@ -1018,11 +1018,11 @@ export default function ProfilePage() {
                     // toast already handled in remove flow
                   }
                 }}
-                className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/50 hover:bg-black/70 flex items-center justify-center text-white transition-colors opacity-0 group-hover:opacity-100"
+                className="absolute top-2 right-2 w-7 h-7 rounded-lg bg-black/50 hover:bg-black/70 flex items-center justify-center text-white transition-colors opacity-0 group-hover:opacity-100"
                 title="Remove cover photo"
               >
                 <Trash2 className="w-3.5 h-3.5" />
-              </button>
+              </Button>
             )}
             {!isViewingExternalProfile && <input ref={cover.inputRef} type="file" accept="image/*" className="hidden" onChange={cover.onFileChange} />}
           </div>
@@ -1064,16 +1064,18 @@ export default function ProfilePage() {
                   <>
                     <div className="fixed inset-0 z-10" onClick={() => setShowAvatarMenu(false)} />
                     <div className="absolute top-full left-0 mt-2 z-20 bg-white dark:bg-[#1c1f2e] border border-stone-200 dark:border-[#2a2d3e] rounded-lg shadow-lg overflow-hidden w-44">
-                      <button
-                        className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-stone-700 dark:text-stone-300 hover:bg-stone-50 dark:hover:bg-[#252837] transition-colors"
+                      <Button
+                        variant={'ghost'}
+                        className="rounded-none w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-stone-700 dark:text-stone-300 hover:bg-stone-50 dark:hover:bg-[#252837] transition-colors"
                         onClick={() => { avatar.trigger(); setShowAvatarMenu(false); }}
                       >
                         <Camera className="w-4 h-4 text-stone-400" />
                         {avatar.src ? "Change Photo" : "Upload Photo"}
-                      </button>
+                      </Button>
                       {avatar.src && (
-                        <button
-                          className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors border-t border-stone-100 dark:border-[#2a2d3e]"
+                        <Button
+                          variant={'ghost'}
+                          className="rounded-none w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors border-t border-stone-100 dark:border-[#2a2d3e]"
                           onClick={async () => {
                             try {
                               await avatar.remove();
@@ -1086,7 +1088,7 @@ export default function ProfilePage() {
                         >
                           <Trash2 className="w-4 h-4" />
                           Remove Photo
-                        </button>
+                        </Button>
                       )}
                     </div>
                   </>
@@ -1219,13 +1221,13 @@ export default function ProfilePage() {
                           maxLength={AUTH_LIMITS.passwordMaxLength}
                           className="pr-9"
                         />
-                        <button
-                          type="button"
+                        <Button
+                          variant={'ghost'}
                           className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm leading-5"
                           onClick={() => setShowCurrentPassword(!showCurrentPassword)}
                         >
                           {showCurrentPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                        </button>
+                        </Button>
                       </div>
                     </div>
                     <div>
@@ -1239,13 +1241,13 @@ export default function ProfilePage() {
                           maxLength={AUTH_LIMITS.passwordMaxLength}
                           className="pr-9"
                         />
-                        <button
-                          type="button"
+                        <Button
+                          variant={'ghost'}
                           className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm leading-5"
                           onClick={() => setShowNewPassword(!showNewPassword)}
                         >
                           {showNewPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                        </button>
+                        </Button>
                       </div>
                     </div>
                     <div>
@@ -1291,16 +1293,27 @@ export default function ProfilePage() {
           {/* Tab bar */}
           <div className="flex border-b border-stone-200 dark:border-[#2a2d3e]">
             {profileTabs.map((t) => (
-              <button key={t} onClick={() => setProfileTab(t)}
+              <button
+                key={t}
+                onClick={() => setProfileTab(t)}
                 className={cn("flex-1 py-3.5 text-sm font-medium transition-colors",
                   profileTab === t
                     ? "text-stone-900 dark:text-stone-100 border-b-2 border-stone-900 dark:border-stone-300"
                     : "text-stone-400 dark:text-stone-500 hover:text-stone-600 dark:hover:text-stone-300")}>
-                {t === "listings"
-                  ? "📦 Listing"
-                  : t === "bookmarks"
-                    ? "🔖 Bookmark"
-                    : "⭐ Review"}
+                <span className="inline-flex items-center gap-1.5">
+                  {t === "listings"
+                    ? <Package className="w-4 h-4" />
+                    : t === "bookmarks"
+                      ? <Bookmark className="w-4 h-4" />
+                      : <Star className="w-4 h-4" />}
+                  <span>
+                    {t === "listings"
+                      ? "Listing"
+                      : t === "bookmarks"
+                        ? "Bookmark"
+                        : "Review"}
+                  </span>
+                </span>
               </button>
             ))}
           </div>
@@ -1310,7 +1323,11 @@ export default function ProfilePage() {
             <div className="flex items-center justify-between px-4 pt-3 pb-2">
               <div className="flex gap-1">
                 {(["all", "active", "sold", "booked"] as const).map((tab) => (
-                  <button key={tab} onClick={() => setListingTab(tab)}
+                  <Button
+                    variant={'ghost'}
+                    size={'sm'}
+                    key={tab}
+                    onClick={() => setListingTab(tab)}
                     className={cn("tab-page-base",
                       listingTab === tab
                         ? "tab-active"
@@ -1322,7 +1339,7 @@ export default function ProfilePage() {
                       : tab === "sold"
                         ? `Sold (${soldListings.length})`
                         : `Booked (${bookedListings.length})`}
-                  </button>
+                  </Button>
                 ))}
               </div>
               
@@ -1382,7 +1399,9 @@ export default function ProfilePage() {
                     { key: "received", label: `Reviews by Others (${receivedReviews.length})` },
                     { key: "personal", label: `Personal Reviews (${personalReviews.length})` },
                   ] as const).map((tabItem) => (
-                    <button
+                    <Button
+                      variant={'ghost'}
+                      size={'sm'}
                       key={tabItem.key}
                       onClick={() => setReviewTab(tabItem.key)}
                       className={cn(
@@ -1393,7 +1412,7 @@ export default function ProfilePage() {
                       )}
                     >
                       {tabItem.label}
-                    </button>
+                    </Button>
                   ))}
                 </div>
               </div>
