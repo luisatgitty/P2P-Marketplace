@@ -6,7 +6,7 @@ import Link from "next/link";
 import {
   MapPin, Star, MessageCircle, Bookmark, Share2,
   ChevronLeft, ChevronRight, Flag, Eye, Clock, Package,
-  CheckCircle, Phone, Zap, ArrowLeft, Truck, AlertTriangle, Expand,
+  CheckCircle, Phone, Zap, Truck, AlertTriangle, Expand,
   User,
   Pen,
   EyeOff,
@@ -72,14 +72,6 @@ function getDefaultExtra(listing: PostCardProps): ExtraDetail {
     arrangement:    "",
   };
 }
-
-// ── Type badge — keys match PostCardProps.type ("sell" | "rent" | "service") ───
-// FIX: was keyed as "sale" which never matched the actual type value "sell"
-const TYPE_LABEL: Record<string, string> = {
-  sell:    "For Sale",
-  rent:    "For Rent",
-  service: "Service",
-};
 
 // ── Rent info card — shows data from form's "Rental Terms" step ───────────────
 function RentInfoCard({ extra }: { extra: ExtraDetail }) {
@@ -528,10 +520,10 @@ export default function ListingDetailPage() {
   return (
     <div className="min-h-screen bg-stone-100 dark:bg-[#111827] mt-6">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 pb-8">
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-10 gap-6">
 
           {/* ══ LEFT COLUMN ══════════════════════════════════════════════════ */}
-          <div className="flex flex-col gap-5">
+          <div className="flex flex-col md:col-span-6 lg:col-span-7 gap-5">
 
             {/* ── Image gallery ── */}
             <div className="bg-white dark:bg-[#1c1f2e] rounded-lg border border-stone-200 dark:border-[#2a2d3e] overflow-hidden shadow-sm">
@@ -571,14 +563,14 @@ export default function ListingDetailPage() {
                     <Button
                       variant={'ghost'}
                       onClick={() => setImgIdx((i) => (i - 1 + images.length) % images.length)}
-                      className="absolute left-3 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100">
-                      <ChevronLeft className="w-5 h-5" />
+                      className="absolute w-8 left-3 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100">
+                      <ChevronLeft />
                     </Button>
                     <Button
                       variant={'ghost'}
                       onClick={() => setImgIdx((i) => (i + 1) % images.length)}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100">
-                      <ChevronRight className="w-5 h-5" />
+                      className="absolute w-8 right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100">
+                      <ChevronRight />
                     </Button>
                   </>
                 )}
@@ -634,7 +626,7 @@ export default function ListingDetailPage() {
             </div>
 
             {/* ── Listing card (mobile) ── */}
-            <div className="sm:hidden">
+            <div className="md:hidden">
               {displayListingCard(listing, handleToggleBookmark, isBookmarking, isBookmarked, isOwnListing, isDeletedState, isSold, router, id, handleListingVisibility, toggling, isListingAvailable, handleRemoveListing, deleting, visitorUnavailableState, isSell, handleBuy, isRent, isService, handleMessage, messaging)}
             </div>
 
@@ -721,11 +713,11 @@ export default function ListingDetailPage() {
           </div>
 
           {/* ══ RIGHT COLUMN ══════════════════════════════════════════════════ */}
-          <div className="flex flex-col gap-4">
-            <div className="lg:sticky lg:top-20">
+          <div className="flex flex-col md:col-span-4 lg:col-span-3 gap-4">
+            <div className="sticky top-20">
 
               {/* ── Listing card (desktop) ── */}
-              <div className="hidden sm:flex mb-4">
+              <div className="hidden md:flex mb-4">
                 {displayListingCard(listing, handleToggleBookmark, isBookmarking, isBookmarked, isOwnListing, isDeletedState, isSold, router, id, handleListingVisibility, toggling, isListingAvailable, handleRemoveListing, deleting, visitorUnavailableState, isSell, handleBuy, isRent, isService, handleMessage, messaging)}
               </div>
 
@@ -859,7 +851,7 @@ export default function ListingDetailPage() {
 
       {/* ── Mobile sticky bar ── */}
       {!isOwnListing ? (
-        <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white dark:bg-[#1c1f2e] border-t border-stone-200 dark:border-[#2a2d3e] px-4 py-3 flex gap-3 shadow-lg">
+        <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white dark:bg-[#1c1f2e] border-t border-stone-200 dark:border-[#2a2d3e] px-4 py-3 flex gap-3 shadow-lg">
           {visitorUnavailableState ? (
             <Button
               variant={'outline'}
@@ -891,7 +883,13 @@ export default function ListingDetailPage() {
               <Button
                 size={'lg'}
                 onClick={handleBuy}
-                className="flex-1 flex items-center justify-center gap-2 py-3 rounded-lg bg-[#3A4A6A] text-white text-sm font-bold">
+                className={cn(
+                  "flex-1 flex items-center justify-center gap-2 py-3 rounded-lg text-white text-sm font-bold",
+                  isSell ? "bg-slate-700 hover:bg-slate-600"
+                  : isRent ? "bg-teal-700 hover:bg-teal-600"
+                  : "bg-violet-700 hover:bg-violet-600"
+                )}>
+                {/* className="flex-1 flex items-center justify-center gap-2 py-3 rounded-lg bg-[#3A4A6A] text-white text-sm font-bold"> */}
                 <Zap className="w-4 h-4" />
                 {isSell ? "Offer" : isRent ? "Rent" : "Book"}
               </Button>
@@ -899,7 +897,7 @@ export default function ListingDetailPage() {
           )}
         </div>
       ) : (
-        <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white dark:bg-[#1c1f2e] border-t border-stone-200 dark:border-[#2a2d3e] px-4 py-3 flex gap-3 shadow-lg">
+        <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white dark:bg-[#1c1f2e] border-t border-stone-200 dark:border-[#2a2d3e] px-4 py-3 flex gap-3 shadow-lg">
           {isDeletedState || isSold ? (
             <Button
               disabled
@@ -956,10 +954,11 @@ export default function ListingDetailPage() {
     </div>
   );
 }
+
 function displayListingCard(listing: PostCardProps, handleToggleBookmark: () => Promise<void>, isBookmarking: boolean, isBookmarked: boolean, isOwnListing: boolean, isDeletedState: boolean, isSold: boolean, router: AppRouterInstance, id: string, handleListingVisibility: () => Promise<void>, toggling: boolean, isListingAvailable: boolean, handleRemoveListing: () => Promise<void>, deleting: boolean, visitorUnavailableState: boolean, isSell: boolean, handleBuy: () => void, isRent: boolean, isService: boolean, handleMessage: () => Promise<void>, messaging: boolean) {
   return <div className="bg-white dark:bg-[#1c1f2e] rounded-lg border border-stone-200 dark:border-[#2a2d3e] shadow-sm p-5">
     <div className="flex items-start justify-between gap-2 mb-2">
-      <h1 className="text-lg font-bold text-stone-900 dark:text-stone-50 leading-tight">{listing.title}</h1>
+      <h1 className="text-md lg:text-lg font-bold text-stone-900 dark:text-stone-50 leading-tight">{listing.title}</h1>
       <div className="flex gap-1.5 shrink-0">
         <Button
           variant={'secondary'}
@@ -984,7 +983,7 @@ function displayListingCard(listing: PostCardProps, handleToggleBookmark: () => 
 
     {/* Price */}
     <div className="flex items-baseline gap-1.5 mb-1">
-      <span className="text-2xl font-extrabold text-amber-700 dark:text-amber-500">{formatPrice(listing.price)}</span>
+      <span className="text-xl lg:text-2xl font-extrabold text-amber-700 dark:text-amber-500">{formatPrice(listing.price)}</span>
       {listing.priceUnit && <span className="text-black dark:text-white text-sm">{listing.priceUnit}</span>}
     </div>
 
@@ -1075,7 +1074,7 @@ function displayListingCard(listing: PostCardProps, handleToggleBookmark: () => 
               <Button
                 size={'lg'}
                 onClick={handleBuy}
-                className="flex items-center justify-center gap-2 w-full py-3 rounded-lg text-sm font-bold text-white bg-slate-700 hover:bg-slate-600 transition-colors active:scale-[0.98]">
+                className="flex items-center justify-center gap-2 w-full py-3 rounded-lg text-sm font-bold text-white bg-slate-700 hover:bg-slate-600">
                 <Zap className="w-4 h-4" /> Make an Offer
               </Button>
             )}
@@ -1083,7 +1082,7 @@ function displayListingCard(listing: PostCardProps, handleToggleBookmark: () => 
               <Button
                 size={'lg'}
                 onClick={handleBuy}
-                className="flex items-center justify-center gap-2 w-full py-3 rounded-lg text-sm font-bold text-white bg-teal-700 hover:bg-teal-600 transition-colors active:scale-[0.98]">
+                className="flex items-center justify-center gap-2 w-full py-3 rounded-lg text-sm font-bold text-white bg-teal-700 hover:bg-teal-600">
                 <Package className="w-4 h-4" /> Request to Rent
               </Button>
             )}
@@ -1091,7 +1090,7 @@ function displayListingCard(listing: PostCardProps, handleToggleBookmark: () => 
               <Button
                 size={'lg'}
                 onClick={handleBuy}
-                className="flex items-center justify-center gap-2 w-full py-3 rounded-lg text-sm font-bold text-white bg-violet-700 hover:bg-violet-600 transition-colors active:scale-[0.98]">
+                className="flex items-center justify-center gap-2 w-full py-3 rounded-lg text-sm font-bold text-white bg-violet-700 hover:bg-violet-600">
                 <CheckCircle className="w-4 h-4" /> Book Service
               </Button>
             )}
@@ -1100,7 +1099,7 @@ function displayListingCard(listing: PostCardProps, handleToggleBookmark: () => 
               size={'lg'}
               onClick={handleMessage}
               disabled={messaging}
-              className="flex items-center justify-center gap-2 w-full py-3 rounded-lg border-2 border-stone-200 dark:border-[#2a2d3e] text-stone-700 dark:text-stone-200 text-sm font-semibold hover:border-stone-400 dark:hover:border-stone-500 hover:bg-stone-50 dark:hover:bg-[#252837] transition-all">
+              className="flex items-center justify-center gap-2 w-full py-3 rounded-lg border-2 border-stone-200 dark:border-[#2a2d3e] text-stone-700 dark:text-stone-200 text-sm font-semibold hover:border-stone-400 dark:hover:border-stone-500 hover:bg-stone-50 dark:hover:bg-[#252837]">
               <MessageCircle className="w-4 h-4" /> {messaging ? "Opening chat..." : "Message Seller"}
             </Button>
           </>

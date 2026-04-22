@@ -77,7 +77,7 @@ func GetListingEditById(c *fiber.Ctx) error {
 		"locationBrgy":   listing.LocationBrgy,
 		"condition":      mapConditionDisplay(listing.Condition),
 		"deliveryMethod": mapDeliveryDisplay(listing.DeliveryMethod),
-		"minPeriod":      formatMinPeriod(listing.MinRentalPeriod),
+		"minPeriod":      formatMinPeriod(listing.MinRentalPeriod, listing.PriceUnit),
 		"availability":   "",
 		"deposit":        listing.Deposit,
 		"turnaround":     listing.Turnaround,
@@ -232,7 +232,7 @@ func GetListingById(c *fiber.Ctx) error {
 
 	switch listing.Type {
 	case "rent":
-		extra["minPeriod"] = formatMinPeriod(listing.MinRentalPeriod)
+		extra["minPeriod"] = formatMinPeriod(listing.MinRentalPeriod, listing.PriceUnit)
 		if listing.AvailableFrom != nil {
 			extra["available_from"] = listing.AvailableFrom.Format("2006-01-02")
 			extra["availability"] = listing.AvailableFrom.Format("Jan 02, 2006")
@@ -751,14 +751,11 @@ func mapDeliveryDisplay(raw string) string {
 	}
 }
 
-func formatMinPeriod(v int) string {
-	if v <= 0 {
+func formatMinPeriod(minPeriod int, periodUnit string) string {
+	if minPeriod <= 0 {
 		return ""
 	}
-	if v == 1 {
-		return "1 month"
-	}
-	return fmt.Sprintf("%d months", v)
+	return fmt.Sprintf("%d %s", minPeriod, periodUnit[2:])
 }
 
 func mapAssetURLs(baseURL string, raw []string) []string {
