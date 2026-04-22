@@ -149,7 +149,7 @@ function isValidISODate(dateValue: string): boolean {
 }
 
 function isValidTime24(timeValue: string): boolean {
-  return /^([01]\d|2[0-3]):[0-5]\d$/.test(timeValue);
+  return /^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/.test(timeValue);
 }
 
 export function validateListingStep(
@@ -255,7 +255,11 @@ export function validateListingStep(
       }
 
       const availability = (input.availability ?? "").trim();
-      if (!availability || !isValidISODate(availability)) {
+      if (!isEdit) {
+        if (!availability || !isValidISODate(availability)) {
+          errors.availability = "Please select a valid starting availability date.";
+        }
+      } else if (availability && !isValidISODate(availability)) {
         errors.availability = "Please select a valid starting availability date.";
       }
 
@@ -300,7 +304,11 @@ export function validateListingStep(
       }
 
       const availability = (input.availability ?? "").trim();
-      if (!availability || !isValidISODate(availability)) {
+      if (!isEdit) {
+        if (!availability || !isValidISODate(availability)) {
+          errors.availability = "Please select a valid starting availability date.";
+        }
+      } else if (availability && !isValidISODate(availability)) {
         errors.availability = "Please select a valid starting availability date.";
       }
 

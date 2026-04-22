@@ -233,8 +233,14 @@ function toTwelveHour(time24: string): string {
   return `${hour12}:${String(minute).padStart(2, "0")} ${suffix}`;
 }
 
-function isDayUnavailableBySelection(d: Date, dayOff: string[]): boolean {
-  return isDayUnavailableByDaysOff(d, dayOff, { includePast: true });
+function isDayUnavailableBySelection(
+  d: Date,
+  dayOff: string[],
+  options?: { includePast?: boolean },
+): boolean {
+  return isDayUnavailableByDaysOff(d, dayOff, {
+    includePast: options?.includePast ?? true,
+  });
 }
 
 interface TimeWindowRange {
@@ -670,7 +676,7 @@ function TagInput({
             {draft.length}/{maxLength}
           </span>
           <Button
-            type='submit'
+            type="button"
             variant={'outline'}
             onClick={add}
             disabled={!draft.trim()}
@@ -1399,10 +1405,14 @@ export default function ListingForm({
 
   useEffect(() => {
     if (!selectedAvailabilityDate) return;
-    if (isDayUnavailableBySelection(selectedAvailabilityDate, dayoff)) {
+    if (
+      isDayUnavailableBySelection(selectedAvailabilityDate, dayoff, {
+        includePast: !isEdit,
+      })
+    ) {
       setAvail("");
     }
-  }, [dayoff, selectedAvailabilityDate]);
+  }, [dayoff, isEdit, selectedAvailabilityDate]);
 
   const prevAvailabilityMonth = () => {
     if (calendarMonth === 0) {
@@ -1489,7 +1499,11 @@ export default function ListingForm({
               viewMonth={calendarMonth}
               onPrevMonth={prevAvailabilityMonth}
               onNextMonth={nextAvailabilityMonth}
-              isUnavailable={(d) => isDayUnavailableBySelection(d, dayoff)}
+              isUnavailable={(d) =>
+                isDayUnavailableBySelection(d, dayoff, {
+                  includePast: !isEdit,
+                })
+              }
               startDate={selectedAvailabilityDate}
               endDate={null}
               hoverDate={calendarHoverDate}
@@ -2198,6 +2212,7 @@ export default function ListingForm({
               {step > 0 ? (
                 <Button
                   variant={'ghost'}
+                  type="button"
                   onClick={back}
                 >
                   <ChevronLeft size={16} /> Back
@@ -2205,6 +2220,7 @@ export default function ListingForm({
               ) : (
                 <Button
                   variant={'ghost'}
+                  type="button"
                   onClick={handleNavigateBack}
                 >
                   <ChevronLeft size={16} />{" "}
@@ -2217,6 +2233,7 @@ export default function ListingForm({
               {hasUnsavedChanges && (
                 <Button
                   variant={'destructive'}
+                  type="button"
                   onClick={discardProgress}
                   className="hover:bg-red-600 dark:hover:bg-red-600 font-bold"
                 >
@@ -2226,6 +2243,7 @@ export default function ListingForm({
 
               {step < 2 ? (
                 <Button
+                  type="button"
                   onClick={next}
                   className="font-bold"
                 >

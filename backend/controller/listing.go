@@ -77,7 +77,7 @@ func GetListingEditById(c *fiber.Ctx) error {
 		"locationBrgy":   listing.LocationBrgy,
 		"condition":      mapConditionDisplay(listing.Condition),
 		"deliveryMethod": mapDeliveryDisplay(listing.DeliveryMethod),
-		"minPeriod":      formatMinPeriod(listing.MinRentalPeriod, listing.PriceUnit),
+		"minPeriod":      "",
 		"availability":   "",
 		"deposit":        listing.Deposit,
 		"turnaround":     listing.Turnaround,
@@ -94,6 +94,9 @@ func GetListingEditById(c *fiber.Ctx) error {
 	}
 
 	if listing.Type == "rent" {
+		if listing.MinRentalPeriod > 0 {
+			data["minPeriod"] = strconv.Itoa(listing.MinRentalPeriod)
+		}
 		data["amenities"] = included
 	} else {
 		data["inclusions"] = included

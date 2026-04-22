@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import ListingForm, { type FormType } from "@/components/listing-form";
+import { ListingType } from "@/types/listings";
+import ListingForm from "@/components/listing-form";
 import { getListingEditById, type ListingEditData } from "@/services/listingEditService";
 
 export default function EditListingPage() {
@@ -83,7 +84,7 @@ export default function EditListingPage() {
 
   return (
     <ListingForm
-      type={data.type as FormType}
+      type={data.type as ListingType}
       initialData={initialData}
       isEdit
       listingId={id}
