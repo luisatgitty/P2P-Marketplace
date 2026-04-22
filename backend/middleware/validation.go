@@ -48,6 +48,10 @@ func ValidateSignUpInput(rcvUser *model.UserFromBody) error {
 	return nil
 }
 func validateUserName(name string, field string) error {
+	if err := validateNoEmoji(name, field); err != nil {
+		return err
+	}
+
 	// Check if name is at least the minimum length
 	if utf8.RuneCountInString(name) < config.NameMinLength {
 		return fmt.Errorf("%s must be at least %d characters", field, config.NameMinLength)
@@ -69,6 +73,10 @@ func validateUserName(name string, field string) error {
 }
 
 func ValidateEmail(email string) error {
+	if err := validateNoEmoji(email, "Email"); err != nil {
+		return err
+	}
+
 	// Validate email length
 	if utf8.RuneCountInString(email) > config.EmailMaxLength || utf8.RuneCountInString(email) < config.EmailMinLength {
 		return fmt.Errorf("Invalid email length")
@@ -95,6 +103,10 @@ func ValidateEmail(email string) error {
 }
 
 func ValidatePasswordLength(password string) error {
+	if err := validateNoEmoji(password, "Password"); err != nil {
+		return err
+	}
+
 	if utf8.RuneCountInString(password) < config.PwdMinLength {
 		return fmt.Errorf("Password must be at least %d characters", config.PwdMinLength)
 	}
@@ -150,6 +162,42 @@ func containsRune(s string, r rune) bool {
 		}
 	}
 	return false
+}
+
+func validateNoEmoji(value string, field string) error {
+	if value == "" {
+		return nil
+	}
+	if containsEmoji(value) {
+		return fmt.Errorf("%s must not contain emoji", field)
+	}
+	return nil
+}
+
+func containsEmoji(value string) bool {
+	for _, ch := range value {
+		if isEmojiRune(ch) {
+			return true
+		}
+	}
+	return false
+}
+
+func isEmojiRune(ch rune) bool {
+	switch {
+	case ch == 0x200D: // zero-width joiner used in many emoji sequences
+		return true
+	case ch == 0xFE0F: // variation selector-16 forces emoji presentation
+		return true
+	case ch >= 0x1F1E6 && ch <= 0x1F1FF: // regional indicator symbols
+		return true
+	case ch >= 0x1F300 && ch <= 0x1FAFF: // main emoji blocks
+		return true
+	case ch >= 0x2600 && ch <= 0x27BF: // miscellaneous symbols and dingbats used as emoji
+		return true
+	default:
+		return false
+	}
 }
 
 func ValidateTokenFormat(token string) error {
@@ -208,6 +256,9 @@ func ValidateUpdateProfileInput(body *model.UpdateProfileBody) error {
 	}
 
 	if body.PhoneNumber != "" {
+		if err := validateNoEmoji(body.PhoneNumber, "Phone number"); err != nil {
+			return err
+		}
 		if len(body.PhoneNumber) != config.ProfilePhoneExactLength {
 			return fmt.Errorf("Phone number must be exactly %d digits", config.ProfilePhoneExactLength)
 		}
@@ -226,23 +277,39 @@ func ValidateUpdateProfileInput(body *model.UpdateProfileBody) error {
 	}
 
 	if body.LocationProv != "" {
+		if err := validateNoEmoji(body.LocationProv, "Province"); err != nil {
+			return err
+		}
 		if utf8.RuneCountInString(body.LocationProv) < config.ProfileLocationMinLength || utf8.RuneCountInString(body.LocationProv) > config.ProfileLocationMaxLength {
 			return fmt.Errorf("Province must be between %d and %d characters", config.ProfileLocationMinLength, config.ProfileLocationMaxLength)
 		}
 	}
 
 	if body.LocationCity != "" {
+		if err := validateNoEmoji(body.LocationCity, "City / municipality"); err != nil {
+			return err
+		}
 		if utf8.RuneCountInString(body.LocationCity) < config.ProfileLocationMinLength || utf8.RuneCountInString(body.LocationCity) > config.ProfileLocationMaxLength {
 			return fmt.Errorf("City / municipality must be between %d and %d characters", config.ProfileLocationMinLength, config.ProfileLocationMaxLength)
 		}
 	}
 
-	if body.LocationBrgy != "" && utf8.RuneCountInString(body.LocationBrgy) > config.ProfileLocationMaxLength {
-		return fmt.Errorf("Barangay must not exceed %d characters", config.ProfileLocationMaxLength)
+	if body.LocationBrgy != "" {
+		if err := validateNoEmoji(body.LocationBrgy, "Barangay"); err != nil {
+			return err
+		}
+		if utf8.RuneCountInString(body.LocationBrgy) > config.ProfileLocationMaxLength {
+			return fmt.Errorf("Barangay must not exceed %d characters", config.ProfileLocationMaxLength)
+		}
 	}
 
-	if body.CurrentPassword != "" && utf8.RuneCountInString(body.CurrentPassword) > config.PwdMaxLength {
-		return fmt.Errorf("Current password must not exceed %d characters", config.PwdMaxLength)
+	if body.CurrentPassword != "" {
+		if err := validateNoEmoji(body.CurrentPassword, "Current password"); err != nil {
+			return err
+		}
+		if utf8.RuneCountInString(body.CurrentPassword) > config.PwdMaxLength {
+			return fmt.Errorf("Current password must not exceed %d characters", config.PwdMaxLength)
+		}
 	}
 
 	if body.NewPassword != "" {
@@ -310,6 +377,9 @@ func ValidateSubmitVerificationInput(body *model.SubmitVerificationBody) error {
 	if body.MobileNumber == "" {
 		return fmt.Errorf("Mobile number is required")
 	}
+	if err := validateNoEmoji(body.MobileNumber, "Mobile number"); err != nil {
+		return err
+	}
 	if len(body.MobileNumber) != config.VerificationMobileExactLength {
 		return fmt.Errorf("Mobile number must be exactly %d digits", config.VerificationMobileExactLength)
 	}
@@ -367,6 +437,9 @@ func ValidateCreateAdminInput(body *model.AdminCreateAdminBody) error {
 	}
 
 	if body.Phone != "" {
+		if err := validateNoEmoji(body.Phone, "Phone number"); err != nil {
+			return err
+		}
 		if len(body.Phone) != config.ProfilePhoneExactLength {
 			return fmt.Errorf("Phone number must be exactly %d digits", config.ProfilePhoneExactLength)
 		}
@@ -451,14 +524,25 @@ func ValidateCreateListingInput(body *model.CreateListingBody, isEdit bool) erro
 	if body.LocationCity == "" || body.LocationProv == "" {
 		return fmt.Errorf("City and province are required")
 	}
+	if err := validateNoEmoji(body.LocationCity, "City"); err != nil {
+		return err
+	}
+	if err := validateNoEmoji(body.LocationProv, "Province"); err != nil {
+		return err
+	}
 	if utf8.RuneCountInString(body.LocationCity) < config.ListingLocationMinLength || utf8.RuneCountInString(body.LocationCity) > config.ListingLocationMaxLength {
 		return fmt.Errorf("City must be between %d and %d characters", config.ListingLocationMinLength, config.ListingLocationMaxLength)
 	}
 	if utf8.RuneCountInString(body.LocationProv) < config.ListingLocationMinLength || utf8.RuneCountInString(body.LocationProv) > config.ListingLocationMaxLength {
 		return fmt.Errorf("Province must be between %d and %d characters", config.ListingLocationMinLength, config.ListingLocationMaxLength)
 	}
-	if body.LocationBrgy != "" && utf8.RuneCountInString(body.LocationBrgy) > config.ListingLocationMaxLength {
-		return fmt.Errorf("Barangay must not exceed %d characters", config.ListingLocationMaxLength)
+	if body.LocationBrgy != "" {
+		if err := validateNoEmoji(body.LocationBrgy, "Barangay"); err != nil {
+			return err
+		}
+		if utf8.RuneCountInString(body.LocationBrgy) > config.ListingLocationMaxLength {
+			return fmt.Errorf("Barangay must not exceed %d characters", config.ListingLocationMaxLength)
+		}
 	}
 
 	if len(body.Highlights) > config.ListingMaxHighlights {
