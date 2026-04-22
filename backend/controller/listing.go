@@ -614,9 +614,12 @@ func GetListings(c *fiber.Ctx) error {
 		return SendErrorResponse(c, 400, "priceMin cannot be greater than priceMax", nil)
 	}
 
+	keyword := strings.TrimSpace(c.Query("keyword"))
+	keyword = truncateStringByRuneLimit(keyword, config.ListingSearchMaxLength)
+
 	filters := model.ListingsFilter{
 		Type:      strings.TrimSpace(c.Query("type")),
-		Keyword:   strings.TrimSpace(c.Query("keyword")),
+		Keyword:   keyword,
 		Category:  strings.TrimSpace(c.Query("category")),
 		Condition: strings.TrimSpace(c.Query("condition")),
 		Province:  strings.TrimSpace(c.Query("province")),
@@ -722,6 +725,17 @@ func parseJSONStringArray(raw string) []string {
 		}
 	}
 	return out
+}
+
+func truncateStringByRuneLimit(value string, maxLen int) string {
+	if maxLen <= 0 {
+		return ""
+	}
+	runes := []rune(value)
+	if len(runes) <= maxLen {
+		return value
+	}
+	return string(runes[:maxLen])
 }
 
 func mapConditionDisplay(raw string) string {

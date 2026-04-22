@@ -69,6 +69,7 @@ const (
 	ListingLocationMaxLength    = 100
 	ListingPriceMinValue        = 1
 	ListingPriceMaxValue        = 100000000
+	ListingSearchMaxLength      = 80
 	ListingMinPeriodMinValue    = 1
 	ListingMinPeriodMaxValue    = 99
 	ListingDepositMaxLength     = 60
