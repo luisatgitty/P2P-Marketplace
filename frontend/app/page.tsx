@@ -31,6 +31,7 @@ const SORT_OPTIONS = [
 ];
 
 const FETCH_LIMIT = 25;
+const SEARCH_MAX_LENGTH = 80;
 const DEFAULT_PROVINCE = "Province";
 const DEFAULT_CITY = "City/Municipality";
 const DEFAULT_CATEGORY = "All Categories";
@@ -500,10 +501,10 @@ function HomePageInner() {
                   type="text"
                   placeholder="Search listings..."
                   value={keyword}
+                  maxLength={SEARCH_MAX_LENGTH}
                   onChange={(e) => {
                     const nextKeyword = e.target.value;
                     setKeyword(nextKeyword);
-                    updateUrlFromState({ keyword: nextKeyword });
                   }}
                   onKeyDown={(e) => e.key === "Enter" && handleSearch()}
                   className="pl-9 text-sm"
@@ -535,7 +536,6 @@ function HomePageInner() {
                 {/* Category */}
                 <FilterSelect value={category} onChange={(nextCategory) => {
                   setCategory(nextCategory);
-                  updateUrlFromState({ category: nextCategory });
                 }}>
                   <SelectItem value="All Categories">All Categories</SelectItem>
                   {CATEGORIES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
@@ -552,7 +552,6 @@ function HomePageInner() {
                       setCityName(DEFAULT_CITY);
                       setCityOptions([]);
                       setFetchedCitiesProvinceCode("");
-                      updateUrlFromState({ province: DEFAULT_PROVINCE, city: DEFAULT_CITY });
                       return;
                     }
 
@@ -564,7 +563,6 @@ function HomePageInner() {
                     setCityName(DEFAULT_CITY);
                     setCityOptions([]);
                     setFetchedCitiesProvinceCode("");
-                    updateUrlFromState({ province: nextProvinceName, city: DEFAULT_CITY });
                   }}
                   disabled={loadingProvinces}
                   onOpenChange={(open) => {
@@ -585,7 +583,6 @@ function HomePageInner() {
                     if (code === "__city__") {
                       setCityCode("");
                       setCityName(DEFAULT_CITY);
-                      updateUrlFromState({ city: DEFAULT_CITY });
                       return;
                     }
 
@@ -593,7 +590,6 @@ function HomePageInner() {
                     const nextCityName = selected?.name ?? DEFAULT_CITY;
                     setCityCode(code);
                     setCityName(nextCityName);
-                    updateUrlFromState({ city: nextCityName });
                   }}
                   disabled={!provinceCode || loadingCities}
                   onOpenChange={(open) => {
@@ -631,17 +627,16 @@ function HomePageInner() {
                       const nextPriceMin = e.target.value;
                       if (!nextPriceMin) {
                         setPriceMin("");
-                        updateUrlFromState({ priceMin: nextPriceMin });
                         return;
                       }
                       if (!isValidPrice(nextPriceMin)) return;
                       setPriceMin(nextPriceMin);
-                      updateUrlFromState({ priceMin: nextPriceMin });
                     }}
                     onKeyDown={(e) => {
                       if (e.key === "-" || e.key === "+" || e.key === "e" || e.key === "E" || e.key === ".") {
                         e.preventDefault();
                       }
+                      if (e.key === "Enter") handleSearch();
                     }}
                     className="w-26 text-sm bg-white dark:bg-[#1e2a3a] border-stone-200 dark:border-white/10 rounded-lg"
                   />
@@ -654,17 +649,16 @@ function HomePageInner() {
                       const nextPriceMax = e.target.value;
                       if (!nextPriceMax) {
                         setPriceMax("");
-                        updateUrlFromState({ priceMax: nextPriceMax });
                         return;
                       }
                       if (!isValidPrice(nextPriceMax)) return;
                       setPriceMax(nextPriceMax);
-                      updateUrlFromState({ priceMax: nextPriceMax });
                     }}
                     onKeyDown={(e) => {
                       if (e.key === "-" || e.key === "+" || e.key === "e" || e.key === "E" || e.key === ".") {
                         e.preventDefault();
                       }
+                      if (e.key === "Enter") handleSearch();
                     }}
                     className="w-26 text-sm bg-white dark:bg-[#1e2a3a] border-stone-200 dark:border-white/10 rounded-lg"
                   />
