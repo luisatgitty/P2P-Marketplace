@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"net/mail"
+	"strconv"
 	"strings"
 	"time"
 	"unicode"
@@ -536,8 +537,12 @@ func ValidateCreateListingInput(body *model.CreateListingBody, isEdit bool) erro
 		if body.RentData.MinPeriod == "" {
 			return fmt.Errorf("Minimum rental period is required")
 		}
-		if len(body.RentData.MinPeriod) < config.ListingMinPeriodMinLength || len(body.RentData.MinPeriod) > config.ListingMinPeriodMaxLength {
-			return fmt.Errorf("Minimum rental period must be between %d and %d characters", config.ListingMinPeriodMinLength, config.ListingMinPeriodMaxLength)
+		parsedMinPeriod, err := strconv.Atoi(body.RentData.MinPeriod)
+		if err != nil {
+			return fmt.Errorf("Minimum rental period must be a whole number")
+		}
+		if parsedMinPeriod < config.ListingMinPeriodMinValue || parsedMinPeriod > config.ListingMinPeriodMaxValue {
+			return fmt.Errorf("Minimum rental period must be between %d and %d", config.ListingMinPeriodMinValue, config.ListingMinPeriodMaxValue)
 		}
 		if body.RentData.DeliveryMethod == "" {
 			return fmt.Errorf("Please choose a delivery option")

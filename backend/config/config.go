@@ -69,8 +69,8 @@ const (
 	ListingLocationMaxLength    = 100
 	ListingPriceMinValue        = 1
 	ListingPriceMaxValue        = 100000000
-	ListingMinPeriodMinLength   = 1
-	ListingMinPeriodMaxLength   = 60
+	ListingMinPeriodMinValue    = 1
+	ListingMinPeriodMaxValue    = 99
 	ListingDepositMaxLength     = 60
 	ListingTurnaroundMinLength  = 2
 	ListingTurnaroundMaxLength  = 60
@@ -116,14 +116,13 @@ var ListingSellPriceUnits = []string{
 }
 
 var ListingRentPriceUnits = []string{
+	"/ minute",
 	"/ hour",
 	"/ day",
 	"/ night",
 	"/ week",
 	"/ month",
 	"/ year",
-	"/ sq m",
-	"/ km",
 }
 
 var ListingServicePriceUnits = []string{

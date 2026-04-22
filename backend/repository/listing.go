@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -358,15 +357,12 @@ func parseMinRentalPeriod(minPeriod string) (int, error) {
 		return 0, fmt.Errorf("Minimum rental period is required")
 	}
 
-	r := regexp.MustCompile(`\d+`)
-	num := r.FindString(cleaned)
-	if num == "" {
-		return 0, fmt.Errorf("Minimum rental period must contain a number")
+	parsed, err := strconv.Atoi(cleaned)
+	if err != nil {
+		return 0, fmt.Errorf("Minimum rental period must be a whole number")
 	}
-
-	parsed, err := strconv.Atoi(num)
-	if err != nil || parsed <= 0 {
-		return 0, fmt.Errorf("Invalid minimum rental period")
+	if parsed < config.ListingMinPeriodMinValue || parsed > config.ListingMinPeriodMaxValue {
+		return 0, fmt.Errorf("Minimum rental period must be between %d and %d", config.ListingMinPeriodMinValue, config.ListingMinPeriodMaxValue)
 	}
 	return parsed, nil
 }

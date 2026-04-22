@@ -30,14 +30,13 @@ export const PRICE_UNITS: Record<ListingType, string[]> = {
     "Contact for Price"
   ],
   rent: [
+    "/ minute",
     "/ hour",
     "/ day", 
     "/ night",
     "/ week",
     "/ month",
-    "/ year",
-    "/ sq m",
-    "/ km"
+    "/ year"
   ],
   service: [
     "/ hour",

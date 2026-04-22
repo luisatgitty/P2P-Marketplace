@@ -42,7 +42,7 @@ export const LISTING_LIMITS = {
   priceMinValue: 1,
   priceMaxValue: 100000000,
   minPeriodMinLength: 1,
-  minPeriodMaxLength: 60,
+  minPeriodMaxLength: 99,
   depositMaxLength: 60,
   turnaroundMinLength: 2,
   turnaroundMaxLength: 60,

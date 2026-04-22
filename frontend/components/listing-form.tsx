@@ -1465,7 +1465,7 @@ export default function ListingForm({
   ) => (
     <Section title="Availability & Schedule">
       <div className="flex flex-col gap-5">
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_180px]">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-[minmax(0,1fr)_180px]">
           <div className="rounded-lg border border-stone-200 bg-stone-50 p-4 dark:border-[#2a2d3e] dark:bg-[#13151f]">
             <div className="mb-3 flex items-center justify-between gap-3">
               <p className="text-[11px] font-bold uppercase tracking-widest text-stone-500 dark:text-stone-400">
@@ -1513,14 +1513,15 @@ export default function ListingForm({
             <p className="mb-2 text-[11px] font-bold uppercase tracking-widest text-stone-500 dark:text-stone-400">
               Days Off
             </p>
-            <div className="flex flex-wrap gap-2 lg:flex-col">
+            <div className="flex flex-wrap gap-2 sm:flex-col">
               {DAY_OFF_OPTIONS.map((a) => (
-                <button
+                <Button
+                  variant={'ghost'}
                   key={a}
                   type="button"
                   onClick={() => toggleDayOff(a)}
                   className={cn(
-                    "rounded-full border-2 px-3 py-1.5 text-sm font-semibold transition-all",
+                    "rounded-lg border-2 px-3 py-1.5 text-sm font-semibold transition-all",
                     dayoff.includes(a)
                       ? `${cfg.accentBorder} ${cfg.accentBg} ${cfg.accentCls}`
                       : "border-stone-200 text-stone-500 hover:border-stone-300 dark:border-[#2a2d3e] dark:text-stone-400 dark:hover:border-stone-600",
@@ -1528,7 +1529,7 @@ export default function ListingForm({
                 >
                   {dayoff.includes(a) ? "✓ " : ""}
                   {a}
-                </button>
+                </Button>
               ))}
             </div>
           </div>
@@ -1549,32 +1550,34 @@ export default function ListingForm({
             </span>
           </p>
 
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_auto_1fr_auto] sm:items-end">
-            <div>
-              <Input
-                type="time"
-                value={startTime}
-                onChange={(e) => setStartTime(e.target.value)}
-                className="text-sm"
-              />
-            </div>
-            <span className="pb-2 text-center text-sm font-semibold text-stone-400">
-              to
-            </span>
-            <div>
-              <Input
-                type="time"
-                value={endTime}
-                onChange={(e) => setEndTime(e.target.value)}
-                className="text-sm"
-              />
+          <div className="flex-row sm:flex">
+            <div className="flex-1 grid grid-cols-[1fr_auto_1fr] gap-3 sm:grid-cols-[1fr_auto_1fr_auto] sm:items-end">
+              <div>
+                <Input
+                  type="time"
+                  value={startTime}
+                  onChange={(e) => setStartTime(e.target.value)}
+                  className="text-sm"
+                />
+              </div>
+              <span className="pt-2 sm:pb-2 text-center text-sm font-semibold text-stone-400">
+                to
+              </span>
+              <div>
+                <Input
+                  type="time"
+                  value={endTime}
+                  onChange={(e) => setEndTime(e.target.value)}
+                  className="text-sm"
+                />
+              </div>
             </div>
             <Button
               type="button"
               variant={'outline'}
               onClick={addTimeWindow}
               disabled={timeWindows.length >= LISTING_LIMITS.maxTimeWindows}
-              className="ml-2"
+              className="w-full mt-3 sm:mt-0 sm:w-auto"
             >
               <Plus size={14} /> Add
             </Button>
@@ -1590,17 +1593,24 @@ export default function ListingForm({
                   key={slot.id}
                   className="flex items-center justify-between gap-2 rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm dark:border-[#2a2d3e] dark:bg-[#1c1f2e]"
                 >
-                  <span className="font-semibold text-stone-700 dark:text-stone-200">
-                    {toTwelveHour(slot.start)} - {toTwelveHour(slot.end)}
-                  </span>
-                  <button
+                  <div>
+                    <span className="font-semibold text-stone-700 dark:text-stone-200">
+                      {toTwelveHour(slot.start)} - {''}
+                    </span>
+                    <span className="font-semibold text-stone-700 dark:text-stone-200 whitespace-nowrap">
+                      {toTwelveHour(slot.end)}
+                    </span>
+                  </div>
+                  <Button
+                    variant={'ghost'}
+                    size={'xs'}
                     type="button"
                     onClick={() => removeTimeWindow(slot.id)}
-                    className="rounded-lg p-1 text-stone-400 transition-colors hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-950/20"
+                    className="rounded-lg text-stone-400 transition-colors hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-950/20"
                     aria-label="Remove window time"
                   >
                     <X size={12} />
-                  </button>
+                  </Button>
                 </div>
               ))}
             </div>
@@ -1672,14 +1682,20 @@ export default function ListingForm({
 
                     const nextNumber = Number(nextValue);
                     if (!Number.isFinite(nextNumber)) return;
+                    if (nextNumber < LISTING_LIMITS.priceMinValue) return;
                     if (nextNumber > LISTING_LIMITS.priceMaxValue) return;
 
                     setPrice(nextValue);
                   }}
+                  onKeyDown={(e) => {
+                    if (e.key === "-" || e.key === "+" || e.key === "e" || e.key === "E" || e.key === ".") {
+                      e.preventDefault();
+                    }
+                  }}
                   placeholder="0"
                   min={LISTING_LIMITS.priceMinValue}
                   max={LISTING_LIMITS.priceMaxValue}
-                  className='-ms-px rounded-l-none shadow-none h-full'
+                  className='-ms-px text-sm rounded-l-none shadow-none h-full'
                 />
               </div>
 
@@ -1832,17 +1848,54 @@ export default function ListingForm({
         <>
           <Section title="Rental Terms">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <FieldLabel required>Minimum Rental Period</FieldLabel>
-                <StyledInput
-                  value={minPeriod}
-                  onChange={(e) => setMinPer(e.target.value)}
-                  minLength={LISTING_LIMITS.minPeriodMinLength}
-                  maxLength={LISTING_LIMITS.minPeriodMaxLength}
-                  placeholder="e.g. 3 months, 1 week, daily"
-                />
-                <ErrMsg msg={errors.minPeriod} />
+              <div className="flex gap-4">
+                <div className="flex-1">
+                  <FieldLabel required>Minimum Rental Period</FieldLabel>
+                  <Input
+                    type='number'
+                    value={minPeriod}
+                    onChange={(e) => {
+                      const nextValue = e.target.value;
+                      if (!nextValue) {
+                        setMinPer("");
+                        return;
+                      }
+
+                      const nextNumber = Number(nextValue);
+                      if (!Number.isFinite(nextNumber)) return;
+                      if (nextNumber > LISTING_LIMITS.minPeriodMaxLength) return;
+                      if (nextNumber < LISTING_LIMITS.minPeriodMinLength) return;
+
+                      setMinPer(nextValue);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "-" || e.key === "+" || e.key === "e" || e.key === "E" || e.key === ".") {
+                        e.preventDefault();
+                      }
+                    }}
+                    minLength={LISTING_LIMITS.minPeriodMinLength}
+                    maxLength={LISTING_LIMITS.minPeriodMaxLength}
+                    placeholder="e.g. 3 months, 1 week"
+                    className="text-sm"
+                  />
+                  <ErrMsg msg={errors.minPeriod} />
+                </div>
+                {/* Price Unit */}
+                <div>
+                  <FieldLabel>Period Unit</FieldLabel>
+                  <StyledSelect
+                    value={priceUnit}
+                    onChange={setPriceUnit}
+                    disabled
+                    className="w-28 shrink-0"
+                  >
+                    {PRICE_UNITS[type].map((u) => (
+                      <option key={u}>{u}</option>
+                    ))}
+                  </StyledSelect>
+                </div>
               </div>
+
               <div>
                 <FieldLabel>Deposit / Advance Requirements</FieldLabel>
                 <StyledInput
