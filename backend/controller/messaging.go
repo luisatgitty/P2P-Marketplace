@@ -438,6 +438,10 @@ func CreateConversationFromListing(c *fiber.Ctx) error {
 	offerPrice := 0
 	if body.OfferPrice != nil {
 		offerPrice = *body.OfferPrice
+		if offerPrice < config.ListingPriceMinValue || offerPrice > config.ListingPriceMaxValue {
+			errMessage := fmt.Sprintf("Offer price must be between %d and %d", config.ListingPriceMinValue, config.ListingPriceMaxValue)
+			return SendErrorResponse(c, 400, errMessage, nil)
+		}
 	}
 	offerMessage := strings.TrimSpace(body.OfferMessage)
 	startDate := strings.TrimSpace(body.StartDate)
