@@ -40,14 +40,14 @@ export function ModalHeader({
   let btnColorClass = '';
 
   if (type.toLowerCase() === 'sell') {
-    iconColorClass = 'text-orange-500';
-    btnColorClass = 'bg-orange-500 hover:bg-orange-600';
+    iconColorClass = 'text-orange-600';
+    btnColorClass = 'bg-orange-600 hover:bg-orange-500';
   } else if (type.toLowerCase() === 'rent') {
-    iconColorClass = 'text-teal-500';
-    btnColorClass = 'bg-teal-500 hover:bg-teal-600';
+    iconColorClass = 'text-emerald-600';
+    btnColorClass = 'bg-emerald-600 hover:bg-emerald-500';
   } else if (type.toLowerCase() === 'service') {
-    iconColorClass = 'text-purple-500';
-    btnColorClass = 'bg-purple-500 hover:bg-purple-600';
+    iconColorClass = 'text-violet-600';
+    btnColorClass = 'bg-violet-600 hover:bg-violet-500';
   }
 
   return (

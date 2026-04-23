@@ -102,7 +102,7 @@ function RentInfoCard({ extra }: { extra: ExtraDetail }) {
             <p className="text-xs font-semibold text-stone-500 dark:text-stone-400 uppercase tracking-widest mb-2.5">Amenities & Features</p>
             <div className="flex flex-wrap gap-1.5">
               {extra.amenities.map((a) => (
-                <span key={a} className="text-sm bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800 px-2.5 py-1 rounded-lg">
+                <span key={a} className="text-sm bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 px-2.5 py-1 rounded-lg">
                   {a}
                 </span>
               ))}
@@ -642,7 +642,7 @@ export default function ListingDetailPage() {
                   <div className="grid grid-cols-2 gap-2">
                     {extra.features.map((f) => (
                       <div key={f} className="flex items-center gap-2 text-sm text-stone-700 dark:text-stone-200">
-                        <CheckCircle className="w-4 h-4 text-teal-500 shrink-0" />
+                        <CheckCircle className="w-4 h-4 text-emerald-500 shrink-0" />
                         {f}
                       </div>
                     ))}
@@ -887,7 +887,7 @@ export default function ListingDetailPage() {
                 className={cn(
                   "flex-1 flex items-center justify-center gap-2 py-3 rounded-lg text-white text-sm font-bold",
                   isSell ? "bg-slate-700 hover:bg-slate-600"
-                  : isRent ? "bg-teal-700 hover:bg-teal-600"
+                  : isRent ? "bg-emerald-700 hover:bg-emerald-600"
                   : "bg-violet-700 hover:bg-violet-600"
                 )}>
                 {/* className="flex-1 flex items-center justify-center gap-2 py-3 rounded-lg bg-[#3A4A6A] text-white text-sm font-bold"> */}
@@ -1075,7 +1075,7 @@ function displayListingCard(listing: PostCardProps, handleToggleBookmark: () => 
               <Button
                 size={'lg'}
                 onClick={handleBuy}
-                className="flex items-center justify-center gap-2 w-full py-3 rounded-lg text-sm font-bold text-white bg-slate-700 hover:bg-slate-600">
+                className="flex items-center justify-center gap-2 w-full py-3 rounded-lg text-sm font-bold text-white bg-orange-400 hover:bg-orange-500">
                 <Zap className="w-4 h-4" /> Make an Offer
               </Button>
             )}
@@ -1083,7 +1083,7 @@ function displayListingCard(listing: PostCardProps, handleToggleBookmark: () => 
               <Button
                 size={'lg'}
                 onClick={handleBuy}
-                className="flex items-center justify-center gap-2 w-full py-3 rounded-lg text-sm font-bold text-white bg-teal-700 hover:bg-teal-600">
+                className="flex items-center justify-center gap-2 w-full py-3 rounded-lg text-sm font-bold text-white bg-emerald-700 hover:bg-emerald-600">
                 <Package className="w-4 h-4" /> Request to Rent
               </Button>
             )}
