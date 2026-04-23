@@ -1098,6 +1098,22 @@ func EditMessageContent(userId, conversationId, messageId, content string) error
 		return fmt.Errorf("Message content must not exceed %d characters", config.MessageContentMaxLength)
 	}
 
+	// Check if message can be edited (within 15 minutes of creation)
+	var createdAt *time.Time
+	checkTimeQuery := `
+		SELECT created_at
+		FROM public.messages
+		WHERE id = $1
+		LIMIT 1
+	`
+	result := db.Raw(checkTimeQuery, messageId).Scan(&createdAt)
+	if result.Error != nil || result.RowsAffected == 0 {
+		return fmt.Errorf("Message not found")
+	}
+	if createdAt != nil && time.Since(*createdAt) > config.MessageEditDuration {
+		return fmt.Errorf("Messages can only be edited within %d minutes of creation", int(config.MessageEditDuration.Minutes()))
+	}
+
 	updateQuery := `
 		UPDATE public.messages m
 		SET content = $4,
@@ -1114,7 +1130,7 @@ func EditMessageContent(userId, conversationId, messageId, content string) error
 			AND cm.deleted_at IS NULL
 	`
 
-	result := db.Exec(updateQuery, userId, messageId, conversationId, trimmed)
+	result = db.Exec(updateQuery, userId, messageId, conversationId, trimmed)
 	if result.Error != nil {
 		return fmt.Errorf("Failed to edit message")
 	}

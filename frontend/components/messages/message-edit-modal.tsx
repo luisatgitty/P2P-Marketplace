@@ -13,18 +13,25 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { MESSAGE_MAX_LENGTH } from '@/utils/validation';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
+import { editMessage } from '@/services/messagingService';
 
-export function EditMessageModal({
+export function MessageEditModal({
   initial,
   onSave,
   onClose,
+  messageId,
+  conversationId,
 }: {
   initial: string;
   onSave: (val: string) => void;
   onClose: () => void;
+  messageId: string;
+  conversationId: string;
 }) {
   const [value, setValue] = useState(initial);
   const ref = useRef<HTMLTextAreaElement>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     ref.current?.focus();
@@ -94,9 +101,20 @@ export function EditMessageModal({
           <Button
             size='lg'
             type='button'
-            onClick={() => {
-              if (value.trim()) onSave(value.trim());
-            }}
+             onClick={async () => {
+               if (!value.trim() || value.trim() === initial) return;
+               setIsLoading(true);
+               try {
+                 await editMessage(conversationId, messageId, value.trim());
+                 toast.success('Message edited successfully.', { position: 'top-center' });
+                 onSave(value.trim());
+                 onClose();
+               } catch (error) {
+                 toast.error(error instanceof Error ? error.message : 'Failed to edit message.', { position: 'top-center' });
+               } finally {
+                 setIsLoading(false);
+               }
+             }}
             disabled={!value.trim() || value.trim() === initial}
             className={cn(
               'flex-1 rounded-lg text-white text-sm font-bold transition-colors disabled:opacity-40 disabled:cursor-not-allowed',
@@ -105,7 +123,7 @@ export function EditMessageModal({
                 : 'bg-stone-100 dark:bg-[#252837] text-stone-400 cursor-not-allowed',
             )}
           >
-            {false ? 'Sending...' : 'Save'}
+             {isLoading ? 'Saving...' : 'Save'}
           </Button>
         </CardFooter>
       </Card>

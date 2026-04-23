@@ -21,7 +21,7 @@ import {
   openOrCreateConversationFromListing,
 } from "@/services/messagingService";
 import { useUser } from "@/utils/UserContext";
-import { EditMessageModal } from "@/components/messages/message-edit-modal";
+import { MessageEditModal } from "@/components/messages/message-edit-modal";
 import MessageBubble      from "@/components/messages/message-bubble";
 import { useMessageShell } from "@/components/messages/message-shell-context";
 
@@ -622,7 +622,6 @@ export default function ConversationPage() {
 
   const handleEditSave = async (newContent: string) => {
     if (!editTarget) return;
-    await editMessage(conversationId, editTarget.id, newContent);
     setMessages((prev) =>
       prev.map((m) => m.id === editTarget.id ? { ...m, content: newContent, isEdited: true } : m)
     );
@@ -860,8 +859,10 @@ export default function ConversationPage() {
 
       {/* Edit modal */}
       {editTarget && (
-        <EditMessageModal
+        <MessageEditModal
           initial={editTarget.content}
+                   messageId={editTarget.id}
+                   conversationId={conversationId}
           onSave={handleEditSave}
           onClose={() => setEditTarget(null)}
         />

@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import type { Message, MessageAttachment, ReactionType, ReplyPreview } from "@/types/messaging";
 import { REACTIONS } from "@/types/messaging";
 import { SafeImage } from "../ui/safe-image";
+import { MESSAGE_EDIT_DURATION_MS } from "@/utils/validation";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -256,6 +257,7 @@ function ContextMenu({
   isMe,
   hasContent,
   canUnsend,
+    canEdit,
   onReply,
   onCopy,
   onEdit,
@@ -268,6 +270,7 @@ function ContextMenu({
   isMe: boolean;
   hasContent: boolean;
   canUnsend: boolean;
+    canEdit?: boolean;
   onReply: () => void;
   onCopy:  () => void;
   onEdit:  () => void;
@@ -296,7 +299,7 @@ function ContextMenu({
   const items: MenuItem[] = [
     { icon: Reply,  label: "Reply",  action: onReply },
     { icon: Copy,   label: "Copy",   action: onCopy,   show: hasContent },
-    { icon: Pencil, label: "Edit",   action: onEdit,   show: isMe && hasContent },
+    { icon: Pencil, label: "Edit",   action: onEdit,   show: isMe && hasContent && canEdit },
     { icon: Trash2, label: "Unsend", action: onUnsend, show: isMe && canUnsend,  danger: true },
     { icon: Trash2, label: "Delete", action: onDelete, danger: true },
   ];
@@ -426,20 +429,10 @@ export default function MessageBubble({
     return parts.join(", ");
   };
 
-  // ── Unsent message ────────────────────────────────────────────────────────
-  if (message.isUnsent) {
-    return (
-      <div className={cn("flex my-0.5", isMe ? "justify-end" : "justify-start")}>
-        <p className="italic text-xs text-stone-400 dark:text-stone-600 px-3.5 py-2 rounded-lg border border-dashed border-stone-200 dark:border-stone-700">
-          {isMe ? "You unsent a message." : "This message was unsent."}
-        </p>
-      </div>
-    );
-  }
-
   const hasAttachments = (message.attachments?.length ?? 0) > 0;
   const hasContent     = !!message.content;
   const canUnsend = Date.now() - new Date(message.createdAt).getTime() <= 10 * 60 * 1000;
+  const canEdit = hasContent && Date.now() - new Date(message.createdAt).getTime() <= MESSAGE_EDIT_DURATION_MS;
 
   const getListingCardRect = () => {
     const el = document.querySelector('[data-listing-context-card="true"]') as HTMLElement | null;
@@ -574,6 +567,17 @@ export default function MessageBubble({
     message.status,
   ]);
 
+  // Keep hook order stable even when message transitions to unsent.
+  if (message.isUnsent) {
+    return (
+      <div className={cn("flex my-0.5", isMe ? "justify-end" : "justify-start")}>
+        <p className="italic text-xs text-stone-400 dark:text-stone-600 px-3.5 py-2 rounded-lg border border-dashed border-stone-200 dark:border-stone-700">
+          {isMe ? "You unsent a message." : "This message was unsent."}
+        </p>
+      </div>
+    );
+  }
+
   // ── Hover action buttons ──────────────────────────────────────────────────
   const ActionButtons = () => (
     <div
@@ -625,6 +629,7 @@ export default function MessageBubble({
             isMe={isMe}
             hasContent={hasContent}
             canUnsend={canUnsend}
+                       canEdit={canEdit}
             onReply={() => onReply(message)}
             onCopy={handleCopy}
             onEdit={() => onEdit(message.id, message.content ?? "")}
