@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { MESSAGE_MAX_LENGTH, limitMessageInputLength } from "@/utils/validation";
+import { encodeImageToPayload } from "@/lib/imageCompression";
 
 type OutgoingAttachment = {
   name: string;
@@ -91,11 +92,17 @@ export default function MessageInput({
     setPreparingSend(true);
     try {
       const attachments: OutgoingAttachment[] = await Promise.all(
-        stagedMedia.map(async (item) => ({
-          name: item.file.name,
-          mimeType: item.file.type,
-          data: await toBase64(item.file),
-        }))
+        stagedMedia.map(async (item) => {
+          if (item.file.type.startsWith("image/")) {
+            return encodeImageToPayload(item.file, "message");
+          }
+
+          return {
+            name: item.file.name,
+            mimeType: item.file.type,
+            data: await toBase64(item.file),
+          };
+        })
       );
 
       await onSend(trimmed, attachments);

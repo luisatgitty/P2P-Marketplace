@@ -4,14 +4,15 @@ import Link from "next/link";
 import { MapPin, Clock } from "lucide-react";
 import ListingTypeBadge from "@/components/listing-type-badge";
 import { ImageLink } from "@/components/image-link";
-import { formatPrice, formatTimeAgo } from "@/utils/string-builder"; 
+import { formatPrice, formatTimeAgo } from "@/utils/string-builder";
+import { ListingType } from "@/types/listings";
 
 export interface PostCardProps {
   id: string;
   title: string;
   price: number;
   priceUnit?: string;
-  type: "sell" | "rent" | "service";
+  type: ListingType;
   status?: string;
   sellStatus?: string;
   category?: string;

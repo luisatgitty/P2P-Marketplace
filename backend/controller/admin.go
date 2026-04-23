@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 
 	"p2p_marketplace/backend/config"
 	"p2p_marketplace/backend/model"
@@ -485,7 +486,7 @@ func SetAdminReportStatus(c *fiber.Ctx) error {
 		if reason == "" {
 			return SendErrorResponse(c, 400, "Reason is required", nil)
 		}
-		if len(reason) > config.AdminReasonMaxLength {
+		if utf8.RuneCountInString(reason) > config.AdminReasonMaxLength {
 			return SendErrorResponse(c, 400, fmt.Sprintf("Reason must not exceed %d characters", config.AdminReasonMaxLength), nil)
 		}
 
@@ -610,7 +611,7 @@ func SetAdminVerificationStatus(c *fiber.Ctx) error {
 	if reason == "" {
 		return SendErrorResponse(c, 400, "Reason is required", nil)
 	}
-	if len(reason) > config.AdminReasonMaxLength {
+	if utf8.RuneCountInString(reason) > config.AdminReasonMaxLength {
 		return SendErrorResponse(c, 400, fmt.Sprintf("Reason must not exceed %d characters", config.AdminReasonMaxLength), nil)
 	}
 

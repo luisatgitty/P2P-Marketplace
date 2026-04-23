@@ -42,7 +42,7 @@ export const LISTING_LIMITS = {
   priceMinValue: 1,
   priceMaxValue: 100000000,
   minPeriodMinLength: 1,
-  minPeriodMaxLength: 60,
+  minPeriodMaxLength: 99,
   depositMaxLength: 60,
   turnaroundMinLength: 2,
   turnaroundMaxLength: 60,
@@ -149,7 +149,7 @@ function isValidISODate(dateValue: string): boolean {
 }
 
 function isValidTime24(timeValue: string): boolean {
-  return /^([01]\d|2[0-3]):[0-5]\d$/.test(timeValue);
+  return /^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/.test(timeValue);
 }
 
 export function validateListingStep(
@@ -255,7 +255,11 @@ export function validateListingStep(
       }
 
       const availability = (input.availability ?? "").trim();
-      if (!availability || !isValidISODate(availability)) {
+      if (!isEdit) {
+        if (!availability || !isValidISODate(availability)) {
+          errors.availability = "Please select a valid starting availability date.";
+        }
+      } else if (availability && !isValidISODate(availability)) {
         errors.availability = "Please select a valid starting availability date.";
       }
 
@@ -300,7 +304,11 @@ export function validateListingStep(
       }
 
       const availability = (input.availability ?? "").trim();
-      if (!availability || !isValidISODate(availability)) {
+      if (!isEdit) {
+        if (!availability || !isValidISODate(availability)) {
+          errors.availability = "Please select a valid starting availability date.";
+        }
+      } else if (availability && !isValidISODate(availability)) {
         errors.availability = "Please select a valid starting availability date.";
       }
 
@@ -420,6 +428,17 @@ export function isValidName(name: string, field: string): string | null {
   }
   if (!/^[a-zA-Z\s\-']+$/.test(name)) return `${field} must contain letters only`;
   return null;
+}
+
+export function isValidPrice(value: string, min?: number, max?: number): boolean {
+  const nextNumber = Number(value);
+  min = min ?? LISTING_LIMITS.priceMinValue;
+  max = max ?? LISTING_LIMITS.priceMaxValue;
+  
+  if (!Number.isFinite(nextNumber)) return false;
+  if (nextNumber > max) return false;
+  if (nextNumber < min) return false;
+  return true;
 }
 
 export function validateSignupForm(form: SignupForm) {

@@ -6,7 +6,11 @@ import Link from "next/link";
 import {
   MapPin, Star, MessageCircle, Bookmark, Share2,
   ChevronLeft, ChevronRight, Flag, Eye, Clock, Package,
-  CheckCircle, Phone, Zap, ArrowLeft, Truck, AlertTriangle, Expand
+  CheckCircle, Phone, Zap, Truck, AlertTriangle, Expand,
+  User,
+  Pen,
+  EyeOff,
+  Trash
 } from "lucide-react";
 import { useUser } from "@/utils/UserContext";
 import { addListingBookmark, deleteListing, getListingDetailById, removeListingBookmark, submitListingReport, toggleListingVisibility } from "@/services/listingDetailService";
@@ -20,12 +24,14 @@ import { ScheduleModal } from "@/components/schedule-modal";
 import { ReportModal } from "@/components/report-modal";
 import OfferModal from "@/components/offer-modal";
 import { openOrCreateConversationFromListing } from "@/services/messagingService";
+import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { SafeImage } from "@/components/ui/safe-image";
 import { ImageLink } from "@/components/image-link";
 import { formatPrice, formatTimeAgo } from "@/utils/string-builder";
 import { MediaViewerModal, type MediaViewerItem } from "@/components/media-viewer-modal";
+import { AppRouterInstance } from "next/dist/shared/lib/app-router-context.shared-runtime";
 
 // ── ExtraDetail — mirrors every field the listing form collects ────────────────
 interface ExtraDetail {
@@ -67,14 +73,6 @@ function getDefaultExtra(listing: PostCardProps): ExtraDetail {
   };
 }
 
-// ── Type badge — keys match PostCardProps.type ("sell" | "rent" | "service") ───
-// FIX: was keyed as "sale" which never matched the actual type value "sell"
-const TYPE_LABEL: Record<string, string> = {
-  sell:    "For Sale",
-  rent:    "For Rent",
-  service: "Service",
-};
-
 // ── Rent info card — shows data from form's "Rental Terms" step ───────────────
 function RentInfoCard({ extra }: { extra: ExtraDetail }) {
   const hasData = extra.minPeriod || extra.availability || extra.deposit || extra.amenities?.length;
@@ -104,7 +102,7 @@ function RentInfoCard({ extra }: { extra: ExtraDetail }) {
             <p className="text-xs font-semibold text-stone-500 dark:text-stone-400 uppercase tracking-widest mb-2.5">Amenities & Features</p>
             <div className="flex flex-wrap gap-1.5">
               {extra.amenities.map((a) => (
-                <span key={a} className="text-sm bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800 px-2.5 py-1 rounded-lg">
+                <span key={a} className="text-sm bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 px-2.5 py-1 rounded-lg">
                   {a}
                 </span>
               ))}
@@ -520,33 +518,12 @@ export default function ListingDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-stone-100 dark:bg-[#111827]">
-
-      {/* ── Breadcrumb ── */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-5 pb-3">
-        <div className="flex items-center gap-2 text-xs text-stone-400 dark:text-stone-500">
-          <Link href="/" className="hover:text-stone-600 dark:hover:text-stone-300 transition-colors flex items-center gap-1">
-            <ArrowLeft className="w-3 h-3" /> Home
-          </Link>
-          <span>/</span>
-          <Link
-            href={`/?type=${listing.type}`}
-            className="hover:text-stone-600 dark:hover:text-stone-300 transition-colors"
-          >
-            {TYPE_LABEL[listing.type]}
-          </Link>
-          <span>/</span>
-          <span className="capitalize text-stone-500 dark:text-stone-400">{listing.category}</span>
-          <span>/</span>
-          <span className="text-stone-700 dark:text-stone-300 truncate max-w-45">{listing.title}</span>
-        </div>
-      </div>
-
+    <div className="min-h-screen bg-stone-100 dark:bg-[#111827] mt-6">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 pb-8">
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-10 gap-6">
 
           {/* ══ LEFT COLUMN ══════════════════════════════════════════════════ */}
-          <div className="flex flex-col gap-5">
+          <div className="flex flex-col md:col-span-6 lg:col-span-7 gap-5">
 
             {/* ── Image gallery ── */}
             <div className="bg-white dark:bg-[#1c1f2e] rounded-lg border border-stone-200 dark:border-[#2a2d3e] overflow-hidden shadow-sm">
@@ -583,24 +560,30 @@ export default function ListingDetailPage() {
                 {/* Nav arrows */}
                 {images.length > 1 && (
                   <>
-                    <button
+                    <Button
+                      variant={'ghost'}
                       onClick={() => setImgIdx((i) => (i - 1 + images.length) % images.length)}
-                      className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 bg-white/80 dark:bg-black/50 rounded-lg flex items-center justify-center shadow-md hover:bg-white dark:hover:bg-black/70 transition-colors opacity-0 group-hover:opacity-100">
-                      <ChevronLeft className="w-5 h-5 text-stone-700 dark:text-stone-200" />
-                    </button>
-                    <button
+                      className="absolute w-8 left-3 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100">
+                      <ChevronLeft />
+                    </Button>
+                    <Button
+                      variant={'ghost'}
                       onClick={() => setImgIdx((i) => (i + 1) % images.length)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 bg-white/80 dark:bg-black/50 rounded-lg flex items-center justify-center shadow-md hover:bg-white dark:hover:bg-black/70 transition-colors opacity-0 group-hover:opacity-100">
-                      <ChevronRight className="w-5 h-5 text-stone-700 dark:text-stone-200" />
-                    </button>
+                      className="absolute w-8 right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100">
+                      <ChevronRight />
+                    </Button>
                   </>
                 )}
 
                 {/* Dot indicators */}
                 {images.length > 1 && (
-                  <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5">
+                  <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5">
                     {images.map((_, i) => (
-                      <button key={i} onClick={() => setImgIdx(i)}
+                      <Button
+                        variant={'ghost'}
+                        size={'icon-xs'}
+                        key={i}
+                        onClick={() => setImgIdx(i)}
                         className={cn("w-1.5 h-1.5 rounded-full transition-all", i === imgIdx ? "bg-white w-4" : "bg-white/50")} />
                     ))}
                   </div>
@@ -608,13 +591,14 @@ export default function ListingDetailPage() {
 
                 {/* Fullscreen gallery */}
                 {galleryMediaItems.length > 0 && (
-                  <button
+                  <Button
+                    variant={'ghost'}
                     onClick={() => setMediaViewerIndex(Math.min(imgIdx, galleryMediaItems.length - 1))}
-                    className="absolute bottom-3 right-3 w-9 h-9 bg-black/55 rounded-lg flex items-center justify-center text-white hover:bg-black/75 transition-colors"
+                    className="absolute bottom-2 right-2"
                     aria-label="Open fullscreen gallery"
                   >
                     <Expand className="w-4 h-4" />
-                  </button>
+                  </Button>
                 )}
               </div>
 
@@ -622,9 +606,11 @@ export default function ListingDetailPage() {
               {images.length > 1 && (
                 <div className="flex gap-2 p-3 overflow-x-auto">
                   {images.map((img, i) => (
-                    <button key={i} onClick={() => setImgIdx(i)}
+                    <Button
+                      key={i}
+                      onClick={() => setImgIdx(i)}
                       className={cn(
-                        "relative shrink-0 w-16 h-16 rounded-xl overflow-hidden border-2 transition-all",
+                        "relative shrink-0 w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-lg overflow-hidden border sm:border-2 transition-all",
                         i === imgIdx ? "border-slate-800 dark:border-stone-300" : "border-transparent opacity-60 hover:opacity-100"
                       )}>
                       <SafeImage
@@ -633,10 +619,15 @@ export default function ListingDetailPage() {
                         alt={`Photo ${i + 1}`}
                         fill
                       />
-                    </button>
+                    </Button>
                   ))}
                 </div>
               )}
+            </div>
+
+            {/* ── Listing card (mobile) ── */}
+            <div className="md:hidden">
+              {displayListingCard(listing, handleToggleBookmark, isBookmarking, isBookmarked, isOwnListing, isDeletedState, isSold, router, id, handleListingVisibility, toggling, isListingAvailable, handleRemoveListing, deleting, visitorUnavailableState, isSell, handleBuy, isRent, isService, handleMessage, messaging)}
             </div>
 
             {/* ── Description + Highlights ── */}
@@ -651,7 +642,7 @@ export default function ListingDetailPage() {
                   <div className="grid grid-cols-2 gap-2">
                     {extra.features.map((f) => (
                       <div key={f} className="flex items-center gap-2 text-sm text-stone-700 dark:text-stone-200">
-                        <CheckCircle className="w-4 h-4 text-teal-500 shrink-0" />
+                        <CheckCircle className="w-4 h-4 text-emerald-500 shrink-0" />
                         {f}
                       </div>
                     ))}
@@ -722,133 +713,12 @@ export default function ListingDetailPage() {
           </div>
 
           {/* ══ RIGHT COLUMN ══════════════════════════════════════════════════ */}
-          <div className="flex flex-col gap-4">
-            <div className="lg:sticky lg:top-20">
+          <div className="flex flex-col md:col-span-4 lg:col-span-3 gap-4">
+            <div className="sticky top-20">
 
-              {/* ── Price + title card ── */}
-              <div className="bg-white dark:bg-[#1c1f2e] rounded-lg border border-stone-200 dark:border-[#2a2d3e] shadow-sm p-5 mb-4">
-                <div className="flex items-start justify-between gap-2 mb-2">
-                  <h1 className="text-lg font-bold text-stone-900 dark:text-stone-50 leading-tight">{listing.title}</h1>
-                  <div className="flex gap-1.5 shrink-0">
-                    <button
-                      onClick={handleToggleBookmark}
-                      disabled={isBookmarking}
-                      className={cn(
-                        "w-9 h-9 rounded-lg flex items-center justify-center border transition-all disabled:opacity-60 disabled:cursor-not-allowed",
-                        isBookmarked
-                          ? "border-rose-200 bg-rose-50 dark:bg-rose-900/30 dark:border-rose-800 text-rose-500"
-                          : "border-stone-200 dark:border-[#2a2d3e] text-stone-400 dark:text-stone-500 hover:border-rose-200 hover:text-rose-400"
-                      )}>
-                      <Bookmark className={cn("w-4 h-4", isBookmarked && "fill-rose-500")} />
-                    </button>
-                    <button
-                      onClick={() => toast.info("Link copied to clipboard!", { position: "top-center" })}
-                      className="w-9 h-9 rounded-lg flex items-center justify-center border border-stone-200 dark:border-[#2a2d3e] text-stone-400 dark:text-stone-500 hover:border-stone-400 dark:hover:border-stone-500 transition-all">
-                      <Share2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Price */}
-                <div className="flex items-baseline gap-1.5 mb-1">
-                  <span className="text-2xl font-extrabold text-amber-700 dark:text-amber-500">{formatPrice(listing.price)}</span>
-                  {listing.priceUnit && <span className="text-black dark:text-white text-sm">{listing.priceUnit}</span>}
-                </div>
-
-                {/* Location + posted */}
-                <div className="flex flex-wrap items-center gap-3 text-sm text-black dark:text-white mb-4">
-                  <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{listing.location}</span>
-                  <span className="flex items-center gap-1"><Clock className="w-3 h-3" />Posted {formatTimeAgo(listing.postedAt)}</span>
-                </div>
-
-                {/* ── CTA buttons ── */}
-                {isOwnListing ? (
-                  <div className="flex flex-col gap-2">
-                    {isDeletedState || isBannedState || isSold ? (
-                      <button
-                        disabled
-                        className="flex items-center justify-center gap-2 w-full py-3 rounded-lg bg-stone-400/80 text-white text-sm font-bold cursor-not-allowed opacity-95"
-                      >
-                        <AlertTriangle className="w-4 h-4" /> Unavailable
-                      </button>
-                    ) : (
-                      <>
-                        {/* Edit Listing Button */}
-                        <Link
-                          href={`/listing/${id}/edit`}
-                          className="flex items-center justify-center gap-2 w-full py-3 rounded-lg bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 text-sm font-bold hover:opacity-90 transition-opacity">
-                          Edit Listing
-                        </Link>
-
-                        {/* Hide Listing Button */}
-                        <button
-                          onClick={handleListingVisibility}
-                          disabled={toggling}
-                          className="flex items-center justify-center w-full py-2.5 rounded-lg border-2 border-stone-200 dark:border-[#2a2d3e] text-stone-700 dark:text-stone-200 bg-white dark:bg-transparent text-sm font-semibold hover:border-stone-400 dark:hover:border-stone-500 hover:bg-stone-50 dark:hover:bg-[#252837] transition-all"
-                        >
-                          {isListingAvailable ? "Hide Listing" : "Show Listing"}
-                        </button>
-
-                        {/* Remove Listing Button */}
-                        <button
-                          onClick={handleRemoveListing}
-                          disabled={deleting}
-                          className="flex items-center justify-center gap-2 w-full py-3 rounded-lg border border-red-200 dark:border-red-800 text-red-500 dark:text-red-400 text-sm font-semibold hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-                        >
-                          {deleting ? "Removing..." : "Remove Listing"}
-                        </button>
-                      </>
-                    )}
-                  </div>
-                ) : (
-                  <div className="flex flex-col gap-2">
-                    {visitorUnavailableState ? (
-                      <button
-                        disabled
-                        className="flex items-center justify-center gap-2 w-full py-3 rounded-lg bg-stone-400/80 text-white text-sm font-bold cursor-not-allowed opacity-95"
-                      >
-                        <AlertTriangle className="w-4 h-4" /> Unavailable
-                      </button>
-                    ) : isSold ? (
-                      <button
-                        disabled
-                        className="flex items-center justify-center gap-2 w-full py-3 rounded-lg bg-emerald-600/90 text-white text-sm font-bold cursor-not-allowed opacity-95"
-                      >
-                        <CheckCircle className="w-4 h-4" /> Sold
-                      </button>
-                    ) : (
-                      <>
-                        {isSell && (
-                          <button
-                            onClick={handleBuy}
-                            className="flex items-center justify-center gap-2 w-full py-3 rounded-lg text-sm font-bold text-white bg-slate-700 hover:bg-slate-600 transition-colors active:scale-[0.98]">
-                            <Zap className="w-4 h-4" /> Make an Offer
-                          </button>
-                        )}
-                        {isRent && (
-                          <button
-                            onClick={handleBuy}
-                            className="flex items-center justify-center gap-2 w-full py-3 rounded-lg text-sm font-bold text-white bg-teal-700 hover:bg-teal-600 transition-colors active:scale-[0.98]">
-                            <Package className="w-4 h-4" /> Request to Rent
-                          </button>
-                        )}
-                        {isService && (
-                          <button
-                            onClick={handleBuy}
-                            className="flex items-center justify-center gap-2 w-full py-3 rounded-lg text-sm font-bold text-white bg-violet-700 hover:bg-violet-600 transition-colors active:scale-[0.98]">
-                            <CheckCircle className="w-4 h-4" /> Book Service
-                          </button>
-                        )}
-                        <button
-                          onClick={handleMessage}
-                          disabled={messaging}
-                          className="flex items-center justify-center gap-2 w-full py-3 rounded-lg border-2 border-stone-200 dark:border-[#2a2d3e] text-stone-700 dark:text-stone-200 text-sm font-semibold hover:border-stone-400 dark:hover:border-stone-500 hover:bg-stone-50 dark:hover:bg-[#252837] transition-all">
-                          <MessageCircle className="w-4 h-4" /> {messaging ? "Opening chat..." : "Message Seller"}
-                        </button>
-                      </>
-                    )}
-                  </div>
-                )}
+              {/* ── Listing card (desktop) ── */}
+              <div className="hidden md:flex mb-4">
+                {displayListingCard(listing, handleToggleBookmark, isBookmarking, isBookmarked, isOwnListing, isDeletedState, isSold, router, id, handleListingVisibility, toggling, isListingAvailable, handleRemoveListing, deleting, visitorUnavailableState, isSell, handleBuy, isRent, isService, handleMessage, messaging)}
               </div>
 
               {/* ── Seller card ── */}
@@ -881,19 +751,24 @@ export default function ListingDetailPage() {
                 </div>
 
                 {/* View Profile Button */}
-                <Link
-                  href={sellerProfileHref}
+                <Button
+                  variant={'outline'}
+                  size={'lg'}
+                  onClick={() => router.push(sellerProfileHref)}
                   className="flex items-center justify-center w-full py-2.5 rounded-lg border-2 border-stone-200 dark:border-[#2a2d3e] text-stone-700 dark:text-stone-200 bg-white dark:bg-transparent text-sm font-semibold hover:border-stone-400 dark:hover:border-stone-500 hover:bg-stone-50 dark:hover:bg-[#252837] transition-all">
+                  <User className="w-4 h-4" />
                   {isOwnListing ? "View My Profile" : "View Seller Profile"}
-                </Link>
+                </Button>
 
                 {/* Contact Button */}
-                <button
+                <Button
+                  variant={'outline'}
+                  size={'lg'}
                   onClick={handleShowContactNumber}
                   disabled={isFetchingContact}
-                  className="flex items-center justify-center gap-2 w-full py-3 rounded-lg border-2 border-stone-200 dark:border-[#2a2d3e] text-stone-700 dark:text-stone-200 bg-white dark:bg-transparent text-sm font-bold hover:border-stone-400 dark:hover:border-stone-500 hover:bg-stone-50 dark:hover:bg-[#252837] transition-all active:scale-[0.98]">
-                  <Phone className="w-3.5 h-3.5" /> {shownContactNumber ?? (isFetchingContact ? "Loading Number..." : "Show Contact Number")}
-                </button>
+                  className="flex items-center justify-center gap-2 w-full py-3 rounded-lg border-2 border-stone-200 dark:border-[#2a2d3e] text-stone-700 dark:text-stone-200 bg-white dark:bg-transparent text-sm font-semibold hover:border-stone-400 dark:hover:border-stone-500 hover:bg-stone-50 dark:hover:bg-[#252837] transition-all active:scale-[0.98]">
+                  <Phone className="w-4 h-4" /> {shownContactNumber ?? (isFetchingContact ? "Loading Number..." : "Contact Number")}
+                </Button>
               </div>
 
               {/* ── Safety Tips ── */}
@@ -951,6 +826,7 @@ export default function ListingDetailPage() {
         availableFrom={extra.available_from}
         daysOff={extra.daysOff ?? []}
         timeWindows={extra.timeWindows ?? []}
+        type={listing.type}
       />
 
       {/* ══ REPORT MODAL ══════════════════════════════════════════════════════ */}
@@ -959,6 +835,7 @@ export default function ListingDetailPage() {
           open={reportOpen}
           title="Report Listing"
           subtitle="What&apos;s wrong with this listing?"
+          target={listing.title}
           submitting={submittingReport}
           onClose={handleCloseReportModal}
           onSubmit={handleSubmitReport}
@@ -975,35 +852,103 @@ export default function ListingDetailPage() {
       )}
 
       {/* ── Mobile sticky bar ── */}
-      {!isOwnListing && (
-        <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white dark:bg-[#1c1f2e] border-t border-stone-200 dark:border-[#2a2d3e] px-4 py-3 flex gap-3 shadow-lg">
+      {!isOwnListing ? (
+        <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white dark:bg-[#1c1f2e] border-t border-stone-200 dark:border-[#2a2d3e] px-4 py-3 flex gap-3 shadow-lg">
           {visitorUnavailableState ? (
-            <button
+            <Button
+              variant={'outline'}
+              size={'lg'}
               disabled
               className="flex-1 flex items-center justify-center gap-2 py-3 rounded-full bg-stone-400/80 text-white text-sm font-bold cursor-not-allowed opacity-95"
             >
               <AlertTriangle className="w-4 h-4" /> Unavailable
-            </button>
+            </Button>
           ) : isSold ? (
-            <button
+            <Button
+              variant={'outline'}
+              size={'lg'}
               disabled
               className="flex-1 flex items-center justify-center gap-2 py-3 rounded-full bg-emerald-600/90 text-white text-sm font-bold cursor-not-allowed opacity-95"
             >
               <CheckCircle className="w-4 h-4" /> Sold
-            </button>
+            </Button>
           ) : (
             <>
-              <button
+              <Button
+                variant={'outline'}
+                size={'lg'}
                 onClick={handleMessage}
                 className="flex-1 flex items-center justify-center gap-2 py-3 rounded-lg border-2 border-stone-200 dark:border-[#2a2d3e] text-stone-700 dark:text-stone-200 text-sm font-semibold">
                 <MessageCircle className="w-4 h-4" /> Message
-              </button>
-              <button
+              </Button>
+
+              <Button
+                size={'lg'}
                 onClick={handleBuy}
-                className="flex-1 flex items-center justify-center gap-2 py-3 rounded-lg bg-[#3A4A6A] text-white text-sm font-bold">
+                className={cn(
+                  "flex-1 flex items-center justify-center gap-2 py-3 rounded-lg text-white text-sm font-bold",
+                  isSell ? "bg-orange-500 hover:bg-orange-600"
+                  : isRent ? "bg-emerald-700 hover:bg-emerald-600"
+                  : "bg-violet-700 hover:bg-violet-600"
+                )}>
+                {/* className="flex-1 flex items-center justify-center gap-2 py-3 rounded-lg bg-[#3A4A6A] text-white text-sm font-bold"> */}
                 <Zap className="w-4 h-4" />
                 {isSell ? "Offer" : isRent ? "Rent" : "Book"}
-              </button>
+              </Button>
+            </>
+          )}
+        </div>
+      ) : (
+        <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white dark:bg-[#1c1f2e] border-t border-stone-200 dark:border-[#2a2d3e] px-4 py-3 flex gap-3 shadow-lg">
+          {isDeletedState || isSold ? (
+            <Button
+              disabled
+              className="flex-1 flex items-center justify-center gap-2 w-full py-3 rounded-lg bg-stone-400/80 text-white text-sm font-bold cursor-not-allowed opacity-95"
+            >
+              <AlertTriangle className="w-4 h-4" /> Unavailable
+            </Button>
+          ) : (
+            <>
+              {/* Edit Listing Button */}
+              <Button
+                variant={'default'}
+                size={'lg'}
+                onClick={() => {router.push(`/listing/${id}/edit`)}}
+                className="flex-1 flex items-center justify-center gap-2 w-full py-3 rounded-lg bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 text-sm font-bold hover:opacity-90 transition-opacity">
+                <Pen className="w-4 h-4" />
+                Edit
+              </Button>
+
+              {/* Hide Listing Button */}
+              <Button
+                variant={'outline'}
+                size={'lg'}
+                onClick={handleListingVisibility}
+                disabled={toggling}
+                className="flex-1 flex rounded-lg border-stone-200 dark:border-[#2a2d3e] text-stone-700 dark:text-stone-200 bg-white dark:bg-transparent text-sm font-semibold hover:border-stone-400 dark:hover:border-stone-500 hover:bg-stone-50 dark:hover:bg-[#252837] transition-all"
+              >
+                {isListingAvailable ? (
+                  <>
+                    <EyeOff className="w-4 h-4" /> Hide
+                  </>
+                ) : (
+                  <>
+                    <Eye className="w-4 h-4" /> Show
+                  </>
+                )}
+              </Button>
+
+              {/* Remove Listing Button */}
+              <Button
+                variant={'destructive'}
+                size={'lg'}
+                onClick={handleRemoveListing}
+                disabled={deleting}
+                className="flex-1 flex rounded-lg disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                <Trash className="w-4 h-4" />
+                {deleting ? "Removing..." : "Remove"}
+              </Button>
             </>
           )}
         </div>
@@ -1011,3 +956,158 @@ export default function ListingDetailPage() {
     </div>
   );
 }
+
+function displayListingCard(listing: PostCardProps, handleToggleBookmark: () => Promise<void>, isBookmarking: boolean, isBookmarked: boolean, isOwnListing: boolean, isDeletedState: boolean, isSold: boolean, router: AppRouterInstance, id: string, handleListingVisibility: () => Promise<void>, toggling: boolean, isListingAvailable: boolean, handleRemoveListing: () => Promise<void>, deleting: boolean, visitorUnavailableState: boolean, isSell: boolean, handleBuy: () => void, isRent: boolean, isService: boolean, handleMessage: () => Promise<void>, messaging: boolean) {
+  return <div className="bg-white dark:bg-[#1c1f2e] rounded-lg border border-stone-200 dark:border-[#2a2d3e] shadow-sm p-5">
+    <div className="flex items-start justify-between gap-2 mb-2">
+      <h1 className="text-md lg:text-lg font-bold text-stone-900 dark:text-stone-50 leading-tight">{listing.title}</h1>
+      <div className="flex gap-1.5 shrink-0">
+        <Button
+          variant={'secondary'}
+          onClick={handleToggleBookmark}
+          disabled={isBookmarking}
+          className={cn(
+            "w-9 h-9 rounded-lg border disabled:opacity-60 disabled:cursor-not-allowed",
+            isBookmarked
+              ? "border-rose-200 bg-rose-50 dark:bg-rose-900/30 dark:border-rose-800 text-rose-500"
+              : "bg-transparent text-stone-400 dark:text-stone-500"
+          )}>
+          <Bookmark className={cn("w-4 h-4", isBookmarked && "fill-rose-500")} />
+        </Button>
+        <Button
+          variant={'secondary'}
+          onClick={() => toast.info("Link copied to clipboard!", { position: "top-center" })}
+          className="w-9 h-9 rounded-lg bg-transparent border border-stone-200 dark:border-[#2a2d3e] text-stone-400 dark:text-stone-500">
+          <Share2 className="w-4 h-4" />
+        </Button>
+      </div>
+    </div>
+
+    {/* Price */}
+    <div className="flex items-baseline gap-1.5 mb-1">
+      <span className="text-xl lg:text-2xl font-extrabold text-amber-700 dark:text-amber-500">{formatPrice(listing.price)}</span>
+      {listing.priceUnit && <span className="text-black dark:text-white text-sm">{listing.priceUnit}</span>}
+    </div>
+
+    {/* Location + posted */}
+    <div className="flex flex-wrap items-center gap-3 text-sm text-black dark:text-white mb-4">
+      <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{listing.location}</span>
+      <span className="flex items-center gap-1"><Clock className="w-3 h-3" />Posted {formatTimeAgo(listing.postedAt)}</span>
+    </div>
+
+    {/* ── CTA buttons ── */}
+    {isOwnListing ? (
+      <div className="flex flex-col gap-3">
+        {isDeletedState || isSold ? (
+          <Button
+            disabled
+            className="flex items-center justify-center gap-2 w-full py-3 rounded-lg bg-stone-400/80 text-white text-sm font-bold cursor-not-allowed opacity-95"
+          >
+            <AlertTriangle className="w-4 h-4" /> Unavailable
+          </Button>
+        ) : (
+          <>
+            {/* Edit Listing Button */}
+            <Button
+              variant={'default'}
+              size={'lg'}
+              onClick={() => { router.push(`/listing/${id}/edit`); } }
+              className="flex items-center justify-center gap-2 w-full py-3 rounded-lg bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 text-sm font-bold hover:opacity-90 transition-opacity">
+              <Pen className="w-4 h-4" />
+              Edit Listing
+            </Button>
+
+            {/* Hide Listing Button */}
+            <Button
+              variant={'outline'}
+              size={'lg'}
+              onClick={handleListingVisibility}
+              disabled={toggling}
+              className="rounded-lg border-stone-200 dark:border-[#2a2d3e] text-stone-700 dark:text-stone-200 bg-white dark:bg-transparent text-sm font-semibold hover:border-stone-400 dark:hover:border-stone-500 hover:bg-stone-50 dark:hover:bg-[#252837] transition-all"
+            >
+              {isListingAvailable ? (
+                <>
+                  <EyeOff className="w-4 h-4" /> Hide Listing
+                </>
+              ) : (
+                <>
+                  <Eye className="w-4 h-4" /> Show Listing
+                </>
+              )}
+            </Button>
+
+            {/* Remove Listing Button */}
+            <Button
+              variant={'destructive'}
+              size={'lg'}
+              onClick={handleRemoveListing}
+              disabled={deleting}
+              className="rounded-lg disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              <Trash className="w-4 h-4" />
+              {deleting ? "Removing..." : "Remove Listing"}
+            </Button>
+          </>
+        )}
+      </div>
+    ) : (
+      <div className="flex flex-col gap-4">
+        {visitorUnavailableState ? (
+          <Button
+            variant={'outline'}
+            size={'lg'}
+            disabled
+            className="flex items-center justify-center gap-2 w-full py-3 rounded-lg bg-stone-400/80 text-white text-sm font-bold cursor-not-allowed opacity-95"
+          >
+            <AlertTriangle className="w-4 h-4" /> Unavailable
+          </Button>
+        ) : isSold ? (
+          <Button
+            variant={'outline'}
+            size={'lg'}
+            disabled
+            className="flex items-center justify-center gap-2 w-full py-3 rounded-lg bg-emerald-600/90 text-white text-sm font-bold cursor-not-allowed opacity-95"
+          >
+            <CheckCircle className="w-4 h-4" /> Sold
+          </Button>
+        ) : (
+          <>
+            {isSell && (
+              <Button
+                size={'lg'}
+                onClick={handleBuy}
+                className="flex items-center justify-center gap-2 w-full py-3 rounded-lg text-sm font-bold text-white bg-orange-500 hover:bg-orange-600">
+                <Zap className="w-4 h-4" /> Make an Offer
+              </Button>
+            )}
+            {isRent && (
+              <Button
+                size={'lg'}
+                onClick={handleBuy}
+                className="flex items-center justify-center gap-2 w-full py-3 rounded-lg text-sm font-bold text-white bg-emerald-700 hover:bg-emerald-600">
+                <Package className="w-4 h-4" /> Request to Rent
+              </Button>
+            )}
+            {isService && (
+              <Button
+                size={'lg'}
+                onClick={handleBuy}
+                className="flex items-center justify-center gap-2 w-full py-3 rounded-lg text-sm font-bold text-white bg-violet-700 hover:bg-violet-600">
+                <CheckCircle className="w-4 h-4" /> Book Service
+              </Button>
+            )}
+            <Button
+              variant={'outline'}
+              size={'lg'}
+              onClick={handleMessage}
+              disabled={messaging}
+              className="flex items-center justify-center gap-2 w-full py-3 rounded-lg border-2 border-stone-200 dark:border-[#2a2d3e] text-stone-700 dark:text-stone-200 text-sm font-semibold hover:border-stone-400 dark:hover:border-stone-500 hover:bg-stone-50 dark:hover:bg-[#252837]">
+              <MessageCircle className="w-4 h-4" /> {messaging ? "Opening chat..." : "Message Seller"}
+            </Button>
+          </>
+        )}
+      </div>
+    )}
+  </div>;
+}
+

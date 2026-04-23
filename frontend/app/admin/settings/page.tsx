@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { useUser } from "@/utils/UserContext";
 import {
   Lock,
@@ -21,6 +21,7 @@ import { Separator }            from "@/components/ui/separator";
 import { updateProfileData, updateProfileImages } from "@/services/profileService";
 import { toast } from "sonner";
 import { SafeImage } from "@/components/ui/safe-image";
+import { encodeImageToPayload } from "@/lib/imageCompression";
 
 // ── Mock current admin ─────────────────────────────────────────────────────────
 const CURRENT_ADMIN = {
@@ -49,71 +50,6 @@ function getStrengthScore(pw: string): number {
 }
 
 const LETTERS_SPACE_ONLY = /^[A-Za-z\s]+$/;
-
-type EncodedImagePayload = {
-  name: string;
-  mimeType: string;
-  data: string;
-};
-
-async function compressImageForProfile(file: File): Promise<Blob> {
-  const objectUrl = URL.createObjectURL(file);
-  try {
-    const image = await new Promise<HTMLImageElement>((resolve, reject) => {
-      const img = new window.Image();
-      img.onload = () => resolve(img);
-      img.onerror = () => reject(new Error("Invalid image file."));
-      img.src = objectUrl;
-    });
-
-    const maxDimension = 1200;
-    const scale = Math.min(1, maxDimension / Math.max(image.width, image.height));
-    const width = Math.max(1, Math.round(image.width * scale));
-    const height = Math.max(1, Math.round(image.height * scale));
-
-    const canvas = document.createElement("canvas");
-    canvas.width = width;
-    canvas.height = height;
-
-    const context = canvas.getContext("2d");
-    if (!context) return file;
-
-    context.drawImage(image, 0, 0, width, height);
-    const blob = await new Promise<Blob | null>((resolve) => {
-      canvas.toBlob((output) => resolve(output), "image/webp", 0.8);
-    });
-
-    return blob ?? file;
-  } finally {
-    URL.revokeObjectURL(objectUrl);
-  }
-}
-
-async function encodeFileToPayload(file: File): Promise<EncodedImagePayload> {
-  const compressed = await compressImageForProfile(file);
-
-  const data = await new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result;
-      if (typeof result !== "string") {
-        reject(new Error("Failed to encode image."));
-        return;
-      }
-      resolve(result.split(",")[1] ?? "");
-    };
-    reader.onerror = () => reject(new Error("Failed to encode image."));
-    reader.readAsDataURL(compressed);
-  });
-
-  const baseName = file.name.replace(/\.[^/.]+$/, "");
-
-  return {
-    name: `${baseName}.webp`,
-    mimeType: "image/webp",
-    data,
-  };
-}
 
 // ── Sub-components ─────────────────────────────────────────────────────────────
 
@@ -231,7 +167,7 @@ export default function SettingsPage() {
 
     setUpdatingProfileImage(true);
     try {
-      const profileImage = await encodeFileToPayload(file);
+      const profileImage = await encodeImageToPayload(file, "profile", "profileImage");
       const updatedUser = await updateProfileImages({ profileImage });
       if (user) {
         saveUserData({ ...user, ...updatedUser });

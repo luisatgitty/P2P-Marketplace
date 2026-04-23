@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"p2p_marketplace/backend/middleware"
+	"p2p_marketplace/backend/repository"
 	"p2p_marketplace/backend/routes"
 
 	"github.com/gofiber/fiber/v2"
@@ -21,6 +22,17 @@ func init() {
 		os.Exit(1)
 	} else {
 		fmt.Println("DB CONNECTION SUCCESSFUL!")
+	}
+
+	if err := middleware.InitContentModeration(); err != nil {
+		fmt.Println("MODERATION INITIALIZATION FAILED!", err.Error())
+		os.Exit(1)
+	}
+	fmt.Printf("MODERATION DICTIONARY LOADED: %d words\n", middleware.ModerationDictionarySize())
+
+	if err := repository.EnsureSystemGeneratedUser(); err != nil {
+		fmt.Println("SYSTEM GENERATED USER INIT FAILED!", err.Error())
+		os.Exit(1)
 	}
 }
 

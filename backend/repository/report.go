@@ -3,6 +3,7 @@ package repository
 import (
 	"fmt"
 	"strings"
+	"unicode/utf8"
 
 	"p2p_marketplace/backend/config"
 	"p2p_marketplace/backend/middleware"
@@ -22,7 +23,7 @@ func CreateListingReport(reporterId, listingId, reportedUserId, reason, descript
 	}
 
 	trimmedDescription := strings.TrimSpace(description)
-	if len(trimmedDescription) > config.ReportDescriptionMaxLength {
+	if utf8.RuneCountInString(trimmedDescription) > config.ReportDescriptionMaxLength {
 		return "", fmt.Errorf("Report details must be at most 500 characters")
 	}
 

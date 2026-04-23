@@ -1,52 +1,83 @@
 "use client";
 
-import { Suspense, useState, useEffect, useRef, useCallback } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { Suspense, useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import PostCard from "@/components/post-card";
-import { getHomeListings, type HomeListing } from "@/services/listingFeedService";
+import { useInfiniteQuery } from "@tanstack/react-query";
+import { getHomeListings, type HomeListingsResponse } from "@/services/listingFeedService";
 import { getProvinces, getCitiesByProvince, type LocationOption } from "@/services/locationService";
 import { useUser } from "@/utils/UserContext";
-import { Search, SlidersHorizontal, X, PackageSearch } from "lucide-react";
+import { Search, X, PackageSearch } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@/components/ui/select'
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { CATEGORIES } from "@/types/listings";
-import Link from "next/link";
-
-type ListingWithMeta = HomeListing;
+import { isValidPrice } from "@/utils/validation";
 
 const SORT_OPTIONS = [
   { value: "recommended", label: "Recommended" },
   { value: "latest",      label: "Latest"       },
   { value: "cheapest",    label: "Cheapest"     },
-  { value: "expensive",   label: "Most Expensive"},
-  { value: "top-rated",   label: "Top Rated"    },
+  { value: "expensive",   label: "Most Expensive"}
 ];
 
 const FETCH_LIMIT = 25;
+const SEARCH_MAX_LENGTH = 80;
+const DEFAULT_PROVINCE = "Province";
+const DEFAULT_CITY = "City/Municipality";
+const DEFAULT_CATEGORY = "All Categories";
+const DEFAULT_CONDITION = "Any Condition";
+const DEFAULT_SORT = "recommended";
+const DEFAULT_TYPE = "all";
 
 // ─── Select styled helper ───────────────────────────────────────────────────────
 function FilterSelect({
-  value, onChange, children, className, ...props
+  value,
+  onChange,
+  children,
+  placeholder,
+  className,
+  disabled,
+  onOpenChange,
 }: {
   value: string;
   onChange: (v: string) => void;
   children: React.ReactNode;
+  placeholder?: string;
   className?: string;
-} & Omit<React.SelectHTMLAttributes<HTMLSelectElement>, "value" | "onChange" | "children" | "className">) {
+  disabled?: boolean;
+  onOpenChange?: (open: boolean) => void;
+}) {
   return (
-    <select
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      {...props}
-      className={cn(
-        "w-full rounded-lg border border-stone-200 dark:border-white/10 bg-white dark:bg-[#1e2a3a] text-stone-700 dark:text-stone-300 text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500 transition-colors appearance-none",
-        className
-      )}
-    >
-      {children}
-    </select>
+    <div className="relative flex-1 min-w-44">
+      <Select
+        value={value}
+        onValueChange={onChange}
+        disabled={disabled}
+        onOpenChange={onOpenChange}
+      >
+        <SelectTrigger
+          className={cn(
+            "w-full rounded-lg text-sm",
+            className,
+          )}
+        >
+          <SelectValue placeholder={placeholder} />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectGroup>{children}</SelectGroup>
+        </SelectContent>
+      </Select>
+    </div>
   );
 }
 
@@ -54,25 +85,19 @@ function FilterSelect({
 function HomePageInner() {
   const searchParams = useSearchParams();
   const router       = useRouter();
+  const pathname     = usePathname();
   const { user, isAuth } = useUser();
-  const typeFromUrl  = (searchParams.get("type") || "all") as string;
-
-  const [allListings, setAllListings] = useState<ListingWithMeta[]>([]);
-  const [loadingListings, setLoadingListings] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [hasMore, setHasMore] = useState(true);
-  const [offset, setOffset] = useState(0);
-  const [totalCount, setTotalCount] = useState(0);
+  const typeFromUrl  = (searchParams.get("type") || DEFAULT_TYPE) as string;
   const sentinelRef = useRef<HTMLDivElement | null>(null);
 
   // ── Filter state (staging = what's in the form, applied = what's actually active)
   const [keyword,  setKeyword]  = useState("");
-  const [category, setCategory] = useState("All Categories");
-  const [condition, setCond]    = useState("Any Condition");
+  const [category, setCategory] = useState(DEFAULT_CATEGORY);
+  const [condition, setCond]    = useState(DEFAULT_CONDITION);
   const [provinceCode, setProvinceCode] = useState("");
   const [cityCode, setCityCode] = useState("");
-  const [provinceName, setProvinceName] = useState("Province");
-  const [cityName, setCityName] = useState("City/Municipality");
+  const [provinceName, setProvinceName] = useState(DEFAULT_PROVINCE);
+  const [cityName, setCityName] = useState(DEFAULT_CITY);
   const [priceMin, setPriceMin] = useState("");
   const [priceMax, setPriceMax] = useState("");
   const [provinceOptions, setProvinceOptions] = useState<LocationOption[]>([]);
@@ -83,59 +108,150 @@ function HomePageInner() {
   const [fetchedCitiesProvinceCode, setFetchedCitiesProvinceCode] = useState("");
 
   const [applied, setApplied] = useState({
-    keyword: "", category: "All Categories", condition: "Any Condition",
-    province: "Province", city: "City/Municipality", priceMin: "", priceMax: "",
+    keyword: "", category: DEFAULT_CATEGORY, condition: DEFAULT_CONDITION,
+    province: DEFAULT_PROVINCE, city: DEFAULT_CITY, priceMin: "", priceMax: "",
   });
 
-  const [sort, setSort] = useState("recommended");
+  const [sort, setSort] = useState(DEFAULT_SORT);
 
-  const loadListings = useCallback(async (reset: boolean, requestedOffset = 0) => {
-    if (reset) {
-      setLoadingListings(true);
-    } else {
-      setLoadingMore(true);
-    }
+  const queryString = searchParams.toString();
+  const queryFilters = useMemo(() => ({
+    type: (searchParams.get("type") ?? DEFAULT_TYPE).trim() || DEFAULT_TYPE,
+    keyword: (searchParams.get("keyword") ?? "").trim(),
+    category: (searchParams.get("category") ?? DEFAULT_CATEGORY).trim() || DEFAULT_CATEGORY,
+    condition: (searchParams.get("condition") ?? DEFAULT_CONDITION).trim() || DEFAULT_CONDITION,
+    province: (searchParams.get("province") ?? DEFAULT_PROVINCE).trim() || DEFAULT_PROVINCE,
+    city: (searchParams.get("city") ?? DEFAULT_CITY).trim() || DEFAULT_CITY,
+    priceMin: (searchParams.get("priceMin") ?? "").trim(),
+    priceMax: (searchParams.get("priceMax") ?? "").trim(),
+    sort: (searchParams.get("sort") ?? DEFAULT_SORT).trim() || DEFAULT_SORT,
+  }), [searchParams]);
 
-    const nextOffset = reset ? 0 : requestedOffset;
-
-    try {
-      const payload = await getHomeListings({
-        type: typeFromUrl,
-        keyword: applied.keyword,
-        category: applied.category,
-        condition: applied.condition,
-        province: applied.province,
-        city: applied.city,
-        priceMin: applied.priceMin,
-        priceMax: applied.priceMax,
-        sort,
+  const {
+    data,
+    isPending,
+    isFetchingNextPage,
+    hasNextPage,
+    fetchNextPage,
+  } = useInfiniteQuery<HomeListingsResponse>({
+    queryKey: ["home-listings", queryString],
+    queryFn: async ({ pageParam }) => {
+      const offset = typeof pageParam === "number" ? pageParam : 0;
+      return getHomeListings({
+        type: queryFilters.type,
+        keyword: queryFilters.keyword,
+        category: queryFilters.category,
+        condition: queryFilters.condition,
+        province: queryFilters.province,
+        city: queryFilters.city,
+        priceMin: queryFilters.priceMin,
+        priceMax: queryFilters.priceMax,
+        sort: queryFilters.sort,
         limit: FETCH_LIMIT,
-        offset: nextOffset,
+        offset,
       });
+    },
+    initialPageParam: 0,
+    getNextPageParam: (lastPage, allPages) => {
+      const loadedCount = allPages.reduce((sum, page) => sum + page.listings.length, 0);
+      const cappedTotal = Math.min(lastPage.total, 150);
+      if (loadedCount >= cappedTotal) return undefined;
+      if (loadedCount >= 150) return undefined;
+      return loadedCount;
+    },
+    staleTime: 5 * 60 * 1000,
+    placeholderData: (prev) => prev,
+  });
 
-      const received = payload.listings ?? [];
-      const nextCount = reset ? received.length : nextOffset + received.length;
+  const allListings = useMemo(
+    () => data?.pages.flatMap((page) => page.listings ?? []) ?? [],
+    [data],
+  );
+  const totalCount = useMemo(() => {
+    const backendTotal = data?.pages[0]?.total ?? 0;
+    return Math.min(backendTotal, 150);
+  }, [data]);
+  const loadingListings = isPending;
+  const loadingMore = isFetchingNextPage;
+  const hasMore = Boolean(hasNextPage);
 
-      setAllListings((prev) => (reset ? received : [...prev, ...received]));
-      setOffset(nextCount);
-      setTotalCount(payload.total);
-      setHasMore(nextCount < payload.total);
-    } catch {
-      if (reset) {
-        setAllListings([]);
-        setOffset(0);
-        setTotalCount(0);
-        setHasMore(false);
+  const applyUrlState = useCallback((params: URLSearchParams) => {
+    const nextKeyword = (params.get("keyword") ?? "").trim();
+    const nextCategory = (params.get("category") ?? DEFAULT_CATEGORY).trim() || DEFAULT_CATEGORY;
+    const nextCondition = (params.get("condition") ?? DEFAULT_CONDITION).trim() || DEFAULT_CONDITION;
+    const nextProvince = (params.get("province") ?? DEFAULT_PROVINCE).trim() || DEFAULT_PROVINCE;
+    const nextCity = (params.get("city") ?? DEFAULT_CITY).trim() || DEFAULT_CITY;
+    const nextPriceMin = (params.get("priceMin") ?? "").trim();
+    const nextPriceMax = (params.get("priceMax") ?? "").trim();
+    const nextSort = (params.get("sort") ?? DEFAULT_SORT).trim() || DEFAULT_SORT;
+
+    setKeyword(nextKeyword);
+    setCategory(nextCategory);
+    setCond(nextCondition);
+    setProvinceName(nextProvince);
+    setCityName(nextCity);
+    setPriceMin(nextPriceMin);
+    setPriceMax(nextPriceMax);
+    setSort(nextSort);
+
+    setApplied({
+      keyword: nextKeyword,
+      category: nextCategory,
+      condition: nextCondition,
+      province: nextProvince,
+      city: nextCity,
+      priceMin: nextPriceMin,
+      priceMax: nextPriceMax,
+    });
+  }, []);
+
+  const updateUrlFromState = useCallback((next: {
+    keyword?: string;
+    category?: string;
+    condition?: string;
+    province?: string;
+    city?: string;
+    priceMin?: string;
+    priceMax?: string;
+    sort?: string;
+    type?: string;
+  }, mode: "replace" | "push" = "replace") => {
+    const params = new URLSearchParams(searchParams.toString());
+
+    const setOrDelete = (key: string, value: string, defaultValue = "") => {
+      const trimmedValue = value.trim();
+      const trimmedDefault = defaultValue.trim();
+      if (trimmedValue === "" || trimmedValue.toLowerCase() === trimmedDefault.toLowerCase()) {
+        params.delete(key);
+        return;
       }
-    } finally {
-      setLoadingListings(false);
-      setLoadingMore(false);
+      params.set(key, trimmedValue);
+    };
+
+    if (next.keyword !== undefined) setOrDelete("keyword", next.keyword, "");
+    if (next.category !== undefined) setOrDelete("category", next.category, DEFAULT_CATEGORY);
+    if (next.condition !== undefined) setOrDelete("condition", next.condition, DEFAULT_CONDITION);
+    if (next.province !== undefined) setOrDelete("province", next.province, DEFAULT_PROVINCE);
+    if (next.city !== undefined) setOrDelete("city", next.city, DEFAULT_CITY);
+    if (next.priceMin !== undefined) setOrDelete("priceMin", next.priceMin, "");
+    if (next.priceMax !== undefined) setOrDelete("priceMax", next.priceMax, "");
+    if (next.sort !== undefined) setOrDelete("sort", next.sort, DEFAULT_SORT);
+    if (next.type !== undefined) setOrDelete("type", next.type, DEFAULT_TYPE);
+
+    const queryString = params.toString();
+    const href = queryString ? `${pathname}?${queryString}` : pathname;
+
+    if (mode === "push") {
+      router.push(href, { scroll: false });
+      return;
     }
-  }, [typeFromUrl, applied, sort]);
+
+    router.replace(href, { scroll: false });
+  }, [pathname, router, searchParams]);
 
   useEffect(() => {
-    void loadListings(true, 0);
-  }, [typeFromUrl, applied, sort, loadListings]);
+    applyUrlState(new URLSearchParams(searchParams.toString()));
+  }, [applyUrlState, searchParams]);
 
   useEffect(() => {
     const sentinel = sentinelRef.current;
@@ -146,7 +262,7 @@ function HomePageInner() {
       if (!first?.isIntersecting) return;
       if (loadingListings || loadingMore || !hasMore) return;
 
-      void loadListings(false, offset);
+      void fetchNextPage();
     }, {
       root: null,
       rootMargin: "220px 0px",
@@ -155,23 +271,43 @@ function HomePageInner() {
 
     observer.observe(sentinel);
     return () => observer.disconnect();
-  }, [loadListings, hasMore, loadingListings, loadingMore, offset]);
+  }, [fetchNextPage, hasMore, loadingListings, loadingMore]);
 
   // ── Actions ────────────────────────────────────────────────────────────────
   const handleSearch = () => {
-    setApplied({ keyword, category, condition, province: provinceName, city: cityName, priceMin, priceMax });
+    updateUrlFromState({
+      keyword,
+      category,
+      condition,
+      province: provinceName,
+      city: cityName,
+      priceMin,
+      priceMax,
+      sort,
+      type: typeFromUrl,
+    }, "push");
   };
 
   const handleClear = () => {
-    setKeyword(""); setCategory("All Categories"); setCond("Any Condition");
+    setKeyword(""); setCategory(DEFAULT_CATEGORY); setCond(DEFAULT_CONDITION);
     setProvinceCode(""); setCityCode("");
-    setProvinceName("Province"); setCityName("City/Municipality");
+    setProvinceName(DEFAULT_PROVINCE); setCityName(DEFAULT_CITY);
     setCityOptions([]); setFetchedCitiesProvinceCode("");
     setPriceMin(""); setPriceMax("");
-    setApplied({ keyword: "", category: "All Categories", condition: "Any Condition", province: "Province", city: "City/Municipality", priceMin: "", priceMax: "" });
+    updateUrlFromState({
+      keyword: "",
+      category: DEFAULT_CATEGORY,
+      condition: DEFAULT_CONDITION,
+      province: DEFAULT_PROVINCE,
+      city: DEFAULT_CITY,
+      priceMin: "",
+      priceMax: "",
+      sort,
+      type: typeFromUrl,
+    });
   };
 
-  const loadProvincesOnDemand = async () => {
+  const loadProvincesOnDemand = useCallback(async () => {
     if (hasFetchedProvinces || loadingProvinces) return;
 
     setLoadingProvinces(true);
@@ -185,9 +321,9 @@ function HomePageInner() {
     } finally {
       setLoadingProvinces(false);
     }
-  };
+  }, [hasFetchedProvinces, loadingProvinces]);
 
-  const loadCitiesOnDemand = async (targetProvinceCode?: string) => {
+  const loadCitiesOnDemand = useCallback(async (targetProvinceCode?: string) => {
     const effectiveProvinceCode = targetProvinceCode ?? provinceCode;
     if (!effectiveProvinceCode || loadingCities) return;
     if (fetchedCitiesProvinceCode === effectiveProvinceCode) return;
@@ -203,7 +339,46 @@ function HomePageInner() {
     } finally {
       setLoadingCities(false);
     }
-  };
+  }, [fetchedCitiesProvinceCode, loadingCities, provinceCode]);
+
+  useEffect(() => {
+    const normalizedProvince = provinceName.trim();
+    if (!normalizedProvince || normalizedProvince.toLowerCase() === DEFAULT_PROVINCE.toLowerCase()) {
+      if (provinceCode !== "") {
+        setProvinceCode("");
+      }
+      return;
+    }
+
+    if (!hasFetchedProvinces && !loadingProvinces) {
+      void loadProvincesOnDemand();
+      return;
+    }
+
+    const selected = provinceOptions.find(
+      (item) => item.name.trim().toLowerCase() === normalizedProvince.toLowerCase(),
+    );
+    if (selected && selected.code !== provinceCode) {
+      setProvinceCode(selected.code);
+    }
+  }, [hasFetchedProvinces, loadProvincesOnDemand, loadingProvinces, provinceCode, provinceName, provinceOptions]);
+
+  useEffect(() => {
+    const normalizedCity = cityName.trim();
+    if (!normalizedCity || normalizedCity.toLowerCase() === DEFAULT_CITY.toLowerCase()) {
+      if (cityCode !== "") {
+        setCityCode("");
+      }
+      return;
+    }
+
+    const selected = cityOptions.find(
+      (item) => item.name.trim().toLowerCase() === normalizedCity.toLowerCase(),
+    );
+    if (selected && selected.code !== cityCode) {
+      setCityCode(selected.code);
+    }
+  }, [cityCode, cityName, cityOptions]);
 
   useEffect(() => {
     if (!provinceCode) return;
@@ -211,7 +386,7 @@ function HomePageInner() {
     if (loadingCities) return;
 
     void loadCitiesOnDemand(provinceCode);
-  }, [provinceCode, fetchedCitiesProvinceCode, loadingCities]);
+  }, [provinceCode, fetchedCitiesProvinceCode, loadingCities, loadCitiesOnDemand]);
 
   const hasActiveFilters = Object.values(applied).some(
     (v, i) => v !== ["", "All Categories", "Any Condition", "Province", "City/Municipality", "", ""][i]
@@ -267,7 +442,7 @@ function HomePageInner() {
 
             {/* Headline */}
             <div className="max-w-xl animate-fade-in-up shrink-0">
-              <h1 className="text-2xl md:text-3xl font-bold text-stone-100">
+              <h1 className="text-2xl sm:text-3xl font-bold text-stone-100">
                 Buy, Sell, Rent & Avail Services<br />
                 <span className="text-stone-400">from people near you.</span>
               </h1>
@@ -279,7 +454,7 @@ function HomePageInner() {
               <div className="flex gap-3 mt-6">
                 <Button
                   onClick={viewRandomListing}
-                  className="bg-amber-700 hover:bg-amber-600 text-white"
+                  className="bg-amber-700 hover:bg-amber-500 text-white"
                 >
                   Feeling Lucky
                 </Button>
@@ -317,131 +492,198 @@ function HomePageInner() {
       <section id="listings" className="bg-stone-50 dark:bg-[#111827] border-b border-stone-200 dark:border-white/10 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
 
-          {/* Search row */}
-          <div className="flex gap-2 mb-3">
-            <div className="relative flex-1">
-              <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400 pointer-events-none" />
-              <Input
-                type="text"
-                placeholder="Search listings..."
-                value={keyword}
-                onChange={(e) => setKeyword(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                className="pl-9 pr-4 bg-white dark:bg-[#1e2a3a] border-stone-200 dark:border-white/10 rounded-lg text-sm focus-visible:ring-amber-500"
-              />
-            </div>
-            <Button
-              onClick={handleSearch}
-              className="bg-amber-700 hover:bg-amber-600 text-white rounded-lg px-5 shrink-0 text-sm font-semibold"
-            >
-              <Search size={14} className="mr-1.5" /> Search
-            </Button>
-          </div>
+            <div className="flex flex-col gap-2 xl:flex-row xl:items-end">
+              <div className="flex items-end gap-2 xl:flex-1">
+                {/* Search row */}
+                <div className="relative flex-1">
+                <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400 pointer-events-none" />
+                <Input
+                  type="text"
+                  placeholder="Search listings..."
+                  value={keyword}
+                  maxLength={SEARCH_MAX_LENGTH}
+                  onChange={(e) => {
+                    const nextKeyword = e.target.value;
+                    setKeyword(nextKeyword);
+                  }}
+                  onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                  className="pl-9 text-sm"
+                />
+                </div>
 
-          {/* Filter row */}
-          <div className="flex flex-wrap gap-2 items-end">
-            {/* Category */}
-            <div className="relative min-w-35 flex-1">
-              <FilterSelect value={category} onChange={setCategory}>
-                <option value="">All Categories</option>
-                {CATEGORIES.map((c) => <option key={c}>{c}</option>)}
-              </FilterSelect>
-              <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
-                <SlidersHorizontal size={12} className="text-stone-400" />
+                {/* Clear button */}
+                {hasActiveFilters && (
+                  <Button
+                    variant="ghost"
+                    onClick={handleClear}
+                    className="text-stone-500 hover:text-red-500 xl:hidden"
+                  >
+                    <X size={13} /> Clear Filters
+                  </Button>
+                )}
+
+                {/* Search button */}
+                <Button
+                  onClick={handleSearch}
+                  className="bg-amber-700 hover:bg-amber-500 text-white rounded-lg xl:hidden"
+                >
+                  <Search size={14} /> Search
+                </Button>
               </div>
-            </div>
 
-            {/* Province */}
-            <div className="relative min-w-32.5 flex-1">
-              <FilterSelect
-                value={provinceCode}
-                onChange={(code) => {
-                  const selected = provinceOptions.find((p) => p.code === code);
-                  setProvinceCode(code);
-                  setProvinceName(selected?.name ?? "Province");
-                  setCityCode("");
-                  setCityName("City/Municipality");
-                  setCityOptions([]);
-                  setFetchedCitiesProvinceCode("");
-                }}
-                disabled={loadingProvinces}
-                onMouseDown={(e) => {
-                  if (!hasFetchedProvinces) {
-                    e.preventDefault();
-                    void loadProvincesOnDemand();
-                  }
-                }}
-                className={cn(loadingProvinces && "cursor-wait")}
-              >
-                <option value="">{loadingProvinces ? "Loading provinces..." : "Province"}</option>
-                {provinceOptions.map((item) => <option key={item.code} value={item.code}>{item.name}</option>)}
-              </FilterSelect>
-            </div>
+              {/* <div className="flex flex-wrap gap-2 items-end xl:flex-nowrap"> */}
+              <div className="flex flex-wrap gap-2 items-end xl:flex-nowrap">
+                {/* Category */}
+                <FilterSelect value={category} onChange={(nextCategory) => {
+                  setCategory(nextCategory);
+                }}>
+                  <SelectItem value="All Categories">All Categories</SelectItem>
+                  {CATEGORIES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                </FilterSelect>
 
-            {/* City/Municipality */}
-            <div className="relative min-w-32.5 flex-1">
-              <FilterSelect
-                value={cityCode}
-                onChange={(code) => {
-                  const selected = cityOptions.find((c) => c.code === code);
-                  setCityCode(code);
-                  setCityName(selected?.name ?? "City/Municipality");
-                }}
-                disabled={!provinceCode || loadingCities}
-                onMouseDown={(e) => {
-                  if (!provinceCode) {
-                    e.preventDefault();
-                    return;
-                  }
+                {/* Province */}
+                <FilterSelect
+                  value={provinceCode || "__province__"}
+                  onChange={(code) => {
+                    if (code === "__province__") {
+                      setProvinceCode("");
+                      setProvinceName(DEFAULT_PROVINCE);
+                      setCityCode("");
+                      setCityName(DEFAULT_CITY);
+                      setCityOptions([]);
+                      setFetchedCitiesProvinceCode("");
+                      return;
+                    }
 
-                  if (fetchedCitiesProvinceCode !== provinceCode) {
-                    e.preventDefault();
-                    void loadCitiesOnDemand();
-                  }
-                }}
-                className={cn((!provinceCode || loadingCities) && "cursor-wait")}
-              >
-                <option value="">
-                  {!provinceCode
-                    ? "Select province first"
-                    : loadingCities
-                      ? "Loading cities/municipalities..."
-                      : "City/Municipality"}
-                </option>
-                {cityOptions.map((item) => <option key={item.code} value={item.code}>{item.name}</option>)}
-              </FilterSelect>
-            </div>
+                    const selected = provinceOptions.find((p) => p.code === code);
+                    const nextProvinceName = selected?.name ?? DEFAULT_PROVINCE;
+                    setProvinceCode(code);
+                    setProvinceName(nextProvinceName);
+                    setCityCode("");
+                    setCityName(DEFAULT_CITY);
+                    setCityOptions([]);
+                    setFetchedCitiesProvinceCode("");
+                  }}
+                  disabled={loadingProvinces}
+                  onOpenChange={(open) => {
+                    if (open && !hasFetchedProvinces) {
+                      void loadProvincesOnDemand();
+                    }
+                  }}
+                  className={cn(loadingProvinces && "cursor-wait")}
+                >
+                  <SelectItem value="__province__">{loadingProvinces ? "Loading provinces..." : "Province"}</SelectItem>
+                  {provinceOptions.map((item) => <SelectItem key={item.code} value={item.code}>{item.name}</SelectItem>)}
+                </FilterSelect>
 
-            {/* Price range */}
-            <div className="flex items-center gap-1.5 shrink-0">
-              <Input
-                type="number"
-                placeholder="Min ₱"
-                value={priceMin}
-                onChange={(e) => setPriceMin(e.target.value)}
-                className="w-24 text-sm bg-white dark:bg-[#1e2a3a] border-stone-200 dark:border-white/10 rounded-lg focus-visible:ring-amber-500"
-              />
-              <span className="text-stone-400 text-sm shrink-0">–</span>
-              <Input
-                type="number"
-                placeholder="Max ₱"
-                value={priceMax}
-                onChange={(e) => setPriceMax(e.target.value)}
-                className="w-24 text-sm bg-white dark:bg-[#1e2a3a] border-stone-200 dark:border-white/10 rounded-lg focus-visible:ring-amber-500"
-              />
-            </div>
+                {/* City/Municipality */}
+                <FilterSelect
+                  value={cityCode || "__city__"}
+                  onChange={(code) => {
+                    if (code === "__city__") {
+                      setCityCode("");
+                      setCityName(DEFAULT_CITY);
+                      return;
+                    }
 
-            {/* Clear button */}
-            {hasActiveFilters && (
+                    const selected = cityOptions.find((c) => c.code === code);
+                    const nextCityName = selected?.name ?? DEFAULT_CITY;
+                    setCityCode(code);
+                    setCityName(nextCityName);
+                  }}
+                  disabled={!provinceCode || loadingCities}
+                  onOpenChange={(open) => {
+                    if (!open) {
+                      return;
+                    }
+
+                    if (!provinceCode) {
+                      return;
+                    }
+
+                    if (fetchedCitiesProvinceCode !== provinceCode) {
+                      void loadCitiesOnDemand();
+                    }
+                  }}
+                  className={cn((!provinceCode || loadingCities) && "cursor-wait")}
+                >
+                  <SelectItem value="__city__">
+                    {!provinceCode
+                      ? "Select province first"
+                      : loadingCities
+                        ? "Loading cities/municipalities..."
+                        : "City/Municipality"}
+                  </SelectItem>
+                  {cityOptions.map((item) => <SelectItem key={item.code} value={item.code}>{item.name}</SelectItem>)}
+                </FilterSelect>
+
+                {/* Price range */}
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <Input
+                    type="number"
+                    placeholder="Min ₱"
+                    value={priceMin}
+                    onChange={(e) => {
+                      const nextPriceMin = e.target.value;
+                      if (!nextPriceMin) {
+                        setPriceMin("");
+                        return;
+                      }
+                      if (!isValidPrice(nextPriceMin)) return;
+                      setPriceMin(nextPriceMin);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "-" || e.key === "+" || e.key === "e" || e.key === "E" || e.key === ".") {
+                        e.preventDefault();
+                      }
+                      if (e.key === "Enter") handleSearch();
+                    }}
+                    className="w-26 text-sm bg-white dark:bg-[#1e2a3a] border-stone-200 dark:border-white/10 rounded-lg"
+                  />
+                  <span className="text-stone-400 text-sm shrink-0">–</span>
+                  <Input
+                    type="number"
+                    placeholder="Max ₱"
+                    value={priceMax}
+                    onChange={(e) => {
+                      const nextPriceMax = e.target.value;
+                      if (!nextPriceMax) {
+                        setPriceMax("");
+                        return;
+                      }
+                      if (!isValidPrice(nextPriceMax)) return;
+                      setPriceMax(nextPriceMax);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "-" || e.key === "+" || e.key === "e" || e.key === "E" || e.key === ".") {
+                        e.preventDefault();
+                      }
+                      if (e.key === "Enter") handleSearch();
+                    }}
+                    className="w-26 text-sm bg-white dark:bg-[#1e2a3a] border-stone-200 dark:border-white/10 rounded-lg"
+                  />
+                </div>
+              </div>
+
+              {/* Clear button */}
+              {hasActiveFilters && (
+                <Button
+                  variant="ghost"
+                  onClick={handleClear}
+                  className="text-stone-500 hover:text-red-500 hidden xl:flex"
+                >
+                  <X size={13} /> Clear Filters
+                </Button>
+              )}
+
+              {/* Search button */}
               <Button
-                variant="ghost"
-                onClick={handleClear}
-                className="text-stone-500 hover:text-red-500 text-sm rounded-lg px-3 py-2 shrink-0"
+                onClick={handleSearch}
+                className="bg-amber-700 hover:bg-amber-500 text-white rounded-lg hidden xl:flex"
               >
-                <X size={13} className="mr-1" /> Clear Filters
+                <Search size={14} /> Search
               </Button>
-            )}
-          </div>
+            </div>
         </div>
       </section>
 
@@ -453,9 +695,14 @@ function HomePageInner() {
         <div className="flex items-center gap-1 flex-wrap">
           <span className="text-sm text-stone-400 mr-2 hidden sm:inline">Sort:</span>
           {SORT_OPTIONS.map((opt) => (
-            <button
+            <Button
+            variant={'ghost'}
+            size={'sm'}
               key={opt.value}
-              onClick={() => { setSort(opt.value); }}
+              onClick={() => {
+                setSort(opt.value);
+                updateUrlFromState({ sort: opt.value }, "replace");
+              }}
               className={cn(
                 "tab-page-base",
                 sort === opt.value
@@ -464,7 +711,7 @@ function HomePageInner() {
               )}
             >
               {opt.label}
-            </button>
+            </Button>
           ))}
         </div>
       </div>
@@ -488,12 +735,13 @@ function HomePageInner() {
             <p className="text-sm text-stone-400 dark:text-stone-500 mt-1 max-w-xs">
               Try adjusting your search keyword or filters to find what you&apos;re looking for.
             </p>
-            <button
+            <Button
+            variant={'link'}
               onClick={handleClear}
-              className="mt-4 text-sm font-medium text-amber-700 dark:text-amber-500 hover:underline"
+              className=" text-amber-700 dark:text-amber-500"
             >
               Clear all filters
-            </button>
+            </Button>
           </div>
         )}
 

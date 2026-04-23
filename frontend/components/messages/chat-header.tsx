@@ -419,6 +419,7 @@ export default function ChatHeader({ conversation, onDelete, onMarkedComplete, o
       open={reportOpen}
       title="Report User"
       subtitle="Why are you reporting this user?"
+      target={`${otherParticipant.firstName} ${otherParticipant.lastName}`}
       submitting={submittingReport}
       onClose={() => setReportOpen(false)}
       onSubmit={handleSubmitReport}
@@ -466,6 +467,7 @@ export default function ChatHeader({ conversation, onDelete, onMarkedComplete, o
       submitLabel={hasTransaction && (normalizedTransactionStatus === "PENDING" || normalizedTransactionStatus === "CONFIRMED")
         ? "Update Schedule"
         : "Request Schedule"}
+      type={listing.listingType}
     />
 
     {reviewOpen && (

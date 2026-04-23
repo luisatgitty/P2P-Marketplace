@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"p2p_marketplace/backend/config"
 	"p2p_marketplace/backend/middleware"
@@ -1264,7 +1265,7 @@ func SetAdminReportAction(reportId, adminUserId, action, reason string) error {
 	if trimmedReason == "" {
 		return fmt.Errorf("Reason is required")
 	}
-	if len(trimmedReason) > config.AdminReasonMaxLength {
+	if utf8.RuneCountInString(trimmedReason) > config.AdminReasonMaxLength {
 		return fmt.Errorf("Reason must not exceed %d characters", config.AdminReasonMaxLength)
 	}
 
@@ -1280,6 +1281,7 @@ func SetAdminReportAction(reportId, adminUserId, action, reason string) error {
 	}()
 
 	type reportTarget struct {
+		ReporterId        *string `gorm:"column:reporter_id"`
 		ReportedUserId    *string `gorm:"column:reported_user_id"`
 		ReportedListingId *string `gorm:"column:reported_listing_id"`
 		ListingOwnerId    *string `gorm:"column:listing_owner_id"`
@@ -1290,6 +1292,7 @@ func SetAdminReportAction(reportId, adminUserId, action, reason string) error {
 	var target reportTarget
 	targetQuery := `
 		SELECT
+			r.reporter_id::text AS reporter_id,
 			r.reported_user_id::text AS reported_user_id,
 			r.reported_listing_id::text AS reported_listing_id,
 			l.user_id::text AS listing_owner_id,
@@ -1484,6 +1487,31 @@ func SetAdminReportAction(reportId, adminUserId, action, reason string) error {
 		}
 	}
 
+	if effectiveAction == "DISMISS" && targetListingId != "" {
+		reporterId := ""
+		if target.ReporterId != nil {
+			reporterId = strings.TrimSpace(*target.ReporterId)
+		}
+
+		if reporterId == config.SystemGeneratedActorID {
+			unbanListingResult := tx.Exec(`
+				UPDATE public.listings
+				SET
+					status = 'AVAILABLE'::listing_status,
+					banned_until = NULL,
+					action_by_id = $2,
+					updated_at = now()
+				WHERE id = $1
+					AND status = 'BANNED'::listing_status
+			`, targetListingId, adminUserId)
+
+			if unbanListingResult.Error != nil {
+				tx.Rollback()
+				return fmt.Errorf("Failed to remove system auto-ban from listing")
+			}
+		}
+	}
+
 	nextStatus := "RESOLVED"
 	if effectiveAction == "DISMISS" {
 		nextStatus = "DISMISSED"
@@ -1666,7 +1694,7 @@ func SetAdminVerificationStatus(verificationId, reviewedById, status, reason str
 		tx.Rollback()
 		return fmt.Errorf("Reason is required")
 	}
-	if len(trimmedReason) > config.AdminReasonMaxLength {
+	if utf8.RuneCountInString(trimmedReason) > config.AdminReasonMaxLength {
 		tx.Rollback()
 		return fmt.Errorf("Reason must not exceed %d characters", config.AdminReasonMaxLength)
 	}

@@ -37,6 +37,10 @@ import { SafeImage } from "@/components/ui/safe-image";
 import { ImageLink } from "@/components/image-link";
 import { formatPrice } from "@/utils/string-builder";
 import { AUTH_LIMITS, isValidName } from "@/utils/validation";
+import {
+  encodeImageToPayload,
+  encodeSquareProfileImageToPayload,
+} from "@/lib/imageCompression";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type VerificationState = "unverified" | "pending" | "verified" | "rejected";
@@ -293,70 +297,7 @@ function useImageUpload(
   return { src, file, trigger, remove, inputRef, onFileChange };
 }
 
-type EncodedImagePayload = {
-  name: string;
-  mimeType: string;
-  data: string;
-};
 
-async function compressImageForProfile(file: File): Promise<Blob> {
-  const objectUrl = URL.createObjectURL(file);
-  try {
-    const image = await new Promise<HTMLImageElement>((resolve, reject) => {
-      const img = new window.Image();
-      img.onload = () => resolve(img);
-      img.onerror = () => reject(new Error("Invalid image file."));
-      img.src = objectUrl;
-    });
-
-    const maxDimension = 1200;
-    const scale = Math.min(1, maxDimension / Math.max(image.width, image.height));
-    const width = Math.max(1, Math.round(image.width * scale));
-    const height = Math.max(1, Math.round(image.height * scale));
-
-    const canvas = document.createElement("canvas");
-    canvas.width = width;
-    canvas.height = height;
-
-    const context = canvas.getContext("2d");
-    if (!context) return file;
-
-    context.drawImage(image, 0, 0, width, height);
-    const blob = await new Promise<Blob | null>((resolve) => {
-      canvas.toBlob((output) => resolve(output), "image/webp", 0.8);
-    });
-
-    return blob ?? file;
-  } finally {
-    URL.revokeObjectURL(objectUrl);
-  }
-}
-
-async function encodeFileToPayload(file: File): Promise<EncodedImagePayload> {
-  const compressed = await compressImageForProfile(file);
-
-  const data = await new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result;
-      if (typeof result !== "string") {
-        reject(new Error("Failed to encode image."));
-        return;
-      }
-      resolve(result.split(",")[1] ?? "");
-    };
-    reader.onerror = () => reject(new Error("Failed to encode image."));
-    reader.readAsDataURL(compressed);
-  });
-
-  const baseName = file.name.replace(/\.[^/.]+$/, "");
-
-  return {
-    name: `${baseName}.webp`,
-    mimeType: "image/webp",
-    data,
-  };
-}
 
 // ─── MAIN PAGE ────────────────────────────────────────────────────────────────
 export default function ProfilePage() {
@@ -426,7 +367,7 @@ export default function ProfilePage() {
   const handleAvatarUpload = async (file: File) => {
     setUploadingAvatar(true);
     try {
-      const profileImage = await encodeFileToPayload(file);
+      const profileImage = await encodeSquareProfileImageToPayload(file, "profileImage");
       const updatedUser = await updateProfileImages({ profileImage });
       if (user) saveUserData({ ...user, ...updatedUser });
       setProfileUser((prev) => ({ ...(prev ?? updatedUser), ...updatedUser }));
@@ -443,7 +384,7 @@ export default function ProfilePage() {
   const handleCoverUpload = async (file: File) => {
     setUploadingCover(true);
     try {
-      const coverImage = await encodeFileToPayload(file);
+      const coverImage = await encodeImageToPayload(file, "cover", "coverImage");
       const updatedUser = await updateProfileImages({ coverImage });
       if (user) saveUserData({ ...user, ...updatedUser });
       setProfileUser((prev) => ({ ...(prev ?? updatedUser), ...updatedUser }));
@@ -985,7 +926,7 @@ export default function ProfilePage() {
         <div className="bg-white dark:bg-[#1c1f2e] rounded-lg border border-stone-200 dark:border-[#2a2d3e] shadow-sm overflow-hidden mb-4">
 
           {/* Cover photo */}
-          <div className={cn("relative aspect-7/1 bg-linear-to-r from-[#1a0e00] via-[#1a2235] to-[#0b0f1a] overflow-hidden group", !isViewingExternalProfile && "cursor-pointer")} onClick={() => !isViewingExternalProfile && cover.trigger()}>
+          <div className={cn("relative min-h-36 bg-linear-to-r from-[#1a0e00] via-[#1a2235] to-[#0b0f1a] overflow-hidden group", !isViewingExternalProfile && "cursor-pointer")} onClick={() => !isViewingExternalProfile && cover.trigger()}>
             {cover.src
               ? <SafeImage
                 src={cover.src}
@@ -1002,15 +943,15 @@ export default function ProfilePage() {
               />}
             {!isViewingExternalProfile && (
               <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
-                <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-2 text-white text-sm font-medium bg-black/40 px-4 py-2 rounded-full">
+                <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-2 text-white text-sm font-medium bg-black/40 px-4 py-2 rounded-lg">
                   <Camera className="w-4 h-4" /> {cover.src ? "Change Cover" : "Upload Cover Photo"}
                 </div>
               </div>
             )}
             {/* Remove cover button */}
             {!isViewingExternalProfile && cover.src && (
-              <button
-                onClick={async (e) => {
+              <Button
+                onClick={async (e) => { 
                   e.stopPropagation();
                   try {
                     await cover.remove();
@@ -1018,11 +959,11 @@ export default function ProfilePage() {
                     // toast already handled in remove flow
                   }
                 }}
-                className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/50 hover:bg-black/70 flex items-center justify-center text-white transition-colors opacity-0 group-hover:opacity-100"
+                className="absolute top-2 right-2 w-7 h-7 rounded-lg bg-black/50 hover:bg-black/70 flex items-center justify-center text-white transition-colors opacity-0 group-hover:opacity-100"
                 title="Remove cover photo"
               >
                 <Trash2 className="w-3.5 h-3.5" />
-              </button>
+              </Button>
             )}
             {!isViewingExternalProfile && <input ref={cover.inputRef} type="file" accept="image/*" className="hidden" onChange={cover.onFileChange} />}
           </div>
@@ -1064,16 +1005,18 @@ export default function ProfilePage() {
                   <>
                     <div className="fixed inset-0 z-10" onClick={() => setShowAvatarMenu(false)} />
                     <div className="absolute top-full left-0 mt-2 z-20 bg-white dark:bg-[#1c1f2e] border border-stone-200 dark:border-[#2a2d3e] rounded-lg shadow-lg overflow-hidden w-44">
-                      <button
-                        className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-stone-700 dark:text-stone-300 hover:bg-stone-50 dark:hover:bg-[#252837] transition-colors"
+                      <Button
+                        variant={'ghost'}
+                        className="rounded-none w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-stone-700 dark:text-stone-300 hover:bg-stone-50 dark:hover:bg-[#252837] transition-colors"
                         onClick={() => { avatar.trigger(); setShowAvatarMenu(false); }}
                       >
                         <Camera className="w-4 h-4 text-stone-400" />
                         {avatar.src ? "Change Photo" : "Upload Photo"}
-                      </button>
+                      </Button>
                       {avatar.src && (
-                        <button
-                          className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors border-t border-stone-100 dark:border-[#2a2d3e]"
+                        <Button
+                          variant={'ghost'}
+                          className="rounded-none w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors border-t border-stone-100 dark:border-[#2a2d3e]"
                           onClick={async () => {
                             try {
                               await avatar.remove();
@@ -1086,7 +1029,7 @@ export default function ProfilePage() {
                         >
                           <Trash2 className="w-4 h-4" />
                           Remove Photo
-                        </button>
+                        </Button>
                       )}
                     </div>
                   </>
@@ -1219,13 +1162,13 @@ export default function ProfilePage() {
                           maxLength={AUTH_LIMITS.passwordMaxLength}
                           className="pr-9"
                         />
-                        <button
-                          type="button"
+                        <Button
+                          variant={'ghost'}
                           className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm leading-5"
                           onClick={() => setShowCurrentPassword(!showCurrentPassword)}
                         >
                           {showCurrentPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                        </button>
+                        </Button>
                       </div>
                     </div>
                     <div>
@@ -1239,13 +1182,13 @@ export default function ProfilePage() {
                           maxLength={AUTH_LIMITS.passwordMaxLength}
                           className="pr-9"
                         />
-                        <button
-                          type="button"
+                        <Button
+                          variant={'ghost'}
                           className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm leading-5"
                           onClick={() => setShowNewPassword(!showNewPassword)}
                         >
                           {showNewPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                        </button>
+                        </Button>
                       </div>
                     </div>
                     <div>
@@ -1291,16 +1234,27 @@ export default function ProfilePage() {
           {/* Tab bar */}
           <div className="flex border-b border-stone-200 dark:border-[#2a2d3e]">
             {profileTabs.map((t) => (
-              <button key={t} onClick={() => setProfileTab(t)}
+              <button
+                key={t}
+                onClick={() => setProfileTab(t)}
                 className={cn("flex-1 py-3.5 text-sm font-medium transition-colors",
                   profileTab === t
                     ? "text-stone-900 dark:text-stone-100 border-b-2 border-stone-900 dark:border-stone-300"
                     : "text-stone-400 dark:text-stone-500 hover:text-stone-600 dark:hover:text-stone-300")}>
-                {t === "listings"
-                  ? "📦 Listing"
-                  : t === "bookmarks"
-                    ? "🔖 Bookmark"
-                    : "⭐ Review"}
+                <span className="inline-flex items-center gap-1.5">
+                  {t === "listings"
+                    ? <Package className="w-4 h-4" />
+                    : t === "bookmarks"
+                      ? <Bookmark className="w-4 h-4" />
+                      : <Star className="w-4 h-4" />}
+                  <span>
+                    {t === "listings"
+                      ? "Listing"
+                      : t === "bookmarks"
+                        ? "Bookmark"
+                        : "Review"}
+                  </span>
+                </span>
               </button>
             ))}
           </div>
@@ -1310,7 +1264,11 @@ export default function ProfilePage() {
             <div className="flex items-center justify-between px-4 pt-3 pb-2">
               <div className="flex gap-1">
                 {(["all", "active", "sold", "booked"] as const).map((tab) => (
-                  <button key={tab} onClick={() => setListingTab(tab)}
+                  <Button
+                    variant={'ghost'}
+                    size={'sm'}
+                    key={tab}
+                    onClick={() => setListingTab(tab)}
                     className={cn("tab-page-base",
                       listingTab === tab
                         ? "tab-active"
@@ -1322,7 +1280,7 @@ export default function ProfilePage() {
                       : tab === "sold"
                         ? `Sold (${soldListings.length})`
                         : `Booked (${bookedListings.length})`}
-                  </button>
+                  </Button>
                 ))}
               </div>
               
@@ -1382,7 +1340,9 @@ export default function ProfilePage() {
                     { key: "received", label: `Reviews by Others (${receivedReviews.length})` },
                     { key: "personal", label: `Personal Reviews (${personalReviews.length})` },
                   ] as const).map((tabItem) => (
-                    <button
+                    <Button
+                      variant={'ghost'}
+                      size={'sm'}
                       key={tabItem.key}
                       onClick={() => setReviewTab(tabItem.key)}
                       className={cn(
@@ -1393,7 +1353,7 @@ export default function ProfilePage() {
                       )}
                     >
                       {tabItem.label}
-                    </button>
+                    </Button>
                   ))}
                 </div>
               </div>

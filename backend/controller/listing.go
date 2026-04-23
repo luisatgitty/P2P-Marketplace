@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"p2p_marketplace/backend/config"
 	"p2p_marketplace/backend/middleware"
@@ -77,7 +78,7 @@ func GetListingEditById(c *fiber.Ctx) error {
 		"locationBrgy":   listing.LocationBrgy,
 		"condition":      mapConditionDisplay(listing.Condition),
 		"deliveryMethod": mapDeliveryDisplay(listing.DeliveryMethod),
-		"minPeriod":      formatMinPeriod(listing.MinRentalPeriod),
+		"minPeriod":      "",
 		"availability":   "",
 		"deposit":        listing.Deposit,
 		"turnaround":     listing.Turnaround,
@@ -94,6 +95,9 @@ func GetListingEditById(c *fiber.Ctx) error {
 	}
 
 	if listing.Type == "rent" {
+		if listing.MinRentalPeriod > 0 {
+			data["minPeriod"] = strconv.Itoa(listing.MinRentalPeriod)
+		}
 		data["amenities"] = included
 	} else {
 		data["inclusions"] = included
@@ -201,7 +205,7 @@ func GetListingById(c *fiber.Ctx) error {
 	}
 
 	userId := getOptionalUserIdFromSession(c)
-	related, err := repository.GetRelatedListings(listingId, listing.CategoryID, listing.Type, userId)
+	related, err := repository.GetRelatedListings(listingId, listing.CategoryID, listing.Type, listing.LocationProv, userId)
 	if err != nil {
 		return SendErrorResponse(c, 500, err.Error(), err)
 	}
@@ -232,7 +236,7 @@ func GetListingById(c *fiber.Ctx) error {
 
 	switch listing.Type {
 	case "rent":
-		extra["minPeriod"] = formatMinPeriod(listing.MinRentalPeriod)
+		extra["minPeriod"] = formatMinPeriod(listing.MinRentalPeriod, listing.PriceUnit)
 		if listing.AvailableFrom != nil {
 			extra["available_from"] = listing.AvailableFrom.Format("2006-01-02")
 			extra["availability"] = listing.AvailableFrom.Format("Jan 02, 2006")
@@ -416,7 +420,7 @@ func ReportListing(c *fiber.Ctx) error {
 	}
 
 	trimmedDescription := strings.TrimSpace(body.Description)
-	if len(trimmedDescription) > config.ReportDescriptionMaxLength {
+	if utf8.RuneCountInString(trimmedDescription) > config.ReportDescriptionMaxLength {
 		return SendErrorResponse(c, 400, "Report details must be at most 500 characters", nil)
 	}
 
@@ -481,7 +485,7 @@ func CreateListingReview(c *fiber.Ctx) error {
 		return SendErrorResponse(c, 400, "Rating must be between 1 and 5", nil)
 	}
 
-	if len(strings.TrimSpace(body.Comment)) > config.ReviewCommentMaxLength {
+	if utf8.RuneCountInString(strings.TrimSpace(body.Comment)) > config.ReviewCommentMaxLength {
 		return SendErrorResponse(c, 400, "Review comment must be at most 500 characters", nil)
 	}
 
@@ -517,7 +521,7 @@ func UpdateListingReview(c *fiber.Ctx) error {
 		return SendErrorResponse(c, 400, "Rating must be between 1 and 5", nil)
 	}
 
-	if len(strings.TrimSpace(body.Comment)) > config.ReviewCommentMaxLength {
+	if utf8.RuneCountInString(strings.TrimSpace(body.Comment)) > config.ReviewCommentMaxLength {
 		return SendErrorResponse(c, 400, "Review comment must be at most 500 characters", nil)
 	}
 
@@ -562,8 +566,8 @@ func GetListings(c *fiber.Ctx) error {
 		if parseErr != nil || parsedLimit <= 0 {
 			return SendErrorResponse(c, 400, "limit must be a valid positive number", parseErr)
 		}
-		if parsedLimit > 100 {
-			parsedLimit = 100
+		if parsedLimit > 25 {
+			parsedLimit = 25
 		}
 		limit = parsedLimit
 	}
@@ -611,9 +615,12 @@ func GetListings(c *fiber.Ctx) error {
 		return SendErrorResponse(c, 400, "priceMin cannot be greater than priceMax", nil)
 	}
 
+	keyword := strings.TrimSpace(c.Query("keyword"))
+	keyword = truncateStringByRuneLimit(keyword, config.ListingSearchMaxLength)
+
 	filters := model.ListingsFilter{
 		Type:      strings.TrimSpace(c.Query("type")),
-		Keyword:   strings.TrimSpace(c.Query("keyword")),
+		Keyword:   keyword,
 		Category:  strings.TrimSpace(c.Query("category")),
 		Condition: strings.TrimSpace(c.Query("condition")),
 		Province:  strings.TrimSpace(c.Query("province")),
@@ -623,6 +630,13 @@ func GetListings(c *fiber.Ctx) error {
 		Sort:      strings.TrimSpace(c.Query("sort")),
 		Limit:     limit,
 		Offset:    offset,
+	}
+
+	if strings.TrimSpace(userId) != "" {
+		profile, profileErr := repository.GetProfileUserById(userId)
+		if profileErr == nil {
+			filters.UserProvince = strings.TrimSpace(profile.LocationProv)
+		}
 	}
 
 	listings, total, err := repository.GetAllListings(userId, filters)
@@ -714,6 +728,17 @@ func parseJSONStringArray(raw string) []string {
 	return out
 }
 
+func truncateStringByRuneLimit(value string, maxLen int) string {
+	if maxLen <= 0 {
+		return ""
+	}
+	runes := []rune(value)
+	if len(runes) <= maxLen {
+		return value
+	}
+	return string(runes[:maxLen])
+}
+
 func mapConditionDisplay(raw string) string {
 	switch strings.ToUpper(strings.TrimSpace(raw)) {
 	case "NEW":
@@ -744,14 +769,11 @@ func mapDeliveryDisplay(raw string) string {
 	}
 }
 
-func formatMinPeriod(v int) string {
-	if v <= 0 {
+func formatMinPeriod(minPeriod int, periodUnit string) string {
+	if minPeriod <= 0 {
 		return ""
 	}
-	if v == 1 {
-		return "1 month"
-	}
-	return fmt.Sprintf("%d months", v)
+	return fmt.Sprintf("%d %s", minPeriod, periodUnit[2:])
 }
 
 func mapAssetURLs(baseURL string, raw []string) []string {

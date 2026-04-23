@@ -8,11 +8,12 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
+	"p2p_marketplace/backend/config"
 	"p2p_marketplace/backend/middleware"
 	"p2p_marketplace/backend/model"
 
@@ -63,6 +64,8 @@ func CreateListing(userId string, body model.CreateListingBody) (string, error) 
 		tx.Rollback()
 		return "", err
 	}
+
+	moderation := middleware.ModerateListingContent(body.Title, body.Description)
 
 	var listingId string
 	insertListingQuery := `
@@ -116,11 +119,82 @@ func CreateListing(userId string, body model.CreateListingBody) (string, error) 
 		return "", err
 	}
 
+	if len(moderation.DetectedWords) > 0 {
+		if err := applyAutomatedModerationTx(tx, listingId, userId, moderation.DetectedWords); err != nil {
+			fmt.Println("[MODERATION] failed to auto-shadow-ban listing:", err.Error())
+		}
+	}
+
 	if err := tx.Commit().Error; err != nil {
 		return "", err
 	}
 
 	return listingId, nil
+}
+
+func applyAutomatedModerationTx(tx *gorm.DB, listingId, ownerUserId string, detectedWords []string) error {
+	if strings.TrimSpace(listingId) == "" || strings.TrimSpace(ownerUserId) == "" {
+		return fmt.Errorf("missing listing or owner id for moderation")
+	}
+
+	bannedUntil := time.Now().Add(config.SystemModerationShadowBanPeriod)
+	updateQuery := `
+		UPDATE public.listings
+		SET
+			status = 'BANNED',
+			banned_until = $2,
+			action_by_id = $3,
+			updated_at = now()
+		WHERE id = $1
+	`
+
+	if err := tx.Exec(updateQuery, listingId, bannedUntil, config.SystemGeneratedActorID).Error; err != nil {
+		return fmt.Errorf("failed to apply automated moderation listing state")
+	}
+
+	description := fmt.Sprintf("Auto-moderation detected forbidden words: %s", strings.Join(detectedWords, ", "))
+	if utf8.RuneCountInString(description) > config.ReportDescriptionMaxLength {
+		description = truncateToMaxRunes(description, config.ReportDescriptionMaxLength)
+	}
+
+	reason := config.NormalizeReportReason(config.SystemModerationReportReason)
+	if reason == "" {
+		reason = config.SystemModerationReportReason
+	}
+
+	insertReportQuery := `
+		INSERT INTO public.reports (
+			reporter_id,
+			reported_user_id,
+			reported_listing_id,
+			reason,
+			description,
+			status,
+			created_at
+		)
+		VALUES (
+			$1,
+			$2,
+			$3,
+			$4,
+			NULLIF($5, ''),
+			'PENDING',
+			now()
+		)
+	`
+
+	if err := tx.Exec(
+		insertReportQuery,
+		config.SystemGeneratedActorID,
+		ownerUserId,
+		listingId,
+		reason,
+		description,
+	).Error; err != nil {
+		return fmt.Errorf("failed to create automated moderation report")
+	}
+
+	return nil
 }
 
 func getOrCreateCategoryIDTx(tx *gorm.DB, category string) (string, error) {
@@ -284,17 +358,25 @@ func parseMinRentalPeriod(minPeriod string) (int, error) {
 		return 0, fmt.Errorf("Minimum rental period is required")
 	}
 
-	r := regexp.MustCompile(`\d+`)
-	num := r.FindString(cleaned)
-	if num == "" {
-		return 0, fmt.Errorf("Minimum rental period must contain a number")
+	parsed, err := strconv.Atoi(cleaned)
+	if err != nil {
+		return 0, fmt.Errorf("Minimum rental period must be a whole number")
 	}
-
-	parsed, err := strconv.Atoi(num)
-	if err != nil || parsed <= 0 {
-		return 0, fmt.Errorf("Invalid minimum rental period")
+	if parsed < config.ListingMinPeriodMinValue || parsed > config.ListingMinPeriodMaxValue {
+		return 0, fmt.Errorf("Minimum rental period must be between %d and %d", config.ListingMinPeriodMinValue, config.ListingMinPeriodMaxValue)
 	}
 	return parsed, nil
+}
+
+func truncateToMaxRunes(value string, maxLen int) string {
+	if maxLen <= 0 {
+		return ""
+	}
+	runes := []rune(value)
+	if len(runes) <= maxLen {
+		return value
+	}
+	return string(runes[:maxLen])
 }
 
 func saveListingImagesTx(tx *gorm.DB, listingId string, images []model.ListingImageBody) error {
@@ -1121,7 +1203,7 @@ func GetListingTimeWindows(listingId string) ([]model.ListingTimeWindow, error) 
 	return rows, nil
 }
 
-func GetRelatedListings(listingId, categoryId, listingType, excludeUserId string) ([]model.ProfileListingFromDb, error) {
+func GetRelatedListings(listingId, categoryId, listingType, locationProv, excludeUserId string) ([]model.ProfileListingFromDb, error) {
 	db := middleware.DBConn
 	related := make([]model.ProfileListingFromDb, 0)
 
@@ -1156,16 +1238,18 @@ func GetRelatedListings(listingId, categoryId, listingType, excludeUserId string
 			WHERE r.reviewed_user_id = l.user_id
 		) rv ON TRUE
 		WHERE l.id <> $1
-			AND (l.category_id = $2 OR l.listing_type::text = $3)
+			AND l.category_id = $2
+			AND l.listing_type::text = $3
+			AND LOWER(TRIM(COALESCE(l.location_province, ''))) = LOWER(TRIM(COALESCE($4, '')))
 			AND l.status = 'AVAILABLE'
 			AND u.is_active = TRUE
 			AND (u.account_locked_until IS NULL OR u.account_locked_until <= now())
 	`
 
 	query := baseQuery
-	args := []any{listingId, categoryId, strings.ToUpper(listingType)}
+	args := []any{listingId, categoryId, strings.ToUpper(listingType), locationProv}
 	if strings.TrimSpace(excludeUserId) != "" {
-		query += "\n\t\t\tAND l.user_id <> $4"
+		query += "\n\t\t\tAND l.user_id <> $5"
 		args = append(args, excludeUserId)
 	}
 
@@ -1235,6 +1319,9 @@ func GetAllListings(excludeUserId string, filter model.ListingsFilter) ([]model.
 	db := middleware.DBConn
 	listings := make([]model.HomeListingFromDb, 0)
 	total := 0
+
+	const maxHomepagePool = 150
+	const maxHomepagePageSize = 25
 
 	baseFromWhere := `
 		FROM public.listings l
@@ -1307,9 +1394,14 @@ func GetAllListings(excludeUserId string, filter model.ListingsFilter) ([]model.
 		}
 	}
 
-	province := strings.ToLower(strings.TrimSpace(filter.Province))
+	effectiveProvinceRaw := strings.TrimSpace(filter.Province)
+	if effectiveProvinceRaw == "" || strings.EqualFold(effectiveProvinceRaw, "province") {
+		effectiveProvinceRaw = strings.TrimSpace(filter.UserProvince)
+	}
+
+	province := strings.ToLower(strings.TrimSpace(effectiveProvinceRaw))
 	if province != "" && province != "province" {
-		whereSuffix += "\n\t\t\tAND LOWER(COALESCE(l.location_province, '')) = " + addArg(province)
+		whereSuffix += "\n\t\t\tAND LOWER(TRIM(COALESCE(l.location_province, ''))) = " + addArg(province)
 	}
 
 	city := strings.ToLower(strings.TrimSpace(filter.City))
@@ -1325,12 +1417,47 @@ func GetAllListings(excludeUserId string, filter model.ListingsFilter) ([]model.
 		whereSuffix += "\n\t\t\tAND l.price <= " + addArg(*filter.PriceMax)
 	}
 
-	countQuery := "SELECT COUNT(*)::int " + baseFromWhere + whereSuffix
-	if err := db.Raw(countQuery, args...).Scan(&total).Error; err != nil {
-		return nil, 0, fmt.Errorf("Failed to retrieve listing count")
+	normalizedSort := strings.ToLower(strings.TrimSpace(filter.Sort))
+	if normalizedSort == "" {
+		normalizedSort = "recommended"
 	}
 
-	selectQuery := `
+	if filter.Offset >= maxHomepagePool {
+		countQuery := "SELECT LEAST(COUNT(*)::int, " + strconv.Itoa(maxHomepagePool) + ") " + baseFromWhere + whereSuffix
+		if normalizedSort == "recommended" {
+			countQuery = `
+				WITH latest_candidates AS (
+					SELECT l.id
+				` + baseFromWhere + whereSuffix + `
+					ORDER BY l.created_at DESC, l.id DESC
+					LIMIT ` + strconv.Itoa(maxHomepagePool) + `
+				)
+				SELECT COUNT(*)::int
+				FROM latest_candidates
+			`
+		}
+
+		if err := db.Raw(countQuery, args...).Scan(&total).Error; err != nil {
+			return nil, 0, fmt.Errorf("Failed to retrieve listing count")
+		}
+
+		return listings, total, nil
+	}
+
+	pageLimit := filter.Limit
+	if pageLimit <= 0 {
+		pageLimit = maxHomepagePageSize
+	}
+	if pageLimit > maxHomepagePageSize {
+		pageLimit = maxHomepagePageSize
+	}
+
+	remaining := maxHomepagePool - filter.Offset
+	if remaining < pageLimit {
+		pageLimit = remaining
+	}
+
+	selectBase := `
 		SELECT
 			l.id,
 			l.title,
@@ -1347,24 +1474,87 @@ func GetAllListings(excludeUserId string, filter model.ListingsFilter) ([]model.
 			TRIM(BOTH ' ' FROM CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, ''))) AS seller_name,
 			COALESCE(rv.avg_rating, 5.0) AS seller_rating,
 			(u.verification_status = 'VERIFIED') AS seller_is_pro
-	` + baseFromWhere + whereSuffix
+	`
+
+	if normalizedSort == "recommended" {
+		countQuery := `
+			WITH latest_candidates AS (
+				SELECT l.id, l.created_at
+			` + baseFromWhere + whereSuffix + `
+				ORDER BY l.created_at DESC, l.id DESC
+				LIMIT ` + strconv.Itoa(maxHomepagePool) + `
+			)
+			SELECT COUNT(*)::int
+			FROM latest_candidates
+		`
+
+		if err := db.Raw(countQuery, args...).Scan(&total).Error; err != nil {
+			return nil, 0, fmt.Errorf("Failed to retrieve listing count")
+		}
+
+		selectQuery := `
+			WITH latest_candidates AS (
+				SELECT l.id, l.created_at
+			` + baseFromWhere + whereSuffix + `
+				ORDER BY l.created_at DESC, l.id DESC
+				LIMIT ` + strconv.Itoa(maxHomepagePool) + `
+			)
+		` + selectBase + `
+			FROM latest_candidates lc
+			INNER JOIN public.listings l ON l.id = lc.id
+			INNER JOIN public.users u ON u.id = l.user_id
+			LEFT JOIN public.categories c ON c.id = l.category_id
+			LEFT JOIN public.listing_sell_details lsd ON lsd.listing_id = l.id
+			LEFT JOIN LATERAL (
+				SELECT image_url
+				FROM public.listing_images
+				WHERE listing_id = l.id
+				ORDER BY is_primary DESC, id ASC
+				LIMIT 1
+			) li ON TRUE
+			LEFT JOIN LATERAL (
+				SELECT AVG(r.rating)::float AS avg_rating
+				FROM public.reviews r
+				WHERE r.reviewed_user_id = l.user_id
+			) rv ON TRUE
+			ORDER BY COALESCE(rv.avg_rating, 0) DESC, lc.created_at DESC, l.id DESC
+		`
+
+		selectArgs := append([]any{}, args...)
+		limitPlaceholder := fmt.Sprintf("$%d", len(selectArgs)+1)
+		selectArgs = append(selectArgs, pageLimit)
+		offsetPlaceholder := fmt.Sprintf("$%d", len(selectArgs)+1)
+		selectArgs = append(selectArgs, filter.Offset)
+
+		selectQuery += "\n\t\tLIMIT " + limitPlaceholder + "\n\t\tOFFSET " + offsetPlaceholder
+
+		if err := db.Raw(selectQuery, selectArgs...).Scan(&listings).Error; err != nil {
+			return nil, 0, fmt.Errorf("Failed to retrieve listings")
+		}
+
+		return listings, total, nil
+	}
+
+	countQuery := "SELECT LEAST(COUNT(*)::int, " + strconv.Itoa(maxHomepagePool) + ") " + baseFromWhere + whereSuffix
+	if err := db.Raw(countQuery, args...).Scan(&total).Error; err != nil {
+		return nil, 0, fmt.Errorf("Failed to retrieve listing count")
+	}
 
 	orderBy := "l.created_at DESC, l.id DESC"
-	switch strings.ToLower(strings.TrimSpace(filter.Sort)) {
-	case "latest":
-		orderBy = "l.created_at DESC, l.id DESC"
+	switch normalizedSort {
 	case "cheapest":
 		orderBy = "l.price ASC, l.created_at DESC, l.id DESC"
 	case "expensive":
 		orderBy = "l.price DESC, l.created_at DESC, l.id DESC"
-	case "top-rated":
-		orderBy = "COALESCE(rv.avg_rating, 0) DESC, l.created_at DESC, l.id DESC"
+	case "latest":
+		orderBy = "l.created_at DESC, l.id DESC"
 	}
-	selectQuery += "\n\t\tORDER BY " + orderBy
+
+	selectQuery := selectBase + baseFromWhere + whereSuffix + "\n\t\tORDER BY " + orderBy
 
 	selectArgs := append([]any{}, args...)
 	limitPlaceholder := fmt.Sprintf("$%d", len(selectArgs)+1)
-	selectArgs = append(selectArgs, filter.Limit)
+	selectArgs = append(selectArgs, pageLimit)
 	offsetPlaceholder := fmt.Sprintf("$%d", len(selectArgs)+1)
 	selectArgs = append(selectArgs, filter.Offset)
 

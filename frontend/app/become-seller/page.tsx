@@ -18,11 +18,25 @@ import {
   InputOTPSlot,
   InputOTPSeparator,
 } from "@/components/ui/input-otp";
+import { Calendar } from "@/components/ui/calendar"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@/components/ui/select'
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import {
   AlertTriangle,
   Camera,
+  CalendarDays,
   CheckCircle2,
   CreditCard,
   Crown,
@@ -50,6 +64,7 @@ import {
   VERIFICATION_LIMITS,
   isValidName,
 } from "@/utils/validation";
+import { encodeImageToPayload } from "@/lib/imageCompression";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 type VerifyStep = 1 | 2 | 3;
@@ -75,8 +90,6 @@ const TOTAL            = 3;
 const OTP_LENGTH       = 6;
 const RESEND_SECONDS   = 45;
 const PHONE_DIGITS     = 10;
-const VERIFICATION_IMAGE_MAX_DIMENSION = 1400;
-const VERIFICATION_IMAGE_QUALITY = 0.8;
 
 const device = getDeviceInfo();
 // NOTE: Temporary override to bypass device check during development.
@@ -98,49 +111,27 @@ function normalizeToLocalPhoneDigits(value?: string | null): string {
   return "";
 }
 
-async function compressVerificationImage(file: File): Promise<Blob> {
-  const objectUrl = URL.createObjectURL(file);
-  try {
-    const bitmap = await createImageBitmap(file);
-    const scale = Math.min(1, VERIFICATION_IMAGE_MAX_DIMENSION / Math.max(bitmap.width, bitmap.height));
-    const width  = Math.max(1, Math.round(bitmap.width  * scale));
-    const height = Math.max(1, Math.round(bitmap.height * scale));
-    const canvas  = document.createElement("canvas");
-    canvas.width  = width;
-    canvas.height = height;
-    const context = canvas.getContext("2d");
-    if (!context) throw new Error("Failed to initialize image compression canvas.");
-    context.drawImage(bitmap, 0, 0, width, height);
-    const compressed = await new Promise<Blob | null>(resolve => {
-      canvas.toBlob(output => resolve(output), "image/webp", VERIFICATION_IMAGE_QUALITY);
-    });
-    if (!compressed) throw new Error("Failed to compress image.");
-    return compressed;
-  } catch {
-    return file;
-  } finally {
-    URL.revokeObjectURL(objectUrl);
-  }
+function parseDobIso(dob: string): Date | undefined {
+  const trimmed = dob.trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return undefined;
+
+  const [year, month, day] = trimmed.split("-").map(Number);
+  if (!year || !month || !day) return undefined;
+
+  const date = new Date(year, month - 1, day);
+  if (Number.isNaN(date.getTime())) return undefined;
+  return date;
 }
 
-async function blobToBase64(blob: Blob): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = typeof reader.result === "string" ? reader.result : "";
-      const data   = result.split(",")[1] ?? "";
-      if (!data) { reject(new Error("Failed to encode image.")); return; }
-      resolve(data);
-    };
-    reader.onerror = () => reject(new Error("Failed to read image data."));
-    reader.readAsDataURL(blob);
-  });
+function formatDobIso(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 async function fileToVerificationImagePayload(file: File, fieldName: string): Promise<VerificationImagePayload> {
-  const compressed = await compressVerificationImage(file);
-  const data       = await blobToBase64(compressed);
-  return { name: `${fieldName}.webp`, mimeType: "image/webp", data };
+  return encodeImageToPayload(file, "id", fieldName);
 }
 
 // ── CameraInput ────────────────────────────────────────────────────────────────
@@ -231,6 +222,7 @@ export default function BecomeSellerPage() {
   const [firstName, setFirstName] = useState("");
   const [lastName,  setLastName]  = useState("");
   const [dob,       setDob]       = useState("");
+  const [dobOpen,   setDobOpen]   = useState(false);
   const [idNumber,  setIdNumber]  = useState("");
   const [idFront,   setIdFront]   = useState<File | null>(null);
   const [idBack,    setIdBack]    = useState<File | null>(null);
@@ -889,39 +881,71 @@ export default function BecomeSellerPage() {
                   </Label>
                   <div className="relative">
                     <CreditCard className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
-                    <select
-                      id="idType"
-                      value={idType}
-                      onChange={e => setIdType(e.target.value as IdType)}
-                      className="w-full pl-9 pr-8 py-2.5 rounded-lg text-sm border bg-stone-50 dark:bg-[#13151f] border-stone-200 dark:border-[#2a2d3e] text-stone-800 dark:text-stone-100 outline-none focus:border-stone-400 dark:focus:border-stone-500 transition-colors appearance-none cursor-pointer"
+                    <Select
+                      value={idType || undefined}
+                      onValueChange={(value) => setIdType(value as IdType)}
                     >
-                      {ID_OPTIONS.map(opt => (
-                        <option key={opt.value} value={opt.value} disabled={opt.value === ""}>{opt.label}</option>
-                      ))}
-                    </select>
-                    <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2">
-                      <svg className="w-3.5 h-3.5 text-stone-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                      </svg>
-                    </div>
+                      <SelectTrigger
+                        id="idType"
+                        className="w-full pl-9 py-2.5 rounded-lg text-sm"
+                      >
+                        <SelectValue placeholder="Select an ID type..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {ID_OPTIONS.filter((opt) => opt.value !== "").map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <Label htmlFor="firstName" className="text-[11px] font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest">First Name <span className="text-red-500">*</span></Label>
-                    <Input id="firstName" name="given-name" autoComplete="given-name" value={firstName} onChange={e => setFirstName(e.target.value)} placeholder="First name" minLength={AUTH_LIMITS.nameMinLength} maxLength={AUTH_LIMITS.nameMaxLength} className="dark:bg-[#13151f] dark:border-[#2a2d3e]" />
+                    <Input id="firstName" name="given-name" autoComplete="given-name" value={firstName} onChange={e => setFirstName(e.target.value)} placeholder="First name" minLength={AUTH_LIMITS.nameMinLength} maxLength={AUTH_LIMITS.nameMaxLength} />
                   </div>
                   <div className="space-y-1.5">
                     <Label htmlFor="lastName" className="text-[11px] font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest">Last Name <span className="text-red-500">*</span></Label>
-                    <Input id="lastName" name="family-name" autoComplete="family-name" value={lastName} onChange={e => setLastName(e.target.value)} placeholder="Last name" minLength={AUTH_LIMITS.nameMinLength} maxLength={AUTH_LIMITS.nameMaxLength} className="dark:bg-[#13151f] dark:border-[#2a2d3e]" />
+                    <Input id="lastName" name="family-name" autoComplete="family-name" value={lastName} onChange={e => setLastName(e.target.value)} placeholder="Last name" minLength={AUTH_LIMITS.nameMinLength} maxLength={AUTH_LIMITS.nameMaxLength} />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <Label htmlFor="dob" className="text-[11px] font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest">Date of Birth <span className="text-red-500">*</span></Label>
-                    <Input id="dob" type="date" value={dob} onChange={e => setDob(e.target.value)} max={new Date().toISOString().split("T")[0]} className="dark:bg-[#13151f] dark:border-[#2a2d3e]" />
+                    <Popover open={dobOpen} onOpenChange={setDobOpen}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          id="dob"
+                          className="w-full justify-start font-normal"
+                        >
+                          <CalendarDays className="w-4 h-4 mr-2 text-stone-400" />
+                          {dob
+                            ? parseDobIso(dob)?.toLocaleDateString("en-PH", { month: "long", day: "numeric", year: "numeric" })
+                            : "Select date of birth"}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto overflow-hidden p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={parseDobIso(dob)}
+                          defaultMonth={parseDobIso(dob)}
+                          captionLayout="dropdown"
+                          endMonth={new Date()}
+                          disabled={(date) => date > new Date()}
+                          onSelect={(selectedDate) => {
+                            if (selectedDate) {
+                              setDob(formatDobIso(selectedDate));
+                            }
+                            setDobOpen(false);
+                          }}
+                        />
+                      </PopoverContent>
+                    </Popover>
                   </div>
                   <div className="space-y-1.5">
                     <Label htmlFor="idNumber" className="text-[11px] font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest">ID Number <span className="text-red-500">*</span></Label>
@@ -1091,7 +1115,7 @@ export default function BecomeSellerPage() {
                 <Button
                   variant="destructive"
                   onClick={discardProgress}
-                  className="rounded-full text-sm font-bold hover:bg-red-600 dark:hover:bg-red-600"
+                  className="rounded-lg text-sm font-bold hover:bg-red-600 dark:hover:bg-red-600"
                 >
                   <X className="w-4 h-4" /> Discard
                 </Button>

@@ -17,16 +17,17 @@ import {
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { ImageLink } from "@/components/image-link";
+import { useUser } from "@/utils/UserContext";
 import {
   getAdminReports,
   setAdminReportAction,
 } from "@/services/adminReportsService";
 
 // ── shadcn components ──────────────────────────────────────────────────────────
-import { Button }            from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Input }             from "@/components/ui/input";
-import { Separator }         from "@/components/ui/separator";
+import { Input } from "@/components/ui/input";
+import { Separator } from "@/components/ui/separator";
 import {
   Table,
   TableBody,
@@ -93,6 +94,7 @@ function FilterSelect({
 
 // ── Main page ──────────────────────────────────────────────────────────────────
 export default function ReportsPage() {
+  const { user } = useUser();
   const [search,          setSearch]          = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [statusFilter,    setStatusFilter]    = useState("ALL");
@@ -106,6 +108,15 @@ export default function ReportsPage() {
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
   const [resolving,       setResolving]       = useState<AdminReport | null>(null);
   const FETCH_LIMIT = 15;
+  const currentAdminName = useMemo(() => {
+    const firstName = user?.firstName?.trim() ?? "";
+    const lastName = user?.lastName?.trim() ?? "";
+    const fullName = `${firstName} ${lastName}`.trim();
+    if (fullName) return fullName;
+
+    const email = user?.email?.trim() ?? "";
+    return email || "Admin";
+  }, [user]);
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
@@ -240,8 +251,8 @@ export default function ReportsPage() {
                 action_reason: trimmedReason,
                 resolved_at: nowIso,
                 reviewed_at: nowIso,
-                resolved_by: r.resolved_by ?? "Admin",
-                reviewed_by: r.reviewed_by ?? "Admin",
+                resolved_by: r.resolved_by ?? currentAdminName,
+                reviewed_by: r.reviewed_by ?? currentAdminName,
               }
             : r,
         ),
@@ -406,7 +417,7 @@ export default function ReportsPage() {
                 <TableHeader>
                   <TableRow className="border-stone-200 dark:border-[#2a2d3e] bg-stone-50 dark:bg-[#13151f] hover:bg-stone-50 dark:hover:bg-[#13151f]">
                       <SortableTH label="Reporter" field="reporter" />
-                      <SortableTH label="Listing Owner" field="listingOwner" />
+                      <SortableTH label="Reported User" field="listingOwner" />
                       <SortableTH label="Reported Listing" field="reportedListing" />
                     <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest">
                       Reason

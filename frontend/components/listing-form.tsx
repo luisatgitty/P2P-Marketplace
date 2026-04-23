@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, KeyboardEvent, useEffect } from "react";
+import { useState, useRef, KeyboardEvent, useEffect, Children, isValidElement, type ReactElement, type OptionHTMLAttributes, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -15,6 +15,14 @@ import {
   Info,
   Plus,
 } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@/components/ui/select'
 import { cn } from "@/lib/utils";
 import { useUser } from "@/utils/UserContext";
 import { useUnsavedChanges } from "@/utils/UnsavedChangesContext";
@@ -33,6 +41,7 @@ import {
 import {
   LISTING_LIMITS,
   validateListingStep,
+  isValidPrice,
 } from "@/utils/validation";
 import {
   BookingCalendar,
@@ -45,6 +54,7 @@ import {
   CONDITIONS,
   DELIVERY_OPTIONS
 } from "@/types/listings";
+import { encodeImageToPayload } from "@/lib/imageCompression";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 export interface ListingFormData {
@@ -224,8 +234,14 @@ function toTwelveHour(time24: string): string {
   return `${hour12}:${String(minute).padStart(2, "0")} ${suffix}`;
 }
 
-function isDayUnavailableBySelection(d: Date, dayOff: string[]): boolean {
-  return isDayUnavailableByDaysOff(d, dayOff, { includePast: true });
+function isDayUnavailableBySelection(
+  d: Date,
+  dayOff: string[],
+  options?: { includePast?: boolean },
+): boolean {
+  return isDayUnavailableByDaysOff(d, dayOff, {
+    includePast: options?.includePast ?? true,
+  });
 }
 
 interface TimeWindowRange {
@@ -239,70 +255,6 @@ type UploadImagePayload = {
   mimeType: string;
   data: string;
 };
-
-async function blobToBase64(blob: Blob): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result;
-      if (typeof result !== "string") {
-        reject(new Error("Failed to encode image."));
-        return;
-      }
-      resolve(result.split(",")[1] ?? "");
-    };
-    reader.onerror = () => reject(new Error("Failed to encode image."));
-    reader.readAsDataURL(blob);
-  });
-}
-
-async function compressImage(file: File): Promise<UploadImagePayload> {
-  const objectUrl = URL.createObjectURL(file);
-
-  try {
-    const image = await new Promise<HTMLImageElement>((resolve, reject) => {
-      const img = new Image();
-      img.onload = () => resolve(img);
-      img.onerror = () => reject(new Error("Invalid image file."));
-      img.src = objectUrl;
-    });
-
-    const maxDimension = 1600;
-    const scale = Math.min(
-      1,
-      maxDimension / Math.max(image.width, image.height),
-    );
-    const width = Math.max(1, Math.round(image.width * scale));
-    const height = Math.max(1, Math.round(image.height * scale));
-
-    const canvas = document.createElement("canvas");
-    canvas.width = width;
-    canvas.height = height;
-
-    const context = canvas.getContext("2d");
-    if (!context) {
-      throw new Error("Unable to process image.");
-    }
-    context.drawImage(image, 0, 0, width, height);
-
-    const compressedBlob = await new Promise<Blob | null>((resolve) => {
-      canvas.toBlob((blob) => resolve(blob), "image/webp", 0.78);
-    });
-
-    const finalBlob = compressedBlob ?? file;
-    const mimeType = compressedBlob ? "image/webp" : file.type;
-    const data = await blobToBase64(finalBlob);
-    const baseName = file.name.replace(/\.[^/.]+$/, "");
-
-    return {
-      name: compressedBlob ? `${baseName}.webp` : file.name,
-      mimeType,
-      data,
-    };
-  } finally {
-    URL.revokeObjectURL(objectUrl);
-  }
-}
 
 // ─── Shared UI atoms ────────────────────────────────────────────────────────────
 function FieldLabel({
@@ -362,31 +314,73 @@ function StyledSelect({
   onChange,
   children,
   className,
-  ...props
+  disabled,
 }: {
   value: string;
   onChange: (v: string) => void;
   children: React.ReactNode;
   className?: string;
-} & Omit<
-  React.SelectHTMLAttributes<HTMLSelectElement>,
-  "value" | "onChange" | "children" | "className"
->) {
+  disabled?: boolean;
+}) {
+  const optionElements = Children.toArray(children).filter((child): child is ReactElement<OptionHTMLAttributes<HTMLOptionElement>> => {
+    return isValidElement<OptionHTMLAttributes<HTMLOptionElement>>(child) && child.type === "option";
+  });
+
+  const getText = (node: ReactNode): string => {
+    if (typeof node === "string" || typeof node === "number") return String(node);
+    if (Array.isArray(node)) return node.map(getText).join("").trim();
+    if (isValidElement<{ children?: ReactNode }>(node)) return getText(node.props.children);
+    return "";
+  };
+
+  const placeholderOption = optionElements.find((optionElement) => {
+    const optionValue = typeof optionElement.props.value === "string"
+      ? optionElement.props.value
+      : getText(optionElement.props.children);
+    return optionValue === "";
+  });
+
+  const placeholder = placeholderOption
+    ? getText(placeholderOption.props.children)
+    : "Select";
+
+  const items = optionElements
+    .map((optionElement) => {
+      const optionValue = typeof optionElement.props.value === "string"
+        ? optionElement.props.value
+        : getText(optionElement.props.children);
+      return {
+        value: optionValue,
+        label: optionElement.props.children,
+        disabled: Boolean(optionElement.props.disabled),
+      };
+    })
+    .filter((item) => item.value !== "");
+
   return (
-    <select
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      {...props}
-      className={cn(
-        "w-full rounded-lg border border-stone-200 dark:border-[#2a2d3e]",
-        "bg-white dark:bg-[#13151f] text-stone-800 dark:text-stone-100 text-sm",
-        "px-3.5 py-2.5 outline-none appearance-none transition-colors",
-        "focus:border-stone-400 dark:focus:border-stone-500",
-        className,
-      )}
+    <Select
+      value={value || undefined}
+      onValueChange={onChange}
+      disabled={disabled}
     >
-      {children}
-    </select>
+      <SelectTrigger
+        className={cn(
+          "w-full rounded-lg",
+          className,
+        )}
+      >
+        <SelectValue placeholder={placeholder} />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectGroup>
+          {items.map((item) => (
+            <SelectItem key={item.value} value={item.value} disabled={item.disabled}>
+              {item.label}
+            </SelectItem>
+          ))}
+        </SelectGroup>
+      </SelectContent>
+    </Select>
   );
 }
 
@@ -619,7 +613,7 @@ function TagInput({
             {draft.length}/{maxLength}
           </span>
           <Button
-            type='submit'
+            type="button"
             variant={'outline'}
             onClick={add}
             disabled={!draft.trim()}
@@ -1211,7 +1205,7 @@ export default function ListingForm({
     let compressedImages: UploadImagePayload[] = [];
     try {
       compressedImages = await Promise.all(
-        images.map((img) => compressImage(img.file)),
+        images.map((img) => encodeImageToPayload(img.file, "listing", "listingImage")),
       );
     } catch {
       setErrors((prev) => ({
@@ -1348,10 +1342,14 @@ export default function ListingForm({
 
   useEffect(() => {
     if (!selectedAvailabilityDate) return;
-    if (isDayUnavailableBySelection(selectedAvailabilityDate, dayoff)) {
+    if (
+      isDayUnavailableBySelection(selectedAvailabilityDate, dayoff, {
+        includePast: !isEdit,
+      })
+    ) {
       setAvail("");
     }
-  }, [dayoff, selectedAvailabilityDate]);
+  }, [dayoff, isEdit, selectedAvailabilityDate]);
 
   const prevAvailabilityMonth = () => {
     if (calendarMonth === 0) {
@@ -1415,7 +1413,7 @@ export default function ListingForm({
   ) => (
     <Section title="Availability & Schedule">
       <div className="flex flex-col gap-5">
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_180px]">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-[minmax(0,1fr)_180px]">
           <div className="rounded-lg border border-stone-200 bg-stone-50 p-4 dark:border-[#2a2d3e] dark:bg-[#13151f]">
             <div className="mb-3 flex items-center justify-between gap-3">
               <p className="text-[11px] font-bold uppercase tracking-widest text-stone-500 dark:text-stone-400">
@@ -1438,7 +1436,11 @@ export default function ListingForm({
               viewMonth={calendarMonth}
               onPrevMonth={prevAvailabilityMonth}
               onNextMonth={nextAvailabilityMonth}
-              isUnavailable={(d) => isDayUnavailableBySelection(d, dayoff)}
+              isUnavailable={(d) =>
+                isDayUnavailableBySelection(d, dayoff, {
+                  includePast: !isEdit,
+                })
+              }
               startDate={selectedAvailabilityDate}
               endDate={null}
               hoverDate={calendarHoverDate}
@@ -1463,14 +1465,15 @@ export default function ListingForm({
             <p className="mb-2 text-[11px] font-bold uppercase tracking-widest text-stone-500 dark:text-stone-400">
               Days Off
             </p>
-            <div className="flex flex-wrap gap-2 lg:flex-col">
+            <div className="flex flex-wrap gap-2 sm:flex-col">
               {DAY_OFF_OPTIONS.map((a) => (
-                <button
+                <Button
+                  variant={'ghost'}
                   key={a}
                   type="button"
                   onClick={() => toggleDayOff(a)}
                   className={cn(
-                    "rounded-full border-2 px-3 py-1.5 text-sm font-semibold transition-all",
+                    "rounded-lg border-2 px-3 py-1.5 text-sm font-semibold transition-all",
                     dayoff.includes(a)
                       ? `${cfg.accentBorder} ${cfg.accentBg} ${cfg.accentCls}`
                       : "border-stone-200 text-stone-500 hover:border-stone-300 dark:border-[#2a2d3e] dark:text-stone-400 dark:hover:border-stone-600",
@@ -1478,7 +1481,7 @@ export default function ListingForm({
                 >
                   {dayoff.includes(a) ? "✓ " : ""}
                   {a}
-                </button>
+                </Button>
               ))}
             </div>
           </div>
@@ -1499,32 +1502,34 @@ export default function ListingForm({
             </span>
           </p>
 
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_auto_1fr_auto] sm:items-end">
-            <div>
-              <Input
-                type="time"
-                value={startTime}
-                onChange={(e) => setStartTime(e.target.value)}
-                className="text-sm"
-              />
-            </div>
-            <span className="pb-2 text-center text-sm font-semibold text-stone-400">
-              to
-            </span>
-            <div>
-              <Input
-                type="time"
-                value={endTime}
-                onChange={(e) => setEndTime(e.target.value)}
-                className="text-sm"
-              />
+          <div className="flex-row sm:flex">
+            <div className="flex-1 grid grid-cols-[1fr_auto_1fr] gap-3 sm:grid-cols-[1fr_auto_1fr_auto] sm:items-end">
+              <div>
+                <Input
+                  type="time"
+                  value={startTime}
+                  onChange={(e) => setStartTime(e.target.value)}
+                  className="text-sm"
+                />
+              </div>
+              <span className="pt-2 sm:pb-2 text-center text-sm font-semibold text-stone-400">
+                to
+              </span>
+              <div>
+                <Input
+                  type="time"
+                  value={endTime}
+                  onChange={(e) => setEndTime(e.target.value)}
+                  className="text-sm"
+                />
+              </div>
             </div>
             <Button
               type="button"
               variant={'outline'}
               onClick={addTimeWindow}
               disabled={timeWindows.length >= LISTING_LIMITS.maxTimeWindows}
-              className="ml-2"
+              className="w-full mt-3 sm:mt-0 sm:w-auto"
             >
               <Plus size={14} /> Add
             </Button>
@@ -1540,17 +1545,24 @@ export default function ListingForm({
                   key={slot.id}
                   className="flex items-center justify-between gap-2 rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm dark:border-[#2a2d3e] dark:bg-[#1c1f2e]"
                 >
-                  <span className="font-semibold text-stone-700 dark:text-stone-200">
-                    {toTwelveHour(slot.start)} - {toTwelveHour(slot.end)}
-                  </span>
-                  <button
+                  <div>
+                    <span className="font-semibold text-stone-700 dark:text-stone-200">
+                      {toTwelveHour(slot.start)} - {''}
+                    </span>
+                    <span className="font-semibold text-stone-700 dark:text-stone-200 whitespace-nowrap">
+                      {toTwelveHour(slot.end)}
+                    </span>
+                  </div>
+                  <Button
+                    variant={'ghost'}
+                    size={'xs'}
                     type="button"
                     onClick={() => removeTimeWindow(slot.id)}
-                    className="rounded-lg p-1 text-stone-400 transition-colors hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-950/20"
+                    className="rounded-lg text-stone-400 transition-colors hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-950/20"
                     aria-label="Remove window time"
                   >
                     <X size={12} />
-                  </button>
+                  </Button>
                 </div>
               ))}
             </div>
@@ -1568,7 +1580,8 @@ export default function ListingForm({
   const renderS0 = () => (
     <>
       <Section>
-        {/* Title */}
+
+        {/* Listing Title */}
         <div>
           <FieldLabel required>Listing Title</FieldLabel>
           <StyledInput
@@ -1587,8 +1600,9 @@ export default function ListingForm({
           <ErrMsg msg={errors.title} />
         </div>
 
-        {/* Category + Price */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+          {/* Category */}
           <div>
             <FieldLabel required>Category</FieldLabel>
             <StyledSelect value={category} onChange={setCategory}>
@@ -1599,11 +1613,13 @@ export default function ListingForm({
             </StyledSelect>
             <ErrMsg msg={errors.category} />
           </div>
+
           <div>
             <FieldLabel required>Price</FieldLabel>
-            <div className="flex gap-2">
+            <div className="flex gap-4">
+              {/* Price */}
               <div className="flex rounded-lg shadow-xs">
-                <span className='border-input bg-background text-muted-foreground inline-flex items-center rounded-l-lg border px-3 text-sm'>
+                <span className='border-input bg-background text-muted-foreground font-bold inline-flex items-center rounded-l-lg border px-3 text-sm'>
                   ₱
                 </span>
                 <Input
@@ -1616,18 +1632,22 @@ export default function ListingForm({
                       return;
                     }
 
-                    const nextNumber = Number(nextValue);
-                    if (!Number.isFinite(nextNumber)) return;
-                    if (nextNumber > LISTING_LIMITS.priceMaxValue) return;
-
+                    if (!isValidPrice(nextValue)) return;
                     setPrice(nextValue);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "-" || e.key === "+" || e.key === "e" || e.key === "E" || e.key === ".") {
+                      e.preventDefault();
+                    }
                   }}
                   placeholder="0"
                   min={LISTING_LIMITS.priceMinValue}
                   max={LISTING_LIMITS.priceMaxValue}
-                  className='-ms-px rounded-l-none shadow-none h-full'
+                  className='-ms-px text-sm rounded-l-none shadow-none h-full'
                 />
               </div>
+
+              {/* Price Unit */}
               <StyledSelect
                 value={priceUnit}
                 onChange={setPriceUnit}
@@ -1637,6 +1657,7 @@ export default function ListingForm({
                   <option key={u}>{u}</option>
                 ))}
               </StyledSelect>
+              
             </div>
             <ErrMsg msg={errors.priceUnit} />
             <ErrMsg msg={errors.price} />
@@ -1775,17 +1796,50 @@ export default function ListingForm({
         <>
           <Section title="Rental Terms">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <FieldLabel required>Minimum Rental Period</FieldLabel>
-                <StyledInput
-                  value={minPeriod}
-                  onChange={(e) => setMinPer(e.target.value)}
-                  minLength={LISTING_LIMITS.minPeriodMinLength}
-                  maxLength={LISTING_LIMITS.minPeriodMaxLength}
-                  placeholder="e.g. 3 months, 1 week, daily"
-                />
-                <ErrMsg msg={errors.minPeriod} />
+              <div className="flex gap-4">
+                <div className="flex-1">
+                  <FieldLabel required>Minimum Rental Period</FieldLabel>
+                  <Input
+                    type='number'
+                    value={minPeriod}
+                    onChange={(e) => {
+                      const nextValue = e.target.value;
+                      if (!nextValue) {
+                        setMinPer("");
+                        return;
+                      }
+
+                      if (!isValidPrice(nextValue, LISTING_LIMITS.minPeriodMinLength, LISTING_LIMITS.minPeriodMaxLength)) return;
+                      setMinPer(nextValue);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "-" || e.key === "+" || e.key === "e" || e.key === "E" || e.key === ".") {
+                        e.preventDefault();
+                      }
+                    }}
+                    minLength={LISTING_LIMITS.minPeriodMinLength}
+                    maxLength={LISTING_LIMITS.minPeriodMaxLength}
+                    placeholder="e.g. 3 months, 1 week"
+                    className="text-sm"
+                  />
+                  <ErrMsg msg={errors.minPeriod} />
+                </div>
+                {/* Price Unit */}
+                <div>
+                  <FieldLabel>Period Unit</FieldLabel>
+                  <StyledSelect
+                    value={priceUnit}
+                    onChange={setPriceUnit}
+                    disabled
+                    className="w-28 shrink-0"
+                  >
+                    {PRICE_UNITS[type].map((u) => (
+                      <option key={u}>{u}</option>
+                    ))}
+                  </StyledSelect>
+                </div>
               </div>
+
               <div>
                 <FieldLabel>Deposit / Advance Requirements</FieldLabel>
                 <StyledInput
@@ -2095,6 +2149,7 @@ export default function ListingForm({
               {step > 0 ? (
                 <Button
                   variant={'ghost'}
+                  type="button"
                   onClick={back}
                 >
                   <ChevronLeft size={16} /> Back
@@ -2102,6 +2157,7 @@ export default function ListingForm({
               ) : (
                 <Button
                   variant={'ghost'}
+                  type="button"
                   onClick={handleNavigateBack}
                 >
                   <ChevronLeft size={16} />{" "}
@@ -2114,6 +2170,7 @@ export default function ListingForm({
               {hasUnsavedChanges && (
                 <Button
                   variant={'destructive'}
+                  type="button"
                   onClick={discardProgress}
                   className="hover:bg-red-600 dark:hover:bg-red-600 font-bold"
                 >
@@ -2123,6 +2180,7 @@ export default function ListingForm({
 
               {step < 2 ? (
                 <Button
+                  type="button"
                   onClick={next}
                   className="font-bold"
                 >
