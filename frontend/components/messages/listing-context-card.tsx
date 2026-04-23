@@ -14,7 +14,7 @@ import { type ScheduleRequestPayload } from "@/services/messagingService";
 import { ConfirmActionModal } from "@/components/confirm-action-modal"; 
 import OfferModal from "@/components/offer-modal";
 import { ScheduleModal } from "@/components/schedule-modal";
-import { ModalHeader } from "../modal-header";
+import { ModalFormCard } from "../modal-form-card";
 import { ImageLink } from "../image-link";
 import { formatPrice } from "@/utils/string-builder";
 import {
@@ -517,7 +517,7 @@ export default function ListingContextCard({
       )}
 
       {reviewOpen && (
-        <ModalHeader
+        <ModalFormCard
           icon={Star}
           type='review'
           title="Review Item"
@@ -575,7 +575,7 @@ export default function ListingContextCard({
                 </p>
               </div>
             </div>
-        </ModalHeader>
+        </ModalFormCard>
       )}
 
       {editPriceOpen && (

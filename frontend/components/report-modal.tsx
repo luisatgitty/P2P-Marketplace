@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ModalHeader } from "./modal-header";
+import { ModalFormCard } from "./modal-form-card";
 import { Flag } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -57,7 +57,7 @@ export function ReportModal({
   if (!open) return null;
 
   return (
-    <ModalHeader
+    <ModalFormCard
       icon={Flag}
       type='report'
       title={title}
@@ -100,6 +100,6 @@ export function ReportModal({
             className="w-full bg-stone-50 dark:bg-[#13151f] border border-stone-200 dark:border-[#2a2d3e] rounded-lg px-3 py-2.5 text-sm text-stone-800 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-600 outline-none focus:border-stone-400 dark:focus:border-stone-500 resize-none"
           />
         </div>
-    </ModalHeader>
+    </ModalFormCard>
   );
 }

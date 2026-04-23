@@ -14,7 +14,7 @@ import { cn } from '@/lib/utils';
 import { ReactNode, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 
-export interface ModalHeaderProps {
+export interface ModalFormCardProps {
   icon: LucideIcon;
   type: string;
   title: string;
@@ -29,7 +29,7 @@ export interface ModalHeaderProps {
   children?: ReactNode;
 }
 
-export function ModalHeader({
+export function ModalFormCard({
   icon: Icon,
   type,
   title,
@@ -42,7 +42,7 @@ export function ModalHeader({
   submitLabel,
   cancelLabel,
   children,
-}: ModalHeaderProps) {
+}: ModalFormCardProps) {
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
