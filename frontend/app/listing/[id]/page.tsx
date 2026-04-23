@@ -826,6 +826,7 @@ export default function ListingDetailPage() {
         availableFrom={extra.available_from}
         daysOff={extra.daysOff ?? []}
         timeWindows={extra.timeWindows ?? []}
+        type={listing.type}
       />
 
       {/* ══ REPORT MODAL ══════════════════════════════════════════════════════ */}

@@ -618,39 +618,44 @@ export default function ListingContextCard({
         </div>
       )}
 
-      <OfferModal
-        open={editPriceOpen}
-        title="Edit Offered Price"
-        subtitle={listing.title}
-        listedPrice={listing.price}
-        offerAmount={String(newPrice)}
-        onOfferAmountChange={(value) => setNewPrice(Number.parseInt(value || "0", 10) || 0)}
-        note={offerMessage}
-        onNoteChange={setOfferMessage}
-        notePlaceholder="e.g. Updated offer based on our discussion."
-        submitLabel="Update Offer"
-        submitDisabled={!isOfferChanged}
-        submitting={priceSubmitting}
-        onSubmit={handleEditPriceAction}
-        onClose={handleCloseEditPriceModal}
-      />
+      {editPriceOpen && (
+        <OfferModal
+          open={editPriceOpen}
+          title="Edit Offered Price"
+          subtitle={listing.title}
+          listedPrice={listing.price}
+          offerAmount={String(newPrice)}
+          onOfferAmountChange={(value) => setNewPrice(Number.parseInt(value || "0", 10) || 0)}
+          note={offerMessage}
+          onNoteChange={setOfferMessage}
+          notePlaceholder="e.g. Updated offer based on our discussion."
+          submitLabel="Update Offer"
+          submitDisabled={!isOfferChanged}
+          submitting={priceSubmitting}
+          onSubmit={handleEditPriceAction}
+          onClose={handleCloseEditPriceModal}
+        />
+      )}
 
-      <ScheduleModal
-        open={editScheduleOpen}
-        onClose={() => setEditScheduleOpen(false)}
-        onSubmit={handleEditScheduleAction}
-        listingTitle={listing.title}
-        listingPrice={listing.price}
-        priceUnit={listing.priceUnit ?? ""}
-        availableFrom={listing.availableFrom}
-        daysOff={listing.daysOff ?? []}
-        timeWindows={listing.timeWindows ?? []}
-        initialStartAt={listing.scheduleStart}
-        initialEndAt={listing.scheduleEnd}
-        submitLabel={hasTransaction && (normalizedTransactionStatus === "PENDING" || normalizedTransactionStatus === "CONFIRMED")
-          ? "Update Schedule"
-          : "Request Schedule"}
-      />
+      {editScheduleOpen && (
+        <ScheduleModal
+          open={editScheduleOpen}
+          onClose={() => setEditScheduleOpen(false)}
+          onSubmit={handleEditScheduleAction}
+          listingTitle={listing.title}
+          listingPrice={listing.price}
+          priceUnit={listing.priceUnit ?? ""}
+          availableFrom={listing.availableFrom}
+          daysOff={listing.daysOff ?? []}
+          timeWindows={listing.timeWindows ?? []}
+          initialStartAt={listing.scheduleStart}
+          initialEndAt={listing.scheduleEnd}
+          submitLabel={hasTransaction && (normalizedTransactionStatus === "PENDING" || normalizedTransactionStatus === "CONFIRMED")
+            ? "Update Schedule"
+            : "Request Schedule"}
+          type={listing.listingType.toLowerCase()}
+        />
+      )}
 
     </>
   );

@@ -466,6 +466,7 @@ export default function ChatHeader({ conversation, onDelete, onMarkedComplete, o
       submitLabel={hasTransaction && (normalizedTransactionStatus === "PENDING" || normalizedTransactionStatus === "CONFIRMED")
         ? "Update Schedule"
         : "Request Schedule"}
+      type={listing.listingType}
     />
 
     {reviewOpen && (
