@@ -39,7 +39,7 @@ function ConversationShell({ children }: { children: React.ReactNode }) {
             onOfferUpdated={onOfferUpdated}
           />
           <div className="relative flex-1 overflow-hidden">
-            <div className="absolute top-2 left-0 right-0 z-20 pointer-events-auto">
+            <div className="absolute top-2 left-0 right-0 z-20 lg:px-6 xl:px-35 2xl:px-59 pointer-events-auto">
               <ListingContextCard
                 conversationId={conversation.id}
                 listing={conversation.listing}
@@ -89,7 +89,7 @@ export default function MessagesLayout({ children }: { children: React.ReactNode
     <div className="h-[calc(100vh-60px)] flex overflow-hidden bg-[#faf6f0] dark:bg-[#0b0f1a]">
 
       {/* ══════════════════════════════════════════════
-          MIDDLE — conversations list
+          LEFT — conversations list
           • Always visible on md+
           • On mobile: visible only on /messages, hidden when in a conversation
       ══════════════════════════════════════════════ */}

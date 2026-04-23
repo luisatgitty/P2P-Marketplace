@@ -301,29 +301,28 @@ export default function ListingContextCard({
         </div>
 
         {/* Hidden in mobile */}
-        <div className="hidden sm:flex flex-1 gap-4">
 
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-stone-800 dark:text-stone-100 truncate leading-tight">
-              {listing.listingType === "SELL"
-                ? "Offered Price"
-                : "Provided Schedule"}
-            </p>
-            <div className="flex items-center gap-1.5 mt-0.5">
-              <span className="text-xs font-bold text-amber-700 dark:text-amber-500">
-                {
-                  listing.listingType === "SELL"
-                    ? isSold || hasTransaction && (normalizedTransactionStatus === "PENDING" || normalizedTransactionStatus === "CONFIRMED")
-                      ? formatPrice(offeredPrice)
-                      : "No offer yet"
-                    : (scheduleValue || "No schedule yet")
-                }
-              </span>
-            </div>
+        {/* Offered Price / Schedule */}
+        <div className="hidden min-w-0 md:block lg:flex-1">
+          <p className="text-sm font-semibold text-stone-800 dark:text-stone-100 truncate leading-tight">
+            {listing.listingType === "SELL"
+              ? "Offered Price"
+              : "Provided Schedule"}
+          </p>
+          <div className="flex items-center gap-1.5 mt-0.5">
+            <span className="text-xs font-bold text-amber-700 dark:text-amber-500">
+              {
+                listing.listingType === "SELL"
+                  ? isSold || hasTransaction && (normalizedTransactionStatus === "PENDING" || normalizedTransactionStatus === "CONFIRMED")
+                    ? formatPrice(offeredPrice)
+                    : "No offer yet"
+                  : (scheduleValue || "No schedule yet")
+              }
+            </span>
           </div>
+        </div>
 
-          {/* Details */}
-
+        <div className="hidden lg:flex gap-4">
           {/* Edit Price Button */}
           {canEditPrice && (
             <button
