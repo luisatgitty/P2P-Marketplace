@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { formatPrice } from "@/utils/string-builder";
 import { ModalHeader } from "./modal-header";
 import { HandHelping } from "lucide-react";
+import { isValidPrice } from "@/utils/validation";
 import { MESSAGE_MAX_LENGTH, limitMessageInputLength } from "@/utils/validation";
 
 interface OfferModalProps {
@@ -75,7 +76,17 @@ export default function OfferModal({
           <input
             type="number"
             value={offerAmount}
-            onChange={(e) => onOfferAmountChange(e.target.value)}
+            onChange={(e) => {
+              const nextValue = e.target.value;
+              if (!nextValue) onOfferAmountChange("");
+              if (!isValidPrice(nextValue)) return;
+              onOfferAmountChange(nextValue)
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "-" || e.key === "+" || e.key === "e" || e.key === "E" || e.key === ".") {
+                e.preventDefault();
+              }
+            }}
             className="flex-1 px-3 text-stone-900 dark:text-stone-50 bg-transparent text-sm font-semibold outline-none"
           />
         </div>

@@ -441,7 +441,7 @@ export default function ChatHeader({ conversation, onDelete, onMarkedComplete, o
       subtitle={listing.title}
       listedPrice={listing.price}
       offerAmount={String(newPrice)}
-      onOfferAmountChange={(value) => setNewPrice(Number.parseInt(value || "0", 10) || 0)}
+      onOfferAmountChange={(value) => setNewPrice(Number.parseInt(value, 10))}
       note={offerMessage}
       onNoteChange={setOfferMessage}
       notePlaceholder="e.g. Updated offer based on our discussion."
