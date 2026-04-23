@@ -414,7 +414,7 @@ export function ScheduleModal({
             <button
               type="button"
               onClick={handleClear}
-              className="text-[11px] text-stone-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
+              className="text-xs text-stone-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
             >
               Clear selection
             </button>
@@ -459,7 +459,7 @@ export function ScheduleModal({
             <p className="text-xs text-stone-500 dark:text-stone-400 mb-3">
               Select from the provider&apos;s available time windows.
             </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-2">
               {resolvedTimeWindows.map((tw) => (
                 <button
                   key={tw.id}

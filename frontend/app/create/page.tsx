@@ -10,7 +10,6 @@ const TYPES = [
     slug: "sell",
     icon: Tag,
     label: "Sell an Item",
-    subtitle: "List a physical item for sale",
     description:
       "Got something you no longer need? List it here and connect with buyers nearby. Works for gadgets, clothing, furniture, vehicles, and more.",
     examples: ["Electronics", "Clothing & Shoes", "Vehicles", "Furniture", "Collectibles"],
@@ -26,7 +25,6 @@ const TYPES = [
     slug: "rent",
     icon: Home,
     label: "Rent Out Something",
-    subtitle: "List a property or item for rent",
     description:
       "Earn from what you own. Rent out real estate, vehicles, equipment, or event items to people who need them short-term.",
     examples: ["Rooms & Apartments", "Houses & Condos", "Event Equipment", "Vehicles", "Commercial Spaces"],
@@ -42,7 +40,6 @@ const TYPES = [
     slug: "service",
     icon: Wrench,
     label: "Offer a Service",
-    subtitle: "Advertise your skills or expertise",
     description:
       "Share your professional skills with your community. From home repairs to digital services — list what you do and let clients come to you.",
     examples: ["Home Repair & Cleaning", "IT & Tech Services", "Tutoring", "Photography", "Catering"],
@@ -105,12 +102,9 @@ export default function CreateListingPage() {
               </div>
 
               {/* Label */}
-              <h2 className="text-base font-bold text-stone-800 dark:text-stone-100 leading-tight">
+              <h2 className="text-base font-bold text-stone-800 dark:text-stone-100 leading-tight mb-3">
                 {t.label}
               </h2>
-              <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5 mb-3">
-                {t.subtitle}
-              </p>
 
               {/* Description */}
               <p className="text-sm text-stone-600 dark:text-stone-400 leading-relaxed flex-1">

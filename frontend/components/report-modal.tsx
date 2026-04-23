@@ -70,7 +70,7 @@ export function ReportModal({
     >
         <p className="text-sm text-stone-500 dark:text-stone-400">{subtitle}</p>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        <div className="grid grid-cols-2 gap-2">
           {REPORT_REASONS.map((item) => (
             <button
               key={item}
@@ -88,7 +88,7 @@ export function ReportModal({
         </div>
 
         <div>
-          <label className="text-xs font-medium text-stone-500 dark:text-stone-400 mb-2 block">
+          <label className="text-sm font-medium text-stone-500 dark:text-stone-400 mb-2 block">
             Report details
           </label>
           <textarea
@@ -99,7 +99,6 @@ export function ReportModal({
             placeholder="Describe what happened or why this should be reviewed..."
             className="w-full bg-stone-50 dark:bg-[#13151f] border border-stone-200 dark:border-[#2a2d3e] rounded-lg px-3 py-2.5 text-sm text-stone-800 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-600 outline-none focus:border-stone-400 dark:focus:border-stone-500 resize-none"
           />
-          <p className="mt-1 text-[11px] text-stone-400 dark:text-stone-500 text-right">{details.length}/{REPORT_MAX_LENGTH}</p>
         </div>
     </ModalHeader>
   );

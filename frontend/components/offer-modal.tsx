@@ -42,7 +42,7 @@ export default function OfferModal({
   submitting = false,
   onSubmit,
   onClose,
-  presets = [1.0, 0.9, 0.85, 0.8],
+  presets = [1.0, 0.95, 0.9, 0.8, 0.6],
 }: OfferModalProps) {
   const presetValues = useMemo(
     () => presets.map((p) => ({ label: `${Math.round(p * 100)}%`, value: String(Math.round(listedPrice * p)) })),
@@ -64,7 +64,7 @@ export default function OfferModal({
       submitLabel={submitLabel}
     >
       <div className="mb-4">
-        <div className="flex justify-between text-xs text-stone-500 dark:text-stone-400 mb-2">
+        <div className="flex justify-between text-sm text-stone-500 dark:text-stone-400 mb-2">
           <span>Your offer</span>
           <span>Listed at {formatPrice(listedPrice)}</span>
         </div>
@@ -91,12 +91,12 @@ export default function OfferModal({
           />
         </div>
 
-        <div className="flex gap-2 mt-2">
+        <div className="flex gap-2 mt-4">
           {presetValues.map((preset) => (
             <button
               key={preset.label}
               onClick={() => onOfferAmountChange(preset.value)}
-              className="flex-1 text-xs py-1.5 rounded-lg border border-stone-200 dark:border-[#2a2d3e] text-stone-500 dark:text-stone-400 hover:border-stone-400 hover:text-stone-700 dark:hover:text-white dark:hover:bg-slate-800 transition-colors"
+              className="flex-1 text-sm py-1.5 rounded-lg border-2 border-stone-200 dark:border-[#2a2d3e] text-stone-500 dark:text-stone-400 hover:border-stone-400 hover:text-stone-700 dark:hover:text-white dark:hover:bg-slate-800 transition-colors"
             >
               {preset.label}
             </button>
@@ -105,7 +105,7 @@ export default function OfferModal({
       </div>
 
       <div>
-        <label className="text-xs font-medium text-stone-500 dark:text-stone-400 mb-1.5 block">{noteLabel}</label>
+        <label className="text-sm font-medium text-stone-500 dark:text-stone-400 mb-1.5 block">{noteLabel}</label>
         <textarea
           rows={3}
           value={note}
