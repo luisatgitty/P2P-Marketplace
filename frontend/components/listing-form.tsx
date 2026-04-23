@@ -54,6 +54,7 @@ import {
   CONDITIONS,
   DELIVERY_OPTIONS
 } from "@/types/listings";
+import { encodeImageToPayload } from "@/lib/imageCompression";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 export interface ListingFormData {
@@ -254,70 +255,6 @@ type UploadImagePayload = {
   mimeType: string;
   data: string;
 };
-
-async function blobToBase64(blob: Blob): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result;
-      if (typeof result !== "string") {
-        reject(new Error("Failed to encode image."));
-        return;
-      }
-      resolve(result.split(",")[1] ?? "");
-    };
-    reader.onerror = () => reject(new Error("Failed to encode image."));
-    reader.readAsDataURL(blob);
-  });
-}
-
-async function compressImage(file: File): Promise<UploadImagePayload> {
-  const objectUrl = URL.createObjectURL(file);
-
-  try {
-    const image = await new Promise<HTMLImageElement>((resolve, reject) => {
-      const img = new Image();
-      img.onload = () => resolve(img);
-      img.onerror = () => reject(new Error("Invalid image file."));
-      img.src = objectUrl;
-    });
-
-    const maxDimension = 1600;
-    const scale = Math.min(
-      1,
-      maxDimension / Math.max(image.width, image.height),
-    );
-    const width = Math.max(1, Math.round(image.width * scale));
-    const height = Math.max(1, Math.round(image.height * scale));
-
-    const canvas = document.createElement("canvas");
-    canvas.width = width;
-    canvas.height = height;
-
-    const context = canvas.getContext("2d");
-    if (!context) {
-      throw new Error("Unable to process image.");
-    }
-    context.drawImage(image, 0, 0, width, height);
-
-    const compressedBlob = await new Promise<Blob | null>((resolve) => {
-      canvas.toBlob((blob) => resolve(blob), "image/webp", 0.78);
-    });
-
-    const finalBlob = compressedBlob ?? file;
-    const mimeType = compressedBlob ? "image/webp" : file.type;
-    const data = await blobToBase64(finalBlob);
-    const baseName = file.name.replace(/\.[^/.]+$/, "");
-
-    return {
-      name: compressedBlob ? `${baseName}.webp` : file.name,
-      mimeType,
-      data,
-    };
-  } finally {
-    URL.revokeObjectURL(objectUrl);
-  }
-}
 
 // ─── Shared UI atoms ────────────────────────────────────────────────────────────
 function FieldLabel({
@@ -1268,7 +1205,7 @@ export default function ListingForm({
     let compressedImages: UploadImagePayload[] = [];
     try {
       compressedImages = await Promise.all(
-        images.map((img) => compressImage(img.file)),
+        images.map((img) => encodeImageToPayload(img.file, "listing", "listingImage")),
       );
     } catch {
       setErrors((prev) => ({

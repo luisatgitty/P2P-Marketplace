@@ -379,7 +379,7 @@ export default function Navbar() {
 
   // Close dropdown on outside click
   useEffect(() => {
-    const handler = (e: MouseEvent) => {
+    const handler = (e: globalThis.MouseEvent) => {
       const targetNode = e.target as Node;
       const clickedProfileTrigger = dropdownRef.current?.contains(targetNode);
       const clickedNotificationTrigger = notificationRef.current?.contains(targetNode);

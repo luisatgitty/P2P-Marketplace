@@ -37,6 +37,10 @@ import { SafeImage } from "@/components/ui/safe-image";
 import { ImageLink } from "@/components/image-link";
 import { formatPrice } from "@/utils/string-builder";
 import { AUTH_LIMITS, isValidName } from "@/utils/validation";
+import {
+  encodeImageToPayload,
+  encodeSquareProfileImageToPayload,
+} from "@/lib/imageCompression";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type VerificationState = "unverified" | "pending" | "verified" | "rejected";
@@ -293,70 +297,7 @@ function useImageUpload(
   return { src, file, trigger, remove, inputRef, onFileChange };
 }
 
-type EncodedImagePayload = {
-  name: string;
-  mimeType: string;
-  data: string;
-};
 
-async function compressImageForProfile(file: File): Promise<Blob> {
-  const objectUrl = URL.createObjectURL(file);
-  try {
-    const image = await new Promise<HTMLImageElement>((resolve, reject) => {
-      const img = new window.Image();
-      img.onload = () => resolve(img);
-      img.onerror = () => reject(new Error("Invalid image file."));
-      img.src = objectUrl;
-    });
-
-    const maxDimension = 1200;
-    const scale = Math.min(1, maxDimension / Math.max(image.width, image.height));
-    const width = Math.max(1, Math.round(image.width * scale));
-    const height = Math.max(1, Math.round(image.height * scale));
-
-    const canvas = document.createElement("canvas");
-    canvas.width = width;
-    canvas.height = height;
-
-    const context = canvas.getContext("2d");
-    if (!context) return file;
-
-    context.drawImage(image, 0, 0, width, height);
-    const blob = await new Promise<Blob | null>((resolve) => {
-      canvas.toBlob((output) => resolve(output), "image/webp", 0.8);
-    });
-
-    return blob ?? file;
-  } finally {
-    URL.revokeObjectURL(objectUrl);
-  }
-}
-
-async function encodeFileToPayload(file: File): Promise<EncodedImagePayload> {
-  const compressed = await compressImageForProfile(file);
-
-  const data = await new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result;
-      if (typeof result !== "string") {
-        reject(new Error("Failed to encode image."));
-        return;
-      }
-      resolve(result.split(",")[1] ?? "");
-    };
-    reader.onerror = () => reject(new Error("Failed to encode image."));
-    reader.readAsDataURL(compressed);
-  });
-
-  const baseName = file.name.replace(/\.[^/.]+$/, "");
-
-  return {
-    name: `${baseName}.webp`,
-    mimeType: "image/webp",
-    data,
-  };
-}
 
 // ─── MAIN PAGE ────────────────────────────────────────────────────────────────
 export default function ProfilePage() {
@@ -426,7 +367,7 @@ export default function ProfilePage() {
   const handleAvatarUpload = async (file: File) => {
     setUploadingAvatar(true);
     try {
-      const profileImage = await encodeFileToPayload(file);
+      const profileImage = await encodeSquareProfileImageToPayload(file, "profileImage");
       const updatedUser = await updateProfileImages({ profileImage });
       if (user) saveUserData({ ...user, ...updatedUser });
       setProfileUser((prev) => ({ ...(prev ?? updatedUser), ...updatedUser }));
@@ -443,7 +384,7 @@ export default function ProfilePage() {
   const handleCoverUpload = async (file: File) => {
     setUploadingCover(true);
     try {
-      const coverImage = await encodeFileToPayload(file);
+      const coverImage = await encodeImageToPayload(file, "cover", "coverImage");
       const updatedUser = await updateProfileImages({ coverImage });
       if (user) saveUserData({ ...user, ...updatedUser });
       setProfileUser((prev) => ({ ...(prev ?? updatedUser), ...updatedUser }));

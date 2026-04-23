@@ -64,6 +64,7 @@ import {
   VERIFICATION_LIMITS,
   isValidName,
 } from "@/utils/validation";
+import { encodeImageToPayload } from "@/lib/imageCompression";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 type VerifyStep = 1 | 2 | 3;
@@ -89,8 +90,6 @@ const TOTAL            = 3;
 const OTP_LENGTH       = 6;
 const RESEND_SECONDS   = 45;
 const PHONE_DIGITS     = 10;
-const VERIFICATION_IMAGE_MAX_DIMENSION = 1400;
-const VERIFICATION_IMAGE_QUALITY = 0.8;
 
 const device = getDeviceInfo();
 // NOTE: Temporary override to bypass device check during development.
@@ -131,49 +130,8 @@ function formatDobIso(date: Date): string {
   return `${year}-${month}-${day}`;
 }
 
-async function compressVerificationImage(file: File): Promise<Blob> {
-  const objectUrl = URL.createObjectURL(file);
-  try {
-    const bitmap = await createImageBitmap(file);
-    const scale = Math.min(1, VERIFICATION_IMAGE_MAX_DIMENSION / Math.max(bitmap.width, bitmap.height));
-    const width  = Math.max(1, Math.round(bitmap.width  * scale));
-    const height = Math.max(1, Math.round(bitmap.height * scale));
-    const canvas  = document.createElement("canvas");
-    canvas.width  = width;
-    canvas.height = height;
-    const context = canvas.getContext("2d");
-    if (!context) throw new Error("Failed to initialize image compression canvas.");
-    context.drawImage(bitmap, 0, 0, width, height);
-    const compressed = await new Promise<Blob | null>(resolve => {
-      canvas.toBlob(output => resolve(output), "image/webp", VERIFICATION_IMAGE_QUALITY);
-    });
-    if (!compressed) throw new Error("Failed to compress image.");
-    return compressed;
-  } catch {
-    return file;
-  } finally {
-    URL.revokeObjectURL(objectUrl);
-  }
-}
-
-async function blobToBase64(blob: Blob): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = typeof reader.result === "string" ? reader.result : "";
-      const data   = result.split(",")[1] ?? "";
-      if (!data) { reject(new Error("Failed to encode image.")); return; }
-      resolve(data);
-    };
-    reader.onerror = () => reject(new Error("Failed to read image data."));
-    reader.readAsDataURL(blob);
-  });
-}
-
 async function fileToVerificationImagePayload(file: File, fieldName: string): Promise<VerificationImagePayload> {
-  const compressed = await compressVerificationImage(file);
-  const data       = await blobToBase64(compressed);
-  return { name: `${fieldName}.webp`, mimeType: "image/webp", data };
+  return encodeImageToPayload(file, "id", fieldName);
 }
 
 // ── CameraInput ────────────────────────────────────────────────────────────────
