@@ -786,54 +786,6 @@ function StepIndicator({
   );
 }
 
-// ─── Service inclusions list ──────────────────────────────────────────────────────
-// function InclusionList({
-//   items,
-//   setItems,
-// }: {
-//   items: string[];
-//   setItems: (v: string[]) => void;
-// }) {
-//   const update = (i: number, v: string) => {
-//     const n = [...items];
-//     n[i] = v;
-//     setItems(n);
-//   };
-//   return (
-//     <div className="flex flex-col gap-2">
-//       {items.map((item, i) => (
-//         <div key={i} className="flex gap-2 items-center">
-//           <CheckCircle2 size={13} className="text-violet-500 shrink-0" />
-//           <StyledInput
-//             value={item}
-//             onChange={(e) => update(i, e.target.value)}
-//             placeholder="e.g. Coil & filter deep clean"
-//             className="flex-1"
-//           />
-//           {items.length > 1 && (
-//             <button
-//               type="button"
-//               onClick={() => setItems(items.filter((_, idx) => idx !== i))}
-//               className="p-2 rounded-lg text-stone-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors shrink-0"
-//             >
-//               <X size={14} />
-//             </button>
-//           )}
-//         </div>
-//       ))}
-//       {items.length < MAX_INCLUSIONS && (
-//         <button
-//           type="button"
-//           onClick={() => setItems([...items, ""])}
-//           className="flex items-center gap-1.5 text-xs font-semibold text-stone-400 hover:text-stone-600 dark:hover:text-stone-300 mt-1 w-fit transition-colors"
-//         >
-//           <Plus size={12} /> Add item
-//         </button>
-//       )}
-//     </div>
-//   );
-// }
-
 // ═══════════════════════════════════════════════════════════════════════════════
 //  MAIN FORM
 // ═══════════════════════════════════════════════════════════════════════════════
