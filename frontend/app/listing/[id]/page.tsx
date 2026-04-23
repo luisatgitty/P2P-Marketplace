@@ -887,7 +887,7 @@ export default function ListingDetailPage() {
                 onClick={handleBuy}
                 className={cn(
                   "flex-1 flex items-center justify-center gap-2 py-3 rounded-lg text-white text-sm font-bold",
-                  isSell ? "bg-slate-700 hover:bg-slate-600"
+                  isSell ? "bg-orange-500 hover:bg-orange-600"
                   : isRent ? "bg-emerald-700 hover:bg-emerald-600"
                   : "bg-violet-700 hover:bg-violet-600"
                 )}>
@@ -1076,7 +1076,7 @@ function displayListingCard(listing: PostCardProps, handleToggleBookmark: () => 
               <Button
                 size={'lg'}
                 onClick={handleBuy}
-                className="flex items-center justify-center gap-2 w-full py-3 rounded-lg text-sm font-bold text-white bg-orange-400 hover:bg-orange-500">
+                className="flex items-center justify-center gap-2 w-full py-3 rounded-lg text-sm font-bold text-white bg-orange-500 hover:bg-orange-600">
                 <Zap className="w-4 h-4" /> Make an Offer
               </Button>
             )}

@@ -17,10 +17,12 @@ export interface ModalHeaderProps {
   title: string;
   subTitle: string;
   onClose: () => void;
+  onCancel?: () => void;
   handleSend: () => void;
   canSend: boolean;
   sending: boolean;
   submitLabel: string;
+  cancelLabel?: string;
   children?: ReactNode;
 }
 
@@ -30,10 +32,12 @@ export function ModalHeader({
   title,
   subTitle,
   onClose,
+  onCancel,
   handleSend,
   canSend,
   sending,
   submitLabel,
+  cancelLabel,
   children,
 }: ModalHeaderProps) {
   let iconColorClass = '';
@@ -41,7 +45,7 @@ export function ModalHeader({
 
   if (type.toLowerCase() === 'sell') {
     iconColorClass = 'text-orange-600';
-    btnColorClass = 'bg-orange-600 hover:bg-orange-500';
+    btnColorClass = 'bg-orange-500 hover:bg-orange-400';
   } else if (type.toLowerCase() === 'rent') {
     iconColorClass = 'text-emerald-600';
     btnColorClass = 'bg-emerald-600 hover:bg-emerald-500';
@@ -51,6 +55,9 @@ export function ModalHeader({
   } else if (type.toLowerCase() === 'report') {
     iconColorClass = 'text-red-600';
     btnColorClass = 'bg-red-600 hover:bg-red-500';
+  } else if (type.toLowerCase() === 'review') {
+    iconColorClass = 'text-yellow-600';
+    btnColorClass = 'bg-yellow-600 hover:bg-yellow-500';
   }
 
   return (
@@ -92,10 +99,10 @@ export function ModalHeader({
             variant={'outline'}
             size='lg'
             type='button'
-            onClick={onClose}
+            onClick={onCancel || onClose}
             className='flex-1 rounded-lg border  text-sm font-semibold hover:bg-stone-200 transition-colors'
           >
-            Cancel
+            {cancelLabel || 'Cancel'}
           </Button>
           <Button
             size='lg'

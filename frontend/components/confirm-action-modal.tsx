@@ -36,14 +36,14 @@ export function ConfirmActionModal({
           <button
             onClick={onClose}
             disabled={loading}
-            className="flex-1 py-2.5 rounded-full border border-stone-200 dark:border-[#2a2d3e] text-stone-500 dark:text-stone-400 text-sm hover:bg-stone-50 dark:hover:bg-[#252837] transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+            className="flex-1 py-2.5 rounded-lg border border-stone-200 dark:border-[#2a2d3e] text-stone-500 dark:text-stone-400 text-sm hover:bg-stone-50 dark:hover:bg-[#252837] transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {cancelLabel}
           </button>
           <button
             onClick={() => void onConfirm()}
             disabled={loading}
-            className="flex-1 py-2.5 rounded-full bg-amber-700 hover:bg-amber-600 text-white text-sm font-semibold transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+            className="flex-1 py-2.5 rounded-lg bg-amber-700 hover:bg-amber-600 text-white text-sm font-semibold transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {loading ? "Please wait..." : confirmLabel}
           </button>
