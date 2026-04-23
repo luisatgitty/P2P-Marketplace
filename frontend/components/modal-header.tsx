@@ -58,7 +58,7 @@ export function ModalHeader({
       className='fixed z-50 inset-0 flex items-end sm:items-center justify-center p-4 bg-black/60 backdrop-blur-sm'
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
-      <Card className='relative bg-card-foreground rounded-lg w-full max-w-sm shadow-2xl flex flex-col max-h-[90vh] sm:max-h-[86vh] sm:mt-16'>
+      <Card className='relative bg-background rounded-lg w-full max-w-sm shadow-2xl flex flex-col max-h-[90vh] sm:max-h-[86vh] sm:mt-16'>
         {/* Close Button */}
         <Button
           variant={'ghost'}
@@ -67,13 +67,13 @@ export function ModalHeader({
           onClick={onClose}
           className='absolute top-2 right-2'
         >
-          <X className='w-4 h-4 text-primary-foreground' />
+          <X className='w-4 h-4 text-foreground' />
         </Button>
 
         {/* ── Header ── */}
         <CardHeader className='flex items-start justify-between shrink-0'>
           <div className='min-w-0'>
-            <CardTitle className='flex items-center gap-2 mb-1 text-primary-foreground'>
+            <CardTitle className='flex items-center gap-2 mb-1 text-foreground'>
               <Icon className={cn('w-5 h-5 shrink-0', iconColorClass)} />
               {title}
             </CardTitle>
@@ -89,10 +89,11 @@ export function ModalHeader({
         {/* ── Footer ── */}
         <CardFooter className='flex gap-3 shrink-0'>
           <Button
+            variant={'outline'}
             size='lg'
             type='button'
             onClick={onClose}
-            className='flex-1 rounded-lg border border-stone-200 dark:border-[#2a2d3e] text-stone-600 dark:text-stone-300 text-sm font-semibold hover:bg-stone-50 dark:hover:bg-[#252837] transition-colors'
+            className='flex-1 rounded-lg border  text-sm font-semibold hover:bg-stone-200 transition-colors'
           >
             Cancel
           </Button>

@@ -8,8 +8,8 @@ type BadgeVariant = "soft" | "solid";
 const TYPE_CONFIG: Record<"SELL" | "RENT" | "SERVICE", { label: string; softClass: string; solidClass: string }> = {
   SELL: {
     label: "For Sale",
-    softClass: "bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400",
-    solidClass: "bg-orange-600 text-white",
+    softClass: "bg-orange-100 dark:bg-orange-700/30 text-orange-600 dark:text-orange-300",
+    solidClass: "bg-orange-400 text-white",
   },
   RENT: {
     label: "For Rent",
