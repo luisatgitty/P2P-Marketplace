@@ -835,6 +835,7 @@ export default function ListingDetailPage() {
           open={reportOpen}
           title="Report Listing"
           subtitle="What&apos;s wrong with this listing?"
+          target={listing.title}
           submitting={submittingReport}
           onClose={handleCloseReportModal}
           onSubmit={handleSubmitReport}

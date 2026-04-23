@@ -48,6 +48,9 @@ export function ModalHeader({
   } else if (type.toLowerCase() === 'service') {
     iconColorClass = 'text-violet-600';
     btnColorClass = 'bg-violet-600 hover:bg-violet-500';
+  } else if (type.toLowerCase() === 'report') {
+    iconColorClass = 'text-red-600';
+    btnColorClass = 'bg-red-600 hover:bg-red-500';
   }
 
   return (

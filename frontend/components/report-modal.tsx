@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
+import { ModalHeader } from "./modal-header";
+import { Flag } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const REPORT_REASONS = [
@@ -14,8 +16,9 @@ const REPORT_REASONS = [
 
 interface ReportModalProps {
   open: boolean;
-  title?: string;
-  subtitle?: string;
+  title: string;
+  subtitle: string;
+  target: string;
   submitting?: boolean;
   onClose: () => void;
   onSubmit: (payload: { reason: string; description: string }) => Promise<void> | void;
@@ -23,8 +26,9 @@ interface ReportModalProps {
 
 export function ReportModal({
   open,
-  title = "Report Listing",
-  subtitle = "What's wrong with this listing?",
+  title,
+  subtitle,
+  target,
   submitting = false,
   onClose,
   onSubmit,
@@ -45,18 +49,28 @@ export function ReportModal({
     else setDetails(value.slice(0, REPORT_MAX_LENGTH));
   };
 
+  const handleSubmit = () => {
+    if (!reason) return;
+    void onSubmit({ reason, description: details });
+  };
+
   if (!open) return null;
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
-      onClick={(e) => e.target === e.currentTarget && onClose()}
+    <ModalHeader
+      icon={Flag}
+      type='report'
+      title={title}
+      subTitle={target}
+      onClose={onClose}
+      handleSend={handleSubmit}
+      canSend={!!reason}
+      sending={submitting}
+      submitLabel="Submit Report"
     >
-      <div className="bg-white dark:bg-[#1c1f2e] rounded-lg w-full max-w-sm shadow-2xl p-6">
-        <h2 className="font-bold text-stone-900 dark:text-stone-50 text-lg mb-1">{title}</h2>
-        <p className="text-sm text-stone-500 dark:text-stone-400 mb-4">{subtitle}</p>
+        <p className="text-sm text-stone-500 dark:text-stone-400">{subtitle}</p>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           {REPORT_REASONS.map((item) => (
             <button
               key={item}
@@ -73,8 +87,8 @@ export function ReportModal({
           ))}
         </div>
 
-        <div className="mb-5">
-          <label className="text-xs font-medium text-stone-500 dark:text-stone-400 mb-1.5 block">
+        <div>
+          <label className="text-xs font-medium text-stone-500 dark:text-stone-400 mb-2 block">
             Report details
           </label>
           <textarea
@@ -87,24 +101,6 @@ export function ReportModal({
           />
           <p className="mt-1 text-[11px] text-stone-400 dark:text-stone-500 text-right">{details.length}/{REPORT_MAX_LENGTH}</p>
         </div>
-
-        {reason ? (
-          <button
-            onClick={() => void onSubmit({ reason, description: details })}
-            disabled={submitting}
-            className="w-full py-2.5 rounded-lg bg-red-600 hover:bg-red-500 text-white text-sm font-semibold transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-          >
-            {submitting ? "Submitting..." : "Submit"}
-          </button>
-        ) : (
-          <button
-            onClick={onClose}
-            className="w-full py-2.5 rounded-lg border border-stone-200 dark:border-[#2a2d3e] text-stone-500 dark:text-stone-400 text-sm hover:bg-stone-50 dark:hover:bg-[#252837] transition-colors"
-          >
-            Cancel
-          </button>
-        )}
-      </div>
-    </div>
+    </ModalHeader>
   );
 }
