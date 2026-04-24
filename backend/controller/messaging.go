@@ -104,7 +104,7 @@ func mapConversationPayload(baseURL string, row model.ConversationFromDb) map[st
 	now := time.Now().UTC()
 	isOtherLocked := row.OtherLockedUntil != nil && row.OtherLockedUntil.After(now)
 	isSelfLocked := row.SelfLockedUntil != nil && row.SelfLockedUntil.After(now)
-	canSendMessage := row.OtherIsActive && !isOtherLocked && row.SelfIsActive && !isSelfLocked
+	canSendMessage := row.OtherIsActive && !isOtherLocked && row.SelfIsActive && !isSelfLocked && row.ListingStatus == "AVAILABLE"
 
 	offerPrice := row.OfferPrice
 	if offerPrice <= 0 {
