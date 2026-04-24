@@ -8,6 +8,7 @@ import type { Message, MessageAttachment, ReactionType, ReplyPreview } from "@/t
 import { REACTIONS } from "@/types/messaging";
 import { SafeImage } from "../ui/safe-image";
 import { MESSAGE_EDIT_DURATION_MS } from "@/utils/validation";
+import { useConfirmDialog } from "@/utils/ConfirmDialogContext";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -280,6 +281,8 @@ function ContextMenu({
   menuRef: React.RefObject<HTMLDivElement | null>;
   style?: React.CSSProperties;
 }) {
+  const { openDialog } = useConfirmDialog();
+
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) onClose();
@@ -287,6 +290,38 @@ function ContextMenu({
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, [menuRef, onClose]);
+
+  const handleUnsendClick = () => {
+    openDialog({
+      title: "Unsend Message",
+      message: "Are you sure you want to unsend this message? This action cannot be undone.",
+      confirmText: "Unsend",
+      cancelText: "Cancel",
+      isDangerous: true,
+      onConfirm: () => {
+        onUnsend();
+        onClose();
+        toast.success("Message unsent.", { position: "top-center" });
+      },
+      onCancel: () => onClose(),
+    });
+  };
+
+  const handleDeleteClick = () => {
+    openDialog({
+      title: "Delete Message",
+      message: "Are you sure you want to delete this message? This action cannot be undone.",
+      confirmText: "Delete",
+      cancelText: "Cancel",
+      isDangerous: true,
+      onConfirm: () => {
+        onDelete();
+        onClose();
+        toast.success("Message deleted.", { position: "top-center" });
+      },
+      onCancel: () => onClose(),
+    });
+  };
 
   type MenuItem = {
     icon: React.ElementType;
@@ -300,8 +335,8 @@ function ContextMenu({
     { icon: Reply,  label: "Reply",  action: onReply },
     { icon: Copy,   label: "Copy",   action: onCopy,   show: hasContent },
     { icon: Pencil, label: "Edit",   action: onEdit,   show: isMe && hasContent && canEdit },
-    { icon: Trash2, label: "Unsend", action: onUnsend, show: isMe && canUnsend,  danger: true },
-    { icon: Trash2, label: "Delete", action: onDelete, danger: true },
+    { icon: Trash2, label: "Unsend", action: handleUnsendClick, show: isMe && canUnsend,  danger: true },
+    { icon: Trash2, label: "Delete", action: handleDeleteClick, danger: true },
   ];
 
   return (
@@ -319,7 +354,7 @@ function ContextMenu({
         .map(({ icon: Icon, label, action, danger }) => (
           <button
             key={label}
-            onClick={() => { action(); onClose(); }}
+            onClick={() => { action(); }}
             className={cn(
               "flex items-center gap-2.5 w-full px-3.5 py-2.5 text-xs font-medium transition-colors",
               danger
@@ -621,14 +656,8 @@ export default function MessageBubble({
             onReply={() => onReply(message)}
             onCopy={handleCopy}
             onEdit={() => onEdit(message.id, message.content ?? "")}
-            onUnsend={() => {
-              onDelete(message.id, true);
-              toast.success("Message unsent.", { position: "top-center" });
-            }}
-            onDelete={() => {
-              onDelete(message.id, false);
-              toast.success("Message deleted.", { position: "top-center" });
-            }}
+            onUnsend={() => onDelete(message.id, true)}
+            onDelete={() => onDelete(message.id, false)}
             onClose={() => setShowMenu(false)}
             menuRef={menuRef}
             style={menuStyle}
