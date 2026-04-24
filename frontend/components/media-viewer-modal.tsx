@@ -5,9 +5,7 @@ import Lightbox from "yet-another-react-lightbox";
 import Thumbnails from "yet-another-react-lightbox/plugins/thumbnails";
 import Zoom from "yet-another-react-lightbox/plugins/zoom";
 import Video from "yet-another-react-lightbox/plugins/video";
-// @ts-expect-error Next.js resolves package CSS side-effect imports at build time.
 import "yet-another-react-lightbox/styles.css";
-// @ts-expect-error Next.js resolves package CSS side-effect imports at build time.
 import "yet-another-react-lightbox/plugins/thumbnails.css";
 import { useModalFocusTrap } from "@/utils/useModalFocusTrap";
 

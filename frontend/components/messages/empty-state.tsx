@@ -35,7 +35,7 @@ export default function EmptyState({ tab, hasSearch }: EmptyStateProps) {
         <Icon size={24} className="text-stone-400 dark:text-stone-500" />
       </div>
       <p className="text-sm font-semibold text-stone-700 dark:text-stone-300">{title}</p>
-      <p className="text-xs text-stone-400 dark:text-stone-500 max-w-[200px] leading-relaxed">{body}</p>
+      <p className="text-xs text-stone-400 dark:text-stone-500 max-w-50 leading-relaxed">{body}</p>
     </div>
   );
 }
