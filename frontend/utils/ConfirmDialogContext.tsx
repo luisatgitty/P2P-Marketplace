@@ -73,14 +73,14 @@ export function ConfirmDialogProvider({ children }: { children: ReactNode }) {
           {/* Backdrop */}
           <div
             className={cn(
-              'fixed inset-0 z-99 bg-black/50 transition-opacity duration-150',
+              'fixed inset-0 z-999 bg-black/50 transition-opacity duration-150',
               isClosing ? 'opacity-0' : 'opacity-100',
             )}
             onClick={handleCancel}
           />
 
           {/* Modal */}
-          <div className='fixed inset-0 z-100 flex items-center justify-center p-4'>
+          <div className='fixed inset-0 z-1000 flex items-center justify-center p-4'>
             <div
               className={cn(
                 'w-full max-w-sm rounded-lg border border-stone-200 dark:border-[#2a2d3e] bg-white dark:bg-[#1c1f2e] shadow-2xl transition-all duration-150',
