@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import type { Conversation } from "@/types/messaging";
 import { useUser } from "@/utils/UserContext";
+import { useConfirmDialog } from "@/utils/ConfirmDialogContext";
 import { submitUserListingReport, type ListingReviewPayload } from "@/services/listingDetailService";
 import { ReportModal } from "@/components/report-modal";
 import { ConfirmActionModal } from "@/components/confirm-action-modal";
@@ -309,6 +310,24 @@ export default function ChatHeader({ conversation, onDelete, onMarkedComplete, o
     }
   };
 
+  const { openDialog } = useConfirmDialog();
+
+  const handleDeleteChat = () => {
+    openDialog({
+      title: "Delete Conversation",
+      message: "Are you sure you want to delete this conversation? This action cannot be undone.",
+      confirmText: "Delete",
+      cancelText: "Cancel",
+      isDangerous: true,
+      onConfirm: () => {
+        onDelete?.();
+        setMenuOpen(false);
+        toast.success("Conversation deleted.", { position: "top-center" });
+      },
+      onCancel: () => setMenuOpen(false),
+    });
+  };
+
   const menuItems = [
     ...(!hideParticipantMenuItems ? [{ icon: User, label: "View Profile", action: () => { router.push(profileHref); setMenuOpen(false); } }] : []),
     { icon: ExternalLink, label: "View Listing",   action: () => { router.push(`/listing/${listing.id}`); setMenuOpen(false); } },
@@ -318,7 +337,7 @@ export default function ChatHeader({ conversation, onDelete, onMarkedComplete, o
     ...(!shouldHideButtons && canMarkAsComplete ? [{ icon: CheckCircle, label: listing.listingType === "SELL" ? "Mark as Sold" : "Mark as Complete", action: () => { setMenuOpen(false); setMarkCompleteOpen(true); }, danger: false }] : []),
     ...(!shouldHideButtons && canReview ? [{ icon: Star, label: reviewLoading ? "Loading Review..." : existingReview ? "Edit Review" : "Review", action: () => { setMenuOpen(false); handleOpenReviewModal(); }, danger: false, disabled: reviewLoading }] : []),
     ...(!hideReportUserMenuItem ? [{ icon: Flag, label: "Report User", action: () => { setMenuOpen(false); setReportOpen(true); }, danger: false }] : []),
-    { icon: Trash2,       label: "Delete Chat",    action: () => { onDelete?.(); setMenuOpen(false); }, danger: true },
+    { icon: Trash2,       label: "Delete Chat",    action: handleDeleteChat, danger: true },
   ];
 
   const handleConfirmMarkComplete = async () => {

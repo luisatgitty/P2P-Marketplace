@@ -646,7 +646,6 @@ export default function ConversationPage() {
     }
 
     await deleteConversation(conversationId);
-    toast.success("Conversation deleted", { position: "top-center" });
     router.push("/messages");
   }, [conversationId, isDraftConversation, router]);
 
