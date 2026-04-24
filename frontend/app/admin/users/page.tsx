@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { useConfirmDialog } from "@/utils/ConfirmDialogContext";
 import { ImageLink } from "@/components/image-link";
 import {
   getAdminUsers,
@@ -190,6 +191,7 @@ function FilterSelect({
 
 // ── Main page ──────────────────────────────────────────────────────────────────
 export default function UsersPage() {
+  const { openDialog } = useConfirmDialog();
   const [search,             setSearch]             = useState("");
   const [debouncedSearch,    setDebouncedSearch]    = useState("");
   const [verifFilter,        setVerif]              = useState<string>("ALL");
@@ -288,68 +290,89 @@ export default function UsersPage() {
     const target = users.find(u => u.id === id);
     if (!target) return;
     const isCurrentlyBanned = !!(target.account_locked_until && new Date(target.account_locked_until) > new Date());
-    if (!isCurrentlyBanned && !window.confirm("Ban this user for 3 days?")) return;
-    if (isCurrentlyBanned && !window.confirm("Unban this user account?")) return;
 
     const nextIsActive = isCurrentlyBanned;
     const nowIso = new Date().toISOString();
     const lockUntilIso = new Date(Date.now() + (3 * 24 * 60 * 60 * 1000)).toISOString();
     const actor = getCurrentAdminSnapshot();
 
-    setActionLoadingUserId(id);
-    try {
-      await setAdminUserActive(id, nextIsActive);
-      setUsers((prev) =>
-        prev.map((user) =>
-          user.id === id
-            ? {
-                ...user,
-                is_active: nextIsActive,
-                account_locked_until: nextIsActive ? null : lockUntilIso,
-                action_by_name: nextIsActive ? "" : (actor?.fullName || user.action_by_name || ""),
-                action_by_email: nextIsActive ? "" : (actor?.email || user.action_by_email || ""),
-                updated_at: nowIso,
-              }
-            : user
-        )
-      );
-      toast.success(`User ${nextIsActive ? "unbanned" : "banned for 3 days"} successfully`, { position: "top-center" });
-    } catch (err) {
-      const message = typeof err === "string" ? err : "Failed to update user status";
-      toast.error(message, { position: "top-center" });
-    } finally {
-      setActionLoadingUserId(null);
-    }
+    openDialog({
+      title: isCurrentlyBanned ? "Unban User" : "Ban User",
+      message: isCurrentlyBanned ? "Unban this user account?" : "Ban this user for 3 days?",
+      confirmText: isCurrentlyBanned ? "Unban" : "Ban",
+      cancelText: "Cancel",
+      isDangerous: !isCurrentlyBanned,
+      onConfirm: () => {
+        void (async () => {
+          setActionLoadingUserId(id);
+          try {
+            await setAdminUserActive(id, nextIsActive);
+            setUsers((prev) =>
+              prev.map((user) =>
+                user.id === id
+                  ? {
+                      ...user,
+                      is_active: nextIsActive,
+                      account_locked_until: nextIsActive ? null : lockUntilIso,
+                      action_by_name: nextIsActive ? "" : (actor?.fullName || user.action_by_name || ""),
+                      action_by_email: nextIsActive ? "" : (actor?.email || user.action_by_email || ""),
+                      updated_at: nowIso,
+                    }
+                  : user
+              )
+            );
+            toast.success(`User ${nextIsActive ? "unbanned" : "banned for 3 days"} successfully`, { position: "top-center" });
+          } catch (err) {
+            const message = typeof err === "string" ? err : "Failed to update user status";
+            toast.error(message, { position: "top-center" });
+          } finally {
+            setActionLoadingUserId(null);
+          }
+        })();
+      },
+      onCancel: () => {},
+    });
   }
 
   async function handleDelete(id: string) {
-    if (!window.confirm("Permanently delete this user? This cannot be undone.")) return;
-    setActionLoadingUserId(id);
-    try {
-      await deleteAdminUser(id);
-      const nowIso = new Date().toISOString();
-      const actor = getCurrentAdminSnapshot();
-      setUsers((prev) =>
-        prev.map((user) =>
-          user.id === id
-            ? {
-                ...user,
-                is_active: false,
-                deleted_at: nowIso,
-                updated_at: nowIso,
-                action_by_name: actor?.fullName || user.action_by_name || "",
-                action_by_email: actor?.email || user.action_by_email || "",
-              }
-            : user
-        )
-      );
-      toast.success("User deleted successfully", { position: "top-center" });
-    } catch (err) {
-      const message = typeof err === "string" ? err : "Failed to delete user";
-      toast.error(message, { position: "top-center" });
-    } finally {
-      setActionLoadingUserId(null);
-    }
+    openDialog({
+      title: "Delete User",
+      message: "Permanently delete this user? This cannot be undone.",
+      confirmText: "Delete",
+      cancelText: "Cancel",
+      isDangerous: true,
+      onConfirm: () => {
+        void (async () => {
+          setActionLoadingUserId(id);
+          try {
+            await deleteAdminUser(id);
+            const nowIso = new Date().toISOString();
+            const actor = getCurrentAdminSnapshot();
+            setUsers((prev) =>
+              prev.map((user) =>
+                user.id === id
+                  ? {
+                      ...user,
+                      is_active: false,
+                      deleted_at: nowIso,
+                      updated_at: nowIso,
+                      action_by_name: actor?.fullName || user.action_by_name || "",
+                      action_by_email: actor?.email || user.action_by_email || "",
+                    }
+                  : user
+              )
+            );
+            toast.success("User deleted successfully", { position: "top-center" });
+          } catch (err) {
+            const message = typeof err === "string" ? err : "Failed to delete user";
+            toast.error(message, { position: "top-center" });
+          } finally {
+            setActionLoadingUserId(null);
+          }
+        })();
+      },
+      onCancel: () => {},
+    });
   }
 
   const hasActiveFilters = search || verifFilter !== "ALL" || statusFilter !== "ALL";
