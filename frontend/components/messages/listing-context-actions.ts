@@ -11,6 +11,7 @@ import {
   openOrCreateConversationFromListing,
   toggleConversationDealAgreement,
   updateConversationOfferAsOwner,
+  updateConversationScheduleAsOwner,
   type ScheduleRequestPayload,
 } from "@/services/messagingService";
 
@@ -95,13 +96,23 @@ export async function runDealToggle(conversationId: string): Promise<void> {
   await toggleConversationDealAgreement(conversationId);
 }
 
-export async function runScheduleUpdate(listingId: string, payload: ScheduleRequestPayload): Promise<void> {
-  await openOrCreateConversationFromListing(listingId, undefined, undefined, {
-    startDate: payload.startDate,
-    endDate: payload.endDate,
-    startTime: payload.startTime,
-    endTime: payload.endTime,
-    message: payload.message,
+export async function runScheduleUpdate(params: {
+  listingId: string;
+  conversationId?: string;
+  isSeller: boolean;
+  payload: ScheduleRequestPayload;
+}): Promise<void> {
+  if (params.isSeller && params.conversationId) {
+    await updateConversationScheduleAsOwner(params.conversationId, params.payload);
+    return;
+  }
+
+  await openOrCreateConversationFromListing(params.listingId, undefined, undefined, {
+    startDate: params.payload.startDate,
+    endDate: params.payload.endDate,
+    startTime: params.payload.startTime,
+    endTime: params.payload.endTime,
+    message: params.payload.message,
   });
 }
 

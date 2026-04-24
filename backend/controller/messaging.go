@@ -577,6 +577,72 @@ func UpdateConversationOfferByOwner(c *fiber.Ctx) error {
 	})
 }
 
+func UpdateConversationScheduleByOwner(c *fiber.Ctx) error {
+	conversationId := strings.TrimSpace(c.Params("id"))
+	if conversationId == "" {
+		return SendErrorResponse(c, 400, "Conversation ID is required", nil)
+	}
+
+	var body model.UpdateConversationScheduleBody
+	if err := c.BodyParser(&body); err != nil {
+		return SendErrorResponse(c, 400, "Invalid request body. Please contact support.", err)
+	}
+
+	startDate := strings.TrimSpace(body.StartDate)
+	endDate := strings.TrimSpace(body.EndDate)
+	startTime := strings.TrimSpace(body.StartTime)
+	endTime := strings.TrimSpace(body.EndTime)
+	scheduleMessage := strings.TrimSpace(body.ScheduleMessage)
+
+	if startDate == "" || endDate == "" {
+		return SendErrorResponse(c, 400, "Start date and end date are required for schedule request", nil)
+	}
+	if utf8.RuneCountInString(scheduleMessage) > config.MessageContentMaxLength {
+		return SendErrorResponse(c, 400, fmt.Sprintf("Schedule message must not exceed %d characters", config.MessageContentMaxLength), nil)
+	}
+
+	userId, err := getAuthenticatedUserId(c)
+	if err != nil {
+		return SendErrorResponse(c, 401, err.Error(), nil)
+	}
+
+	state, err := repository.UpdateConversationScheduleByOwner(userId, conversationId, startDate, endDate, startTime, endTime, scheduleMessage)
+	if err != nil {
+		return SendErrorResponse(c, 400, err.Error(), err)
+	}
+
+	realtimePayload := map[string]any{
+		"type": "message:new",
+		"data": map[string]any{
+			"conversationId": state.ConversationId,
+		},
+	}
+
+	realtimeDealPayload := map[string]any{
+		"type": "conversation:deal-updated",
+		"data": map[string]any{
+			"conversationId":    state.ConversationId,
+			"listingId":         state.ListingId,
+			"transactionStatus": strings.ToUpper(strings.TrimSpace(state.TransactionStatus)),
+			"providerAgreed":    state.ProviderAgreed,
+			"clientAgreed":      state.ClientAgreed,
+			"userAgreed":        state.UserAgreed,
+		},
+	}
+
+	peerUserId, peerErr := repository.GetConversationPeerUserId(userId, conversationId)
+	if peerErr == nil && strings.TrimSpace(peerUserId) != "" {
+		middleware.RealtimeHub.SendToUser(peerUserId, realtimePayload)
+		middleware.RealtimeHub.SendToUser(peerUserId, realtimeDealPayload)
+	}
+	middleware.RealtimeHub.SendToUser(userId, realtimePayload)
+	middleware.RealtimeHub.SendToUser(userId, realtimeDealPayload)
+
+	return SendSuccessResponse(c, 200, "Schedule updated successfully", map[string]any{
+		"conversationId": state.ConversationId,
+	})
+}
+
 func SendMessage(c *fiber.Ctx) error {
 	conversationId := strings.TrimSpace(c.Params("id"))
 	if conversationId == "" {

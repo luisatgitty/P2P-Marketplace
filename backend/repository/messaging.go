@@ -1885,6 +1885,216 @@ func UpdateConversationOfferByOwner(userId, conversationId string, offerPrice in
 	return state, nil
 }
 
+func UpdateConversationScheduleByOwner(userId, conversationId, startDate, endDate, startTime, endTime, scheduleMessage string) (model.TransactionAgreementState, error) {
+	db := middleware.DBConn
+	state := model.TransactionAgreementState{}
+
+	trimmedStartDate := strings.TrimSpace(startDate)
+	trimmedEndDate := strings.TrimSpace(endDate)
+	if trimmedStartDate == "" || trimmedEndDate == "" {
+		return state, fmt.Errorf("Start date and end date are required for schedule request")
+	}
+
+	tx := db.Begin()
+	if tx.Error != nil {
+		return state, fmt.Errorf("Failed to start DB transaction")
+	}
+
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	var listingId string
+	var buyerId string
+	var sellerId string
+	var listingType string
+	var listingStatus string
+	var listingPrice int
+	conversationQuery := `
+		SELECT
+			c.listing_id::text,
+			c.buyer_id::text,
+			c.seller_id::text,
+			LOWER(l.listing_type::text) AS listing_type,
+			LOWER(COALESCE(l.status::text, 'available')) AS listing_status,
+			COALESCE(l.price, 0) AS listing_price
+		FROM public.conversations c
+		JOIN public.listings l
+			ON l.id = c.listing_id
+		JOIN public.conversation_members cm
+			ON cm.conversation_id = c.id
+			AND cm.user_id = $2
+			AND cm.deleted_at IS NULL
+		WHERE c.id = $1
+		LIMIT 1
+	`
+	if err := tx.Raw(conversationQuery, conversationId, userId).Row().Scan(&listingId, &buyerId, &sellerId, &listingType, &listingStatus, &listingPrice); err != nil {
+		tx.Rollback()
+		return state, fmt.Errorf("Conversation not found")
+	}
+
+	if strings.TrimSpace(userId) != strings.TrimSpace(sellerId) {
+		tx.Rollback()
+		return state, fmt.Errorf("Only the listing owner can update this schedule")
+	}
+
+	if listingType != "rent" && listingType != "service" {
+		tx.Rollback()
+		return state, fmt.Errorf("Schedule requests are only supported for Rent and Service listings")
+	}
+
+	if listingStatus == "deleted" || listingStatus == "banned" {
+		tx.Rollback()
+		return state, fmt.Errorf("This listing is no longer available")
+	}
+
+	scheduleStartAt, scheduleEndAt, err := parseScheduleRange(trimmedStartDate, trimmedEndDate, startTime, endTime)
+	if err != nil {
+		tx.Rollback()
+		return state, err
+	}
+
+	actorFirstName, err := getUserFirstNameTx(tx, userId)
+	if err != nil {
+		tx.Rollback()
+		return state, err
+	}
+
+	countActiveTransactionsQuery := `
+		SELECT COUNT(*)
+		FROM public.listing_transactions
+		WHERE listing_id = $1
+			AND client_id = $2
+			AND status NOT IN ('COMPLETED', 'CANCELLED')
+	`
+	var activeCount int
+	if err := tx.Raw(countActiveTransactionsQuery, listingId, buyerId).Scan(&activeCount).Error; err != nil {
+		tx.Rollback()
+		return state, fmt.Errorf("Failed to inspect existing transactions")
+	}
+
+	if activeCount == 0 {
+		insertTransactionQuery := `
+			INSERT INTO public.listing_transactions (
+				listing_id,
+				client_id,
+				start_date,
+				end_date,
+				total_price,
+				provider_agreed,
+				client_agreed,
+				status,
+				created_at
+			) VALUES (
+				$1,
+				$2,
+				$3,
+				$4,
+				$5,
+				FALSE,
+				FALSE,
+				'PENDING',
+				now()
+			)
+		`
+		if err := tx.Exec(insertTransactionQuery, listingId, buyerId, scheduleStartAt, scheduleEndAt, listingPrice).Error; err != nil {
+			tx.Rollback()
+			return state, fmt.Errorf("Failed to save schedule transaction")
+		}
+	} else {
+		updateExistingTransactionQuery := `
+			UPDATE public.listing_transactions
+			SET
+				start_date = $2,
+				end_date = $3,
+				total_price = $4,
+				provider_agreed = FALSE,
+				client_agreed = FALSE,
+				status = 'PENDING',
+				cancelled_at = NULL,
+				cancelled_by_id = NULL,
+				completed_at = NULL,
+				created_at = now()
+			WHERE id = (
+				SELECT lt.id
+				FROM public.listing_transactions lt
+				WHERE lt.listing_id = $1
+					AND lt.client_id = $5
+					AND lt.status NOT IN ('COMPLETED', 'CANCELLED')
+				ORDER BY lt.created_at DESC
+				LIMIT 1
+			)
+		`
+		updateResult := tx.Exec(updateExistingTransactionQuery, listingId, scheduleStartAt, scheduleEndAt, listingPrice, buyerId)
+		if updateResult.Error != nil {
+			tx.Rollback()
+			return state, fmt.Errorf("Failed to update schedule transaction")
+		}
+		if updateResult.RowsAffected == 0 {
+			tx.Rollback()
+			return state, fmt.Errorf("No eligible transaction found for schedule update")
+		}
+	}
+
+	scheduleActionContent := fmt.Sprintf(
+		"__SCHEDULE_ACTION__:%s requested schedule on %s - %s",
+		actorFirstName,
+		scheduleStartAt.Format("Jan 02"),
+		scheduleEndAt.Format("Jan 02"),
+	)
+	actionMessage, err := insertConversationMessageTx(tx, conversationId, userId, buyerId, scheduleActionContent)
+	if err != nil {
+		tx.Rollback()
+		return state, err
+	}
+
+	lastMessageID := actionMessage.Id
+	lastMessageText := strings.TrimSpace(actionMessage.Content)
+	lastMessageAt := actionMessage.CreatedAt
+
+	trimmedScheduleMessage := strings.TrimSpace(scheduleMessage)
+	if trimmedScheduleMessage != "" {
+		noteMessage, err := insertConversationMessageTx(tx, conversationId, userId, buyerId, trimmedScheduleMessage)
+		if err != nil {
+			tx.Rollback()
+			return state, err
+		}
+		lastMessageID = noteMessage.Id
+		lastMessageText = strings.TrimSpace(noteMessage.Content)
+		lastMessageAt = noteMessage.CreatedAt
+	}
+
+	updateConversationQuery := `
+		UPDATE public.conversations
+		SET
+			last_message_id = $2,
+			last_message = $3,
+			last_message_sender_id = $4,
+			last_message_at = $5,
+			updated_at = now()
+		WHERE id = $1
+	`
+	if err := tx.Exec(updateConversationQuery, conversationId, lastMessageID, lastMessageText, userId, lastMessageAt).Error; err != nil {
+		tx.Rollback()
+		return state, fmt.Errorf("Failed to update conversation metadata")
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		return state, fmt.Errorf("Failed to finalize schedule update")
+	}
+
+	state.ConversationId = strings.TrimSpace(conversationId)
+	state.ListingId = strings.TrimSpace(listingId)
+	state.TransactionStatus = "PENDING"
+	state.ProviderAgreed = false
+	state.ClientAgreed = false
+	state.UserAgreed = false
+
+	return state, nil
+}
+
 func ToggleConversationTransactionAgreement(userId, conversationId string) (model.TransactionAgreementState, error) {
 	db := middleware.DBConn
 	state := model.TransactionAgreementState{}

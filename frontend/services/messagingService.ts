@@ -272,6 +272,20 @@ export async function updateConversationOfferAsOwner(conversationId: string, off
   emitMessagesUpdate();
 }
 
+export async function updateConversationScheduleAsOwner(conversationId: string, schedule: ScheduleRequestPayload): Promise<void> {
+  await apiFetch<{}>(`/messages/conversations/${conversationId}/schedule`, {
+    method: "PATCH",
+    body: JSON.stringify({
+      startDate: schedule.startDate,
+      endDate: schedule.endDate,
+      startTime: schedule.startTime,
+      endTime: schedule.endTime,
+      scheduleMessage: (schedule.message ?? "").trim() || undefined,
+    }),
+  });
+  emitMessagesUpdate();
+}
+
 export async function toggleConversationDealAgreement(conversationId: string): Promise<void> {
   await apiFetch<{}>(`/messages/conversations/${conversationId}/deal`, {
     method: "PATCH",

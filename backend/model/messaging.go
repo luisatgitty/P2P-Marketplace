@@ -88,6 +88,14 @@ type UpdateConversationOfferBody struct {
 	OfferMessage string `json:"offerMessage"`
 }
 
+type UpdateConversationScheduleBody struct {
+	StartDate       string `json:"startDate"`
+	EndDate         string `json:"endDate"`
+	StartTime       string `json:"startTime"`
+	EndTime         string `json:"endTime"`
+	ScheduleMessage string `json:"scheduleMessage"`
+}
+
 type SendMessageBody struct {
 	Content     string                  `json:"content"`
 	Attachments []MessageAttachmentBody `json:"attachments"`

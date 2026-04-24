@@ -247,7 +247,12 @@ export function useListingContextActions({
 
   const handleEditScheduleAction = async (payload: ScheduleRequestPayload) => {
     try {
-      await runScheduleUpdate(listing.id, payload);
+      await runScheduleUpdate({
+        listingId: listing.id,
+        conversationId,
+        isSeller,
+        payload,
+      });
       await onOfferUpdated?.();
       setEditScheduleOpen(false);
       toast.success('Schedule request sent.', { position: 'top-center' });

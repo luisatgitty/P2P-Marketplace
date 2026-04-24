@@ -69,6 +69,7 @@ func AppRoutes(app *fiber.App) {
 	app.Post("/messages/conversations/from-listing", controller.AuthenticateUser, privateLimiter, controller.CreateConversationFromListing)
 	app.Get("/messages/conversations/:id", controller.AuthenticateUser, privateLimiter, controller.GetConversation)
 	app.Patch("/messages/conversations/:id/offer", controller.AuthenticateUser, privateLimiter, controller.UpdateConversationOfferByOwner)
+	app.Patch("/messages/conversations/:id/schedule", controller.AuthenticateUser, privateLimiter, controller.UpdateConversationScheduleByOwner)
 	app.Patch("/messages/conversations/:id/deal", controller.AuthenticateUser, privateLimiter, controller.ToggleConversationDealAgreement)
 	app.Get("/messages/conversations/:id/messages", controller.AuthenticateUser, privateLimiter, controller.GetMessages)
 	app.Post("/messages/conversations/:id/messages", controller.AuthenticateUser, privateLimiter, controller.SendMessage)
