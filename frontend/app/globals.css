@@ -196,7 +196,7 @@ body                       { background-color: #faf6f0; }
 
 @layer components {
   .tab-nav-base {
-    @apply flex items-center gap-1.5 px-2.5 sm:px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all duration-150 select-none;
+    @apply flex items-center gap-1.5 px-2.5 sm:px-3.5 py-1.5 rounded-lg text-sm font-semibold transition-all duration-150 select-none;
   }
 
   .tab-nav-active {
@@ -208,7 +208,7 @@ body                       { background-color: #faf6f0; }
   }
 
   .tab-page-base {
-    @apply text-sm font-medium rounded-lg;
+    @apply px-2.5 sm:px-3.5 py-1.5 text-sm font-semibold rounded-lg;
   }
 
   .tab-active {

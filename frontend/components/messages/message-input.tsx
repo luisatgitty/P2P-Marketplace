@@ -203,7 +203,7 @@ export default function MessageInput({
   };
 
 return (
-  <div className="px-3 pt-3 pb-4">
+  <div className="pt-3 pb-4 px-4 2xl:px-64">
 
     {/* ── Reply banner ───────────────────────────────────────────────── */}
     {replyTo && (

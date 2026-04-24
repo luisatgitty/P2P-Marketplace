@@ -27,6 +27,7 @@ import { openOrCreateConversationFromListing } from "@/services/messagingService
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { useConfirmDialog } from "@/utils/ConfirmDialogContext";
 import { SafeImage } from "@/components/ui/safe-image";
 import { ImageLink } from "@/components/image-link";
 import { formatPrice, formatTimeAgo } from "@/utils/string-builder";
@@ -168,6 +169,7 @@ export default function ListingDetailPage() {
   const { id }   = useParams<{ id: string }>();
   const router   = useRouter();
   const { user, isAuth, isUserOnline } = useUser();
+  const { openDialog } = useConfirmDialog();
 
   const [listing,     setListing]    = useState<PostCardProps | null>(null);
   const [extra,       setExtra]      = useState<ExtraDetail>(
@@ -377,7 +379,7 @@ export default function ListingDetailPage() {
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to update bookmark.";
-      window.alert(message);
+      toast.error(message, { position: "top-center" });
     } finally {
       setIsBookmarking(false);
     }
@@ -392,7 +394,7 @@ export default function ListingDetailPage() {
       router.push(`/messages/new?listingId=${listing.id}`);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to open conversation.";
-      window.alert(message);
+      toast.error(message, { position: "top-center" });
     } finally {
       setMessaging(false);
     }
@@ -469,52 +471,70 @@ export default function ListingDetailPage() {
     }
     if (!isOwnListing || deleting) return;
 
-    const confirmed = window.confirm("Delete this listing permanently? This action cannot be undone.");
-    if (!confirmed) return;
-
-    setDeleting(true);
-    try {
-      await deleteListing(id);
-
-      router.push("/profile");
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to remove listing.";
-      window.alert(message);
-    } finally {
-      setDeleting(false);
-    }
+    openDialog({
+      title: "Delete Listing",
+      message: "Delete this listing permanently? This action cannot be undone.",
+      confirmText: "Delete",
+      cancelText: "Cancel",
+      isDangerous: true,
+      onConfirm: () => {
+        void (async () => {
+          setDeleting(true);
+          try {
+            await deleteListing(id);
+            toast.success("Listing deleted.", { position: "top-center" });
+            router.push("/profile");
+          } catch (err) {
+            const message = err instanceof Error ? err.message : "Failed to remove listing.";
+            toast.error(message, { position: "top-center" });
+          } finally {
+            setDeleting(false);
+          }
+        })();
+      },
+      onCancel: () => {},
+    });
   }
 
   async function handleListingVisibility() {
-  if (!isAuth) {
-    router.push("/login");
-    return;
-  }
-  if (!isOwnListing || toggling) return;
+    if (!isAuth) {
+      router.push("/login");
+      return;
+    }
+    if (!isOwnListing || toggling) return;
 
-  const confirmed = window.confirm(`Are you sure you want to ${isListingAvailable ? "hide" : "show"} this listing?`);
-  if (!confirmed) return;
+    openDialog({
+      title: `${isListingAvailable ? "Hide" : "Show"} Listing`,
+      message: `Are you sure you want to ${isListingAvailable ? "hide" : "show"} this listing?`,
+      confirmText: "Confirm",
+      cancelText: "Cancel",
+      isDangerous: false,
+      onConfirm: () => {
+        void (async () => {
+          setToggling(true);
+          try {
+            const response = await toggleListingVisibility(id);
+            const nextStatus = response.status.toLowerCase();
 
-  setToggling(true);
-  try {
-    const response = await toggleListingVisibility(id);
-    const nextStatus = response.status.toLowerCase();
+            setListing((prev) => {
+              if (!prev) return prev;
+              return {
+                ...prev,
+                status: nextStatus,
+              };
+            });
 
-    setListing((prev) => {
-      if (!prev) return prev;
-      return {
-        ...prev,
-        status: nextStatus,
-      };
+            toast.success(nextStatus === "available" ? "Listing is now visible." : "Listing is now hidden.", { position: "top-center" });
+          } catch (err) {
+            const message = err instanceof Error ? err.message : "Failed to update listing visibility.";
+            toast.error(message, { position: "top-center" });
+          } finally {
+            setToggling(false);
+          }
+        })();
+      },
+      onCancel: () => {},
     });
-
-    toast.success(nextStatus === "available" ? "Listing is now visible." : "Listing is now hidden.", { position: "top-center" });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Failed to update listing visibility.";
-    toast.error(message, { position: "top-center" });
-  } finally {
-    setToggling(false);
-  }
   }
 
   return (
@@ -808,7 +828,6 @@ export default function ListingDetailPage() {
         onOfferAmountChange={setOfferAmt}
         note={offerMessage}
         onNoteChange={setOfferMessage}
-        notePlaceholder="e.g. Can we meet up in SM Calamba on Saturday?"
         submitLabel="Send Offer"
         submitting={submittingOffer}
         onSubmit={sendOffer}

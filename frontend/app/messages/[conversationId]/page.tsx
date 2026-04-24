@@ -21,6 +21,7 @@ import {
   openOrCreateConversationFromListing,
 } from "@/services/messagingService";
 import { useUser } from "@/utils/UserContext";
+import { MessageEditModal } from "@/components/messages/message-edit-modal";
 import MessageBubble      from "@/components/messages/message-bubble";
 import { useMessageShell } from "@/components/messages/message-shell-context";
 
@@ -100,74 +101,6 @@ function toDraftConversation(listing: PostCardProps): Conversation {
     unreadCount: 0,
     isSeller: false,
   };
-}
-
-// ─── Edit modal ───────────────────────────────────────────────────────────────
-
-function EditModal({
-  initial,
-  onSave,
-  onClose,
-}: {
-  initial: string;
-  onSave: (val: string) => void;
-  onClose: () => void;
-}) {
-  const [value, setValue] = useState(initial);
-  const ref = useRef<HTMLTextAreaElement>(null);
-
-  useEffect(() => { ref.current?.focus(); ref.current?.select(); }, []);
-
-  return (
-    <div className="fixed inset-0 z-100 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-      <div className={cn(
-        "w-full max-w-md bg-white dark:bg-[#1c1f2e] rounded-lg shadow-2xl border border-border",
-        "animate-in fade-in slide-in-from-bottom-4 duration-200"
-      )}>
-        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-          <h2 className="text-sm font-bold text-stone-900 dark:text-stone-50">Edit message</h2>
-          <button onClick={onClose} className="text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 text-lg leading-none">×</button>
-        </div>
-        <div className="p-4">
-          <textarea
-            ref={ref}
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); if (value.trim()) onSave(value.trim()); }
-              if (e.key === "Escape") onClose();
-            }}
-            rows={3}
-            className={cn(
-              "w-full resize-none rounded-lg px-3.5 py-2.5 text-sm outline-none",
-              "bg-stone-50 dark:bg-[#13151f] border border-border",
-              "text-stone-800 dark:text-stone-100 focus:ring-1 focus:ring-amber-500/50"
-            )}
-          />
-          <div className="flex justify-end gap-2 mt-3">
-            <button
-              onClick={onClose}
-              className="px-4 py-2 text-xs font-semibold rounded-lg text-stone-500 hover:bg-stone-100 dark:hover:bg-white/5 transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={() => { if (value.trim()) onSave(value.trim()); }}
-              disabled={!value.trim() || value.trim() === initial}
-              className={cn(
-                "px-4 py-2 text-xs font-semibold rounded-lg transition-colors",
-                value.trim() && value.trim() !== initial
-                  ? "bg-amber-700 text-white hover:bg-amber-600"
-                  : "bg-stone-100 dark:bg-[#252837] text-stone-400 cursor-not-allowed"
-              )}
-            >
-              Save
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
@@ -689,7 +622,6 @@ export default function ConversationPage() {
 
   const handleEditSave = async (newContent: string) => {
     if (!editTarget) return;
-    await editMessage(conversationId, editTarget.id, newContent);
     setMessages((prev) =>
       prev.map((m) => m.id === editTarget.id ? { ...m, content: newContent, isEdited: true } : m)
     );
@@ -714,7 +646,6 @@ export default function ConversationPage() {
     }
 
     await deleteConversation(conversationId);
-    toast.success("Conversation deleted", { position: "top-center" });
     router.push("/messages");
   }, [conversationId, isDraftConversation, router]);
 
@@ -835,7 +766,7 @@ export default function ConversationPage() {
           key={conversationId}
           ref={messagesContainerRef}
           onScroll={handleMessagesScroll}
-          className="h-full overflow-y-auto px-4 pt-24 pb-3 animate-in fade-in duration-500"
+          className="h-full pt-24 pb-3 px-4 2xl:px-64 overflow-y-auto animate-in fade-in duration-500"
         >
           <div className="min-h-full flex flex-col">
             {loadingOlder && (
@@ -927,8 +858,10 @@ export default function ConversationPage() {
 
       {/* Edit modal */}
       {editTarget && (
-        <EditModal
+        <MessageEditModal
           initial={editTarget.content}
+                   messageId={editTarget.id}
+                   conversationId={conversationId}
           onSave={handleEditSave}
           onClose={() => setEditTarget(null)}
         />

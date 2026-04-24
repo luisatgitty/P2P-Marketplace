@@ -695,23 +695,21 @@ function HomePageInner() {
         <div className="flex items-center gap-1 flex-wrap">
           <span className="text-sm text-stone-400 mr-2 hidden sm:inline">Sort:</span>
           {SORT_OPTIONS.map((opt) => (
-            <Button
-            variant={'ghost'}
-            size={'sm'}
-              key={opt.value}
-              onClick={() => {
-                setSort(opt.value);
-                updateUrlFromState({ sort: opt.value }, "replace");
-              }}
-              className={cn(
-                "tab-page-base",
-                sort === opt.value
-                  ? "tab-active"
-                  : "tab-inactive"
-              )}
-            >
+            <button
+                key={opt.value}
+                onClick={() => {
+                  setSort(opt.value);
+                  updateUrlFromState({ sort: opt.value }, "replace");
+                }}
+                className={cn(
+                  "tab-page-base",
+                  sort === opt.value
+                    ? "tab-active"
+                    : "tab-inactive"
+                )}
+              >
               {opt.label}
-            </Button>
+            </button>
           ))}
         </div>
       </div>
