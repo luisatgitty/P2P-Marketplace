@@ -11,8 +11,9 @@ import {
   CardContent,
 } from './ui/card';
 import { cn } from '@/lib/utils';
-import { ReactNode, useEffect, useState } from 'react';
+import { ReactNode, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { useModalFocusTrap } from '@/utils/useModalFocusTrap';
 
 export interface ModalFormCardProps {
   icon: LucideIcon;
@@ -44,11 +45,14 @@ export function ModalFormCard({
   children,
 }: ModalFormCardProps) {
   const [isMounted, setIsMounted] = useState(false);
+  const dialogRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setIsMounted(true);
     return () => setIsMounted(false);
   }, []);
+
+  useModalFocusTrap(dialogRef, isMounted, onClose);
 
   let iconColorClass = '';
   let btnColorClass = '';
@@ -79,7 +83,13 @@ export function ModalFormCard({
       className='fixed inset-0 z-100 flex items-end sm:items-center justify-center p-4 bg-black/60 backdrop-blur-sm'
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
-      <Card className='relative bg-background rounded-lg w-full max-w-sm shadow-2xl flex flex-col max-h-[95vh]'>
+      <Card
+        ref={dialogRef}
+        role='dialog'
+        aria-modal='true'
+        tabIndex={-1}
+        className='relative bg-background rounded-lg w-full max-w-sm shadow-2xl flex flex-col max-h-[95vh]'
+      >
         {/* Close Button */}
         <Button
           variant={'ghost'}

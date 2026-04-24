@@ -15,6 +15,7 @@ import { MESSAGE_MAX_LENGTH } from '@/utils/validation';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { editMessage } from '@/services/messagingService';
+import { useModalFocusTrap } from '@/utils/useModalFocusTrap';
 
 export function MessageEditModal({
   initial,
@@ -31,6 +32,7 @@ export function MessageEditModal({
 }) {
   const [value, setValue] = useState(initial);
   const ref = useRef<HTMLTextAreaElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
@@ -38,12 +40,20 @@ export function MessageEditModal({
     ref.current?.select();
   }, []);
 
+  useModalFocusTrap(dialogRef, true, onClose);
+
   return (
     <div
       className='fixed inset-0 z-100 flex items-end sm:items-center justify-center p-4 bg-black/60 backdrop-blur-sm'
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
-      <Card className='relative rounded-lg w-full max-w-sm shadow-2xl flex flex-col max-h-[95vh]'>
+      <Card
+        ref={dialogRef}
+        role='dialog'
+        aria-modal='true'
+        tabIndex={-1}
+        className='relative rounded-lg w-full max-w-sm shadow-2xl flex flex-col max-h-[95vh]'
+      >
         {/* Close Button */}
         <Button
           variant={'ghost'}
@@ -75,7 +85,6 @@ export function MessageEditModal({
                 e.preventDefault();
                 if (value.trim()) onSave(value.trim());
               }
-              if (e.key === 'Escape') onClose();
             }}
             rows={3}
             maxLength={MESSAGE_MAX_LENGTH}

@@ -5,11 +5,13 @@ import {
   useContext,
   useState,
   useCallback,
+  useRef,
   ReactNode,
 } from 'react';
 import { AlertCircle, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { useModalFocusTrap } from '@/utils/useModalFocusTrap';
 
 interface ConfirmDialogConfig {
   title?: string;
@@ -42,6 +44,7 @@ export function useConfirmDialog() {
 export function ConfirmDialogProvider({ children }: { children: ReactNode }) {
   const [dialog, setDialog] = useState<ConfirmDialogConfig | null>(null);
   const [isClosing, setIsClosing] = useState(false);
+  const dialogRef = useRef<HTMLDivElement>(null);
 
   const openDialog = useCallback((config: ConfirmDialogConfig) => {
     setIsClosing(false);
@@ -64,6 +67,8 @@ export function ConfirmDialogProvider({ children }: { children: ReactNode }) {
     }, 150);
   };
 
+  useModalFocusTrap(dialogRef, Boolean(dialog), handleCancel);
+
   return (
     <ConfirmDialogContext.Provider value={{ openDialog }}>
       {children}
@@ -82,10 +87,13 @@ export function ConfirmDialogProvider({ children }: { children: ReactNode }) {
           {/* Modal */}
           <div className='fixed inset-0 z-1000 flex items-center justify-center p-4'>
             <div
+              ref={dialogRef}
               className={cn(
                 'w-full max-w-sm rounded-lg border border-stone-200 dark:border-[#2a2d3e] bg-white dark:bg-[#1c1f2e] shadow-2xl transition-all duration-150',
                 isClosing ? 'opacity-0 scale-90' : 'opacity-100 scale-100',
               )}
+              role='dialog'
+              aria-modal='true'
             >
               {/* Header */}
               <div className='flex items-start justify-between gap-3 px-6 py-4 border-b border-stone-200 dark:border-[#2a2d3e]'>
