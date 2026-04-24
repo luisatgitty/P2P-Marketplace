@@ -216,24 +216,31 @@ export default function ChatHeader({ conversation, onDelete, onMarkedComplete, o
     }
   };
 
-  const handleDeleteReview = async () => {
+  const handleDeleteReview = () => {
     if (!existingReview || reviewSubmitting || reviewDeleting) return;
 
-    const confirmed = window.confirm("Delete your review for this item?");
-    if (!confirmed) return;
-
-    setReviewDeleting(true);
-    try {
-      await runReviewDelete(listing.id);
-      setExistingReview(null);
-      toast.success("Review deleted successfully.", { position: "top-center" });
-      handleCloseReviewModal();
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err || "Failed to delete review.");
-      toast.error(message, { position: "top-center" });
-    } finally {
-      setReviewDeleting(false);
-    }
+    openDialog({
+      title: "Delete Review",
+      message: "Delete your review for this item?",
+      confirmText: "Delete",
+      cancelText: "Cancel",
+      isDangerous: true,
+      onConfirm: async () => {
+        setReviewDeleting(true);
+        try {
+          await runReviewDelete(listing.id);
+          setExistingReview(null);
+          toast.success("Review deleted successfully.", { position: "top-center" });
+          handleCloseReviewModal();
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err || "Failed to delete review.");
+          toast.error(message, { position: "top-center" });
+        } finally {
+          setReviewDeleting(false);
+        }
+      },
+      onCancel: () => {},
+    });
   };
 
   const handleEditPriceAction = async () => {

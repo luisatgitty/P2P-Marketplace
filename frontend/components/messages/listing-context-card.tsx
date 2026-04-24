@@ -14,6 +14,7 @@ import { type ScheduleRequestPayload } from "@/services/messagingService";
 import { ConfirmActionModal } from "@/components/confirm-action-modal"; 
 import OfferModal from "@/components/offer-modal";
 import { ScheduleModal } from "@/components/schedule-modal";
+import { useConfirmDialog } from "@/utils/ConfirmDialogContext";
 import { ModalFormCard } from "../modal-form-card";
 import { ImageLink } from "../image-link";
 import { formatPrice } from "@/utils/string-builder";
@@ -45,6 +46,7 @@ export default function ListingContextCard({
   onMarkedComplete,
   onOfferUpdated,
 }: ListingContextCardProps) {
+  const { openDialog } = useConfirmDialog();
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [markingComplete, setMarkingComplete] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(false);
@@ -168,24 +170,31 @@ export default function ListingContextCard({
     }
   };
 
-  const handleDeleteReview = async () => {
+  const handleDeleteReview = () => {
     if (!existingReview || reviewSubmitting || reviewDeleting) return;
 
-    const confirmed = window.confirm("Delete your review for this item?");
-    if (!confirmed) return;
-
-    setReviewDeleting(true);
-    try {
-      await runReviewDelete(listing.id);
-      setExistingReview(null);
-      toast.success("Review deleted successfully.", { position: "top-center" });
-      handleCloseReviewModal();
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err || "Failed to delete review.");
-      toast.error(message, { position: "top-center" });
-    } finally {
-      setReviewDeleting(false);
-    }
+    openDialog({
+      title: "Delete Review",
+      message: "Delete your review for this item?",
+      confirmText: "Delete",
+      cancelText: "Cancel",
+      isDangerous: true,
+      onConfirm: async () => {
+        setReviewDeleting(true);
+        try {
+          await runReviewDelete(listing.id);
+          setExistingReview(null);
+          toast.success("Review deleted successfully.", { position: "top-center" });
+          handleCloseReviewModal();
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err || "Failed to delete review.");
+          toast.error(message, { position: "top-center" });
+        } finally {
+          setReviewDeleting(false);
+        }
+      },
+      onCancel: () => {},
+    });
   };
 
   const handleConfirmMarkComplete = async () => {
