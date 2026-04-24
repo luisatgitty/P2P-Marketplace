@@ -196,9 +196,10 @@ func GetAdminUsers(query model.AdminUsersQuery) ([]model.AdminUserListItemFromDb
 	}
 
 	status := strings.ToUpper(strings.TrimSpace(query.Status))
-	if status == "ACTIVE" {
+	switch status {
+	case "ACTIVE":
 		whereParts = append(whereParts, "u.is_active = TRUE")
-	} else if status == "INACTIVE" {
+	case "INACTIVE":
 		whereParts = append(whereParts, "u.is_active = FALSE")
 	}
 
@@ -442,11 +443,12 @@ func GetAdminAccounts(query model.AdminAccountsQuery) ([]model.AdminAccountListI
 	}
 
 	statusFilter := strings.ToUpper(strings.TrimSpace(query.Status))
-	if statusFilter == "ACTIVE" {
+	switch statusFilter {
+	case "ACTIVE":
 		whereParts = append(whereParts, "u.deleted_at IS NULL AND u.is_active = TRUE")
-	} else if statusFilter == "INACTIVE" {
+	case "INACTIVE":
 		whereParts = append(whereParts, "u.deleted_at IS NULL AND u.is_active = FALSE")
-	} else if statusFilter == "DELETED" {
+	case "DELETED":
 		whereParts = append(whereParts, "u.deleted_at IS NOT NULL")
 	}
 

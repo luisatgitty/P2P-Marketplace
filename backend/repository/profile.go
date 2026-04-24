@@ -693,19 +693,19 @@ func SubmitUserVerification(userId string, body model.SubmitVerificationBody) er
 		return err
 	}
 
-	frontURL, err := saveVerificationImageTx(tx, userId, body.IdImageFront, "id-front")
+	frontURL, err := saveVerificationImageTx(userId, body.IdImageFront, "id-front")
 	if err != nil {
 		tx.Rollback()
 		return err
 	}
 
-	backURL, err := saveVerificationImageTx(tx, userId, body.IdImageBack, "id-back")
+	backURL, err := saveVerificationImageTx(userId, body.IdImageBack, "id-back")
 	if err != nil {
 		tx.Rollback()
 		return err
 	}
 
-	selfieURL, err := saveVerificationImageTx(tx, userId, body.SelfieImage, "selfie")
+	selfieURL, err := saveVerificationImageTx(userId, body.SelfieImage, "selfie")
 	if err != nil {
 		tx.Rollback()
 		return err
@@ -775,7 +775,7 @@ func SubmitUserVerification(userId string, body model.SubmitVerificationBody) er
 	return nil
 }
 
-func saveVerificationImageTx(tx *gorm.DB, userId string, image *model.ListingImageBody, kind string) (string, error) {
+func saveVerificationImageTx(userId string, image *model.ListingImageBody, kind string) (string, error) {
 	if image == nil || strings.TrimSpace(image.Data) == "" {
 		return "", fmt.Errorf("Missing verification image")
 	}
