@@ -10,7 +10,6 @@ import { useUser } from "@/utils/UserContext";
 import { useConfirmDialog } from "@/utils/ConfirmDialogContext";
 import { submitUserListingReport } from "@/services/listingDetailService";
 import { ReportModal } from "@/components/report-modal";
-import { ConfirmActionModal } from "@/components/confirm-action-modal";
 import ListingTypeBadge from "@/components/listing-type-badge";
 import VerificationBadge from "@/components/verification-badge";
 import { ImageLink } from "../image-link";
@@ -42,7 +41,6 @@ export default function ChatHeader({ conversation, onDelete, onMarkedComplete, o
   const {
     actionState,
     state: {
-      markCompleteOpen,
       editPriceOpen,
       editScheduleOpen,
       reviewOpen,
@@ -59,7 +57,6 @@ export default function ChatHeader({ conversation, onDelete, onMarkedComplete, o
       newPrice,
     },
     setters: {
-      setMarkCompleteOpen,
       setEditPriceOpen,
       setEditScheduleOpen,
       setReviewOpen,
@@ -73,7 +70,7 @@ export default function ChatHeader({ conversation, onDelete, onMarkedComplete, o
       handleOpenReviewModal,
       handleReviewAction,
       handleDeleteReview,
-      handleConfirmMarkComplete,
+      handleOpenMarkCompleteDialog,
       handleEditPriceAction,
       handleCloseEditPriceModal,
       handleDealAction,
@@ -171,7 +168,7 @@ export default function ChatHeader({ conversation, onDelete, onMarkedComplete, o
     ...(canEditPrice ? [{ icon: Edit2, label: !isSold && hasTransaction && (normalizedTransactionStatus === "PENDING" || normalizedTransactionStatus === "CONFIRMED") ? "Edit Price" : "Offer Price", action: () => { setMenuOpen(false); setEditPriceOpen(true); }, danger: false }] : []),
     ...(canEditSchedule ? [{ icon: CalendarDays, label: hasTransaction && (normalizedTransactionStatus === "PENDING" || normalizedTransactionStatus === "CONFIRMED") ? "Edit Schedule" : "Provide Schedule", action: () => { setMenuOpen(false); setEditScheduleOpen(true); }, danger: false }] : []),
     ...(!shouldHideButtons && canDeal ? [{ icon: Handshake, label: hasAgreed ? "Agreed" : "Deal", action: () => { setMenuOpen(false); void handleDealAction(); }, danger: false, disabled: dealSubmitting }] : []),
-    ...(!shouldHideButtons && canMarkAsComplete ? [{ icon: CheckCircle, label: listing.listingType === "SELL" ? "Mark as Sold" : "Mark as Complete", action: () => { setMenuOpen(false); setMarkCompleteOpen(true); }, danger: false }] : []),
+    ...(!shouldHideButtons && canMarkAsComplete ? [{ icon: CheckCircle, label: listing.listingType === "SELL" ? "Mark as Sold" : "Mark as Fulfilled", action: () => { setMenuOpen(false); handleOpenMarkCompleteDialog(); }, danger: false }] : []),
     ...(!shouldHideButtons && canReview ? [{ icon: Star, label: reviewLoading ? "Loading Review..." : existingReview ? "Edit Review" : "Review", action: () => { setMenuOpen(false); handleOpenReviewModal(); }, danger: false, disabled: reviewLoading }] : []),
     ...(!hideReportUserMenuItem ? [{ icon: Flag, label: "Report User", action: () => { setMenuOpen(false); setReportOpen(true); }, danger: false }] : []),
     { icon: Trash2,       label: "Delete Chat",    action: handleDeleteChat, danger: true },
@@ -263,17 +260,7 @@ export default function ChatHeader({ conversation, onDelete, onMarkedComplete, o
       onClose={() => setReportOpen(false)}
       onSubmit={handleSubmitReport}
     />
-    <ConfirmActionModal
-      open={markCompleteOpen}
-      title={listing.listingType === "SELL" ? "Mark item as sold" : "Mark transaction as complete"}
-      message={listing.listingType === "SELL"
-        ? "Please confirm that this For Sale item has already been sold. This action will mark the listing as SOLD."
-        : "Please confirm that this transaction is complete. This will mark the confirmed transaction as COMPLETED."}
-      confirmLabel="Confirm"
-      loading={markingComplete}
-      onConfirm={handleConfirmMarkComplete}
-      onClose={() => setMarkCompleteOpen(false)}
-    />
+
     <OfferModal
       open={editPriceOpen}
       title="Edit Offered Price"

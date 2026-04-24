@@ -36,7 +36,6 @@ export function useListingContextActions({
 }: UseListingContextActionsParams) {
   const { openDialog } = useConfirmDialog();
   const actionState = getListingContextActionState(listing, isSeller, hideActionButtons);
-  const [markCompleteOpen, setMarkCompleteOpen] = useState(false);
   const [editPriceOpen, setEditPriceOpen] = useState(false);
   const [editScheduleOpen, setEditScheduleOpen] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(false);
@@ -180,7 +179,6 @@ export function useListingContextActions({
     try {
       await runMarkListingAsComplete(listing.id);
       toast.success(listing.listingType === 'SELL' ? 'Listing marked as sold.' : 'Listing marked as complete.', { position: 'top-center' });
-      setMarkCompleteOpen(false);
       await onMarkedComplete?.();
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err || 'Failed to complete listing transaction.');
@@ -188,6 +186,21 @@ export function useListingContextActions({
     } finally {
       setMarkingComplete(false);
     }
+  };
+
+  const handleOpenMarkCompleteDialog = () => {
+    if (!actionState.canMarkAsComplete) return;
+
+    openDialog({
+      title: listing.listingType === 'SELL' ? 'Mark item as sold' : 'Mark transaction as fulfilled',
+      message: listing.listingType === 'SELL'
+        ? 'Please confirm that this For Sale item has already been sold. This action will mark the listing as sold, and buyer will be able to provide review.'
+        : 'Please confirm that this transaction is fulfilled. This will mark the transaction as completed, and client will be able to provide review.',
+      confirmText: 'Confirm',
+      isDangerous: false,
+      onConfirm: () => void handleConfirmMarkComplete(),
+      onCancel: () => {},
+    });
   };
 
   const handleEditPriceAction = async () => {
@@ -266,7 +279,6 @@ export function useListingContextActions({
   return {
     actionState,
     state: {
-      markCompleteOpen,
       editPriceOpen,
       editScheduleOpen,
       reviewOpen,
@@ -283,7 +295,6 @@ export function useListingContextActions({
       newPrice,
     },
     setters: {
-      setMarkCompleteOpen,
       setEditPriceOpen,
       setEditScheduleOpen,
       setReviewOpen,
@@ -297,7 +308,7 @@ export function useListingContextActions({
       handleOpenReviewModal,
       handleReviewAction,
       handleDeleteReview,
-      handleConfirmMarkComplete,
+      handleOpenMarkCompleteDialog,
       handleEditPriceAction,
       handleCloseEditPriceModal,
       handleDealAction,

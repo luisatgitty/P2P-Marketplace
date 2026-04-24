@@ -10,8 +10,7 @@ import type { ConversationListing } from "@/types/messaging";
 import {
   type ListingReviewPayload,
 } from "@/services/listingDetailService";
-import { type ScheduleRequestPayload } from "@/services/messagingService";
-import { ConfirmActionModal } from "@/components/confirm-action-modal"; 
+import { type ScheduleRequestPayload } from "@/services/messagingService"; 
 import OfferModal from "@/components/offer-modal";
 import { ScheduleModal } from "@/components/schedule-modal";
 import { ModalFormCard } from "../modal-form-card";
@@ -39,7 +38,6 @@ export default function ListingContextCard({
   const {
     actionState,
     state: {
-      markCompleteOpen,
       editPriceOpen,
       editScheduleOpen,
       reviewOpen,
@@ -56,7 +54,6 @@ export default function ListingContextCard({
       newPrice,
     },
     setters: {
-      setMarkCompleteOpen,
       setEditPriceOpen,
       setEditScheduleOpen,
       setReviewOpen,
@@ -70,7 +67,7 @@ export default function ListingContextCard({
       handleOpenReviewModal,
       handleReviewAction,
       handleDeleteReview,
-      handleConfirmMarkComplete,
+      handleOpenMarkCompleteDialog,
       handleEditPriceAction,
       handleCloseEditPriceModal,
       handleDealAction,
@@ -204,7 +201,7 @@ export default function ListingContextCard({
           {!shouldHideButtons && canMarkAsComplete && (
             <button
               type="button"
-              onClick={() => setMarkCompleteOpen(true)}
+              onClick={() => handleOpenMarkCompleteDialog()}
               className="px-2.5 py-2 rounded-md text-[11px] font-semibold text-white bg-amber-700 hover:bg-amber-600 transition-colors shrink-0"
               title={listing.listingType === "SELL" ? "Mark as Sold" : "Mark as Fulfilled"}
             >
@@ -231,17 +228,7 @@ export default function ListingContextCard({
         </div>
         
       </div>
-      <ConfirmActionModal
-        open={markCompleteOpen}
-        title={listing.listingType === "SELL" ? "Mark item as sold" : "Mark transaction as fulfilled"}
-        message={listing.listingType === "SELL"
-          ? "Please confirm that this For Sale item has already been sold. This action will mark the listing as sold, and buyer will be able to provide review."
-          : "Please confirm that this transaction is fulfilled. This will mark the transaction as completed, and client will be able to provide review."}
-        confirmLabel="Confirm"
-        loading={markingComplete}
-        onConfirm={handleConfirmMarkComplete}
-        onClose={() => setMarkCompleteOpen(false)}
-      />
+
 
       {reviewOpen && (
         <div
