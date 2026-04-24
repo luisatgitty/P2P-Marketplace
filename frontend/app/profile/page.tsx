@@ -37,13 +37,18 @@ import { SafeImage } from "@/components/ui/safe-image";
 import { ImageLink } from "@/components/image-link";
 import { formatPrice } from "@/utils/string-builder";
 import { AUTH_LIMITS, isValidName } from "@/utils/validation";
+import { useConfirmDialog } from "@/utils/ConfirmDialogContext";
 import {
   encodeImageToPayload,
   encodeSquareProfileImageToPayload,
 } from "@/lib/imageCompression";
+import {
+  formatMemberSince,
+  formatLastActive,
+  formatOverallRating
+} from "@/utils/string-builder";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-type VerificationState = "unverified" | "pending" | "verified" | "rejected";
 type ListingTab = "all" | "active" | "sold" | "booked";
 type ProfileTab = "listings" | "bookmarks" | "reviews";
 type ReviewTab = "received" | "personal";
@@ -81,68 +86,7 @@ function normalizeEditableProfile(form: EditableProfileSnapshot): EditableProfil
   };
 }
 
-// ─── Mock data ────────────────────────────────────────────────────────────────
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-function resolveVerificationState(status: string): VerificationState {
-  const normalized = status.toLowerCase();
-  if (normalized === "verified") return "verified";
-  if (normalized === "pending")  return "pending";
-  if (normalized === "rejected") return "rejected";
-  return "unverified";
-}
-
-function formatMemberSince(createdAt?: string): string {
-  if (!createdAt) return "Member since —";
-
-  const date = new Date(createdAt);
-  if (Number.isNaN(date.getTime())) return "Member since —";
-
-  return `Member since ${date.toLocaleDateString("en-PH", {
-    month: "short",
-    year: "numeric",
-  })}`;
-}
-
-function formatLastActive(lastLoginAt?: string): string {
-  if (!lastLoginAt) return "Last active —";
-
-  const date = new Date(lastLoginAt);
-  if (Number.isNaN(date.getTime())) return "Last active —";
-
-  const diffMs = Math.max(0, Date.now() - date.getTime());
-  const minute = 60 * 1000;
-  const hour = 60 * minute;
-  const day = 24 * hour;
-
-  if (diffMs < minute) return "Last active just now";
-  if (diffMs < hour) {
-    const minutes = Math.floor(diffMs / minute);
-    return `Last active ${minutes} minute${minutes === 1 ? "" : "s"} ago`;
-  }
-  if (diffMs < day) {
-    const hours = Math.floor(diffMs / hour);
-    return `Last active ${hours} hour${hours === 1 ? "" : "s"} ago`;
-  }
-  if (diffMs < 7 * day) {
-    const days = Math.floor(diffMs / day);
-    return `Last active ${days} day${days === 1 ? "" : "s"} ago`;
-  }
-
-  return `Last active ${date.toLocaleDateString("en-PH", {
-    month: "short",
-    day: "2-digit",
-    year: "numeric",
-  })}`;
-}
-
-function formatOverallRating(rating?: number, reviewCount?: number): string {
-  const count = reviewCount ?? 0;
-  if (count <= 0) return "No ratings yet";
-
-  const safeRating = Number.isFinite(rating) ? Number(rating) : 0;
-  return `${safeRating.toFixed(1)} (${count})`;
-}
-
 function AddListingCard() {
   return (
     <Link href="/create" className="block group">
@@ -304,12 +248,13 @@ export default function ProfilePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, isUserOnline, saveUserData, clearUserData } = useUser();
+  const { openDialog } = useConfirmDialog();
   const externalUserId = (searchParams.get("userId") ?? "").trim();
   const ownUserId = (user?.userId ?? "").trim();
   const isSelfProfileRequest = externalUserId !== "" && ownUserId !== "" && externalUserId === ownUserId;
   const isViewingExternalProfile = externalUserId !== "" && !isSelfProfileRequest;
   const [profileUser, setProfileUser] = useState<ProfilePayload["user"] | null>(null);
-  const verificationState: VerificationState = resolveVerificationState(profileUser?.status ?? user?.status ?? "");
+  const verificationState = profileUser?.status ?? user?.status ?? "";
 
   const [editOpen, setEditOpen] = useState(false);
   const [form, setForm] = useState<ProfileForm>({
@@ -844,18 +789,30 @@ export default function ProfilePage() {
   async function handleDeactivateAccount() {
     if (deactivating) return;
 
-    const confirmed = window.confirm("Deactivate your account? You will be logged out and cannot log in until support reactivates it.");
-    if (!confirmed) return;
-
-    setDeactivating(true);
-    try {
-      await deactivateProfile();
-      await clearUserData();
-    } catch {
-      showErrorToast("Failed to deactivate account");
-    } finally {
-      setDeactivating(false);
-    }
+    openDialog({
+      title: "Deactivate Account",
+      message:
+        "Deactivate your account? You will be logged out and cannot log in until support reactivates it.",
+      confirmText: "Deactivate",
+      cancelText: "Cancel",
+      isDangerous: true,
+      onConfirm: () => {
+        void (async () => {
+          setDeactivating(true);
+          try {
+            await deactivateProfile();
+            await clearUserData();
+            showSuccessToast("Account deactivated. You have been logged out.");
+            router.push("/login");
+          } catch {
+            showErrorToast("Failed to deactivate account");
+          } finally {
+            setDeactivating(false);
+          }
+        })();
+      },
+      onCancel: () => {},
+    });
   }
 
   const fullName = profileUser ? `${profileUser.firstName} ${profileUser.lastName}` : "—";
@@ -1042,7 +999,7 @@ export default function ProfilePage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="text-xs rounded-lg border-stone-200 dark:border-[#2a2d3e] text-stone-600 dark:text-stone-300 hover:border-stone-400 dark:hover:border-stone-500 dark:bg-transparent dark:hover:bg-[#252837]"
+                  className="rounded-lg"
                   onClick={handleEditProfileClick}
                   disabled={loadingEditProfile}>
                   <Edit2 className="w-3 h-3" />
@@ -1054,7 +1011,7 @@ export default function ProfilePage() {
             {/* Name + badge */}
             <div className="flex flex-wrap items-center gap-2 mb-1">
               <h1 className="text-xl font-bold text-stone-900 dark:text-stone-100">{fullName}</h1>
-              <VerificationBadge verified={verificationState === "verified"} size={16} />
+              <VerificationBadge verified={verificationState === "VERIFIED"} size={16} />
             </div>
             <p className="text-sm text-stone-400 dark:text-stone-500 mb-3">{profileUser?.bio}</p>
 
@@ -1264,9 +1221,7 @@ export default function ProfilePage() {
             <div className="flex items-center justify-between px-4 pt-3 pb-2">
               <div className="flex gap-1">
                 {(["all", "active", "sold", "booked"] as const).map((tab) => (
-                  <Button
-                    variant={'ghost'}
-                    size={'sm'}
+                  <button
                     key={tab}
                     onClick={() => setListingTab(tab)}
                     className={cn("tab-page-base",
@@ -1280,7 +1235,7 @@ export default function ProfilePage() {
                       : tab === "sold"
                         ? `Sold (${soldListings.length})`
                         : `Booked (${bookedListings.length})`}
-                  </Button>
+                  </button>
                 ))}
               </div>
               
@@ -1299,7 +1254,7 @@ export default function ProfilePage() {
                 <p className="font-semibold text-stone-400 text-sm">No listings yet</p>
                 {isVerifiedSeller && (
                   <Link href="/create">
-                    <Button size="sm" className="mt-4 rounded-full bg-stone-900 hover:bg-stone-800 text-white text-xs">
+                    <Button className="mt-4 rounded-lg bg-stone-900 hover:bg-stone-800 text-white text-sm">
                       <Plus className="w-3 h-3" /> Add Listing
                     </Button>
                   </Link>
@@ -1340,9 +1295,7 @@ export default function ProfilePage() {
                     { key: "received", label: `Reviews by Others (${receivedReviews.length})` },
                     { key: "personal", label: `Personal Reviews (${personalReviews.length})` },
                   ] as const).map((tabItem) => (
-                    <Button
-                      variant={'ghost'}
-                      size={'sm'}
+                    <button
                       key={tabItem.key}
                       onClick={() => setReviewTab(tabItem.key)}
                       className={cn(
@@ -1353,7 +1306,7 @@ export default function ProfilePage() {
                       )}
                     >
                       {tabItem.label}
-                    </Button>
+                    </button>
                   ))}
                 </div>
               </div>

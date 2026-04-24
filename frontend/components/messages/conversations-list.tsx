@@ -9,16 +9,6 @@ import { getConversationsPage } from "@/services/messagingService";
 import ConversationItem from "./conversation-item";
 import EmptyState from "./empty-state";
 
-function filterByTab(conversations: Conversation[], tab: MessageTab): Conversation[] {
-  switch (tab) {
-    case "buying":   return conversations.filter((c) => !c.isSeller && c.listing.listingType === "SELL");
-    case "selling":  return conversations.filter((c) =>  c.isSeller && c.listing.listingType === "SELL");
-    case "rental":   return conversations.filter((c) => c.listing.listingType === "RENT");
-    case "services": return conversations.filter((c) => c.listing.listingType === "SERVICE");
-    default:         return conversations;
-  }
-}
-
 interface ConversationsListProps {
   activeTab: MessageTab;
 }
@@ -34,6 +24,7 @@ export default function ConversationsList({ activeTab }: ConversationsListProps)
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [totalCount, setTotalCount] = useState(0);
+  const [searchQuery, setSearchQuery] = useState("");
   const listViewportRef = useRef<HTMLDivElement>(null);
   const loadMoreTriggerRef = useRef<HTMLDivElement>(null);
 
@@ -43,7 +34,12 @@ export default function ConversationsList({ activeTab }: ConversationsListProps)
     }
 
     try {
-      const page = await getConversationsPage({ limit: PAGE_SIZE, offset: 0 });
+      const page = await getConversationsPage({
+        limit: PAGE_SIZE,
+        offset: 0,
+        tab: activeTab,
+        search: searchQuery,
+      });
       setAllConversations(page.conversations);
       setTotalCount(page.total);
       setHasMore(page.offset + page.conversations.length < page.total);
@@ -58,7 +54,7 @@ export default function ConversationsList({ activeTab }: ConversationsListProps)
         setLoading(false);
       }
     }
-  }, [PAGE_SIZE]);
+  }, [PAGE_SIZE, activeTab, searchQuery]);
 
   const loadMoreConvs = useCallback(async () => {
     if (loading || loadingMore || !hasMore) return;
@@ -68,6 +64,8 @@ export default function ConversationsList({ activeTab }: ConversationsListProps)
       const page = await getConversationsPage({
         limit: PAGE_SIZE,
         offset: allConversations.length,
+        tab: activeTab,
+        search: searchQuery,
       });
 
       setAllConversations((prev) => {
@@ -82,14 +80,19 @@ export default function ConversationsList({ activeTab }: ConversationsListProps)
     } finally {
       setLoadingMore(false);
     }
-  }, [PAGE_SIZE, allConversations.length, hasMore, loading, loadingMore]);
+  }, [PAGE_SIZE, activeTab, allConversations.length, hasMore, loading, loadingMore, searchQuery]);
 
   useEffect(() => { loadConvs(true); }, [loadConvs]);
 
   useEffect(() => {
     const refresh = async () => {
       const refreshLimit = Math.max(PAGE_SIZE, allConversations.length || PAGE_SIZE);
-      const page = await getConversationsPage({ limit: refreshLimit, offset: 0 });
+      const page = await getConversationsPage({
+        limit: refreshLimit,
+        offset: 0,
+        tab: activeTab,
+        search: searchQuery,
+      });
       setAllConversations(page.conversations);
       setTotalCount(page.total);
       setHasMore(page.offset + page.conversations.length < page.total);
@@ -97,30 +100,26 @@ export default function ConversationsList({ activeTab }: ConversationsListProps)
 
     window.addEventListener("messages:updated", refresh);
     return () => window.removeEventListener("messages:updated", refresh);
-  }, [PAGE_SIZE, allConversations.length]);
+  }, [PAGE_SIZE, activeTab, allConversations.length, searchQuery]);
 
-  const tabFiltered = filterByTab(allConversations, activeTab);
+  const filtered = allConversations;
 
-  const filtered = search.trim()
-    ? tabFiltered.filter((c) =>
-        [
-          `${c.otherParticipant.firstName} ${c.otherParticipant.lastName}`,
-          c.listing.title,
-          c.lastMessage ?? "",
-        ].some((s) => s.toLowerCase().includes(search.toLowerCase()))
-      )
-    : tabFiltered;
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setSearchQuery(search.trim());
+    }, 250);
+
+    return () => window.clearTimeout(timer);
+  }, [search]);
 
   useEffect(() => {
     if (loading || loadingMore || !hasMore) return;
-    if (search.trim()) return;
     if (filtered.length > 0) return;
     void loadMoreConvs();
-  }, [filtered.length, hasMore, loadMoreConvs, loading, loadingMore, search]);
+  }, [filtered.length, hasMore, loadMoreConvs, loading, loadingMore]);
 
   useEffect(() => {
     if (loading || loadingMore || !hasMore) return;
-    if (search.trim()) return;
 
     const root = listViewportRef.current;
     const target = loadMoreTriggerRef.current;
@@ -140,7 +139,7 @@ export default function ConversationsList({ activeTab }: ConversationsListProps)
 
     observer.observe(target);
     return () => observer.disconnect();
-  }, [hasMore, loadMoreConvs, loading, loadingMore, search]);
+  }, [hasMore, loadMoreConvs, loading, loadingMore]);
 
   return (
     <div className="flex flex-col h-full pb-16">
@@ -229,7 +228,7 @@ export default function ConversationsList({ activeTab }: ConversationsListProps)
               </div>
             )}
 
-            {!search.trim() && !hasMore && totalCount > PAGE_SIZE && (
+            {!hasMore && totalCount > PAGE_SIZE && (
               <div className="px-4 py-3 text-center text-xs text-stone-400 dark:text-stone-500">
                 End of conversations.
               </div>

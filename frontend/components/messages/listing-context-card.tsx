@@ -10,23 +10,13 @@ import type { ConversationListing } from "@/types/messaging";
 import {
   type ListingReviewPayload,
 } from "@/services/listingDetailService";
-import { type ScheduleRequestPayload } from "@/services/messagingService";
-import { ConfirmActionModal } from "@/components/confirm-action-modal"; 
+import { type ScheduleRequestPayload } from "@/services/messagingService"; 
 import OfferModal from "@/components/offer-modal";
 import { ScheduleModal } from "@/components/schedule-modal";
-import { ModalHeader } from "../modal-header";
+import { ModalFormCard } from "../modal-form-card";
 import { ImageLink } from "../image-link";
 import { formatPrice } from "@/utils/string-builder";
-import {
-  getListingContextActionState,
-  loadListingReview,
-  runDealToggle,
-  runMarkListingAsComplete,
-  runOfferUpdate,
-  runReviewDelete,
-  runReviewUpsert,
-  runScheduleUpdate,
-} from "./listing-context-actions";
+import { useListingContextActions } from "./use-listing-context-actions";
 
 interface ListingContextCardProps {
   conversationId?: string;
@@ -45,20 +35,52 @@ export default function ListingContextCard({
   onMarkedComplete,
   onOfferUpdated,
 }: ListingContextCardProps) {
-  const [confirmOpen, setConfirmOpen] = useState(false);
-  const [markingComplete, setMarkingComplete] = useState(false);
-  const [reviewOpen, setReviewOpen] = useState(false);
-  const [editPriceOpen, setEditPriceOpen] = useState(false);
-  const [editScheduleOpen, setEditScheduleOpen] = useState(false);
-  const [rating, setRating] = useState(0);
-  const [comment, setComment] = useState("");
-  const [offerMessage, setOfferMessage] = useState("");
-  const [reviewLoading, setReviewLoading] = useState(false);
-  const [priceSubmitting, setPriceSubmitting] = useState(false);
-  const [dealSubmitting, setDealSubmitting] = useState(false);
-  const [reviewSubmitting, setReviewSubmitting] = useState(false);
-  const [reviewDeleting, setReviewDeleting] = useState(false);
-  const [existingReview, setExistingReview] = useState<ListingReviewPayload | null>(null);
+  const {
+    actionState,
+    state: {
+      editPriceOpen,
+      editScheduleOpen,
+      reviewOpen,
+      rating,
+      comment,
+      offerMessage,
+      reviewLoading,
+      markingComplete,
+      priceSubmitting,
+      dealSubmitting,
+      reviewSubmitting,
+      reviewDeleting,
+      existingReview,
+      newPrice,
+    },
+    setters: {
+      setEditPriceOpen,
+      setEditScheduleOpen,
+      setReviewOpen,
+      setRating,
+      setComment,
+      setOfferMessage,
+      setNewPrice,
+    },
+    actions: {
+      handleCloseReviewModal,
+      handleOpenReviewModal,
+      handleReviewAction,
+      handleDeleteReview,
+      handleOpenMarkCompleteDialog,
+      handleEditPriceAction,
+      handleCloseEditPriceModal,
+      handleDealAction,
+      handleEditScheduleAction,
+    },
+  } = useListingContextActions({
+    listing,
+    isSeller,
+    hideActionButtons,
+    conversationId,
+    onMarkedComplete,
+    onOfferUpdated,
+  });
 
   const {
     normalizedTransactionStatus,
@@ -73,206 +95,9 @@ export default function ListingContextCard({
     scheduleValue,
     canEditPrice,
     canEditSchedule,
-  } = getListingContextActionState(listing, isSeller, hideActionButtons);
-  const [ newPrice, setNewPrice ] = useState(offeredPrice);
+  } = actionState;
   const isOfferChanged = Math.trunc(newPrice) !== Math.trunc(offeredPrice) || !hasTransaction;
   const REVIEW_MAX_LENGTH = 500;
-
-  useEffect(() => {
-    let mounted = true;
-
-    const loadExistingReview = async () => {
-      if (!canReview) {
-        if (mounted) setExistingReview(null);
-        return;
-      }
-
-      setReviewLoading(true);
-      try {
-        const payload = await loadListingReview(listing.id);
-        if (!mounted) return;
-        setExistingReview(payload);
-      } catch (err) {
-        if (!mounted) return;
-        const message = err instanceof Error ? err.message : String(err || "Failed to load review.");
-        toast.error(message, { position: "top-center" });
-      } finally {
-        if (mounted) setReviewLoading(false);
-      }
-    };
-
-    loadExistingReview();
-
-    return () => {
-      mounted = false;
-    };
-  }, [canReview, listing.id]);
-
-  const resetReviewForm = () => {
-    setRating(0);
-    setComment("");
-  };
-
-  const handleCloseReviewModal = () => {
-    if (reviewSubmitting || reviewDeleting) return;
-    setReviewOpen(false);
-    resetReviewForm();
-  };
-
-  const handleOpenReviewModal = () => {
-    if (reviewLoading) return;
-
-    setRating(existingReview?.rating ?? 0);
-    setComment(existingReview?.comment ?? "");
-    setReviewOpen(true);
-  };
-
-  const handleReviewAction = async () => {
-    if (reviewSubmitting || reviewDeleting) return;
-
-    if (rating <= 0) {
-      handleCloseReviewModal();
-      return;
-    }
-
-    const trimmedComment = comment.trim();
-    const isEditing = Boolean(existingReview);
-
-    if (
-      isEditing
-      && existingReview
-      && existingReview.rating === rating
-      && existingReview.comment.trim() === trimmedComment
-    ) {
-      toast.info("No changes to update.", { position: "top-center" });
-      handleCloseReviewModal();
-      return;
-    }
-
-    setReviewSubmitting(true);
-    try {
-      const savedReview = await runReviewUpsert({
-        listingId: listing.id,
-        rating,
-        comment: trimmedComment,
-        existingReview,
-      });
-      setExistingReview(savedReview);
-      toast.success(isEditing ? "Review updated successfully." : "Review submitted. Thank you for your feedback.", { position: "top-center" });
-      handleCloseReviewModal();
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err || "Failed to submit review.");
-      toast.error(message, { position: "top-center" });
-    } finally {
-      setReviewSubmitting(false);
-    }
-  };
-
-  const handleDeleteReview = async () => {
-    if (!existingReview || reviewSubmitting || reviewDeleting) return;
-
-    const confirmed = window.confirm("Delete your review for this item?");
-    if (!confirmed) return;
-
-    setReviewDeleting(true);
-    try {
-      await runReviewDelete(listing.id);
-      setExistingReview(null);
-      toast.success("Review deleted successfully.", { position: "top-center" });
-      handleCloseReviewModal();
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err || "Failed to delete review.");
-      toast.error(message, { position: "top-center" });
-    } finally {
-      setReviewDeleting(false);
-    }
-  };
-
-  const handleConfirmMarkComplete = async () => {
-    if (!canMarkAsComplete || markingComplete) return;
-
-    setMarkingComplete(true);
-    try {
-      await runMarkListingAsComplete(listing.id);
-      toast.success(listing.listingType === "SELL" ? "Listing marked as sold." : "Listing marked as complete.", { position: "top-center" });
-      setConfirmOpen(false);
-      await onMarkedComplete?.();
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err || "Failed to complete listing transaction.");
-      toast.error(message, { position: "top-center" });
-    } finally {
-      setMarkingComplete(false);
-    }
-  };
-
-  const handleEditPriceAction = async () => {
-    if (priceSubmitting) return;
-    if (newPrice <= 0) {
-      toast.error("Please enter a valid price.", { position: "top-center" });
-      return;
-    }
-
-    if (!isOfferChanged) {
-      return;
-    }
-
-    setPriceSubmitting(true);
-    try {
-      await runOfferUpdate({
-        listingId: listing.id,
-        conversationId,
-        isSeller,
-        offerPrice: newPrice,
-        offerMessage,
-      });
-      await onOfferUpdated?.();
-      toast.success("Offer updated successfully.", { position: "top-center" });
-      setEditPriceOpen(false);
-      setOfferMessage("");
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to update offer.";
-      toast.error(message, { position: "top-center" });
-    } finally {
-      setPriceSubmitting(false);
-    }
-
-  }
-
-  const handleCloseEditPriceModal = () => {
-    setEditPriceOpen(false);
-    setNewPrice(offeredPrice); // Reset to original offered price when closing modal
-    setOfferMessage("");
-  }
-
-  const handleDealAction = async () => {
-    if (dealSubmitting) return;
-    if (!conversationId || !canDeal) return;
-
-    setDealSubmitting(true);
-    try {
-      await runDealToggle(conversationId);
-      await onOfferUpdated?.();
-      toast.success("Deal agreement updated.", { position: "top-center" });
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to update agreement.";
-      toast.error(message, { position: "top-center" });
-    } finally {
-      setDealSubmitting(false);
-    }
-  }
-
-  const handleEditScheduleAction = async (payload: ScheduleRequestPayload) => {
-    try {
-      await runScheduleUpdate(listing.id, payload);
-      await onOfferUpdated?.();
-      setEditScheduleOpen(false);
-      toast.success("Schedule request sent.", { position: "top-center" });
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to request schedule.";
-      toast.error(message, { position: "top-center" });
-      throw err;
-    }
-  };
 
   return (
     <>
@@ -301,29 +126,28 @@ export default function ListingContextCard({
         </div>
 
         {/* Hidden in mobile */}
-        <div className="hidden sm:flex flex-1 gap-4">
 
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-stone-800 dark:text-stone-100 truncate leading-tight">
-              {listing.listingType === "SELL"
-                ? "Offered Price"
-                : "Provided Schedule"}
-            </p>
-            <div className="flex items-center gap-1.5 mt-0.5">
-              <span className="text-xs font-bold text-amber-700 dark:text-amber-500">
-                {
-                  listing.listingType === "SELL"
-                    ? isSold || hasTransaction && (normalizedTransactionStatus === "PENDING" || normalizedTransactionStatus === "CONFIRMED")
-                      ? formatPrice(offeredPrice)
-                      : "No offer yet"
-                    : (scheduleValue || "No schedule yet")
-                }
-              </span>
-            </div>
+        {/* Offered Price / Schedule */}
+        <div className="hidden min-w-0 sm:block md:flex-1">
+          <p className="text-sm font-semibold text-stone-800 dark:text-stone-100 truncate leading-tight">
+            {listing.listingType === "SELL"
+              ? "Offered Price"
+              : "Provided Schedule"}
+          </p>
+          <div className="flex items-center gap-1.5 mt-0.5">
+            <span className="text-xs font-bold text-amber-700 dark:text-amber-500">
+              {
+                listing.listingType === "SELL"
+                  ? isSold || hasTransaction && (normalizedTransactionStatus === "PENDING" || normalizedTransactionStatus === "CONFIRMED")
+                    ? formatPrice(offeredPrice)
+                    : "No offer yet"
+                  : (scheduleValue || "No schedule yet")
+              }
+            </span>
           </div>
+        </div>
 
-          {/* Details */}
-
+        <div className="hidden lg:flex gap-4">
           {/* Edit Price Button */}
           {canEditPrice && (
             <button
@@ -377,7 +201,7 @@ export default function ListingContextCard({
           {!shouldHideButtons && canMarkAsComplete && (
             <button
               type="button"
-              onClick={() => setConfirmOpen(true)}
+              onClick={() => handleOpenMarkCompleteDialog()}
               className="px-2.5 py-2 rounded-md text-[11px] font-semibold text-white bg-amber-700 hover:bg-amber-600 transition-colors shrink-0"
               title={listing.listingType === "SELL" ? "Mark as Sold" : "Mark as Fulfilled"}
             >
@@ -404,17 +228,7 @@ export default function ListingContextCard({
         </div>
         
       </div>
-      <ConfirmActionModal
-        open={confirmOpen}
-        title={listing.listingType === "SELL" ? "Mark item as sold" : "Mark transaction as fulfilled"}
-        message={listing.listingType === "SELL"
-          ? "Please confirm that this For Sale item has already been sold. This action will mark the listing as sold, and buyer will be able to provide review."
-          : "Please confirm that this transaction is fulfilled. This will mark the transaction as completed, and client will be able to provide review."}
-        confirmLabel="Confirm"
-        loading={markingComplete}
-        onConfirm={handleConfirmMarkComplete}
-        onClose={() => setConfirmOpen(false)}
-      />
+
 
       {reviewOpen && (
         <div
@@ -518,7 +332,7 @@ export default function ListingContextCard({
       )}
 
       {reviewOpen && (
-        <ModalHeader
+        <ModalFormCard
           icon={Star}
           type='review'
           title="Review Item"
@@ -576,7 +390,7 @@ export default function ListingContextCard({
                 </p>
               </div>
             </div>
-        </ModalHeader>
+        </ModalFormCard>
       )}
 
       {editPriceOpen && (
@@ -586,10 +400,9 @@ export default function ListingContextCard({
           subtitle={listing.title}
           listedPrice={listing.price}
           offerAmount={String(newPrice)}
-          onOfferAmountChange={(value) => setNewPrice(Number.parseInt(value || "0", 10) || 0)}
+          onOfferAmountChange={(value) => setNewPrice(Number.parseInt(value, 10))}
           note={offerMessage}
           onNoteChange={setOfferMessage}
-          notePlaceholder="e.g. Updated offer based on our discussion."
           submitLabel="Update Offer"
           submitDisabled={!isOfferChanged}
           submitting={priceSubmitting}

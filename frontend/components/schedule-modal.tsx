@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import {
-  X, Package, Clock, ClockIcon,
+  Package, Clock, ClockIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -13,7 +13,8 @@ import {
 } from "@/utils/scheduleAvailability";
 import { Label } from "./ui/label";
 import { Input } from "./ui/input";
-import { ModalHeader } from "./modal-header";
+import { Textarea } from "./ui/textarea";
+import { ModalFormCard } from "./modal-form-card";
 import { BookingCalendar, type BookingCalendarColors } from "./ui/booking-calendar";
 import { formatPrice } from "@/utils/string-builder";
 import { ListingType } from "@/types/listings";
@@ -384,7 +385,34 @@ export function ScheduleModal({
   };
 
   const hasTimeSelection = hasPresetTimeWindows ? !!selectedWindow : manualTimeRangeValid;
-  const canSend = !!startDate && !!endDate && hasTimeSelection && !sending;
+
+  // Check if this is a conversation edit (has initial values) vs. listing action (no initial values)
+  const isConversationEdit = !!initialStartAt && !!initialEndAt;
+
+  // For conversation edits, verify that something has actually changed before allowing send
+  const dataHasChanged = (() => {
+    if (!isConversationEdit) return true; // Listing action: always allow send if fields filled
+
+    if (!startDate || !endDate || !initialStartDateTime || !initialEndDateTime) return false;
+
+    // Check if dates have changed
+    const startDatesMatch = isSameDay(sod(startDate), sod(initialStartDateTime));
+    const endDatesMatch = isSameDay(sod(endDate), sod(initialEndDateTime));
+
+    if (!startDatesMatch || !endDatesMatch) return true; // Dates changed
+
+    // Check if times have changed
+    if (hasPresetTimeWindows) {
+      const initialWindowId = `${String(initialStartDateTime.getHours()).padStart(2, "0")}:${String(initialStartDateTime.getMinutes()).padStart(2, "0")}-${String(initialEndDateTime.getHours()).padStart(2, "0")}:${String(initialEndDateTime.getMinutes()).padStart(2, "0")}`;
+      return selectedWindow !== initialWindowId;
+    } else {
+      const initialStartTime = `${String(initialStartDateTime.getHours()).padStart(2, "0")}:${String(initialStartDateTime.getMinutes()).padStart(2, "0")}`;
+      const initialEndTime = `${String(initialEndDateTime.getHours()).padStart(2, "0")}:${String(initialEndDateTime.getMinutes()).padStart(2, "0")}`;
+      return manualStartTime !== initialStartTime || manualEndTime !== initialEndTime;
+    }
+  })();
+
+  const canSend = !!startDate && !!endDate && hasTimeSelection && !sending && dataHasChanged;
 
   const selectedWindowLabel =
     resolvedTimeWindows.find((window) => window.id === selectedWindow)?.label ?? "";
@@ -393,7 +421,7 @@ export function ScheduleModal({
     manualTimeRangeValid ? `${formatTimeLabel(manualStartTime)} - ${formatTimeLabel(manualEndTime)}` : "";
 
   return (
-    <ModalHeader
+    <ModalFormCard
       icon={Package}
       type={type}
       title="Request a Schedule"
@@ -408,13 +436,13 @@ export function ScheduleModal({
       <div>
         <div className="flex items-center justify-between mb-3">
           <p className="text-[11px] font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest">
-            Select Dates
+            Select Dates <span className="text-red-400 text-sm">*</span>
           </p>
           {(startDate || endDate) && (
             <button
               type="button"
               onClick={handleClear}
-              className="text-[11px] text-stone-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
+              className="text-xs text-stone-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
             >
               Clear selection
             </button>
@@ -448,9 +476,8 @@ export function ScheduleModal({
       {/* Time window picker */}
       <div>
         <div className="flex items-center gap-2 mb-3">
-          <Clock className="w-3.5 h-3.5 text-stone-400" />
           <p className="text-[11px] font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest">
-            Preferred Time Window <span className="text-red-400 text-[10px]">required</span>
+            Preferred Time Window <span className="text-red-400 text-sm">*</span>
           </p>
         </div>
 
@@ -459,7 +486,7 @@ export function ScheduleModal({
             <p className="text-xs text-stone-500 dark:text-stone-400 mb-3">
               Select from the provider&apos;s available time windows.
             </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-2">
               {resolvedTimeWindows.map((tw) => (
                 <button
                   key={tw.id}
@@ -501,7 +528,7 @@ export function ScheduleModal({
             </div>
 
             <div className="flex items-center gap-2 mb-1">
-              <Label htmlFor={"end-time"} className="pr-1">
+              <Label htmlFor={"end-time"} className="pr-1.5">
                 End time
               </Label>
               <div className="relative grow">
@@ -572,7 +599,7 @@ export function ScheduleModal({
                 </p>
               </div>
             </div>
-            <div className="border-t border-teal-200 dark:border-teal-800 pt-2 flex items-center justify-between">
+            {/* <div className="border-t border-teal-200 dark:border-teal-800 pt-2 flex items-center justify-between">
               <span className="text-xs text-stone-500 dark:text-stone-400">
                 {numNights} night{numNights !== 1 ? "s" : ""} ·{" "}
                 {formatPrice(listingPrice)} {priceUnit}
@@ -582,7 +609,7 @@ export function ScheduleModal({
                   Est. {formatPrice(estimatedTotal)}
                 </span>
               )}
-            </div>
+            </div> */}
             {(selectedWindowLabel || manualTimeLabel) && (
               <div className="border-t border-teal-200 dark:border-teal-800 pt-2">
                 <p className="text-xs text-stone-500 dark:text-stone-400">Preferred time</p>
@@ -603,15 +630,15 @@ export function ScheduleModal({
             (optional)
           </span>
         </label>
-        <textarea
+        <Textarea
           rows={3}
           value={message}
           onChange={(e) => setMessage(limitMessageInputLength(e.target.value))}
           maxLength={MESSAGE_MAX_LENGTH}
           placeholder="Enter any specific requests or questions for the seller here."
-          className="w-full bg-stone-50 dark:bg-[#13151f] border border-stone-200 dark:border-[#2a2d3e] rounded-lg px-3 py-2.5 text-sm text-stone-800 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-600 outline-none focus:border-teal-400 dark:focus:border-teal-600 resize-none transition-colors"
+          className="w-full max-h-24 bg-stone-50 dark:bg-[#13151f] border border-stone-200 dark:border-[#2a2d3e] rounded-lg px-3 py-2.5 text-sm text-stone-800 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-600 outline-none focus:border-teal-400 dark:focus:border-teal-600 resize-none transition-colors"
         />
       </div>
-    </ModalHeader>
+    </ModalFormCard>
   );
 }

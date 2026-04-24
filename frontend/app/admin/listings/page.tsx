@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { useConfirmDialog } from "@/utils/ConfirmDialogContext";
 import {
   getAdminListings,
   deleteAdminListing,
@@ -168,6 +169,7 @@ function FilterSelect({
 
 // ── Main page ──────────────────────────────────────────────────────────────────
 export default function ListingsPage() {
+  const { openDialog } = useConfirmDialog();
   const [search,         setSearch]         = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [typeFilter,     setTypeFilter]     = useState("ALL");
@@ -267,31 +269,42 @@ export default function ListingsPage() {
 
   // ── Actions ───────────────────────────────────────────────────────────────────
   async function handleRemove(id: string) {
-    if (!window.confirm("Mark this listing as deleted?")) return;
-    setActionLoadingListingId(id);
-    try {
-      const updated = await deleteAdminListing(id);
-      const deletedAtPlaceholder = new Date().toISOString();
-      const actionByNamePlaceholder = getCurrentAdminDisplayName();
-      setListings((prev) =>
-        prev.map((listing) =>
-          listing.id === id
-            ? {
-                ...listing,
-                status: updated.status,
-                deleted_at: deletedAtPlaceholder,
-                action_by_name: actionByNamePlaceholder,
-              }
-            : listing
-        )
-      );
-      toast.success("Listing marked as deleted.", { position: "top-center" });
-    } catch (err) {
-      const message = typeof err === "string" ? err : "Failed to delete listing";
-      toast.error(message, { position: "top-center" });
-    } finally {
-      setActionLoadingListingId(null);
-    }
+    openDialog({
+      title: "Delete Listing",
+      message: "Mark this listing as deleted?",
+      confirmText: "Delete",
+      cancelText: "Cancel",
+      isDangerous: true,
+      onConfirm: () => {
+        void (async () => {
+          setActionLoadingListingId(id);
+          try {
+            const updated = await deleteAdminListing(id);
+            const deletedAtPlaceholder = new Date().toISOString();
+            const actionByNamePlaceholder = getCurrentAdminDisplayName();
+            setListings((prev) =>
+              prev.map((listing) =>
+                listing.id === id
+                  ? {
+                      ...listing,
+                      status: updated.status,
+                      deleted_at: deletedAtPlaceholder,
+                      action_by_name: actionByNamePlaceholder,
+                    }
+                  : listing
+              )
+            );
+            toast.success("Listing marked as deleted.", { position: "top-center" });
+          } catch (err) {
+            const message = typeof err === "string" ? err : "Failed to delete listing";
+            toast.error(message, { position: "top-center" });
+          } finally {
+            setActionLoadingListingId(null);
+          }
+        })();
+      },
+      onCancel: () => {},
+    });
   }
 
   async function handleToggleVisibility(id: string, currentStatus: ListingStatus) {
@@ -301,45 +314,52 @@ export default function ListingsPage() {
     }
 
     const shouldUnban = currentStatus === "BANNED";
-    const confirmed = window.confirm(
-      shouldUnban
+    openDialog({
+      title: shouldUnban ? "Set Listing Unavailable" : "Shadow Ban Listing",
+      message: shouldUnban
         ? "Set this listing to UNAVAILABLE?"
-        : "Shadow ban this listing?"
-    );
-    if (!confirmed) return;
+        : "Shadow ban this listing?",
+      confirmText: shouldUnban ? "Confirm" : "Ban",
+      cancelText: "Cancel",
+      isDangerous: !shouldUnban,
+      onConfirm: () => {
+        void (async () => {
+          setActionLoadingListingId(id);
+          try {
+            const updated = await toggleAdminListingVisibility(id);
+            const nextBannedUntil = updated.status === "BANNED"
+              ? new Date(Date.now() + (3 * 24 * 60 * 60 * 1000)).toISOString()
+              : null;
+            const actionByNamePlaceholder = getCurrentAdminDisplayName();
 
-    setActionLoadingListingId(id);
-    try {
-      const updated = await toggleAdminListingVisibility(id);
-      const nextBannedUntil = updated.status === "BANNED"
-        ? new Date(Date.now() + (3 * 24 * 60 * 60 * 1000)).toISOString()
-        : null;
-      const actionByNamePlaceholder = getCurrentAdminDisplayName();
-
-      setListings((prev) =>
-        prev.map((listing) =>
-          listing.id === id
-            ? {
-                ...listing,
-                status: updated.status as ListingStatus,
-                banned_until: nextBannedUntil,
-                action_by_name: actionByNamePlaceholder || listing.action_by_name,
-              }
-            : listing
-        )
-      );
-      toast.success(
-        updated.status === "BANNED"
-          ? "Listing is now shadow banned."
-          : "Listing is now unavailable.",
-        { position: "top-center" }
-      );
-    } catch (err) {
-      const message = typeof err === "string" ? err : "Failed to update listing visibility";
-      toast.error(message, { position: "top-center" });
-    } finally {
-      setActionLoadingListingId(null);
-    }
+            setListings((prev) =>
+              prev.map((listing) =>
+                listing.id === id
+                  ? {
+                      ...listing,
+                      status: updated.status as ListingStatus,
+                      banned_until: nextBannedUntil,
+                      action_by_name: actionByNamePlaceholder || listing.action_by_name,
+                    }
+                  : listing
+              )
+            );
+            toast.success(
+              updated.status === "BANNED"
+                ? "Listing is now shadow banned."
+                : "Listing is now unavailable.",
+              { position: "top-center" }
+            );
+          } catch (err) {
+            const message = typeof err === "string" ? err : "Failed to update listing visibility";
+            toast.error(message, { position: "top-center" });
+          } finally {
+            setActionLoadingListingId(null);
+          }
+        })();
+      },
+      onCancel: () => {},
+    });
   }
 
   const hasActiveFilters = search || typeFilter !== "ALL" || statusFilter !== "ALL" || categoryFilter !== "ALL";

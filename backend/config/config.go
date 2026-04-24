@@ -158,6 +158,7 @@ const (
 	MessageContentMaxLength = 2000
 	MessagePageDefaultLimit = 20
 	MessagePageMaxLimit     = 100
+	MessageEditDuration     = 15 * time.Minute
 )
 
 // ─── Review ─────────────────────────────────────────

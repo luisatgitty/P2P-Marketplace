@@ -786,54 +786,6 @@ function StepIndicator({
   );
 }
 
-// ─── Service inclusions list ──────────────────────────────────────────────────────
-// function InclusionList({
-//   items,
-//   setItems,
-// }: {
-//   items: string[];
-//   setItems: (v: string[]) => void;
-// }) {
-//   const update = (i: number, v: string) => {
-//     const n = [...items];
-//     n[i] = v;
-//     setItems(n);
-//   };
-//   return (
-//     <div className="flex flex-col gap-2">
-//       {items.map((item, i) => (
-//         <div key={i} className="flex gap-2 items-center">
-//           <CheckCircle2 size={13} className="text-violet-500 shrink-0" />
-//           <StyledInput
-//             value={item}
-//             onChange={(e) => update(i, e.target.value)}
-//             placeholder="e.g. Coil & filter deep clean"
-//             className="flex-1"
-//           />
-//           {items.length > 1 && (
-//             <button
-//               type="button"
-//               onClick={() => setItems(items.filter((_, idx) => idx !== i))}
-//               className="p-2 rounded-lg text-stone-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors shrink-0"
-//             >
-//               <X size={14} />
-//             </button>
-//           )}
-//         </div>
-//       ))}
-//       {items.length < MAX_INCLUSIONS && (
-//         <button
-//           type="button"
-//           onClick={() => setItems([...items, ""])}
-//           className="flex items-center gap-1.5 text-xs font-semibold text-stone-400 hover:text-stone-600 dark:hover:text-stone-300 mt-1 w-fit transition-colors"
-//         >
-//           <Plus size={12} /> Add item
-//         </button>
-//       )}
-//     </div>
-//   );
-// }
-
 // ═══════════════════════════════════════════════════════════════════════════════
 //  MAIN FORM
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -924,6 +876,8 @@ export default function ListingForm({
   const [loadingProvinces, setLoadingProvinces] = useState(false);
   const [loadingCities, setLoadingCities] = useState(false);
   const [loadingBarangays, setLoadingBarangays] = useState(false);
+  const isGuardBypassRef = useRef(false);
+  const isGuardDialogOpenRef = useRef(false);
 
   const pHolderIncludes = "Add what's included with your listing...";
   const pHolderHighlights = "Add what makes your listing stand out...";
@@ -992,6 +946,101 @@ export default function ListingForm({
     window.addEventListener("beforeunload", handleBeforeUnload);
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [hasUnsavedChanges]);
+
+  // Guard browser back/forward and link navigation while editing.
+  useEffect(() => {
+    if (!hasUnsavedChanges) {
+      isGuardDialogOpenRef.current = false;
+      isGuardBypassRef.current = false;
+      return;
+    }
+
+    window.history.pushState({ listingFormGuard: true }, "", window.location.href);
+
+    const openUnsavedChangesDialog = (onConfirmLeave: () => void, onCancelLeave: () => void) => {
+      if (isGuardDialogOpenRef.current) return;
+      isGuardDialogOpenRef.current = true;
+
+      openDialog({
+        title: "Discard Changes?",
+        message: "Are you sure you want to leave this page? Your unsaved changes will be lost.",
+        confirmText: "Discard",
+        cancelText: "Stay",
+        isDangerous: true,
+        onConfirm: () => {
+          isGuardDialogOpenRef.current = false;
+          setHasUnsavedChanges(false);
+          onConfirmLeave();
+        },
+        onCancel: () => {
+          isGuardDialogOpenRef.current = false;
+          onCancelLeave();
+        },
+      });
+    };
+
+    const handlePopState = () => {
+      if (isGuardBypassRef.current) {
+        isGuardBypassRef.current = false;
+        return;
+      }
+
+      openUnsavedChangesDialog(
+        () => {
+          isGuardBypassRef.current = true;
+          window.history.back();
+        },
+        () => {
+          isGuardBypassRef.current = true;
+          window.history.forward();
+        },
+      );
+    };
+
+    const handleDocumentNavigation = (event: MouseEvent) => {
+      if (event.defaultPrevented) return;
+      if (event.button !== 0) return;
+      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+
+      const target = event.target as HTMLElement | null;
+      const anchor = target?.closest("a[href]") as HTMLAnchorElement | null;
+      if (!anchor) return;
+      if (anchor.target === "_blank") return;
+      if (anchor.hasAttribute("download")) return;
+
+      const rawHref = anchor.getAttribute("href");
+      if (!rawHref || rawHref.startsWith("#")) return;
+
+      const destination = new URL(anchor.href, window.location.href);
+      const current = new URL(window.location.href);
+      if (destination.href === current.href) return;
+
+      event.preventDefault();
+
+      openUnsavedChangesDialog(
+        () => {
+          isGuardBypassRef.current = true;
+
+          if (destination.origin === current.origin) {
+            const nextPath = `${destination.pathname}${destination.search}${destination.hash}`;
+            router.push(nextPath);
+            return;
+          }
+
+          window.location.assign(destination.href);
+        },
+        () => {},
+      );
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    document.addEventListener("click", handleDocumentNavigation, true);
+
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+      document.removeEventListener("click", handleDocumentNavigation, true);
+    };
+  }, [hasUnsavedChanges, openDialog, router, setHasUnsavedChanges]);
 
   // Cleanup unsaved changes on unmount
   useEffect(() => {

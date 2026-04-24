@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import Lightbox from "yet-another-react-lightbox";
 import Thumbnails from "yet-another-react-lightbox/plugins/thumbnails";
 import Zoom from "yet-another-react-lightbox/plugins/zoom";
@@ -8,6 +9,7 @@ import Video from "yet-another-react-lightbox/plugins/video";
 import "yet-another-react-lightbox/styles.css";
 // @ts-expect-error Next.js resolves package CSS side-effect imports at build time.
 import "yet-another-react-lightbox/plugins/thumbnails.css";
+import { useModalFocusTrap } from "@/utils/useModalFocusTrap";
 
 export type MediaViewerItem = {
   id?: string;
@@ -27,6 +29,7 @@ export function MediaViewerModal({
   onSelect: (index: number) => void;
   onClose: () => void;
 }) {
+  const containerRef = useRef<HTMLDivElement>(null);
   const slides = mediaItems.map((item) => {
     if (item.fileType === "VIDEO") {
       return {
@@ -42,35 +45,47 @@ export function MediaViewerModal({
     };
   });
 
+  useModalFocusTrap(containerRef, activeIndex >= 0, onClose);
+
+  useEffect(() => {
+    if (activeIndex >= 0) {
+      requestAnimationFrame(() => {
+        containerRef.current?.focus();
+      });
+    }
+  }, [activeIndex]);
+
   return (
-    <Lightbox
-      open={activeIndex >= 0}
-      close={onClose}
-      index={activeIndex}
-      slides={slides}
-      plugins={[Zoom, Thumbnails, Video]}
-      on={{
-        view: ({ index }) => onSelect(index),
-      }}
-      zoom={{
-        maxZoomPixelRatio: 4,
-        zoomInMultiplier: 2,
-        doubleTapDelay: 250,
-      }}
-      thumbnails={{
-        position: "bottom",
-        width: 52,
-        height: 52,
-        border: 1,
-        borderRadius: 8,
-        gap: 8,
-      }}
-      carousel={{
-        finite: true,
-      }}
-      controller={{
-        closeOnBackdropClick: true,
-      }}
-    />
+    <div ref={containerRef} tabIndex={-1} role="dialog" aria-modal="true" className="outline-none">
+      <Lightbox
+        open={activeIndex >= 0}
+        close={onClose}
+        index={activeIndex}
+        slides={slides}
+        plugins={[Zoom, Thumbnails, Video]}
+        on={{
+          view: ({ index }) => onSelect(index),
+        }}
+        zoom={{
+          maxZoomPixelRatio: 4,
+          zoomInMultiplier: 2,
+          doubleTapDelay: 250,
+        }}
+        thumbnails={{
+          position: "bottom",
+          width: 52,
+          height: 52,
+          border: 1,
+          borderRadius: 8,
+          gap: 8,
+        }}
+        carousel={{
+          finite: true,
+        }}
+        controller={{
+          closeOnBackdropClick: true,
+        }}
+      />
+    </div>
   );
 }
