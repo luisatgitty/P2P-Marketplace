@@ -39,7 +39,7 @@ function ConversationShell({ children }: { children: React.ReactNode }) {
             onOfferUpdated={onOfferUpdated}
           />
           <div className="relative flex-1 overflow-hidden">
-            <div className="absolute top-2 left-0 right-0 z-20 lg:px-6 xl:px-35 2xl:px-59 pointer-events-auto">
+            <div className="absolute top-2 left-0 right-0 z-20 2xl:px-59 pointer-events-auto">
               <ListingContextCard
                 conversationId={conversation.id}
                 listing={conversation.listing}

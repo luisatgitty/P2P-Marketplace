@@ -767,7 +767,7 @@ export default function ConversationPage() {
           key={conversationId}
           ref={messagesContainerRef}
           onScroll={handleMessagesScroll}
-          className="h-full pt-24 pb-3 px-4 lg:px-12 xl:px-40 2xl:px-64 overflow-y-auto animate-in fade-in duration-500"
+          className="h-full pt-24 pb-3 px-4 2xl:px-64 overflow-y-auto animate-in fade-in duration-500"
         >
           <div className="min-h-full flex flex-col">
             {loadingOlder && (

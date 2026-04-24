@@ -303,7 +303,7 @@ export default function ListingContextCard({
         {/* Hidden in mobile */}
 
         {/* Offered Price / Schedule */}
-        <div className="hidden min-w-0 md:block lg:flex-1">
+        <div className="hidden min-w-0 sm:block md:flex-1">
           <p className="text-sm font-semibold text-stone-800 dark:text-stone-100 truncate leading-tight">
             {listing.listingType === "SELL"
               ? "Offered Price"

@@ -417,18 +417,6 @@ export default function MessageBubble({
     }
   };
 
-  const replyPreviewText = (): string => {
-    if (message.content) return message.content;
-    const atts = message.attachments ?? [];
-    if (!atts.length) return "";
-    const imgs = atts.filter((a) => a.fileType === "IMAGE").length;
-    const vids = atts.filter((a) => a.fileType === "VIDEO").length;
-    const parts = [];
-    if (imgs) parts.push(`📷 ${imgs > 1 ? `${imgs} photos` : "Photo"}`);
-    if (vids) parts.push(`🎥 ${vids > 1 ? `${vids} videos` : "Video"}`);
-    return parts.join(", ");
-  };
-
   const hasAttachments = (message.attachments?.length ?? 0) > 0;
   const hasContent     = !!message.content;
   const canUnsend = Date.now() - new Date(message.createdAt).getTime() <= 10 * 60 * 1000;
