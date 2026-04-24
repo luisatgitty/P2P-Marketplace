@@ -828,7 +828,6 @@ export default function ListingDetailPage() {
         onOfferAmountChange={setOfferAmt}
         note={offerMessage}
         onNoteChange={setOfferMessage}
-        notePlaceholder="e.g. Can we meet up in SM Calamba on Saturday?"
         submitLabel="Send Offer"
         submitting={submittingOffer}
         onSubmit={sendOffer}

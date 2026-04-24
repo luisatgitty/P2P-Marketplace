@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import {
-  X, Package, Clock, ClockIcon,
+  Package, Clock, ClockIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -13,6 +13,7 @@ import {
 } from "@/utils/scheduleAvailability";
 import { Label } from "./ui/label";
 import { Input } from "./ui/input";
+import { Textarea } from "./ui/textarea";
 import { ModalFormCard } from "./modal-form-card";
 import { BookingCalendar, type BookingCalendarColors } from "./ui/booking-calendar";
 import { formatPrice } from "@/utils/string-builder";
@@ -603,13 +604,13 @@ export function ScheduleModal({
             (optional)
           </span>
         </label>
-        <textarea
+        <Textarea
           rows={3}
           value={message}
           onChange={(e) => setMessage(limitMessageInputLength(e.target.value))}
           maxLength={MESSAGE_MAX_LENGTH}
           placeholder="Enter any specific requests or questions for the seller here."
-          className="w-full bg-stone-50 dark:bg-[#13151f] border border-stone-200 dark:border-[#2a2d3e] rounded-lg px-3 py-2.5 text-sm text-stone-800 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-600 outline-none focus:border-teal-400 dark:focus:border-teal-600 resize-none transition-colors"
+          className="w-full max-h-24 bg-stone-50 dark:bg-[#13151f] border border-stone-200 dark:border-[#2a2d3e] rounded-lg px-3 py-2.5 text-sm text-stone-800 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-600 outline-none focus:border-teal-400 dark:focus:border-teal-600 resize-none transition-colors"
         />
       </div>
     </ModalFormCard>

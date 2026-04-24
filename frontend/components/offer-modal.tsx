@@ -1,9 +1,10 @@
 "use client";
 
 import { useMemo } from "react";
-import { formatPrice } from "@/utils/string-builder";
-import { ModalFormCard } from "./modal-form-card";
 import { HandHelping } from "lucide-react";
+import { Textarea } from "./ui/textarea";
+import { ModalFormCard } from "./modal-form-card";
+import { formatPrice } from "@/utils/string-builder";
 import { isValidPrice } from "@/utils/validation";
 import { MESSAGE_MAX_LENGTH, limitMessageInputLength } from "@/utils/validation";
 
@@ -16,8 +17,6 @@ interface OfferModalProps {
   onOfferAmountChange: (value: string) => void;
   note: string;
   onNoteChange: (value: string) => void;
-  noteLabel?: string;
-  notePlaceholder?: string;
   submitLabel: string;
   submitDisabled?: boolean;
   submitting?: boolean;
@@ -35,8 +34,6 @@ export default function OfferModal({
   onOfferAmountChange,
   note,
   onNoteChange,
-  noteLabel = "Message (optional)",
-  notePlaceholder = "Add context for your offer...",
   submitLabel,
   submitDisabled = false,
   submitting = false,
@@ -105,14 +102,19 @@ export default function OfferModal({
       </div>
 
       <div>
-        <label className="text-sm font-medium text-stone-500 dark:text-stone-400 mb-1.5 block">{noteLabel}</label>
-        <textarea
+        <label className="text-[11px] font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest mb-2 block">
+          Message{" "}
+          <span className="font-normal normal-case tracking-normal text-stone-400 dark:text-stone-500">
+            (optional)
+          </span>
+        </label>
+        <Textarea
           rows={3}
           value={note}
           onChange={(e) => onNoteChange(limitMessageInputLength(e.target.value))}
           maxLength={MESSAGE_MAX_LENGTH}
-          placeholder={notePlaceholder}
-          className="w-full bg-stone-50 dark:bg-[#13151f] border border-stone-200 dark:border-[#2a2d3e] rounded-lg px-3 py-2.5 text-sm text-stone-800 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-600 outline-none focus:border-stone-400 dark:focus:border-stone-500 resize-none"
+          placeholder={'Add context for your offer...'}
+          className="w-full max-h-24 bg-stone-50 dark:bg-[#13151f] border border-stone-200 dark:border-[#2a2d3e] rounded-lg px-3 py-2.5 text-sm text-stone-800 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-600 outline-none focus:border-stone-400 dark:focus:border-stone-500 resize-none"
         />
       </div>
     </ModalFormCard>
