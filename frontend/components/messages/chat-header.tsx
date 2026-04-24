@@ -8,24 +8,14 @@ import { toast } from "sonner";
 import type { Conversation } from "@/types/messaging";
 import { useUser } from "@/utils/UserContext";
 import { useConfirmDialog } from "@/utils/ConfirmDialogContext";
-import { submitUserListingReport, type ListingReviewPayload } from "@/services/listingDetailService";
+import { submitUserListingReport } from "@/services/listingDetailService";
 import { ReportModal } from "@/components/report-modal";
-import { ConfirmActionModal } from "@/components/confirm-action-modal";
 import ListingTypeBadge from "@/components/listing-type-badge";
 import VerificationBadge from "@/components/verification-badge";
 import { ImageLink } from "../image-link";
 import OfferModal from "@/components/offer-modal";
 import { ScheduleModal } from "@/components/schedule-modal";
-import {
-  getListingContextActionState,
-  loadListingReview,
-  runDealToggle,
-  runMarkListingAsComplete,
-  runOfferUpdate,
-  runReviewDelete,
-  runReviewUpsert,
-  runScheduleUpdate,
-} from "./listing-context-actions";
+import { useListingContextActions } from "./use-listing-context-actions";
 
 interface ChatHeaderProps {
   conversation: Conversation;
@@ -40,21 +30,7 @@ export default function ChatHeader({ conversation, onDelete, onMarkedComplete, o
   const { otherParticipant, listing } = conversation;
   const [menuOpen, setMenuOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
-  const [markCompleteOpen, setMarkCompleteOpen] = useState(false);
-  const [editPriceOpen, setEditPriceOpen] = useState(false);
-  const [editScheduleOpen, setEditScheduleOpen] = useState(false);
-  const [reviewOpen, setReviewOpen] = useState(false);
-  const [rating, setRating] = useState(0);
-  const [comment, setComment] = useState("");
-  const [offerMessage, setOfferMessage] = useState("");
   const [submittingReport, setSubmittingReport] = useState(false);
-  const [markingComplete, setMarkingComplete] = useState(false);
-  const [priceSubmitting, setPriceSubmitting] = useState(false);
-  const [dealSubmitting, setDealSubmitting] = useState(false);
-  const [reviewLoading, setReviewLoading] = useState(false);
-  const [reviewSubmitting, setReviewSubmitting] = useState(false);
-  const [reviewDeleting, setReviewDeleting] = useState(false);
-  const [existingReview, setExistingReview] = useState<ListingReviewPayload | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const profileHref = otherParticipant.id ? `/profile?userId=${otherParticipant.id}` : "/profile";
   const normalizedListingStatus = String(listing.status ?? "").trim().toUpperCase();
@@ -62,6 +38,52 @@ export default function ChatHeader({ conversation, onDelete, onMarkedComplete, o
   const isParticipantUnavailable = otherParticipant.isActive === false || otherParticipant.isLocked === true;
   const hideParticipantMenuItems = isBlockedListingStatus || isParticipantUnavailable;
   const hideReportUserMenuItem = hideParticipantMenuItems || conversation.hasPendingReport === true;
+  const {
+    actionState,
+    state: {
+      editPriceOpen,
+      editScheduleOpen,
+      reviewOpen,
+      rating,
+      comment,
+      offerMessage,
+      reviewLoading,
+      markingComplete,
+      priceSubmitting,
+      dealSubmitting,
+      reviewSubmitting,
+      reviewDeleting,
+      existingReview,
+      newPrice,
+    },
+    setters: {
+      setEditPriceOpen,
+      setEditScheduleOpen,
+      setReviewOpen,
+      setRating,
+      setComment,
+      setOfferMessage,
+      setNewPrice,
+    },
+    actions: {
+      handleCloseReviewModal,
+      handleOpenReviewModal,
+      handleReviewAction,
+      handleDeleteReview,
+      handleOpenMarkCompleteDialog,
+      handleEditPriceAction,
+      handleCloseEditPriceModal,
+      handleDealAction,
+      handleEditScheduleAction,
+    },
+  } = useListingContextActions({
+    listing,
+    isSeller: conversation.isSeller,
+    hideActionButtons: conversation.canSendMessage === false || isBlockedListingStatus,
+    conversationId: conversation.id,
+    onMarkedComplete,
+    onOfferUpdated,
+  });
   const {
     normalizedTransactionStatus,
     isSold,
@@ -74,8 +96,7 @@ export default function ChatHeader({ conversation, onDelete, onMarkedComplete, o
     offeredPrice,
     canEditPrice,
     canEditSchedule,
-  } = getListingContextActionState(listing, conversation.isSeller, conversation.canSendMessage === false || isBlockedListingStatus);
-  const [newPrice, setNewPrice] = useState(offeredPrice);
+  } = actionState;
   const isOfferChanged = Math.trunc(newPrice) !== Math.trunc(offeredPrice) || !hasTransaction;
   const REVIEW_MAX_LENGTH = 500;
   const cityOrMunicipality = (
@@ -102,40 +123,6 @@ export default function ChatHeader({ conversation, onDelete, onMarkedComplete, o
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  useEffect(() => {
-    setNewPrice(offeredPrice);
-  }, [offeredPrice]);
-
-  useEffect(() => {
-    let mounted = true;
-
-    const loadExistingReviewState = async () => {
-      if (!canReview) {
-        if (mounted) setExistingReview(null);
-        return;
-      }
-
-      setReviewLoading(true);
-      try {
-        const payload = await loadListingReview(listing.id);
-        if (!mounted) return;
-        setExistingReview(payload);
-      } catch (err) {
-        if (!mounted) return;
-        const message = err instanceof Error ? err.message : String(err || "Failed to load review.");
-        toast.error(message, { position: "top-center" });
-      } finally {
-        if (mounted) setReviewLoading(false);
-      }
-    };
-
-    void loadExistingReviewState();
-
-    return () => {
-      mounted = false;
-    };
-  }, [canReview, listing.id]);
-
   const handleSubmitReport = async (payload: { reason: string; description: string }) => {
     if (!isAuth) {
       router.push("/login");
@@ -154,166 +141,6 @@ export default function ChatHeader({ conversation, onDelete, onMarkedComplete, o
       toast.error(message, { position: "top-center" });
     } finally {
       setSubmittingReport(false);
-    }
-  };
-
-  const resetReviewForm = () => {
-    setRating(0);
-    setComment("");
-  };
-
-  const handleCloseReviewModal = () => {
-    if (reviewSubmitting || reviewDeleting) return;
-    setReviewOpen(false);
-    resetReviewForm();
-  };
-
-  const handleOpenReviewModal = () => {
-    if (reviewLoading) return;
-    setRating(existingReview?.rating ?? 0);
-    setComment(existingReview?.comment ?? "");
-    setReviewOpen(true);
-  };
-
-  const handleReviewAction = async () => {
-    if (reviewSubmitting || reviewDeleting) return;
-
-    if (rating <= 0) {
-      handleCloseReviewModal();
-      return;
-    }
-
-    const trimmedComment = comment.trim();
-    const isEditing = Boolean(existingReview);
-
-    if (
-      isEditing
-      && existingReview
-      && existingReview.rating === rating
-      && existingReview.comment.trim() === trimmedComment
-    ) {
-      toast.info("No changes to update.", { position: "top-center" });
-      handleCloseReviewModal();
-      return;
-    }
-
-    setReviewSubmitting(true);
-    try {
-      const savedReview = await runReviewUpsert({
-        listingId: listing.id,
-        rating,
-        comment: trimmedComment,
-        existingReview,
-      });
-      setExistingReview(savedReview);
-      toast.success(isEditing ? "Review updated successfully." : "Review submitted. Thank you for your feedback.", { position: "top-center" });
-      handleCloseReviewModal();
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err || "Failed to submit review.");
-      toast.error(message, { position: "top-center" });
-    } finally {
-      setReviewSubmitting(false);
-    }
-  };
-
-  const handleDeleteReview = () => {
-    if (!existingReview || reviewSubmitting || reviewDeleting) return;
-
-    openDialog({
-      title: "Delete Review",
-      message: "Delete your review for this item?",
-      confirmText: "Delete",
-      cancelText: "Cancel",
-      isDangerous: true,
-      onConfirm: async () => {
-        setReviewDeleting(true);
-        try {
-          await runReviewDelete(listing.id);
-          setExistingReview(null);
-          toast.success("Review deleted successfully.", { position: "top-center" });
-          handleCloseReviewModal();
-        } catch (err) {
-          const message = err instanceof Error ? err.message : String(err || "Failed to delete review.");
-          toast.error(message, { position: "top-center" });
-        } finally {
-          setReviewDeleting(false);
-        }
-      },
-      onCancel: () => {},
-    });
-  };
-
-  const handleEditPriceAction = async () => {
-    if (priceSubmitting) return;
-    if (newPrice <= 0) {
-      toast.error("Please enter a valid price.", { position: "top-center" });
-      return;
-    }
-
-    if (!isOfferChanged) {
-      return;
-    }
-
-    setPriceSubmitting(true);
-    try {
-      await runOfferUpdate({
-        listingId: listing.id,
-        conversationId: conversation.id,
-        isSeller: conversation.isSeller,
-        offerPrice: newPrice,
-        offerMessage,
-      });
-      await onOfferUpdated?.();
-      toast.success("Offer updated successfully.", { position: "top-center" });
-      setEditPriceOpen(false);
-      setOfferMessage("");
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to update offer.";
-      toast.error(message, { position: "top-center" });
-    } finally {
-      setPriceSubmitting(false);
-    }
-  };
-
-  const handleCloseEditPriceModal = () => {
-    setEditPriceOpen(false);
-    setNewPrice(offeredPrice);
-    setOfferMessage("");
-  };
-
-  const handleDealAction = async () => {
-    if (dealSubmitting) return;
-    if (!conversation.id || !canDeal) return;
-
-    setDealSubmitting(true);
-    try {
-      await runDealToggle(conversation.id);
-      await onOfferUpdated?.();
-      toast.success("Deal agreement updated.", { position: "top-center" });
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to update agreement.";
-      toast.error(message, { position: "top-center" });
-    } finally {
-      setDealSubmitting(false);
-    }
-  };
-
-  const handleEditScheduleAction = async (payload: {
-    startDate: string;
-    endDate: string;
-    startTime: string;
-    endTime: string;
-    message: string;
-  }) => {
-    try {
-      await runScheduleUpdate(listing.id, payload);
-      await onOfferUpdated?.();
-      setEditScheduleOpen(false);
-      toast.success("Schedule request sent.", { position: "top-center" });
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to request schedule.";
-      toast.error(message, { position: "top-center" });
-      throw err;
     }
   };
 
@@ -341,28 +168,11 @@ export default function ChatHeader({ conversation, onDelete, onMarkedComplete, o
     ...(canEditPrice ? [{ icon: Edit2, label: !isSold && hasTransaction && (normalizedTransactionStatus === "PENDING" || normalizedTransactionStatus === "CONFIRMED") ? "Edit Price" : "Offer Price", action: () => { setMenuOpen(false); setEditPriceOpen(true); }, danger: false }] : []),
     ...(canEditSchedule ? [{ icon: CalendarDays, label: hasTransaction && (normalizedTransactionStatus === "PENDING" || normalizedTransactionStatus === "CONFIRMED") ? "Edit Schedule" : "Provide Schedule", action: () => { setMenuOpen(false); setEditScheduleOpen(true); }, danger: false }] : []),
     ...(!shouldHideButtons && canDeal ? [{ icon: Handshake, label: hasAgreed ? "Agreed" : "Deal", action: () => { setMenuOpen(false); void handleDealAction(); }, danger: false, disabled: dealSubmitting }] : []),
-    ...(!shouldHideButtons && canMarkAsComplete ? [{ icon: CheckCircle, label: listing.listingType === "SELL" ? "Mark as Sold" : "Mark as Complete", action: () => { setMenuOpen(false); setMarkCompleteOpen(true); }, danger: false }] : []),
+    ...(!shouldHideButtons && canMarkAsComplete ? [{ icon: CheckCircle, label: listing.listingType === "SELL" ? "Mark as Sold" : "Mark as Fulfilled", action: () => { setMenuOpen(false); handleOpenMarkCompleteDialog(); }, danger: false }] : []),
     ...(!shouldHideButtons && canReview ? [{ icon: Star, label: reviewLoading ? "Loading Review..." : existingReview ? "Edit Review" : "Review", action: () => { setMenuOpen(false); handleOpenReviewModal(); }, danger: false, disabled: reviewLoading }] : []),
     ...(!hideReportUserMenuItem ? [{ icon: Flag, label: "Report User", action: () => { setMenuOpen(false); setReportOpen(true); }, danger: false }] : []),
     { icon: Trash2,       label: "Delete Chat",    action: handleDeleteChat, danger: true },
   ];
-
-  const handleConfirmMarkComplete = async () => {
-    if (!canMarkAsComplete || markingComplete) return;
-
-    setMarkingComplete(true);
-    try {
-      await runMarkListingAsComplete(listing.id);
-      toast.success(listing.listingType === "SELL" ? "Listing marked as sold." : "Listing marked as complete.", { position: "top-center" });
-      setMarkCompleteOpen(false);
-      await onMarkedComplete?.();
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err || "Failed to complete listing transaction.");
-      toast.error(message, { position: "top-center" });
-    } finally {
-      setMarkingComplete(false);
-    }
-  };
 
   return (
     <>
@@ -450,17 +260,7 @@ export default function ChatHeader({ conversation, onDelete, onMarkedComplete, o
       onClose={() => setReportOpen(false)}
       onSubmit={handleSubmitReport}
     />
-    <ConfirmActionModal
-      open={markCompleteOpen}
-      title={listing.listingType === "SELL" ? "Mark item as sold" : "Mark transaction as complete"}
-      message={listing.listingType === "SELL"
-        ? "Please confirm that this For Sale item has already been sold. This action will mark the listing as SOLD."
-        : "Please confirm that this transaction is complete. This will mark the confirmed transaction as COMPLETED."}
-      confirmLabel="Confirm"
-      loading={markingComplete}
-      onConfirm={handleConfirmMarkComplete}
-      onClose={() => setMarkCompleteOpen(false)}
-    />
+
     <OfferModal
       open={editPriceOpen}
       title="Edit Offered Price"

@@ -1,6 +1,7 @@
 import type {
   Conversation,
   Message,
+  MessageTab,
   ReactionType,
   ReplyPreview,
 } from "@/types/messaging";
@@ -35,6 +36,8 @@ export type MessagesPageQuery = {
 export type ConversationsPageQuery = {
   limit?: number;
   offset?: number;
+  search?: string;
+  tab?: MessageTab;
 };
 
 export type ConversationsPage = {
@@ -90,6 +93,12 @@ export async function getConversationsPage(query: ConversationsPageQuery = {}): 
   }
   if (Number.isFinite(query.offset)) {
     params.set("offset", String(query.offset));
+  }
+  if (typeof query.search === "string" && query.search.trim() !== "") {
+    params.set("search", query.search.trim());
+  }
+  if (typeof query.tab === "string" && query.tab.trim() !== "") {
+    params.set("tab", query.tab.trim());
   }
 
   const suffix = params.size > 0 ? `?${params.toString()}` : "";
@@ -267,6 +276,20 @@ export async function updateConversationOfferAsOwner(conversationId: string, off
     body: JSON.stringify({
       offerPrice: Number.isFinite(offerPrice) && (offerPrice ?? 0) > 0 ? Math.trunc(offerPrice as number) : undefined,
       offerMessage: (offerMessage ?? "").trim() || undefined,
+    }),
+  });
+  emitMessagesUpdate();
+}
+
+export async function updateConversationScheduleAsOwner(conversationId: string, schedule: ScheduleRequestPayload): Promise<void> {
+  await apiFetch<{}>(`/messages/conversations/${conversationId}/schedule`, {
+    method: "PATCH",
+    body: JSON.stringify({
+      startDate: schedule.startDate,
+      endDate: schedule.endDate,
+      startTime: schedule.startTime,
+      endTime: schedule.endTime,
+      scheduleMessage: (schedule.message ?? "").trim() || undefined,
     }),
   });
   emitMessagesUpdate();

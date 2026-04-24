@@ -876,6 +876,8 @@ export default function ListingForm({
   const [loadingProvinces, setLoadingProvinces] = useState(false);
   const [loadingCities, setLoadingCities] = useState(false);
   const [loadingBarangays, setLoadingBarangays] = useState(false);
+  const isGuardBypassRef = useRef(false);
+  const isGuardDialogOpenRef = useRef(false);
 
   const pHolderIncludes = "Add what's included with your listing...";
   const pHolderHighlights = "Add what makes your listing stand out...";
@@ -944,6 +946,101 @@ export default function ListingForm({
     window.addEventListener("beforeunload", handleBeforeUnload);
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [hasUnsavedChanges]);
+
+  // Guard browser back/forward and link navigation while editing.
+  useEffect(() => {
+    if (!hasUnsavedChanges) {
+      isGuardDialogOpenRef.current = false;
+      isGuardBypassRef.current = false;
+      return;
+    }
+
+    window.history.pushState({ listingFormGuard: true }, "", window.location.href);
+
+    const openUnsavedChangesDialog = (onConfirmLeave: () => void, onCancelLeave: () => void) => {
+      if (isGuardDialogOpenRef.current) return;
+      isGuardDialogOpenRef.current = true;
+
+      openDialog({
+        title: "Discard Changes?",
+        message: "Are you sure you want to leave this page? Your unsaved changes will be lost.",
+        confirmText: "Discard",
+        cancelText: "Stay",
+        isDangerous: true,
+        onConfirm: () => {
+          isGuardDialogOpenRef.current = false;
+          setHasUnsavedChanges(false);
+          onConfirmLeave();
+        },
+        onCancel: () => {
+          isGuardDialogOpenRef.current = false;
+          onCancelLeave();
+        },
+      });
+    };
+
+    const handlePopState = () => {
+      if (isGuardBypassRef.current) {
+        isGuardBypassRef.current = false;
+        return;
+      }
+
+      openUnsavedChangesDialog(
+        () => {
+          isGuardBypassRef.current = true;
+          window.history.back();
+        },
+        () => {
+          isGuardBypassRef.current = true;
+          window.history.forward();
+        },
+      );
+    };
+
+    const handleDocumentNavigation = (event: MouseEvent) => {
+      if (event.defaultPrevented) return;
+      if (event.button !== 0) return;
+      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+
+      const target = event.target as HTMLElement | null;
+      const anchor = target?.closest("a[href]") as HTMLAnchorElement | null;
+      if (!anchor) return;
+      if (anchor.target === "_blank") return;
+      if (anchor.hasAttribute("download")) return;
+
+      const rawHref = anchor.getAttribute("href");
+      if (!rawHref || rawHref.startsWith("#")) return;
+
+      const destination = new URL(anchor.href, window.location.href);
+      const current = new URL(window.location.href);
+      if (destination.href === current.href) return;
+
+      event.preventDefault();
+
+      openUnsavedChangesDialog(
+        () => {
+          isGuardBypassRef.current = true;
+
+          if (destination.origin === current.origin) {
+            const nextPath = `${destination.pathname}${destination.search}${destination.hash}`;
+            router.push(nextPath);
+            return;
+          }
+
+          window.location.assign(destination.href);
+        },
+        () => {},
+      );
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    document.addEventListener("click", handleDocumentNavigation, true);
+
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+      document.removeEventListener("click", handleDocumentNavigation, true);
+    };
+  }, [hasUnsavedChanges, openDialog, router, setHasUnsavedChanges]);
 
   // Cleanup unsaved changes on unmount
   useEffect(() => {

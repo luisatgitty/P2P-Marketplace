@@ -129,6 +129,14 @@
     display: flex;
     flex-direction: column;
   }
+  button,
+  [role="button"] {
+    cursor: pointer;
+  }
+  button:disabled,
+  [role="button"]:disabled {
+    cursor: not-allowed;
+  }
 }
 
 /* ═══════════════════════════════════════
