@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { useConfirmDialog } from "@/utils/ConfirmDialogContext";
 import { validateImageURL } from "@/utils/validation";
 import { SafeImage } from "@/components/ui/safe-image";
 import { ImageLink } from "@/components/image-link";
@@ -547,6 +548,7 @@ function DetailModal({ verif, onClose, onApprove, onReject, actionLoading = fals
 
 // ── Main page ──────────────────────────────────────────────────────────────────
 export default function VerificationsPage() {
+  const { openDialog } = useConfirmDialog();
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
@@ -724,35 +726,45 @@ export default function VerificationsPage() {
       return;
     }
 
-    if (!window.confirm("Approve this verification request? This action cannot be changed from this table.")) return;
-
-    setActionLoading(true);
-    try {
-      await setAdminVerificationStatus(id, { status: "VERIFIED", reason: trimmedReason });
-      const nowIso = new Date().toISOString();
-      const nowDisplay = new Date(nowIso).toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" });
-      setRecords(prev =>
-        prev.map(v =>
-          v.id === id
-            ? {
-                ...v,
-                status: "VERIFIED",
-                reason: trimmedReason,
-                reviewed_by: v.reviewed_by ?? "Admin",
-                reviewed_at_raw: nowIso,
-                reviewed_at: nowDisplay,
-              }
-            : v,
-        ),
-      );
-      setSelected(null);
-      toast.success("Verification approved successfully", { position: "top-center" });
-    } catch (error) {
-      const message = typeof error === "string" ? error : "Failed to approve verification";
-      toast.error(message, { position: "top-center" });
-    } finally {
-      setActionLoading(false);
-    }
+    openDialog({
+      title: "Approve Verification",
+      message: "Approve this verification request? This action cannot be changed from this table.",
+      confirmText: "Approve",
+      cancelText: "Cancel",
+      isDangerous: false,
+      onConfirm: () => {
+        void (async () => {
+          setActionLoading(true);
+          try {
+            await setAdminVerificationStatus(id, { status: "VERIFIED", reason: trimmedReason });
+            const nowIso = new Date().toISOString();
+            const nowDisplay = new Date(nowIso).toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" });
+            setRecords(prev =>
+              prev.map(v =>
+                v.id === id
+                  ? {
+                      ...v,
+                      status: "VERIFIED",
+                      reason: trimmedReason,
+                      reviewed_by: v.reviewed_by ?? "Admin",
+                      reviewed_at_raw: nowIso,
+                      reviewed_at: nowDisplay,
+                    }
+                  : v,
+              ),
+            );
+            setSelected(null);
+            toast.success("Verification approved successfully", { position: "top-center" });
+          } catch (error) {
+            const message = typeof error === "string" ? error : "Failed to approve verification";
+            toast.error(message, { position: "top-center" });
+          } finally {
+            setActionLoading(false);
+          }
+        })();
+      },
+      onCancel: () => {},
+    });
   }
 
   async function handleReject(id: string, reason: string) {
@@ -766,35 +778,45 @@ export default function VerificationsPage() {
       return;
     }
 
-    if (!window.confirm("Reject this verification request? This action cannot be changed from this table.")) return;
-
-    setActionLoading(true);
-    try {
-      await setAdminVerificationStatus(id, { status: "REJECTED", reason: trimmedReason });
-      const nowIso = new Date().toISOString();
-      const nowDisplay = new Date(nowIso).toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" });
-      setRecords(prev =>
-        prev.map(v =>
-          v.id === id
-            ? {
-                ...v,
-                status: "REJECTED",
-                reason: trimmedReason,
-                reviewed_by: v.reviewed_by ?? "Admin",
-                reviewed_at_raw: nowIso,
-                reviewed_at: nowDisplay,
-              }
-            : v,
-        ),
-      );
-      setSelected(null);
-      toast.success("Verification rejected successfully", { position: "top-center" });
-    } catch (error) {
-      const message = typeof error === "string" ? error : "Failed to reject verification";
-      toast.error(message, { position: "top-center" });
-    } finally {
-      setActionLoading(false);
-    }
+    openDialog({
+      title: "Reject Verification",
+      message: "Reject this verification request? This action cannot be changed from this table.",
+      confirmText: "Reject",
+      cancelText: "Cancel",
+      isDangerous: true,
+      onConfirm: () => {
+        void (async () => {
+          setActionLoading(true);
+          try {
+            await setAdminVerificationStatus(id, { status: "REJECTED", reason: trimmedReason });
+            const nowIso = new Date().toISOString();
+            const nowDisplay = new Date(nowIso).toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" });
+            setRecords(prev =>
+              prev.map(v =>
+                v.id === id
+                  ? {
+                      ...v,
+                      status: "REJECTED",
+                      reason: trimmedReason,
+                      reviewed_by: v.reviewed_by ?? "Admin",
+                      reviewed_at_raw: nowIso,
+                      reviewed_at: nowDisplay,
+                    }
+                  : v,
+              ),
+            );
+            setSelected(null);
+            toast.success("Verification rejected successfully", { position: "top-center" });
+          } catch (error) {
+            const message = typeof error === "string" ? error : "Failed to reject verification";
+            toast.error(message, { position: "top-center" });
+          } finally {
+            setActionLoading(false);
+          }
+        })();
+      },
+      onCancel: () => {},
+    });
   }
 
   return (

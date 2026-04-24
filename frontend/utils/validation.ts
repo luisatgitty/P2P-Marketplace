@@ -8,6 +8,8 @@ import {
 } from "@/types/listings";
 
 export const MESSAGE_MAX_LENGTH = 2000;
+export const MESSAGE_EDIT_DURATION_MS = 15 * 60 * 1000; // 15 minutes
+
 
 export function limitMessageInputLength(value: string): string {
   if (value.length <= MESSAGE_MAX_LENGTH) return value;

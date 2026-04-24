@@ -7,6 +7,8 @@ import { toast } from "sonner";
 import type { Message, MessageAttachment, ReactionType, ReplyPreview } from "@/types/messaging";
 import { REACTIONS } from "@/types/messaging";
 import { SafeImage } from "../ui/safe-image";
+import { MESSAGE_EDIT_DURATION_MS } from "@/utils/validation";
+import { useConfirmDialog } from "@/utils/ConfirmDialogContext";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -256,6 +258,7 @@ function ContextMenu({
   isMe,
   hasContent,
   canUnsend,
+    canEdit,
   onReply,
   onCopy,
   onEdit,
@@ -268,6 +271,7 @@ function ContextMenu({
   isMe: boolean;
   hasContent: boolean;
   canUnsend: boolean;
+    canEdit?: boolean;
   onReply: () => void;
   onCopy:  () => void;
   onEdit:  () => void;
@@ -277,6 +281,8 @@ function ContextMenu({
   menuRef: React.RefObject<HTMLDivElement | null>;
   style?: React.CSSProperties;
 }) {
+  const { openDialog } = useConfirmDialog();
+
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) onClose();
@@ -284,6 +290,38 @@ function ContextMenu({
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, [menuRef, onClose]);
+
+  const handleUnsendClick = () => {
+    openDialog({
+      title: "Unsend Message",
+      message: "Are you sure you want to unsend this message? This action cannot be undone.",
+      confirmText: "Unsend",
+      cancelText: "Cancel",
+      isDangerous: true,
+      onConfirm: () => {
+        onUnsend();
+        onClose();
+        toast.success("Message unsent.", { position: "top-center" });
+      },
+      onCancel: () => onClose(),
+    });
+  };
+
+  const handleDeleteClick = () => {
+    openDialog({
+      title: "Delete Message",
+      message: "Are you sure you want to delete this message? This action cannot be undone.",
+      confirmText: "Delete",
+      cancelText: "Cancel",
+      isDangerous: true,
+      onConfirm: () => {
+        onDelete();
+        onClose();
+        toast.success("Message deleted.", { position: "top-center" });
+      },
+      onCancel: () => onClose(),
+    });
+  };
 
   type MenuItem = {
     icon: React.ElementType;
@@ -296,9 +334,9 @@ function ContextMenu({
   const items: MenuItem[] = [
     { icon: Reply,  label: "Reply",  action: onReply },
     { icon: Copy,   label: "Copy",   action: onCopy,   show: hasContent },
-    { icon: Pencil, label: "Edit",   action: onEdit,   show: isMe && hasContent },
-    { icon: Trash2, label: "Unsend", action: onUnsend, show: isMe && canUnsend,  danger: true },
-    { icon: Trash2, label: "Delete", action: onDelete, danger: true },
+    { icon: Pencil, label: "Edit",   action: onEdit,   show: isMe && hasContent && canEdit },
+    { icon: Trash2, label: "Unsend", action: handleUnsendClick, show: isMe && canUnsend,  danger: true },
+    { icon: Trash2, label: "Delete", action: handleDeleteClick, danger: true },
   ];
 
   return (
@@ -316,7 +354,7 @@ function ContextMenu({
         .map(({ icon: Icon, label, action, danger }) => (
           <button
             key={label}
-            onClick={() => { action(); onClose(); }}
+            onClick={() => { action(); }}
             className={cn(
               "flex items-center gap-2.5 w-full px-3.5 py-2.5 text-xs font-medium transition-colors",
               danger
@@ -414,32 +452,10 @@ export default function MessageBubble({
     }
   };
 
-  const replyPreviewText = (): string => {
-    if (message.content) return message.content;
-    const atts = message.attachments ?? [];
-    if (!atts.length) return "";
-    const imgs = atts.filter((a) => a.fileType === "IMAGE").length;
-    const vids = atts.filter((a) => a.fileType === "VIDEO").length;
-    const parts = [];
-    if (imgs) parts.push(`📷 ${imgs > 1 ? `${imgs} photos` : "Photo"}`);
-    if (vids) parts.push(`🎥 ${vids > 1 ? `${vids} videos` : "Video"}`);
-    return parts.join(", ");
-  };
-
-  // ── Unsent message ────────────────────────────────────────────────────────
-  if (message.isUnsent) {
-    return (
-      <div className={cn("flex my-0.5", isMe ? "justify-end" : "justify-start")}>
-        <p className="italic text-xs text-stone-400 dark:text-stone-600 px-3.5 py-2 rounded-lg border border-dashed border-stone-200 dark:border-stone-700">
-          {isMe ? "You unsent a message." : "This message was unsent."}
-        </p>
-      </div>
-    );
-  }
-
   const hasAttachments = (message.attachments?.length ?? 0) > 0;
   const hasContent     = !!message.content;
   const canUnsend = Date.now() - new Date(message.createdAt).getTime() <= 10 * 60 * 1000;
+  const canEdit = hasContent && Date.now() - new Date(message.createdAt).getTime() <= MESSAGE_EDIT_DURATION_MS;
 
   const getListingCardRect = () => {
     const el = document.querySelector('[data-listing-context-card="true"]') as HTMLElement | null;
@@ -574,6 +590,17 @@ export default function MessageBubble({
     message.status,
   ]);
 
+  // Keep hook order stable even when message transitions to unsent.
+  if (message.isUnsent) {
+    return (
+      <div className={cn("flex my-0.5", isMe ? "justify-end" : "justify-start")}>
+        <p className="italic text-xs text-stone-400 dark:text-stone-600 px-3.5 py-2 rounded-lg border border-dashed border-stone-200 dark:border-stone-700">
+          {isMe ? "You unsent a message." : "This message was unsent."}
+        </p>
+      </div>
+    );
+  }
+
   // ── Hover action buttons ──────────────────────────────────────────────────
   const ActionButtons = () => (
     <div
@@ -625,17 +652,12 @@ export default function MessageBubble({
             isMe={isMe}
             hasContent={hasContent}
             canUnsend={canUnsend}
+                       canEdit={canEdit}
             onReply={() => onReply(message)}
             onCopy={handleCopy}
             onEdit={() => onEdit(message.id, message.content ?? "")}
-            onUnsend={() => {
-              onDelete(message.id, true);
-              toast.success("Message unsent.", { position: "top-center" });
-            }}
-            onDelete={() => {
-              onDelete(message.id, false);
-              toast.success("Message deleted.", { position: "top-center" });
-            }}
+            onUnsend={() => onDelete(message.id, true)}
+            onDelete={() => onDelete(message.id, false)}
             onClose={() => setShowMenu(false)}
             menuRef={menuRef}
             style={menuStyle}

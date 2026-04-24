@@ -1,3 +1,5 @@
+"use client";
+
 import { LucideIcon, X } from 'lucide-react';
 import { Button } from './ui/button';
 import {
@@ -9,9 +11,11 @@ import {
   CardContent,
 } from './ui/card';
 import { cn } from '@/lib/utils';
-import { ReactNode } from 'react';
+import { ReactNode, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { useModalFocusTrap } from '@/utils/useModalFocusTrap';
 
-export interface ModalHeaderProps {
+export interface ModalFormCardProps {
   icon: LucideIcon;
   type: string;
   title: string;
@@ -26,7 +30,7 @@ export interface ModalHeaderProps {
   children?: ReactNode;
 }
 
-export function ModalHeader({
+export function ModalFormCard({
   icon: Icon,
   type,
   title,
@@ -39,33 +43,53 @@ export function ModalHeader({
   submitLabel,
   cancelLabel,
   children,
-}: ModalHeaderProps) {
+}: ModalFormCardProps) {
+  const [isMounted, setIsMounted] = useState(false);
+  const dialogRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setIsMounted(true);
+    return () => setIsMounted(false);
+  }, []);
+
+  useModalFocusTrap(dialogRef, isMounted, onClose);
+
   let iconColorClass = '';
   let btnColorClass = '';
 
-  if (type.toLowerCase() === 'sell') {
+  if (type.toUpperCase() === 'SELL') {
     iconColorClass = 'text-orange-600';
     btnColorClass = 'bg-orange-500 hover:bg-orange-400';
-  } else if (type.toLowerCase() === 'rent') {
+  } else if (type.toUpperCase() === 'RENT') {
     iconColorClass = 'text-emerald-600';
     btnColorClass = 'bg-emerald-600 hover:bg-emerald-500';
-  } else if (type.toLowerCase() === 'service') {
+  } else if (type.toUpperCase() === 'SERVICE') {
     iconColorClass = 'text-violet-600';
     btnColorClass = 'bg-violet-600 hover:bg-violet-500';
-  } else if (type.toLowerCase() === 'report') {
+  } else if (type.toUpperCase() === 'REPORT') {
     iconColorClass = 'text-red-600';
     btnColorClass = 'bg-red-600 hover:bg-red-500';
-  } else if (type.toLowerCase() === 'review') {
+  } else if (type.toUpperCase() === 'REVIEW') {
     iconColorClass = 'text-yellow-600';
     btnColorClass = 'bg-yellow-600 hover:bg-yellow-500';
   }
 
-  return (
+  if (!isMounted) {
+    return null;
+  }
+
+  return createPortal((
     <div
-      className='fixed z-50 inset-0 flex items-end sm:items-center justify-center p-4 bg-black/60 backdrop-blur-sm'
+      className='fixed inset-0 z-100 flex items-end sm:items-center justify-center p-4 bg-black/60 backdrop-blur-sm'
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
-      <Card className='relative bg-background rounded-lg w-full max-w-sm shadow-2xl flex flex-col max-h-[90vh] sm:max-h-[86vh] sm:mt-16'>
+      <Card
+        ref={dialogRef}
+        role='dialog'
+        aria-modal='true'
+        tabIndex={-1}
+        className='relative bg-background rounded-lg w-full max-w-sm shadow-2xl flex flex-col max-h-[95vh]'
+      >
         {/* Close Button */}
         <Button
           variant={'ghost'}
@@ -119,5 +143,5 @@ export function ModalHeader({
         </CardFooter>
       </Card>
     </div>
-  );
+  ), document.body);
 }

@@ -37,6 +37,7 @@ import { SafeImage } from "@/components/ui/safe-image";
 import { ImageLink } from "@/components/image-link";
 import { formatPrice } from "@/utils/string-builder";
 import { AUTH_LIMITS, isValidName } from "@/utils/validation";
+import { useConfirmDialog } from "@/utils/ConfirmDialogContext";
 import {
   encodeImageToPayload,
   encodeSquareProfileImageToPayload,
@@ -304,6 +305,7 @@ export default function ProfilePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, isUserOnline, saveUserData, clearUserData } = useUser();
+  const { openDialog } = useConfirmDialog();
   const externalUserId = (searchParams.get("userId") ?? "").trim();
   const ownUserId = (user?.userId ?? "").trim();
   const isSelfProfileRequest = externalUserId !== "" && ownUserId !== "" && externalUserId === ownUserId;
@@ -844,18 +846,30 @@ export default function ProfilePage() {
   async function handleDeactivateAccount() {
     if (deactivating) return;
 
-    const confirmed = window.confirm("Deactivate your account? You will be logged out and cannot log in until support reactivates it.");
-    if (!confirmed) return;
-
-    setDeactivating(true);
-    try {
-      await deactivateProfile();
-      await clearUserData();
-    } catch {
-      showErrorToast("Failed to deactivate account");
-    } finally {
-      setDeactivating(false);
-    }
+    openDialog({
+      title: "Deactivate Account",
+      message:
+        "Deactivate your account? You will be logged out and cannot log in until support reactivates it.",
+      confirmText: "Deactivate",
+      cancelText: "Cancel",
+      isDangerous: true,
+      onConfirm: () => {
+        void (async () => {
+          setDeactivating(true);
+          try {
+            await deactivateProfile();
+            await clearUserData();
+            showSuccessToast("Account deactivated. You have been logged out.");
+            router.push("/login");
+          } catch {
+            showErrorToast("Failed to deactivate account");
+          } finally {
+            setDeactivating(false);
+          }
+        })();
+      },
+      onCancel: () => {},
+    });
   }
 
   const fullName = profileUser ? `${profileUser.firstName} ${profileUser.lastName}` : "—";
@@ -1042,7 +1056,7 @@ export default function ProfilePage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="text-xs rounded-lg border-stone-200 dark:border-[#2a2d3e] text-stone-600 dark:text-stone-300 hover:border-stone-400 dark:hover:border-stone-500 dark:bg-transparent dark:hover:bg-[#252837]"
+                  className="rounded-lg"
                   onClick={handleEditProfileClick}
                   disabled={loadingEditProfile}>
                   <Edit2 className="w-3 h-3" />
@@ -1264,9 +1278,7 @@ export default function ProfilePage() {
             <div className="flex items-center justify-between px-4 pt-3 pb-2">
               <div className="flex gap-1">
                 {(["all", "active", "sold", "booked"] as const).map((tab) => (
-                  <Button
-                    variant={'ghost'}
-                    size={'sm'}
+                  <button
                     key={tab}
                     onClick={() => setListingTab(tab)}
                     className={cn("tab-page-base",
@@ -1280,7 +1292,7 @@ export default function ProfilePage() {
                       : tab === "sold"
                         ? `Sold (${soldListings.length})`
                         : `Booked (${bookedListings.length})`}
-                  </Button>
+                  </button>
                 ))}
               </div>
               
@@ -1299,7 +1311,7 @@ export default function ProfilePage() {
                 <p className="font-semibold text-stone-400 text-sm">No listings yet</p>
                 {isVerifiedSeller && (
                   <Link href="/create">
-                    <Button size="sm" className="mt-4 rounded-full bg-stone-900 hover:bg-stone-800 text-white text-xs">
+                    <Button className="mt-4 rounded-lg bg-stone-900 hover:bg-stone-800 text-white text-sm">
                       <Plus className="w-3 h-3" /> Add Listing
                     </Button>
                   </Link>
@@ -1340,9 +1352,7 @@ export default function ProfilePage() {
                     { key: "received", label: `Reviews by Others (${receivedReviews.length})` },
                     { key: "personal", label: `Personal Reviews (${personalReviews.length})` },
                   ] as const).map((tabItem) => (
-                    <Button
-                      variant={'ghost'}
-                      size={'sm'}
+                    <button
                       key={tabItem.key}
                       onClick={() => setReviewTab(tabItem.key)}
                       className={cn(
@@ -1353,7 +1363,7 @@ export default function ProfilePage() {
                       )}
                     >
                       {tabItem.label}
-                    </Button>
+                    </button>
                   ))}
                 </div>
               </div>

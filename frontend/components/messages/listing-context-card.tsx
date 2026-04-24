@@ -14,7 +14,8 @@ import { type ScheduleRequestPayload } from "@/services/messagingService";
 import { ConfirmActionModal } from "@/components/confirm-action-modal"; 
 import OfferModal from "@/components/offer-modal";
 import { ScheduleModal } from "@/components/schedule-modal";
-import { ModalHeader } from "../modal-header";
+import { useConfirmDialog } from "@/utils/ConfirmDialogContext";
+import { ModalFormCard } from "../modal-form-card";
 import { ImageLink } from "../image-link";
 import { formatPrice } from "@/utils/string-builder";
 import {
@@ -45,6 +46,7 @@ export default function ListingContextCard({
   onMarkedComplete,
   onOfferUpdated,
 }: ListingContextCardProps) {
+  const { openDialog } = useConfirmDialog();
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [markingComplete, setMarkingComplete] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(false);
@@ -168,24 +170,31 @@ export default function ListingContextCard({
     }
   };
 
-  const handleDeleteReview = async () => {
+  const handleDeleteReview = () => {
     if (!existingReview || reviewSubmitting || reviewDeleting) return;
 
-    const confirmed = window.confirm("Delete your review for this item?");
-    if (!confirmed) return;
-
-    setReviewDeleting(true);
-    try {
-      await runReviewDelete(listing.id);
-      setExistingReview(null);
-      toast.success("Review deleted successfully.", { position: "top-center" });
-      handleCloseReviewModal();
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err || "Failed to delete review.");
-      toast.error(message, { position: "top-center" });
-    } finally {
-      setReviewDeleting(false);
-    }
+    openDialog({
+      title: "Delete Review",
+      message: "Delete your review for this item?",
+      confirmText: "Delete",
+      cancelText: "Cancel",
+      isDangerous: true,
+      onConfirm: async () => {
+        setReviewDeleting(true);
+        try {
+          await runReviewDelete(listing.id);
+          setExistingReview(null);
+          toast.success("Review deleted successfully.", { position: "top-center" });
+          handleCloseReviewModal();
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err || "Failed to delete review.");
+          toast.error(message, { position: "top-center" });
+        } finally {
+          setReviewDeleting(false);
+        }
+      },
+      onCancel: () => {},
+    });
   };
 
   const handleConfirmMarkComplete = async () => {
@@ -301,29 +310,28 @@ export default function ListingContextCard({
         </div>
 
         {/* Hidden in mobile */}
-        <div className="hidden sm:flex flex-1 gap-4">
 
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-stone-800 dark:text-stone-100 truncate leading-tight">
-              {listing.listingType === "SELL"
-                ? "Offered Price"
-                : "Provided Schedule"}
-            </p>
-            <div className="flex items-center gap-1.5 mt-0.5">
-              <span className="text-xs font-bold text-amber-700 dark:text-amber-500">
-                {
-                  listing.listingType === "SELL"
-                    ? isSold || hasTransaction && (normalizedTransactionStatus === "PENDING" || normalizedTransactionStatus === "CONFIRMED")
-                      ? formatPrice(offeredPrice)
-                      : "No offer yet"
-                    : (scheduleValue || "No schedule yet")
-                }
-              </span>
-            </div>
+        {/* Offered Price / Schedule */}
+        <div className="hidden min-w-0 sm:block md:flex-1">
+          <p className="text-sm font-semibold text-stone-800 dark:text-stone-100 truncate leading-tight">
+            {listing.listingType === "SELL"
+              ? "Offered Price"
+              : "Provided Schedule"}
+          </p>
+          <div className="flex items-center gap-1.5 mt-0.5">
+            <span className="text-xs font-bold text-amber-700 dark:text-amber-500">
+              {
+                listing.listingType === "SELL"
+                  ? isSold || hasTransaction && (normalizedTransactionStatus === "PENDING" || normalizedTransactionStatus === "CONFIRMED")
+                    ? formatPrice(offeredPrice)
+                    : "No offer yet"
+                  : (scheduleValue || "No schedule yet")
+              }
+            </span>
           </div>
+        </div>
 
-          {/* Details */}
-
+        <div className="hidden lg:flex gap-4">
           {/* Edit Price Button */}
           {canEditPrice && (
             <button
@@ -518,7 +526,7 @@ export default function ListingContextCard({
       )}
 
       {reviewOpen && (
-        <ModalHeader
+        <ModalFormCard
           icon={Star}
           type='review'
           title="Review Item"
@@ -576,7 +584,7 @@ export default function ListingContextCard({
                 </p>
               </div>
             </div>
-        </ModalHeader>
+        </ModalFormCard>
       )}
 
       {editPriceOpen && (
@@ -586,10 +594,9 @@ export default function ListingContextCard({
           subtitle={listing.title}
           listedPrice={listing.price}
           offerAmount={String(newPrice)}
-          onOfferAmountChange={(value) => setNewPrice(Number.parseInt(value || "0", 10) || 0)}
+          onOfferAmountChange={(value) => setNewPrice(Number.parseInt(value, 10))}
           note={offerMessage}
           onNoteChange={setOfferMessage}
-          notePlaceholder="e.g. Updated offer based on our discussion."
           submitLabel="Update Offer"
           submitDisabled={!isOfferChanged}
           submitting={priceSubmitting}

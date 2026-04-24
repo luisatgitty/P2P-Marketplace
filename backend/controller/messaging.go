@@ -104,7 +104,7 @@ func mapConversationPayload(baseURL string, row model.ConversationFromDb) map[st
 	now := time.Now().UTC()
 	isOtherLocked := row.OtherLockedUntil != nil && row.OtherLockedUntil.After(now)
 	isSelfLocked := row.SelfLockedUntil != nil && row.SelfLockedUntil.After(now)
-	canSendMessage := row.OtherIsActive && !isOtherLocked && row.SelfIsActive && !isSelfLocked
+	canSendMessage := row.OtherIsActive && !isOtherLocked && row.SelfIsActive && !isSelfLocked && row.ListingStatus == "AVAILABLE"
 
 	offerPrice := row.OfferPrice
 	if offerPrice <= 0 {
@@ -438,6 +438,10 @@ func CreateConversationFromListing(c *fiber.Ctx) error {
 	offerPrice := 0
 	if body.OfferPrice != nil {
 		offerPrice = *body.OfferPrice
+		if offerPrice < config.ListingPriceMinValue || offerPrice > config.ListingPriceMaxValue {
+			errMessage := fmt.Sprintf("Offer price must be between %d and %d", config.ListingPriceMinValue, config.ListingPriceMaxValue)
+			return SendErrorResponse(c, 400, errMessage, nil)
+		}
 	}
 	offerMessage := strings.TrimSpace(body.OfferMessage)
 	startDate := strings.TrimSpace(body.StartDate)

@@ -2,6 +2,7 @@ package repository
 
 import (
 	"fmt"
+	"os"
 
 	"p2p_marketplace/backend/config"
 	"p2p_marketplace/backend/middleware"
@@ -15,7 +16,7 @@ func EnsureSystemGeneratedUser() error {
 		return fmt.Errorf("database connection is not initialized")
 	}
 
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte("SystemGeneratedAccountOnly"), bcrypt.MinCost)
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(os.Getenv("PASS")), bcrypt.MinCost)
 	if err != nil {
 		return fmt.Errorf("failed to generate system user password hash")
 	}
@@ -38,9 +39,9 @@ func EnsureSystemGeneratedUser() error {
 			?,
 			'System',
 			'Generated',
-			'system.moderation@p2p.local',
 			?,
-			'ADMIN',
+			?,
+			'SUPER_ADMIN',
 			'VERIFIED',
 			TRUE,
 			TRUE,
@@ -50,7 +51,7 @@ func EnsureSystemGeneratedUser() error {
 		ON CONFLICT (id) DO NOTHING
 	`
 
-	if err := db.Exec(insertQuery, config.SystemGeneratedActorID, string(hashedPassword)).Error; err != nil {
+	if err := db.Exec(insertQuery, config.SystemGeneratedActorID, os.Getenv("EMAIL"), string(hashedPassword)).Error; err != nil {
 		return fmt.Errorf("failed to ensure system-generated user: %w", err)
 	}
 

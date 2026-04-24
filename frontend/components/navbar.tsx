@@ -514,7 +514,7 @@ export default function Navbar() {
                           type="button"
                           onClick={handleMarkAllNotificationsRead}
                           disabled={!hasUnreadNotifications}
-                          className="text-[11px] font-medium text-amber-300 hover:text-amber-200 disabled:text-stone-500 disabled:cursor-not-allowed transition-colors"
+                          className="text-xs font-medium text-amber-300 hover:text-amber-200 disabled:text-stone-500 disabled:cursor-not-allowed transition-colors"
                         >
                           Mark all as read
                         </button>
