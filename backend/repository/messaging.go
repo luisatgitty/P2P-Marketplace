@@ -18,9 +18,11 @@ import (
 	"gorm.io/gorm"
 )
 
-func GetConversationsByUser(userId string) ([]model.ConversationFromDb, error) {
+func GetConversationsByUser(userId, search, tab string) ([]model.ConversationFromDb, error) {
 	db := middleware.DBConn
 	rows := make([]model.ConversationFromDb, 0)
+	searchLike := "%" + strings.ToLower(strings.TrimSpace(search)) + "%"
+	normalizedTab := strings.ToLower(strings.TrimSpace(tab))
 
 	query := `
 		SELECT
@@ -139,29 +141,63 @@ func GetConversationsByUser(userId string) ([]model.ConversationFromDb, error) {
 		) unread ON TRUE
 		WHERE cm.user_id = $1
 			AND cm.deleted_at IS NULL
+			AND (
+				$2 = ''
+				OR LOWER(CONCAT_WS(' ', u.first_name, u.last_name)) LIKE $2
+				OR LOWER(COALESCE(l.title, '')) LIKE $2
+			)
+			AND (
+				$3 = ''
+				OR $3 = 'all'
+				OR ($3 = 'buying' AND c.seller_id <> $1::uuid AND UPPER(l.listing_type::text) = 'SELL')
+				OR ($3 = 'selling' AND c.seller_id = $1::uuid AND UPPER(l.listing_type::text) = 'SELL')
+				OR ($3 = 'rental' AND UPPER(l.listing_type::text) = 'RENT')
+				OR ($3 = 'services' AND UPPER(l.listing_type::text) = 'SERVICE')
+			)
 		ORDER BY c.last_message_at DESC NULLS LAST, c.created_at DESC
 	`
 
-	if err := db.Raw(query, userId).Scan(&rows).Error; err != nil {
+	if err := db.Raw(query, userId, searchLike, normalizedTab).Scan(&rows).Error; err != nil {
 		return nil, fmt.Errorf("Failed to load conversations")
 	}
 
 	return rows, nil
 }
 
-func GetConversationsByUserPage(userId string, limit, offset int) ([]model.ConversationFromDb, int, error) {
+func GetConversationsByUserPage(userId string, limit, offset int, search, tab string) ([]model.ConversationFromDb, int, error) {
 	db := middleware.DBConn
 	rows := make([]model.ConversationFromDb, 0)
 	total := 0
+	searchLike := "%" + strings.ToLower(strings.TrimSpace(search)) + "%"
+	normalizedTab := strings.ToLower(strings.TrimSpace(tab))
 
 	countQuery := `
 		SELECT COUNT(*)
 		FROM public.conversation_members cm
+		JOIN public.conversations c
+			ON c.id = cm.conversation_id
+		JOIN public.listings l
+			ON l.id = c.listing_id
+		JOIN public.users u
+			ON u.id = CASE WHEN c.buyer_id = $1::uuid THEN c.seller_id ELSE c.buyer_id END
 		WHERE cm.user_id = $1
 			AND cm.deleted_at IS NULL
+			AND (
+				$2 = ''
+				OR LOWER(CONCAT_WS(' ', u.first_name, u.last_name)) LIKE $2
+				OR LOWER(COALESCE(l.title, '')) LIKE $2
+			)
+			AND (
+				$3 = ''
+				OR $3 = 'all'
+				OR ($3 = 'buying' AND c.seller_id <> $1::uuid AND UPPER(l.listing_type::text) = 'SELL')
+				OR ($3 = 'selling' AND c.seller_id = $1::uuid AND UPPER(l.listing_type::text) = 'SELL')
+				OR ($3 = 'rental' AND UPPER(l.listing_type::text) = 'RENT')
+				OR ($3 = 'services' AND UPPER(l.listing_type::text) = 'SERVICE')
+			)
 	`
 
-	if err := db.Raw(countQuery, userId).Scan(&total).Error; err != nil {
+	if err := db.Raw(countQuery, userId, searchLike, normalizedTab).Scan(&total).Error; err != nil {
 		return nil, 0, fmt.Errorf("Failed to count conversations")
 	}
 
@@ -282,11 +318,24 @@ func GetConversationsByUserPage(userId string, limit, offset int) ([]model.Conve
 		) unread ON TRUE
 		WHERE cm.user_id = $1
 			AND cm.deleted_at IS NULL
+			AND (
+				$2 = ''
+				OR LOWER(CONCAT_WS(' ', u.first_name, u.last_name)) LIKE $2
+				OR LOWER(COALESCE(l.title, '')) LIKE $2
+			)
+			AND (
+				$3 = ''
+				OR $3 = 'all'
+				OR ($3 = 'buying' AND c.seller_id <> $1::uuid AND UPPER(l.listing_type::text) = 'SELL')
+				OR ($3 = 'selling' AND c.seller_id = $1::uuid AND UPPER(l.listing_type::text) = 'SELL')
+				OR ($3 = 'rental' AND UPPER(l.listing_type::text) = 'RENT')
+				OR ($3 = 'services' AND UPPER(l.listing_type::text) = 'SERVICE')
+			)
 		ORDER BY c.last_message_at DESC NULLS LAST, c.created_at DESC
-		LIMIT $2 OFFSET $3
+		LIMIT $4 OFFSET $5
 	`
 
-	if err := db.Raw(query, userId, limit, offset).Scan(&rows).Error; err != nil {
+	if err := db.Raw(query, userId, searchLike, normalizedTab, limit, offset).Scan(&rows).Error; err != nil {
 		return nil, 0, fmt.Errorf("Failed to load conversations")
 	}
 

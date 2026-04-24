@@ -236,6 +236,12 @@ func GetConversations(c *fiber.Ctx) error {
 		return SendErrorResponse(c, 401, err.Error(), nil)
 	}
 
+	search := strings.TrimSpace(c.Query("search"))
+	tab := strings.ToLower(strings.TrimSpace(c.Query("tab")))
+	if tab != "" && tab != "all" && tab != "buying" && tab != "selling" && tab != "rental" && tab != "services" {
+		return SendErrorResponse(c, 400, "Tab filter is invalid", nil)
+	}
+
 	hasLimitParam := strings.TrimSpace(c.Query("limit")) != ""
 	hasOffsetParam := strings.TrimSpace(c.Query("offset")) != ""
 	hasPagination := hasLimitParam || hasOffsetParam
@@ -262,7 +268,7 @@ func GetConversations(c *fiber.Ctx) error {
 	}
 
 	if !hasPagination {
-		rows, err := repository.GetConversationsByUser(userId)
+		rows, err := repository.GetConversationsByUser(userId, search, tab)
 		if err != nil {
 			return SendErrorResponse(c, 500, err.Error(), err)
 		}
@@ -276,7 +282,7 @@ func GetConversations(c *fiber.Ctx) error {
 		return SendSuccessResponse(c, 200, "Conversations fetched successfully", map[string]any{"conversations": items})
 	}
 
-	rows, total, err := repository.GetConversationsByUserPage(userId, limit, offset)
+	rows, total, err := repository.GetConversationsByUserPage(userId, limit, offset, search, tab)
 	if err != nil {
 		return SendErrorResponse(c, 500, err.Error(), err)
 	}

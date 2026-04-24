@@ -1,6 +1,7 @@
 import type {
   Conversation,
   Message,
+  MessageTab,
   ReactionType,
   ReplyPreview,
 } from "@/types/messaging";
@@ -35,6 +36,8 @@ export type MessagesPageQuery = {
 export type ConversationsPageQuery = {
   limit?: number;
   offset?: number;
+  search?: string;
+  tab?: MessageTab;
 };
 
 export type ConversationsPage = {
@@ -90,6 +93,12 @@ export async function getConversationsPage(query: ConversationsPageQuery = {}): 
   }
   if (Number.isFinite(query.offset)) {
     params.set("offset", String(query.offset));
+  }
+  if (typeof query.search === "string" && query.search.trim() !== "") {
+    params.set("search", query.search.trim());
+  }
+  if (typeof query.tab === "string" && query.tab.trim() !== "") {
+    params.set("tab", query.tab.trim());
   }
 
   const suffix = params.size > 0 ? `?${params.toString()}` : "";
