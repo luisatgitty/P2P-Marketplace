@@ -385,6 +385,11 @@ export default function AdminLayout({
   }, [collapsed]);
 
   const effectiveCollapsed = collapsed;
+  const handleSidebarMouseLeave = () => {
+    if (!isSmallScreen && !collapsed) {
+      setCollapsed(true);
+    }
+  };
 
   return (
     <>
@@ -397,6 +402,7 @@ export default function AdminLayout({
         {/* ── Sidebar ─────────────────────────────────────────────────────── */}
         <div
           ref={sidebarRef}
+          onMouseLeave={handleSidebarMouseLeave}
           className={cn(
             "absolute top-0 left-0 h-full bg-[#1e2433] z-10",
             "transition-all duration-300 ease-in-out",
