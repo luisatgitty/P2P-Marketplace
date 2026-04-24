@@ -538,7 +538,7 @@ export default function AdminsPage() {
   async function handleDelete(id: string, name: string) {
     openDialog({
       title: "Remove Admin",
-      message: `Remove admin account for ${name}? They will lose all admin access immediately.`,
+      message: `Remove ${name} admin account? They will lose all admin access immediately.`,
       confirmText: "Remove",
       cancelText: "Cancel",
       isDangerous: true,
@@ -579,20 +579,36 @@ export default function AdminsPage() {
     if (!target || target.role === "SUPER_ADMIN" || target.deleted_at) return;
 
     const nextActive = !target.is_active;
-    setActionLoadingUserId(id);
-    try {
-      await setAdminUserActive(id, nextActive);
-      const nowIso = new Date().toISOString();
-      setAdmins((as) => as.map((admin) => (
-        admin.id === id ? { ...admin, is_active: nextActive, updated_at: nowIso } : admin
-      )));
-      toast.success(`Admin account ${nextActive ? "activated" : "deactivated"} successfully`, { position: "top-center" });
-    } catch (err) {
-      const message = typeof err === "string" ? err : "Failed to update admin account status";
-      toast.error(message, { position: "top-center" });
-    } finally {
-      setActionLoadingUserId(null);
-    }
+    const fullName = `${target.first_name} ${target.last_name}`.trim();
+
+    openDialog({
+      title: nextActive ? "Activate Admin" : "Deactivate Admin",
+      message: nextActive
+        ? `Activate admin account for ${fullName}?`
+        : `Deactivate admin account for ${fullName}? They will lose access until reactivated.`,
+      confirmText: nextActive ? "Activate" : "Deactivate",
+      cancelText: "Cancel",
+      isDangerous: !nextActive,
+      onConfirm: () => {
+        void (async () => {
+          setActionLoadingUserId(id);
+          try {
+            await setAdminUserActive(id, nextActive);
+            const nowIso = new Date().toISOString();
+            setAdmins((as) => as.map((admin) => (
+              admin.id === id ? { ...admin, is_active: nextActive, updated_at: nowIso } : admin
+            )));
+            toast.success(`Admin account ${nextActive ? "activated" : "deactivated"} successfully`, { position: "top-center" });
+          } catch (err) {
+            const message = typeof err === "string" ? err : "Failed to update admin account status";
+            toast.error(message, { position: "top-center" });
+          } finally {
+            setActionLoadingUserId(null);
+          }
+        })();
+      },
+      onCancel: () => {},
+    });
   }
 
   const totalPages = Math.max(1, Math.ceil(totalCount / FETCH_LIMIT));
