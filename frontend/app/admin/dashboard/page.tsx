@@ -7,6 +7,7 @@ import {
   Package,
   Flag,
   ShieldCheck,
+  Headset,
   TrendingUp,
   TrendingDown,
   ArrowUpRight,
@@ -27,6 +28,8 @@ import {
   type AdminListingTypeBreakdown,
   type AdminWeeklyNewUsers,
 } from "@/services/adminService";
+import { getAppealSummary } from "@/services/appealsService";
+import type { AppealSummary } from "@/types/appeal";
 
 // ── Placeholder data ───────────────────────────────────────────────────────────
 type Trend = "up" | "down" | "neutral";
@@ -160,19 +163,29 @@ export default function DashboardPage() {
   const [weeklyNewListings, setWeeklyNewListings] = useState<AdminWeeklyNewUsers[]>(EMPTY_WEEKLY_NEW_USERS);
   const [listingTypeBreakdown, setListingTypeBreakdown] = useState<AdminListingTypeBreakdown[]>(EMPTY_LISTING_TYPE_BREAKDOWN);
   const [listingTypeTotalActive, setListingTypeTotalActive] = useState(0);
+  const [appealSummary, setAppealSummary] = useState<AppealSummary>({
+    total: 0,
+    pending: 0,
+    reactivated: 0,
+    declined: 0,
+  });
 
   useEffect(() => {
     let mounted = true;
 
     const loadStats = async () => {
       try {
-        const data = await getAdminDashboardStats();
+        const [data, nextAppealSummary] = await Promise.all([
+          getAdminDashboardStats(),
+          getAppealSummary(),
+        ]);
         if (!mounted) return;
         setStats({ ...EMPTY_STATS, ...data.stats });
         setWeeklyNewUsers(data.weeklyNewUsers.length > 0 ? data.weeklyNewUsers : EMPTY_WEEKLY_NEW_USERS);
         setWeeklyNewListings(data.weeklyNewListings.length > 0 ? data.weeklyNewListings : EMPTY_WEEKLY_NEW_USERS);
         setListingTypeBreakdown(data.listingTypeBreakdown.length > 0 ? data.listingTypeBreakdown : EMPTY_LISTING_TYPE_BREAKDOWN);
         setListingTypeTotalActive(data.listingTypeTotalActive);
+        setAppealSummary(nextAppealSummary);
       } catch (err) {
         if (!mounted) return;
         const message = typeof err === "string" ? err : "Failed to load dashboard stats";
@@ -333,6 +346,42 @@ export default function DashboardPage() {
       </div>
 
       {/* ── Charts row ── */}
+      <Link
+        href="/admin/appeals"
+        className="block rounded-2xl border border-stone-200 dark:border-[#2a2d3e] bg-white dark:bg-[#1c1f2e] p-5 hover:shadow-md transition-all"
+      >
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div className="flex items-start gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-950/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+              <Headset className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-stone-500 dark:text-stone-400">Appeals Inbox</p>
+              <h3 className="mt-1 text-lg font-black text-stone-900 dark:text-stone-100">
+                {appealSummary.pending.toLocaleString()} pending appeal{appealSummary.pending === 1 ? "" : "s"}
+              </h3>
+              <p className="mt-1 text-sm text-stone-600 dark:text-stone-400">
+                Frontend-only ticket review flow for account reactivation and decline decisions.
+              </p>
+            </div>
+          </div>
+          <div className="grid grid-cols-3 gap-3 text-center">
+            <div className="rounded-xl bg-stone-50 dark:bg-[#13151f] px-4 py-3">
+              <p className="text-xs text-stone-500 dark:text-stone-400">Total</p>
+              <p className="mt-1 text-lg font-black text-stone-900 dark:text-stone-100">{appealSummary.total}</p>
+            </div>
+            <div className="rounded-xl bg-teal-50 dark:bg-teal-950/20 px-4 py-3">
+              <p className="text-xs text-teal-700 dark:text-teal-300">Reactivated</p>
+              <p className="mt-1 text-lg font-black text-teal-700 dark:text-teal-300">{appealSummary.reactivated}</p>
+            </div>
+            <div className="rounded-xl bg-red-50 dark:bg-red-950/20 px-4 py-3">
+              <p className="text-xs text-red-700 dark:text-red-300">Declined</p>
+              <p className="mt-1 text-lg font-black text-red-700 dark:text-red-300">{appealSummary.declined}</p>
+            </div>
+          </div>
+        </div>
+      </Link>
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* New users this week */}
         <div className="lg:col-span-2 bg-white dark:bg-[#1c1f2e] rounded-lg border border-stone-200 dark:border-[#2a2d3e] p-4">

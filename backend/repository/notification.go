@@ -232,3 +232,24 @@ func InsertListingNotificationTx(tx *gorm.DB, userId, message, link string) erro
 
 	return nil
 }
+
+func InsertAppealNotificationTx(tx *gorm.DB, userId, message, link string) error {
+	trimmedMessage := strings.TrimSpace(message)
+	if trimmedMessage == "" {
+		trimmedMessage = "Your appeal has been updated."
+	}
+
+	trimmedLink := strings.TrimSpace(link)
+	if trimmedLink == "" {
+		trimmedLink = "/support"
+	}
+
+	if err := tx.Exec(`
+		INSERT INTO public.notifications (user_id, type, message, link)
+		VALUES ($1, 'APPEAL', $2, $3)
+	`, userId, trimmedMessage, trimmedLink).Error; err != nil {
+		return fmt.Errorf("Failed to create appeal notification")
+	}
+
+	return nil
+}

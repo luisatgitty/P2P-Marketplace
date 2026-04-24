@@ -220,6 +220,18 @@ const (
 	AdminReasonMaxLength = 500
 )
 
+const (
+	AppealSubjectMinLength  = 8
+	AppealSubjectMaxLength  = 120
+	AppealMessageMinLength  = 20
+	AppealMessageMaxLength  = 2000
+	AppealPhoneExactLength  = 11
+	AppealEvidenceMaxLength = 500
+	AppealPageDefaultLimit  = 20
+	AppealPageMaxLimit      = 100
+	AppealTicketPrefix      = "APL"
+)
+
 // ─── Automated Moderation ─────────────────────────
 const (
 	SystemGeneratedActorID          = "00000000-0000-0000-0000-000000000000"
@@ -235,6 +247,24 @@ var AdminReportActionTypes = []string{
 	"LOCK_30",
 	"DELETE_LISTING",
 	"PERMANENT_BAN",
+}
+
+var AppealCategories = []string{
+	"ACCOUNT_DEACTIVATION",
+	"ACCOUNT_LOCKED",
+	"VERIFICATION_REVIEW",
+	"OTHER",
+}
+
+var AppealStatuses = []string{
+	"PENDING",
+	"REACTIVATED",
+	"DECLINED",
+}
+
+var AppealResolutions = []string{
+	"REACTIVATE",
+	"DECLINE",
 }
 
 // ─── Seller Verification ───────────────────────────

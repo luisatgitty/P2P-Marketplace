@@ -56,3 +56,15 @@ func EnsureSystemGeneratedUser() error {
 
 	return nil
 }
+
+func EnsureSystemRequirements() error {
+	if err := EnsureSystemGeneratedUser(); err != nil {
+		return err
+	}
+
+	if err := EnsureAppealsTable(); err != nil {
+		return err
+	}
+
+	return nil
+}

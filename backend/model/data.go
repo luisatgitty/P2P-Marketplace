@@ -527,6 +527,59 @@ type AdminSetVerificationStatusBody struct {
 	Reason string `json:"reason"`
 }
 
+type AppealCreateBody struct {
+	UserId      string `json:"userId"`
+	FullName    string `json:"fullName"`
+	Email       string `json:"email"`
+	Phone       string `json:"phone"`
+	Category    string `json:"category"`
+	Subject     string `json:"subject"`
+	Message     string `json:"message"`
+	EvidenceURL string `json:"evidenceUrl"`
+}
+
+type AppealReviewBody struct {
+	Resolution string `json:"resolution"`
+	AdminNote  string `json:"adminNote"`
+}
+
+type AppealQuery struct {
+	Search   string
+	Status   string
+	Category string
+	Email    string
+	Limit    int
+	Offset   int
+}
+
+type AppealTicketFromDb struct {
+	Id                      string     `gorm:"column:id" json:"id"`
+	TicketNumber            string     `gorm:"column:ticket_number" json:"ticket_number"`
+	UserId                  *string    `gorm:"column:user_id" json:"user_id"`
+	FullName                string     `gorm:"column:full_name" json:"full_name"`
+	Email                   string     `gorm:"column:email" json:"email"`
+	Phone                   *string    `gorm:"column:phone" json:"phone"`
+	Category                string     `gorm:"column:category" json:"category"`
+	Subject                 string     `gorm:"column:subject" json:"subject"`
+	Message                 string     `gorm:"column:message" json:"message"`
+	EvidenceURL             *string    `gorm:"column:evidence_url" json:"evidence_url"`
+	Status                  string     `gorm:"column:status" json:"status"`
+	Resolution              *string    `gorm:"column:resolution" json:"resolution"`
+	AdminNote               *string    `gorm:"column:admin_note" json:"admin_note"`
+	ReviewedBy              *string    `gorm:"column:reviewed_by" json:"reviewed_by"`
+	ReviewedAt              *time.Time `gorm:"column:reviewed_at" json:"reviewed_at"`
+	CreatedAt               time.Time  `gorm:"column:created_at" json:"created_at"`
+	UpdatedAt               time.Time  `gorm:"column:updated_at" json:"updated_at"`
+	EmailNotificationStatus string     `gorm:"column:email_notification_status" json:"email_notification_status"`
+}
+
+type AppealSummaryFromDb struct {
+	Total       int `gorm:"column:total" json:"total"`
+	Pending     int `gorm:"column:pending" json:"pending"`
+	Reactivated int `gorm:"column:reactivated" json:"reactivated"`
+	Declined    int `gorm:"column:declined" json:"declined"`
+}
+
 type ListingDetailFromDb struct {
 	Id                 string     `gorm:"column:id"`
 	SellerId           string     `gorm:"column:seller_id"`

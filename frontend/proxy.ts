@@ -9,6 +9,8 @@ export function proxy(request: NextRequest) {
     "/reset-password",
     "/verify-email",
     "/listing",
+    "/support",
+    "/appeal",
     "/not-found",
   ];
 
@@ -29,6 +31,8 @@ export function proxy(request: NextRequest) {
     "/reset-password",
     "/verify-email",
     "/listing",
+    "/support",
+    "/appeal",
     "/become-seller",
     "/create",
     "/messages",

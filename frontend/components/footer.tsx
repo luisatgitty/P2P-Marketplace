@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { X } from "lucide-react";
+import { Headset, X } from "lucide-react";
 
 const TwitterIcon = () => (
   <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
@@ -109,6 +109,7 @@ const SOCIALS = [
   { icon: <InstagramIcon />, href: "#" },
   { icon: <FacebookIcon />,  href: "#" },
   { icon: <YoutubeIcon />,   href: "#" },
+  { icon: <Headset className="w-4 h-4" />, href: "/support", label: "Contact Support" },
 ];
 
 export default function Footer() {
@@ -171,7 +172,15 @@ export default function Footer() {
             <p className="text-stone-500 text-sm">© {new Date().getFullYear()} P2P Marketplace. All rights reserved.</p>
             <div className="flex items-center gap-4">
               {SOCIALS.map((s, i) => (
-                <a key={i} href={s.href} className="text-stone-500 hover:text-stone-100 transition-colors">{s.icon}</a>
+                <Link
+                  key={i}
+                  href={s.href}
+                  aria-label={s.label}
+                  title={s.label}
+                  className="text-stone-500 hover:text-stone-100 transition-colors"
+                >
+                  {s.icon}
+                </Link>
               ))}
             </div>
           </div>

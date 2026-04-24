@@ -13,6 +13,7 @@ import {
   Handshake,
   Flag,
   ShieldCheck,
+  Headset,
   Settings,
   UserCog,
   LogOut,
@@ -24,12 +25,14 @@ import {
 import { cn } from "@/lib/utils";
 import { getAdminReports } from "@/services/adminReportsService";
 import { getAdminVerifications } from "@/services/adminVerificationsService";
+import { getAppealSummary } from "@/services/appealsService";
 import { SafeImage } from "@/components/ui/safe-image";
 import { ThemeModeSwitch } from "@/components/theme-mode-switch";
 
 const BADGE_KEYS = {
   reports: "/admin/reports",
   verifications: "/admin/verifications",
+  appeals: "/admin/appeals",
 } as const;
 
 interface NavItem {
@@ -48,6 +51,7 @@ const NAV: NavItem[] = [
   { href: "/admin/transactions", label: "Transactions", Icon: Handshake },
   { href: "/admin/reports", label: "Reports", Icon: Flag },
   { href: "/admin/verifications", label: "Verifications", Icon: ShieldCheck },
+  { href: "/admin/appeals", label: "Appeals", Icon: Headset, roles: ["SUPER_ADMIN"] },
 ];
 
 // ── User-scoped menu (shown in bottom dropdown) ───────────────────────────────
@@ -87,6 +91,7 @@ function SidebarContent({
   const [badges, setBadges] = useState<Record<string, number>>({
     [BADGE_KEYS.reports]: 0,
     [BADGE_KEYS.verifications]: 0,
+    [BADGE_KEYS.appeals]: 0,
   });
   const roleFromUser = String(user?.role ?? "").toUpperCase();
   const currentAdminRole: "ADMIN" | "SUPER_ADMIN" | null =
@@ -96,7 +101,9 @@ function SidebarContent({
         ? "ADMIN"
         : null;
 
-  const filteredNav = NAV;
+  const filteredNav = NAV.filter(
+    (item) => !item.roles || (currentAdminRole !== null && item.roles.includes(currentAdminRole)),
+  );
   const filteredUserMenu = USER_MENU.filter(
     (item) => !item.roles || (currentAdminRole !== null && item.roles.includes(currentAdminRole)),
   );
@@ -106,9 +113,10 @@ function SidebarContent({
 
     const loadPendingCounts = async () => {
       try {
-        const [reports, verifications] = await Promise.all([
+        const [reports, verifications, appealSummary] = await Promise.all([
           getAdminReports(),
           getAdminVerifications(),
+          getAppealSummary(),
         ]);
 
         if (!active) return;
@@ -119,6 +127,7 @@ function SidebarContent({
         setBadges({
           [BADGE_KEYS.reports]: pendingReports,
           [BADGE_KEYS.verifications]: pendingVerifications,
+          [BADGE_KEYS.appeals]: appealSummary.pending,
         });
       } catch {
         if (!active) return;

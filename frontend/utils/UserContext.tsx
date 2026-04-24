@@ -24,6 +24,8 @@ const PUBLIC_ROUTES = [
   "/reset-password",
   "/verify-email",
   "/listing",
+  "/support",
+  "/appeal",
   "/not-found",
 ];
 const AUTH_ROUTES = [
@@ -48,6 +50,8 @@ const KNOWN_APP_ROUTES = [
   "/reset-password",
   "/verify-email",
   "/listing",
+  "/support",
+  "/appeal",
   "/become-seller",
   "/create",
   "/messages",

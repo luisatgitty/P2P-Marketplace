@@ -30,8 +30,8 @@ func init() {
 	}
 	fmt.Printf("MODERATION DICTIONARY LOADED: %d words\n", middleware.ModerationDictionarySize())
 
-	if err := repository.EnsureSystemGeneratedUser(); err != nil {
-		fmt.Println("SYSTEM GENERATED USER INIT FAILED!", err.Error())
+	if err := repository.EnsureSystemRequirements(); err != nil {
+		fmt.Println("SYSTEM REQUIREMENTS INIT FAILED!", err.Error())
 		os.Exit(1)
 	}
 }
