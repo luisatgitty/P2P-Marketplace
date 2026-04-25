@@ -35,7 +35,11 @@ export function useListingContextActions({
   onOfferUpdated,
 }: UseListingContextActionsParams) {
   const { openDialog } = useConfirmDialog();
-  const actionState = getListingContextActionState(listing, isSeller, hideActionButtons);
+  const actionState = getListingContextActionState(
+    listing,
+    isSeller,
+    hideActionButtons,
+  );
   const [editPriceOpen, setEditPriceOpen] = useState(false);
   const [editScheduleOpen, setEditScheduleOpen] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(false);
@@ -48,7 +52,8 @@ export function useListingContextActions({
   const [dealSubmitting, setDealSubmitting] = useState(false);
   const [reviewSubmitting, setReviewSubmitting] = useState(false);
   const [reviewDeleting, setReviewDeleting] = useState(false);
-  const [existingReview, setExistingReview] = useState<ListingReviewPayload | null>(null);
+  const [existingReview, setExistingReview] =
+    useState<ListingReviewPayload | null>(null);
   const [newPrice, setNewPrice] = useState(actionState.offeredPrice);
 
   useEffect(() => {
@@ -71,7 +76,10 @@ export function useListingContextActions({
         setExistingReview(payload);
       } catch (err) {
         if (!mounted) return;
-        const message = err instanceof Error ? err.message : String(err || 'Failed to load review.');
+        const message =
+          err instanceof Error
+            ? err.message
+            : String(err || 'Failed to load review.');
         toast.error(message, { position: 'top-center' });
       } finally {
         if (mounted) setReviewLoading(false);
@@ -116,10 +124,10 @@ export function useListingContextActions({
     const isEditing = Boolean(existingReview);
 
     if (
-      isEditing
-      && existingReview
-      && existingReview.rating === rating
-      && existingReview.comment.trim() === trimmedComment
+      isEditing &&
+      existingReview &&
+      existingReview.rating === rating &&
+      existingReview.comment.trim() === trimmedComment
     ) {
       toast.info('No changes to update.', { position: 'top-center' });
       handleCloseReviewModal();
@@ -135,10 +143,18 @@ export function useListingContextActions({
         existingReview,
       });
       setExistingReview(savedReview);
-      toast.success(isEditing ? 'Review updated successfully.' : 'Review submitted. Thank you for your feedback.', { position: 'top-center' });
+      toast.success(
+        isEditing
+          ? 'Review updated successfully.'
+          : 'Review submitted. Thank you for your feedback.',
+        { position: 'top-center' },
+      );
       handleCloseReviewModal();
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err || 'Failed to submit review.');
+      const message =
+        err instanceof Error
+          ? err.message
+          : String(err || 'Failed to submit review.');
       toast.error(message, { position: 'top-center' });
     } finally {
       setReviewSubmitting(false);
@@ -159,10 +175,15 @@ export function useListingContextActions({
         try {
           await runReviewDelete(listing.id);
           setExistingReview(null);
-          toast.success('Review deleted successfully.', { position: 'top-center' });
+          toast.success('Review deleted successfully.', {
+            position: 'top-center',
+          });
           handleCloseReviewModal();
         } catch (err) {
-          const message = err instanceof Error ? err.message : String(err || 'Failed to delete review.');
+          const message =
+            err instanceof Error
+              ? err.message
+              : String(err || 'Failed to delete review.');
           toast.error(message, { position: 'top-center' });
         } finally {
           setReviewDeleting(false);
@@ -178,10 +199,18 @@ export function useListingContextActions({
     setMarkingComplete(true);
     try {
       await runMarkListingAsComplete(listing.id);
-      toast.success(listing.listingType === 'SELL' ? 'Listing marked as sold.' : 'Listing marked as complete.', { position: 'top-center' });
+      toast.success(
+        listing.listingType === 'SELL'
+          ? 'Listing marked as sold.'
+          : 'Listing marked as complete.',
+        { position: 'top-center' },
+      );
       await onMarkedComplete?.();
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err || 'Failed to complete listing transaction.');
+      const message =
+        err instanceof Error
+          ? err.message
+          : String(err || 'Failed to complete listing transaction.');
       toast.error(message, { position: 'top-center' });
     } finally {
       setMarkingComplete(false);
@@ -192,10 +221,14 @@ export function useListingContextActions({
     if (!actionState.canMarkAsComplete) return;
 
     openDialog({
-      title: listing.listingType === 'SELL' ? 'Mark item as sold' : 'Mark transaction as fulfilled',
-      message: listing.listingType === 'SELL'
-        ? 'Please confirm that this For Sale item has already been sold. This action will mark the listing as sold, and buyer will be able to provide review.'
-        : 'Please confirm that this transaction is fulfilled. This will mark the transaction as completed, and client will be able to provide review.',
+      title:
+        listing.listingType === 'SELL'
+          ? 'Mark item as sold'
+          : 'Mark transaction as fulfilled',
+      message:
+        listing.listingType === 'SELL'
+          ? 'Please confirm that this For Sale item has already been sold. This action will mark the listing as sold, and buyer will be able to provide review.'
+          : 'Please confirm that this transaction is fulfilled. This will mark the transaction as completed, and client will be able to provide review.',
       confirmText: 'Confirm',
       isDangerous: false,
       onConfirm: () => void handleConfirmMarkComplete(),
@@ -210,7 +243,10 @@ export function useListingContextActions({
       return;
     }
 
-    if (Math.trunc(newPrice) === Math.trunc(actionState.offeredPrice) && !actionState.hasTransaction) {
+    if (
+      Math.trunc(newPrice) === Math.trunc(actionState.offeredPrice) &&
+      !actionState.hasTransaction
+    ) {
       return;
     }
 
@@ -228,7 +264,8 @@ export function useListingContextActions({
       setEditPriceOpen(false);
       setOfferMessage('');
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to update offer.';
+      const message =
+        err instanceof Error ? err.message : 'Failed to update offer.';
       toast.error(message, { position: 'top-center' });
     } finally {
       setPriceSubmitting(false);
@@ -251,7 +288,8 @@ export function useListingContextActions({
       await onOfferUpdated?.();
       toast.success('Deal agreement updated.', { position: 'top-center' });
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to update agreement.';
+      const message =
+        err instanceof Error ? err.message : 'Failed to update agreement.';
       toast.error(message, { position: 'top-center' });
     } finally {
       setDealSubmitting(false);
@@ -270,7 +308,8 @@ export function useListingContextActions({
       setEditScheduleOpen(false);
       toast.success('Schedule request sent.', { position: 'top-center' });
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to request schedule.';
+      const message =
+        err instanceof Error ? err.message : 'Failed to request schedule.';
       toast.error(message, { position: 'top-center' });
       throw err;
     }

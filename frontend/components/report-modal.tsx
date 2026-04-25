@@ -1,18 +1,18 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import { Flag } from "lucide-react";
-import { Textarea } from "./ui/textarea";
-import { ModalFormCard } from "./modal-form-card";
-import { cn } from "@/lib/utils";
+import { useEffect, useState } from 'react';
+import { Flag } from 'lucide-react';
+import { Textarea } from './ui/textarea';
+import { ModalFormCard } from './modal-form-card';
+import { cn } from '@/lib/utils';
 
 const REPORT_REASONS = [
-  "Scam / Fraud",
-  "Prohibited item",
-  "Fake / Counterfeit",
-  "Wrong category",
-  "Spam / Duplicate",
-  "Other",
+  'Scam / Fraud',
+  'Prohibited item',
+  'Fake / Counterfeit',
+  'Wrong category',
+  'Spam / Duplicate',
+  'Other',
 ] as const;
 
 interface ReportModalProps {
@@ -22,7 +22,10 @@ interface ReportModalProps {
   target: string;
   submitting?: boolean;
   onClose: () => void;
-  onSubmit: (payload: { reason: string; description: string }) => Promise<void> | void;
+  onSubmit: (payload: {
+    reason: string;
+    description: string;
+  }) => Promise<void> | void;
 }
 
 export function ReportModal({
@@ -35,13 +38,13 @@ export function ReportModal({
   onSubmit,
 }: ReportModalProps) {
   const [reason, setReason] = useState<string | null>(null);
-  const [details, setDetails] = useState("");
+  const [details, setDetails] = useState('');
   const REPORT_MAX_LENGTH = 500;
 
   useEffect(() => {
     if (!open) {
       setReason(null);
-      setDetails("");
+      setDetails('');
     }
   }, [open]);
 
@@ -67,40 +70,40 @@ export function ReportModal({
       handleSend={handleSubmit}
       canSend={!!reason}
       sending={submitting}
-      submitLabel="Submit Report"
+      submitLabel='Submit Report'
     >
-        <p className="text-sm text-stone-500 dark:text-stone-400">{subtitle}</p>
+      <p className='text-sm text-stone-500 dark:text-stone-400'>{subtitle}</p>
 
-        <div className="grid grid-cols-2 gap-2">
-          {REPORT_REASONS.map((item) => (
-            <button
-              key={item}
-              onClick={() => setReason(item)}
-              className={cn(
-                "text-left text-sm px-4 py-3 rounded-lg border transition-colors",
-                reason === item
-                  ? "border-red-400 bg-red-50 text-red-700 dark:bg-red-950/30 dark:border-red-700 dark:text-red-300"
-                  : "text-stone-700 dark:text-stone-200 border-stone-200 dark:border-[#2a2d3e] hover:border-red-300 hover:bg-red-50 dark:hover:bg-red-950/20 dark:hover:border-red-800"
-              )}
-            >
-              {item}
-            </button>
-          ))}
-        </div>
+      <div className='grid grid-cols-2 gap-2'>
+        {REPORT_REASONS.map((item) => (
+          <button
+            key={item}
+            onClick={() => setReason(item)}
+            className={cn(
+              'text-left text-sm px-4 py-3 rounded-lg border transition-colors',
+              reason === item
+                ? 'border-red-400 bg-red-50 text-red-700 dark:bg-red-950/30 dark:border-red-700 dark:text-red-300'
+                : 'text-stone-700 dark:text-stone-200 border-stone-200 dark:border-[#2a2d3e] hover:border-red-300 hover:bg-red-50 dark:hover:bg-red-950/20 dark:hover:border-red-800',
+            )}
+          >
+            {item}
+          </button>
+        ))}
+      </div>
 
-        <div>
-          <label className="text-sm font-medium text-stone-500 dark:text-stone-400 mb-2 block">
-            Report details
-          </label>
-          <Textarea
-            rows={4}
-            value={details}
-            onChange={(e) => handleDetailsChange(e.target.value)}
-            maxLength={REPORT_MAX_LENGTH}
-            placeholder="Describe what happened or why this should be reported..."
-            className="w-full max-h-24 bg-stone-50 dark:bg-[#13151f] border border-stone-200 dark:border-[#2a2d3e] rounded-lg px-3 py-2.5 text-sm text-stone-800 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-600 outline-none focus:border-stone-400 dark:focus:border-stone-500 resize-none"
-          />
-        </div>
+      <div>
+        <label className='text-sm font-medium text-stone-500 dark:text-stone-400 mb-2 block'>
+          Report details
+        </label>
+        <Textarea
+          rows={4}
+          value={details}
+          onChange={(e) => handleDetailsChange(e.target.value)}
+          maxLength={REPORT_MAX_LENGTH}
+          placeholder='Describe what happened or why this should be reported...'
+          className='w-full max-h-24 bg-stone-50 dark:bg-[#13151f] border border-stone-200 dark:border-[#2a2d3e] rounded-lg px-3 py-2.5 text-sm text-stone-800 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-600 outline-none focus:border-stone-400 dark:focus:border-stone-500 resize-none'
+        />
+      </div>
     </ModalFormCard>
   );
 }

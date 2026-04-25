@@ -14,7 +14,15 @@ interface ImageLinkProps {
   children?: ReactNode;
 }
 
-export function ImageLink({ href, newTab, src, type, label, className, children }: ImageLinkProps) {
+export function ImageLink({
+  href,
+  newTab,
+  src,
+  type,
+  label,
+  className,
+  children,
+}: ImageLinkProps) {
   let title = '';
   if (type === 'profile') {
     title = `View ${label} Profile`;

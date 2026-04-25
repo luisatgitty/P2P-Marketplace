@@ -59,14 +59,12 @@ const IMAGE_CONFIG: Record<
   profile: {
     fallback: profileImage,
     alt: 'User profile picture',
-    class:
-      'w-full h-full rounded-full object-cover bg-stone-200',
+    class: 'w-full h-full rounded-full object-cover bg-stone-200',
   },
   thumbnail: {
     fallback: brokenImage,
     alt: 'Listing thumbnail',
-    class:
-      'w-full h-full rounded-lg object-cover bg-stone-200',
+    class: 'w-full h-full rounded-lg object-cover bg-stone-200',
   },
   card: {
     fallback: brokenImage,
@@ -88,7 +86,7 @@ const IMAGE_CONFIG: Record<
     fallback: brokenImage,
     alt: 'ID document',
     class: 'w-full h-auto object-contain max-h-[70vh] bg-stone-200',
-  }
+  },
 };
 
 const failedImageUrlCache = new Set<string>();
@@ -126,7 +124,7 @@ export function SafeImage({
       {...props}
       src={imgSrc}
       alt={alt || config.alt}
-      loading="eager"
+      loading='eager'
       className={cn(config.class, className)}
       // If the src fails to load, fallback to the placeholder image
       // NOTE: Broken image can cause flickering if the URL is valid but the server is down

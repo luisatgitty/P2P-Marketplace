@@ -1,14 +1,30 @@
-"use client";
+'use client';
 
-import { useState, useRef, useEffect } from "react";
-import { Check, CheckCheck, MoreHorizontal, SmilePlus, Reply, Copy, Pencil, Trash2, CornerUpLeft, Play } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { toast } from "sonner";
-import type { Message, MessageAttachment, ReactionType, ReplyPreview } from "@/types/messaging";
-import { REACTIONS } from "@/types/messaging";
-import { SafeImage } from "../ui/safe-image";
-import { MESSAGE_EDIT_DURATION_MS } from "@/utils/validation";
-import { useConfirmDialog } from "@/utils/ConfirmDialogContext";
+import { useState, useRef, useEffect } from 'react';
+import {
+  Check,
+  CheckCheck,
+  MoreHorizontal,
+  SmilePlus,
+  Reply,
+  Copy,
+  Pencil,
+  Trash2,
+  CornerUpLeft,
+  Play,
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
+import type {
+  Message,
+  MessageAttachment,
+  ReactionType,
+  ReplyPreview,
+} from '@/types/messaging';
+import { REACTIONS } from '@/types/messaging';
+import { SafeImage } from '../ui/safe-image';
+import { MESSAGE_EDIT_DURATION_MS } from '@/utils/validation';
+import { useConfirmDialog } from '@/utils/ConfirmDialogContext';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -18,9 +34,9 @@ interface MessageBubbleProps {
   showTime?: boolean;
   /** Name of the other participant (for reply labels) */
   otherName: string;
-  onReply:  (msg: Message) => void;
-  onReact:  (messageId: string, reaction: ReactionType | null) => void;
-  onEdit:   (messageId: string, currentContent: string) => void;
+  onReply: (msg: Message) => void;
+  onReact: (messageId: string, reaction: ReactionType | null) => void;
+  onEdit: (messageId: string, currentContent: string) => void;
   onDelete: (messageId: string, unsend: boolean) => void;
   onOpenMediaViewer?: (attachmentId: string) => void;
 }
@@ -28,12 +44,15 @@ interface MessageBubbleProps {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function formatTime(iso: string) {
-  return new Date(iso).toLocaleTimeString("en-PH", { hour: "2-digit", minute: "2-digit" });
+  return new Date(iso).toLocaleTimeString('en-PH', {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 }
 
 function renderMessageContent(content: string) {
   const urlRegex = /(https?:\/\/[^\s]+)/g;
-  const lines = content.split("\n");
+  const lines = content.split('\n');
 
   return lines.map((line, lineIndex) => {
     const parts = line.split(urlRegex);
@@ -45,9 +64,9 @@ function renderMessageContent(content: string) {
               <a
                 key={`part-${lineIndex}-${partIndex}`}
                 href={part}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="underline underline-offset-2 break-all"
+                target='_blank'
+                rel='noopener noreferrer'
+                className='underline underline-offset-2 break-all'
               >
                 {part}
               </a>
@@ -87,53 +106,57 @@ function AttachmentGrid({
   }) => {
     const clickable = !!onMediaClick;
     return (
-    <div
-      className={cn(
-        "relative overflow-hidden bg-stone-900 rounded-lg",
-        clickable && "cursor-zoom-in",
-        className
-      )}
-      role={clickable ? "button" : undefined}
-      tabIndex={clickable ? 0 : undefined}
-      onClick={clickable ? () => onMediaClick(att.id) : undefined}
-      onKeyDown={
-        clickable
-          ? (e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                onMediaClick(att.id);
+      <div
+        className={cn(
+          'relative overflow-hidden bg-stone-900 rounded-lg',
+          clickable && 'cursor-zoom-in',
+          className,
+        )}
+        role={clickable ? 'button' : undefined}
+        tabIndex={clickable ? 0 : undefined}
+        onClick={clickable ? () => onMediaClick(att.id) : undefined}
+        onKeyDown={
+          clickable
+            ? (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  onMediaClick(att.id);
+                }
               }
-            }
-          : undefined
-      }
-    >
-      {att.fileType === "VIDEO" ? (
-        <>
-          <video
-            src={att.fileUrl}
-            className="w-full h-full object-cover"
-            preload="metadata"
-            playsInline
-          />
-          <div className="absolute inset-0 flex items-center justify-center bg-black/30">
-            <div className="w-10 h-10 rounded-full bg-white/90 flex items-center justify-center shadow-md">
-              <Play size={16} className="text-stone-800" fill="currentColor" />
+            : undefined
+        }
+      >
+        {att.fileType === 'VIDEO' ? (
+          <>
+            <video
+              src={att.fileUrl}
+              className='w-full h-full object-cover'
+              preload='metadata'
+              playsInline
+            />
+            <div className='absolute inset-0 flex items-center justify-center bg-black/30'>
+              <div className='w-10 h-10 rounded-full bg-white/90 flex items-center justify-center shadow-md'>
+                <Play
+                  size={16}
+                  className='text-stone-800'
+                  fill='currentColor'
+                />
+              </div>
             </div>
-          </div>
-        </>
-      ) : (
-        <SafeImage
-          src={att.fileUrl}
-          type="thumbnail"
-          alt={`Attachment ${att.fileName}`}
-          width={36}
-          height={36}
-          loading="lazy"
-        />
-      )}
-      {overlay}
-    </div>
-  );
+          </>
+        ) : (
+          <SafeImage
+            src={att.fileUrl}
+            type='thumbnail'
+            alt={`Attachment ${att.fileName}`}
+            width={36}
+            height={36}
+            loading='lazy'
+          />
+        )}
+        {overlay}
+      </div>
+    );
   };
 
   if (count === 1) {
@@ -141,16 +164,19 @@ function AttachmentGrid({
     return (
       <MediaCell
         att={att}
-        className={cn("w-full", att.fileType === "VIDEO" ? "aspect-video" : "aspect-4/3")}
+        className={cn(
+          'w-full',
+          att.fileType === 'VIDEO' ? 'aspect-video' : 'aspect-4/3',
+        )}
       />
     );
   }
 
   if (count === 2) {
     return (
-      <div className="grid grid-cols-2 gap-1">
+      <div className='grid grid-cols-2 gap-1'>
         {attachments.map((att) => (
-          <MediaCell key={att.id} att={att} className="aspect-square" />
+          <MediaCell key={att.id} att={att} className='aspect-square' />
         ))}
       </div>
     );
@@ -162,14 +188,14 @@ function AttachmentGrid({
   const hiddenCount = count - 2;
 
   return (
-    <div className="grid grid-cols-2 gap-1">
-      <MediaCell att={first} className="aspect-square" />
+    <div className='grid grid-cols-2 gap-1'>
+      <MediaCell att={first} className='aspect-square' />
       <MediaCell
         att={second}
-        className="aspect-square"
+        className='aspect-square'
         overlay={
-          <div className="absolute inset-0 flex items-center justify-center bg-black/55">
-            <span className="text-white font-bold text-lg">+{hiddenCount}</span>
+          <div className='absolute inset-0 flex items-center justify-center bg-black/55'>
+            <span className='text-white font-bold text-lg'>+{hiddenCount}</span>
           </div>
         }
       />
@@ -179,21 +205,33 @@ function AttachmentGrid({
 
 // ─── Reply Quote ──────────────────────────────────────────────────────────────
 
-function ReplyQuote({ replyTo, isMe }: {
+function ReplyQuote({
+  replyTo,
+  isMe,
+}: {
   replyTo: ReplyPreview;
   isMe: boolean;
 }) {
   return (
     <div
       className={cn(
-        "flex gap-2 px-3 pt-2 pb-1 rounded-t-lg text-xs",
-        isMe
-          ? "bg-amber-800/40"
-          : "bg-stone-100 dark:bg-stone-700/40"
+        'flex gap-2 px-3 pt-2 pb-1 rounded-t-lg text-xs',
+        isMe ? 'bg-amber-800/40' : 'bg-stone-100 dark:bg-stone-700/40',
       )}
     >
-      <CornerUpLeft size={11} className={cn("mt-0.5 shrink-0", isMe ? "text-amber-200/70" : "text-stone-400 dark:text-stone-500")} />
-      <p className={cn("min-w-0 truncate leading-snug", isMe ? "text-amber-100/70" : "text-stone-400 dark:text-stone-500")}>
+      <CornerUpLeft
+        size={11}
+        className={cn(
+          'mt-0.5 shrink-0',
+          isMe ? 'text-amber-200/70' : 'text-stone-400 dark:text-stone-500',
+        )}
+      />
+      <p
+        className={cn(
+          'min-w-0 truncate leading-snug',
+          isMe ? 'text-amber-100/70' : 'text-stone-400 dark:text-stone-500',
+        )}
+      >
         {replyTo.contentPreview}
       </p>
     </div>
@@ -217,10 +255,11 @@ function ReactionPicker({
 }) {
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) onClose();
+      if (menuRef.current && !menuRef.current.contains(e.target as Node))
+        onClose();
     };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
   }, [menuRef, onClose]);
 
   return (
@@ -228,21 +267,25 @@ function ReactionPicker({
       ref={menuRef}
       style={style}
       className={cn(
-        "fixed z-50",
-        "flex items-center gap-1 px-2 py-1.5",
-        "bg-white dark:bg-[#1c1f2e] border border-border rounded-lg shadow-xl",
-        "animate-in fade-in zoom-in-95 duration-100"
+        'fixed z-50',
+        'flex items-center gap-1 px-2 py-1.5',
+        'bg-white dark:bg-[#1c1f2e] border border-border rounded-lg shadow-xl',
+        'animate-in fade-in zoom-in-95 duration-100',
       )}
     >
       {REACTIONS.map(({ type, emoji, label }) => (
         <button
           key={type}
-          onClick={() => { onSelect(currentReaction === type ? null : type); onClose(); }}
+          onClick={() => {
+            onSelect(currentReaction === type ? null : type);
+            onClose();
+          }}
           title={label}
           className={cn(
-            "text-lg leading-none p-1 rounded-lg transition-all duration-100",
-            "hover:scale-150",
-            currentReaction === type && "bg-amber-100 dark:bg-amber-900/30 scale-110"
+            'text-lg leading-none p-1 rounded-lg transition-all duration-100',
+            'hover:scale-150',
+            currentReaction === type &&
+              'bg-amber-100 dark:bg-amber-900/30 scale-110',
           )}
         >
           {emoji}
@@ -258,7 +301,7 @@ function ContextMenu({
   isMe,
   hasContent,
   canUnsend,
-    canEdit,
+  canEdit,
   onReply,
   onCopy,
   onEdit,
@@ -271,13 +314,13 @@ function ContextMenu({
   isMe: boolean;
   hasContent: boolean;
   canUnsend: boolean;
-    canEdit?: boolean;
+  canEdit?: boolean;
   onReply: () => void;
-  onCopy:  () => void;
-  onEdit:  () => void;
+  onCopy: () => void;
+  onEdit: () => void;
   onUnsend: () => void;
   onDelete: () => void;
-  onClose:  () => void;
+  onClose: () => void;
   menuRef: React.RefObject<HTMLDivElement | null>;
   style?: React.CSSProperties;
 }) {
@@ -285,23 +328,25 @@ function ContextMenu({
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) onClose();
+      if (menuRef.current && !menuRef.current.contains(e.target as Node))
+        onClose();
     };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
   }, [menuRef, onClose]);
 
   const handleUnsendClick = () => {
     openDialog({
-      title: "Unsend Message",
-      message: "Are you sure you want to unsend this message? This action cannot be undone.",
-      confirmText: "Unsend",
-      cancelText: "Cancel",
+      title: 'Unsend Message',
+      message:
+        'Are you sure you want to unsend this message? This action cannot be undone.',
+      confirmText: 'Unsend',
+      cancelText: 'Cancel',
       isDangerous: true,
       onConfirm: () => {
         onUnsend();
         onClose();
-        toast.success("Message unsent.", { position: "top-center" });
+        toast.success('Message unsent.', { position: 'top-center' });
       },
       onCancel: () => onClose(),
     });
@@ -309,15 +354,16 @@ function ContextMenu({
 
   const handleDeleteClick = () => {
     openDialog({
-      title: "Delete Message",
-      message: "Are you sure you want to delete this message? This action cannot be undone.",
-      confirmText: "Delete",
-      cancelText: "Cancel",
+      title: 'Delete Message',
+      message:
+        'Are you sure you want to delete this message? This action cannot be undone.',
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
       isDangerous: true,
       onConfirm: () => {
         onDelete();
         onClose();
-        toast.success("Message deleted.", { position: "top-center" });
+        toast.success('Message deleted.', { position: 'top-center' });
       },
       onCancel: () => onClose(),
     });
@@ -332,11 +378,22 @@ function ContextMenu({
   };
 
   const items: MenuItem[] = [
-    { icon: Reply,  label: "Reply",  action: onReply },
-    { icon: Copy,   label: "Copy",   action: onCopy,   show: hasContent },
-    { icon: Pencil, label: "Edit",   action: onEdit,   show: isMe && hasContent && canEdit },
-    { icon: Trash2, label: "Unsend", action: handleUnsendClick, show: isMe && canUnsend,  danger: true },
-    { icon: Trash2, label: "Delete", action: handleDeleteClick, danger: true },
+    { icon: Reply, label: 'Reply', action: onReply },
+    { icon: Copy, label: 'Copy', action: onCopy, show: hasContent },
+    {
+      icon: Pencil,
+      label: 'Edit',
+      action: onEdit,
+      show: isMe && hasContent && canEdit,
+    },
+    {
+      icon: Trash2,
+      label: 'Unsend',
+      action: handleUnsendClick,
+      show: isMe && canUnsend,
+      danger: true,
+    },
+    { icon: Trash2, label: 'Delete', action: handleDeleteClick, danger: true },
   ];
 
   return (
@@ -344,9 +401,9 @@ function ContextMenu({
       ref={menuRef}
       style={style}
       className={cn(
-        "fixed z-50 w-36",
-        "bg-white dark:bg-[#1c1f2e] border border-border rounded-lg shadow-xl overflow-hidden",
-        "animate-in fade-in slide-in-from-bottom-1 duration-100"
+        'fixed z-50 w-36',
+        'bg-white dark:bg-[#1c1f2e] border border-border rounded-lg shadow-xl overflow-hidden',
+        'animate-in fade-in slide-in-from-bottom-1 duration-100',
       )}
     >
       {items
@@ -354,12 +411,14 @@ function ContextMenu({
         .map(({ icon: Icon, label, action, danger }) => (
           <button
             key={label}
-            onClick={() => { action(); }}
+            onClick={() => {
+              action();
+            }}
             className={cn(
-              "flex items-center gap-2.5 w-full px-3.5 py-2.5 text-xs font-medium transition-colors",
+              'flex items-center gap-2.5 w-full px-3.5 py-2.5 text-xs font-medium transition-colors',
               danger
-                ? "text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
-                : "text-stone-600 dark:text-stone-300 hover:bg-stone-50 dark:hover:bg-white/5"
+                ? 'text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20'
+                : 'text-stone-600 dark:text-stone-300 hover:bg-stone-50 dark:hover:bg-white/5',
             )}
           >
             <Icon size={13} />
@@ -377,7 +436,7 @@ function ReactionSummary({
   currentUserId,
   isMe,
 }: {
-  reactions: NonNullable<Message["reactions"]>;
+  reactions: NonNullable<Message['reactions']>;
   currentUserId: string;
   isMe: boolean;
 }) {
@@ -391,17 +450,26 @@ function ReactionSummary({
   })).filter((g) => g.count > 0);
 
   return (
-    <div className={cn("relative z-10 flex flex-wrap gap-1 -mt-2 mb-0.5 px-1", isMe ? "justify-end" : "justify-start")}>
+    <div
+      className={cn(
+        'relative z-10 flex flex-wrap gap-1 -mt-2 mb-0.5 px-1',
+        isMe ? 'justify-end' : 'justify-start',
+      )}
+    >
       {grouped.map(({ type, emoji, count }) => (
         <span
           key={type}
           className={cn(
-            "inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-lg text-[11px]",
-            "bg-white dark:bg-[#252837] border border-border shadow-sm leading-none"
+            'inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-lg text-[11px]',
+            'bg-white dark:bg-[#252837] border border-border shadow-sm leading-none',
           )}
         >
           {emoji}
-          {count > 1 && <span className="text-stone-500 dark:text-stone-400 font-medium">{count}</span>}
+          {count > 1 && (
+            <span className='text-stone-500 dark:text-stone-400 font-medium'>
+              {count}
+            </span>
+          )}
         </span>
       ))}
     </div>
@@ -423,7 +491,7 @@ export default function MessageBubble({
 }: MessageBubbleProps) {
   const isMe = message.senderId === currentUserId;
   const [showReactionPicker, setShowReactionPicker] = useState(false);
-  const [showMenu,           setShowMenu]           = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
   const [reactionStyle, setReactionStyle] = useState<React.CSSProperties>({});
   const [menuStyle, setMenuStyle] = useState<React.CSSProperties>({});
   const reactionTriggerRef = useRef<HTMLButtonElement>(null);
@@ -439,38 +507,53 @@ export default function MessageBubble({
   // Keep hover-actions visible while a popover is open
   const actionsVisible = showReactionPicker || showMenu;
 
-  const myReaction = message.reactions?.find((r) => r.userId === currentUserId)?.type ?? null;
+  const myReaction =
+    message.reactions?.find((r) => r.userId === currentUserId)?.type ?? null;
 
   const handleCopy = async () => {
     if (!message.content) return;
 
     try {
       await navigator.clipboard.writeText(message.content);
-      toast.success("Message copied.", { position: "top-center" });
+      toast.success('Message copied.', { position: 'top-center' });
     } catch {
-      toast.error("Failed to copy message.", { position: "top-center" });
+      toast.error('Failed to copy message.', { position: 'top-center' });
     }
   };
 
   const hasAttachments = (message.attachments?.length ?? 0) > 0;
-  const hasContent     = !!message.content;
-  const canUnsend = Date.now() - new Date(message.createdAt).getTime() <= 10 * 60 * 1000;
-  const canEdit = hasContent && Date.now() - new Date(message.createdAt).getTime() <= MESSAGE_EDIT_DURATION_MS;
+  const hasContent = !!message.content;
+  const canUnsend =
+    Date.now() - new Date(message.createdAt).getTime() <= 10 * 60 * 1000;
+  const canEdit =
+    hasContent &&
+    Date.now() - new Date(message.createdAt).getTime() <=
+      MESSAGE_EDIT_DURATION_MS;
 
   const getListingCardRect = () => {
-    const el = document.querySelector('[data-listing-context-card="true"]') as HTMLElement | null;
+    const el = document.querySelector(
+      '[data-listing-context-card="true"]',
+    ) as HTMLElement | null;
     return el?.getBoundingClientRect() ?? null;
   };
 
-  const intersects = (a: { left: number; right: number; top: number; bottom: number }, b: { left: number; right: number; top: number; bottom: number }) => {
-    return a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
+  const intersects = (
+    a: { left: number; right: number; top: number; bottom: number },
+    b: { left: number; right: number; top: number; bottom: number },
+  ) => {
+    return (
+      a.left < b.right &&
+      a.right > b.left &&
+      a.top < b.bottom &&
+      a.bottom > b.top
+    );
   };
 
   const computePopoverPosition = (
     triggerEl: HTMLElement,
     popoverEl: HTMLElement,
-    preferredVertical: "top" | "bottom",
-    preferredHorizontal: "left" | "right"
+    preferredVertical: 'top' | 'bottom',
+    preferredHorizontal: 'left' | 'right',
   ): React.CSSProperties => {
     const vpPad = 8;
     const gap = 6;
@@ -479,28 +562,42 @@ export default function MessageBubble({
     const height = popoverEl.offsetHeight;
     const listingRect = getListingCardRect();
 
-    const horizontalLeft = preferredHorizontal === "left"
-      ? trigger.left
-      : trigger.right - width;
+    const horizontalLeft =
+      preferredHorizontal === 'left' ? trigger.left : trigger.right - width;
 
-    const x = Math.min(Math.max(horizontalLeft, vpPad), window.innerWidth - width - vpPad);
+    const x = Math.min(
+      Math.max(horizontalLeft, vpPad),
+      window.innerWidth - width - vpPad,
+    );
 
     const topY = trigger.top - height - gap;
     const bottomY = trigger.bottom + gap;
 
-    const topRect = { left: x, right: x + width, top: topY, bottom: topY + height };
-    const bottomRect = { left: x, right: x + width, top: bottomY, bottom: bottomY + height };
+    const topRect = {
+      left: x,
+      right: x + width,
+      top: topY,
+      bottom: topY + height,
+    };
+    const bottomRect = {
+      left: x,
+      right: x + width,
+      top: bottomY,
+      bottom: bottomY + height,
+    };
 
     const topOutside = topRect.top < vpPad;
     const bottomOutside = bottomRect.bottom > window.innerHeight - vpPad;
     const topBlocked = !!listingRect && intersects(topRect, listingRect);
     const bottomBlocked = !!listingRect && intersects(bottomRect, listingRect);
 
-    let y = preferredVertical === "top" ? topY : bottomY;
-    if (preferredVertical === "top") {
-      if ((topOutside || topBlocked) && !(bottomOutside || bottomBlocked)) y = bottomY;
+    let y = preferredVertical === 'top' ? topY : bottomY;
+    if (preferredVertical === 'top') {
+      if ((topOutside || topBlocked) && !(bottomOutside || bottomBlocked))
+        y = bottomY;
     } else {
-      if ((bottomOutside || bottomBlocked) && !(topOutside || topBlocked)) y = topY;
+      if ((bottomOutside || bottomBlocked) && !(topOutside || topBlocked))
+        y = topY;
     }
 
     y = Math.min(Math.max(y, vpPad), window.innerHeight - height - vpPad);
@@ -513,17 +610,22 @@ export default function MessageBubble({
     const update = () => {
       if (!reactionTriggerRef.current || !reactionPickerRef.current) return;
       setReactionStyle(
-        computePopoverPosition(reactionTriggerRef.current, reactionPickerRef.current, "top", "left")
+        computePopoverPosition(
+          reactionTriggerRef.current,
+          reactionPickerRef.current,
+          'top',
+          'left',
+        ),
       );
     };
 
     const raf = requestAnimationFrame(update);
-    window.addEventListener("resize", update);
-    window.addEventListener("scroll", update, true);
+    window.addEventListener('resize', update);
+    window.addEventListener('scroll', update, true);
     return () => {
       cancelAnimationFrame(raf);
-      window.removeEventListener("resize", update);
-      window.removeEventListener("scroll", update, true);
+      window.removeEventListener('resize', update);
+      window.removeEventListener('scroll', update, true);
     };
   }, [showReactionPicker]);
 
@@ -533,23 +635,34 @@ export default function MessageBubble({
     const update = () => {
       if (!menuTriggerRef.current || !menuRef.current) return;
       setMenuStyle(
-        computePopoverPosition(menuTriggerRef.current, menuRef.current, "top", isMe ? "right" : "left")
+        computePopoverPosition(
+          menuTriggerRef.current,
+          menuRef.current,
+          'top',
+          isMe ? 'right' : 'left',
+        ),
       );
     };
 
     const raf = requestAnimationFrame(update);
-    window.addEventListener("resize", update);
-    window.addEventListener("scroll", update, true);
+    window.addEventListener('resize', update);
+    window.addEventListener('scroll', update, true);
     return () => {
       cancelAnimationFrame(raf);
-      window.removeEventListener("resize", update);
-      window.removeEventListener("scroll", update, true);
+      window.removeEventListener('resize', update);
+      window.removeEventListener('scroll', update, true);
     };
   }, [isMe, showMenu]);
 
   useEffect(() => {
     const updateActionsY = () => {
-      if (!rowRef.current || !bubbleColumnRef.current || !bubbleRef.current || !actionButtonsRef.current) return;
+      if (
+        !rowRef.current ||
+        !bubbleColumnRef.current ||
+        !bubbleRef.current ||
+        !actionButtonsRef.current
+      )
+        return;
 
       const rowRect = rowRef.current.getBoundingClientRect();
       const columnRect = bubbleColumnRef.current.getBoundingClientRect();
@@ -557,27 +670,37 @@ export default function MessageBubble({
       const actionsRect = actionButtonsRef.current.getBoundingClientRect();
 
       const bubbleCenterY = bubbleRect.top + bubbleRect.height / 2;
-      const nextOffset = Math.max(0, bubbleCenterY - rowRect.top - actionsRect.height / 2);
+      const nextOffset = Math.max(
+        0,
+        bubbleCenterY - rowRect.top - actionsRect.height / 2,
+      );
       setActionButtonsOffsetY(nextOffset);
 
-      const horizontalGapFromMeta = Math.max(0, columnRect.width - bubbleRect.width);
-      setActionButtonsOffsetX(isMe ? horizontalGapFromMeta : -horizontalGapFromMeta);
+      const horizontalGapFromMeta = Math.max(
+        0,
+        columnRect.width - bubbleRect.width,
+      );
+      setActionButtonsOffsetX(
+        isMe ? horizontalGapFromMeta : -horizontalGapFromMeta,
+      );
     };
 
     const raf = requestAnimationFrame(updateActionsY);
     const resizeObserver = new ResizeObserver(updateActionsY);
 
     if (rowRef.current) resizeObserver.observe(rowRef.current);
-    if (bubbleColumnRef.current) resizeObserver.observe(bubbleColumnRef.current);
+    if (bubbleColumnRef.current)
+      resizeObserver.observe(bubbleColumnRef.current);
     if (bubbleRef.current) resizeObserver.observe(bubbleRef.current);
-    if (actionButtonsRef.current) resizeObserver.observe(actionButtonsRef.current);
+    if (actionButtonsRef.current)
+      resizeObserver.observe(actionButtonsRef.current);
 
-    window.addEventListener("resize", updateActionsY);
+    window.addEventListener('resize', updateActionsY);
 
     return () => {
       cancelAnimationFrame(raf);
       resizeObserver.disconnect();
-      window.removeEventListener("resize", updateActionsY);
+      window.removeEventListener('resize', updateActionsY);
     };
   }, [
     showTime,
@@ -593,9 +716,11 @@ export default function MessageBubble({
   // Keep hook order stable even when message transitions to unsent.
   if (message.isUnsent) {
     return (
-      <div className={cn("flex my-0.5", isMe ? "justify-end" : "justify-start")}>
-        <p className="italic text-xs text-stone-400 dark:text-stone-600 px-3.5 py-2 rounded-lg border border-dashed border-stone-200 dark:border-stone-700">
-          {isMe ? "You unsent a message." : "This message was unsent."}
+      <div
+        className={cn('flex my-0.5', isMe ? 'justify-end' : 'justify-start')}
+      >
+        <p className='italic text-xs text-stone-400 dark:text-stone-600 px-3.5 py-2 rounded-lg border border-dashed border-stone-200 dark:border-stone-700'>
+          {isMe ? 'You unsent a message.' : 'This message was unsent.'}
         </p>
       </div>
     );
@@ -612,17 +737,20 @@ export default function MessageBubble({
         marginLeft: actionButtonsOffsetX,
       }}
       className={cn(
-        "flex items-center gap-0.5 self-start shrink-0 transition-opacity duration-100",
-        actionsVisible ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+        'flex items-center gap-0.5 self-start shrink-0 transition-opacity duration-100',
+        actionsVisible ? 'opacity-100' : 'opacity-0 group-hover:opacity-100',
       )}
     >
       {/* Reaction trigger */}
-      <div className="relative">
+      <div className='relative'>
         <button
           ref={reactionTriggerRef}
-          onClick={() => { setShowMenu(false); setShowReactionPicker((v) => !v); }}
-          className="p-1.5 rounded-lg text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-white/10 transition-colors"
-          aria-label="React"
+          onClick={() => {
+            setShowMenu(false);
+            setShowReactionPicker((v) => !v);
+          }}
+          className='p-1.5 rounded-lg text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-white/10 transition-colors'
+          aria-label='React'
         >
           <SmilePlus size={15} />
         </button>
@@ -638,12 +766,15 @@ export default function MessageBubble({
       </div>
 
       {/* More options trigger */}
-      <div className="relative">
+      <div className='relative'>
         <button
           ref={menuTriggerRef}
-          onClick={() => { setShowReactionPicker(false); setShowMenu((v) => !v); }}
-          className="p-1.5 rounded-lg text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-white/10 transition-colors"
-          aria-label="More options"
+          onClick={() => {
+            setShowReactionPicker(false);
+            setShowMenu((v) => !v);
+          }}
+          className='p-1.5 rounded-lg text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-white/10 transition-colors'
+          aria-label='More options'
         >
           <MoreHorizontal size={15} />
         </button>
@@ -652,10 +783,10 @@ export default function MessageBubble({
             isMe={isMe}
             hasContent={hasContent}
             canUnsend={canUnsend}
-                       canEdit={canEdit}
+            canEdit={canEdit}
             onReply={() => onReply(message)}
             onCopy={handleCopy}
-            onEdit={() => onEdit(message.id, message.content ?? "")}
+            onEdit={() => onEdit(message.id, message.content ?? '')}
             onUnsend={() => onDelete(message.id, true)}
             onDelete={() => onDelete(message.id, false)}
             onClose={() => setShowMenu(false)}
@@ -668,38 +799,55 @@ export default function MessageBubble({
   );
 
   return (
-    <div ref={rowRef} className={cn("group flex items-start gap-1 my-0.5", isMe ? "flex-row-reverse" : "flex-row")}>
+    <div
+      ref={rowRef}
+      className={cn(
+        'group flex items-start gap-1 my-0.5',
+        isMe ? 'flex-row-reverse' : 'flex-row',
+      )}
+    >
       {/* Bubble column */}
-      <div ref={bubbleColumnRef} className={cn("flex flex-col max-w-[72%] sm:max-w-[62%]", isMe ? "items-end" : "items-start")}>
-
+      <div
+        ref={bubbleColumnRef}
+        className={cn(
+          'flex flex-col max-w-[72%] sm:max-w-[62%]',
+          isMe ? 'items-end' : 'items-start',
+        )}
+      >
         {/* Reply quote */}
         {message.replyTo && (
-          <ReplyQuote
-            replyTo={message.replyTo}
-            isMe={isMe}
-          />
+          <ReplyQuote replyTo={message.replyTo} isMe={isMe} />
         )}
 
         {/* Bubble */}
         <div
           ref={bubbleRef}
           className={cn(
-            hasAttachments ? "w-full overflow-hidden" : "w-fit max-w-full overflow-hidden",
+            hasAttachments
+              ? 'w-full overflow-hidden'
+              : 'w-fit max-w-full overflow-hidden',
             // If there's a reply quote, connect the top corners to it
-            message.replyTo ? "rounded-b-lg rounded-t-none" : "rounded-lg",
-            isMe ? "rounded-br-lg" : "rounded-bl-lg",
+            message.replyTo ? 'rounded-b-lg rounded-t-none' : 'rounded-lg',
+            isMe ? 'rounded-br-lg' : 'rounded-bl-lg',
             // Background
             hasAttachments && !hasContent
-              ? "bg-transparent"   // attachments-only: no bubble bg
+              ? 'bg-transparent' // attachments-only: no bubble bg
               : isMe
-                ? "bg-amber-700 text-white shadow-sm"
-                : "bg-white dark:bg-[#252837] text-stone-800 dark:text-stone-100 border border-border shadow-sm"
+                ? 'bg-amber-700 text-white shadow-sm'
+                : 'bg-white dark:bg-[#252837] text-stone-800 dark:text-stone-100 border border-border shadow-sm',
           )}
         >
           {/* Attachment grid */}
           {hasAttachments && (
-            <div className={cn(hasContent && "rounded-t-lg px-1 pt-1 overflow-hidden")}>
-              <AttachmentGrid attachments={message.attachments!} onMediaClick={onOpenMediaViewer} />
+            <div
+              className={cn(
+                hasContent && 'rounded-t-lg px-1 pt-1 overflow-hidden',
+              )}
+            >
+              <AttachmentGrid
+                attachments={message.attachments!}
+                onMediaClick={onOpenMediaViewer}
+              />
             </div>
           )}
 
@@ -707,11 +855,11 @@ export default function MessageBubble({
           {hasContent && (
             <p
               className={cn(
-                "text-sm leading-relaxed wrap-break-word whitespace-pre-wrap px-3.5",
-                hasAttachments ? "pt-1.5 pb-2.5" : "py-2.5"
+                'text-sm leading-relaxed wrap-break-word whitespace-pre-wrap px-3.5',
+                hasAttachments ? 'pt-1.5 pb-2.5' : 'py-2.5',
               )}
             >
-              {renderMessageContent(message.content ?? "")}
+              {renderMessageContent(message.content ?? '')}
             </p>
           )}
         </div>
@@ -727,18 +875,39 @@ export default function MessageBubble({
 
         {/* Time + status */}
         {showTime && (
-          <div className={cn("flex items-center gap-1 text-[11px] text-stone-400 dark:text-stone-500 px-1 mt-0.5", isMe && "flex-row-reverse")}>
+          <div
+            className={cn(
+              'flex items-center gap-1 text-[11px] text-stone-400 dark:text-stone-500 px-1 mt-0.5',
+              isMe && 'flex-row-reverse',
+            )}
+          >
             {message.isEdited && (
-              <span className={cn("italic", isMe ? "text-amber-200/70" : "text-stone-400 dark:text-stone-500")}>
+              <span
+                className={cn(
+                  'italic',
+                  isMe
+                    ? 'text-amber-200/70'
+                    : 'text-stone-400 dark:text-stone-500',
+                )}
+              >
                 • edited
               </span>
             )}
             <span>{formatTime(message.createdAt)}</span>
-            {isMe && (
-              message.status === "READ"      ? <CheckCheck size={11} className="text-amber-500" /> :
-              message.status === "DELIVERED" ? <CheckCheck size={11} className="text-stone-400 dark:text-stone-500" /> :
-                                              <Check      size={11} className="text-stone-400 dark:text-stone-500" />
-            )}
+            {isMe &&
+              (message.status === 'READ' ? (
+                <CheckCheck size={11} className='text-amber-500' />
+              ) : message.status === 'DELIVERED' ? (
+                <CheckCheck
+                  size={11}
+                  className='text-stone-400 dark:text-stone-500'
+                />
+              ) : (
+                <Check
+                  size={11}
+                  className='text-stone-400 dark:text-stone-500'
+                />
+              ))}
           </div>
         )}
       </div>

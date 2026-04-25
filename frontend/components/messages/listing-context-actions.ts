@@ -1,4 +1,4 @@
-import type { ConversationListing } from "@/types/messaging";
+import type { ConversationListing } from '@/types/messaging';
 import {
   createListingReview,
   deleteListingReview,
@@ -6,14 +6,14 @@ import {
   markListingAsComplete,
   updateListingReview,
   type ListingReviewPayload,
-} from "@/services/listingDetailService";
+} from '@/services/listingDetailService';
 import {
   openOrCreateConversationFromListing,
   toggleConversationDealAgreement,
   updateConversationOfferAsOwner,
   updateConversationScheduleAsOwner,
   type ScheduleRequestPayload,
-} from "@/services/messagingService";
+} from '@/services/messagingService';
 
 export type ListingContextActionState = {
   normalizedStatus: string;
@@ -38,21 +38,37 @@ export function getListingContextActionState(
   isSeller: boolean,
   hideActionButtons = false,
 ): ListingContextActionState {
-  const normalizedStatus = String(listing.status ?? "").trim().toUpperCase();
-  const normalizedTransactionStatus = String(listing.transactionStatus ?? "").trim().toUpperCase();
-  const isSold = normalizedStatus === "SOLD";
-  const isListingBlocked = normalizedStatus === "BANNED" || normalizedStatus === "DELETED";
+  const normalizedStatus = String(listing.status ?? '')
+    .trim()
+    .toUpperCase();
+  const normalizedTransactionStatus = String(listing.transactionStatus ?? '')
+    .trim()
+    .toUpperCase();
+  const isSold = normalizedStatus === 'SOLD';
+  const isListingBlocked =
+    normalizedStatus === 'BANNED' || normalizedStatus === 'DELETED';
   const shouldHideButtons = hideActionButtons || isListingBlocked;
-  const hasTransaction = normalizedTransactionStatus !== "";
-  const isTransactionConfirmed = normalizedTransactionStatus === "CONFIRMED";
-  const canMarkAsComplete = isSeller && isTransactionConfirmed && (listing.listingType !== "SELL" || !isSold);
-  const canDeal = !isSold && hasTransaction && (normalizedTransactionStatus === "PENDING" || normalizedTransactionStatus === "CONFIRMED");
+  const hasTransaction = normalizedTransactionStatus !== '';
+  const isTransactionConfirmed = normalizedTransactionStatus === 'CONFIRMED';
+  const canMarkAsComplete =
+    isSeller &&
+    isTransactionConfirmed &&
+    (listing.listingType !== 'SELL' || !isSold);
+  const canDeal =
+    !isSold &&
+    hasTransaction &&
+    (normalizedTransactionStatus === 'PENDING' ||
+      normalizedTransactionStatus === 'CONFIRMED');
   const hasAgreed = Boolean(listing.userAgreed);
   const canReview = !isSeller && Boolean(listing.canReview);
-  const offeredPrice = Number(listing.offer ?? 0) > 0 ? Number(listing.offer) : listing.price;
-  const scheduleValue = String(listing.schedule ?? "").trim();
-  const canEditPrice = !shouldHideButtons && listing.listingType === "SELL" && !isSold;
-  const canEditSchedule = !shouldHideButtons && (listing.listingType === "RENT" || listing.listingType === "SERVICE");
+  const offeredPrice =
+    Number(listing.offer ?? 0) > 0 ? Number(listing.offer) : listing.price;
+  const scheduleValue = String(listing.schedule ?? '').trim();
+  const canEditPrice =
+    !shouldHideButtons && listing.listingType === 'SELL' && !isSold;
+  const canEditSchedule =
+    !shouldHideButtons &&
+    (listing.listingType === 'RENT' || listing.listingType === 'SERVICE');
 
   return {
     normalizedStatus,
@@ -73,7 +89,9 @@ export function getListingContextActionState(
   };
 }
 
-export async function runMarkListingAsComplete(listingId: string): Promise<void> {
+export async function runMarkListingAsComplete(
+  listingId: string,
+): Promise<void> {
   await markListingAsComplete(listingId);
 }
 
@@ -85,11 +103,19 @@ export async function runOfferUpdate(params: {
   offerMessage?: string;
 }): Promise<void> {
   if (params.isSeller && params.conversationId) {
-    await updateConversationOfferAsOwner(params.conversationId, Math.trunc(params.offerPrice), params.offerMessage);
+    await updateConversationOfferAsOwner(
+      params.conversationId,
+      Math.trunc(params.offerPrice),
+      params.offerMessage,
+    );
     return;
   }
 
-  await openOrCreateConversationFromListing(params.listingId, Math.trunc(params.offerPrice), params.offerMessage);
+  await openOrCreateConversationFromListing(
+    params.listingId,
+    Math.trunc(params.offerPrice),
+    params.offerMessage,
+  );
 }
 
 export async function runDealToggle(conversationId: string): Promise<void> {
@@ -103,20 +129,30 @@ export async function runScheduleUpdate(params: {
   payload: ScheduleRequestPayload;
 }): Promise<void> {
   if (params.isSeller && params.conversationId) {
-    await updateConversationScheduleAsOwner(params.conversationId, params.payload);
+    await updateConversationScheduleAsOwner(
+      params.conversationId,
+      params.payload,
+    );
     return;
   }
 
-  await openOrCreateConversationFromListing(params.listingId, undefined, undefined, {
-    startDate: params.payload.startDate,
-    endDate: params.payload.endDate,
-    startTime: params.payload.startTime,
-    endTime: params.payload.endTime,
-    message: params.payload.message,
-  });
+  await openOrCreateConversationFromListing(
+    params.listingId,
+    undefined,
+    undefined,
+    {
+      startDate: params.payload.startDate,
+      endDate: params.payload.endDate,
+      startTime: params.payload.startTime,
+      endTime: params.payload.endTime,
+      message: params.payload.message,
+    },
+  );
 }
 
-export async function loadListingReview(listingId: string): Promise<ListingReviewPayload | null> {
+export async function loadListingReview(
+  listingId: string,
+): Promise<ListingReviewPayload | null> {
   return getMyListingReview(listingId);
 }
 

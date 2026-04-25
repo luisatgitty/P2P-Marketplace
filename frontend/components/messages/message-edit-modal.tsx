@@ -110,20 +110,27 @@ export function MessageEditModal({
           <Button
             size='lg'
             type='button'
-             onClick={async () => {
-               if (!value.trim() || value.trim() === initial) return;
-               setIsLoading(true);
-               try {
-                 await editMessage(conversationId, messageId, value.trim());
-                 toast.success('Message edited successfully.', { position: 'top-center' });
-                 onSave(value.trim());
-                 onClose();
-               } catch (error) {
-                 toast.error(error instanceof Error ? error.message : 'Failed to edit message.', { position: 'top-center' });
-               } finally {
-                 setIsLoading(false);
-               }
-             }}
+            onClick={async () => {
+              if (!value.trim() || value.trim() === initial) return;
+              setIsLoading(true);
+              try {
+                await editMessage(conversationId, messageId, value.trim());
+                toast.success('Message edited successfully.', {
+                  position: 'top-center',
+                });
+                onSave(value.trim());
+                onClose();
+              } catch (error) {
+                toast.error(
+                  error instanceof Error
+                    ? error.message
+                    : 'Failed to edit message.',
+                  { position: 'top-center' },
+                );
+              } finally {
+                setIsLoading(false);
+              }
+            }}
             disabled={!value.trim() || value.trim() === initial}
             className={cn(
               'flex-1 rounded-lg text-white text-sm font-bold transition-colors disabled:opacity-40 disabled:cursor-not-allowed',
@@ -132,7 +139,7 @@ export function MessageEditModal({
                 : 'bg-stone-100 dark:bg-[#252837] text-stone-400 cursor-not-allowed',
             )}
           >
-             {isLoading ? 'Saving...' : 'Save'}
+            {isLoading ? 'Saving...' : 'Save'}
           </Button>
         </CardFooter>
       </Card>

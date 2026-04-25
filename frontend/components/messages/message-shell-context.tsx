@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import { createContext, useContext, useMemo, useState } from "react";
-import type { Conversation, ReplyPreview } from "@/types/messaging";
+import { createContext, useContext, useMemo, useState } from 'react';
+import type { Conversation, ReplyPreview } from '@/types/messaging';
 
 type OutgoingAttachment = {
   name: string;
@@ -9,7 +9,10 @@ type OutgoingAttachment = {
   data: string;
 };
 
-type SendHandler = (content: string, attachments: OutgoingAttachment[]) => Promise<void>;
+type SendHandler = (
+  content: string,
+  attachments: OutgoingAttachment[],
+) => Promise<void>;
 
 type DeleteHandler = () => void | Promise<void>;
 type MarkCompleteHandler = () => void | Promise<void>;
@@ -41,23 +44,33 @@ const INITIAL_STATE: MessageShellState = {
   replyTo: null,
 };
 
-const MessageShellContext = createContext<MessageShellContextValue | null>(null);
+const MessageShellContext = createContext<MessageShellContextValue | null>(
+  null,
+);
 
-export function MessageShellProvider({ children }: { children: React.ReactNode }) {
-  const [shellState, setShellState] = useState<MessageShellState>(INITIAL_STATE);
+export function MessageShellProvider({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const [shellState, setShellState] =
+    useState<MessageShellState>(INITIAL_STATE);
 
-  const value = useMemo(
-    () => ({ shellState, setShellState }),
-    [shellState]
+  const value = useMemo(() => ({ shellState, setShellState }), [shellState]);
+
+  return (
+    <MessageShellContext.Provider value={value}>
+      {children}
+    </MessageShellContext.Provider>
   );
-
-  return <MessageShellContext.Provider value={value}>{children}</MessageShellContext.Provider>;
 }
 
 export function useMessageShell() {
   const context = useContext(MessageShellContext);
   if (!context) {
-    throw new Error("useMessageShell must be used within MessageShellProvider.");
+    throw new Error(
+      'useMessageShell must be used within MessageShellProvider.',
+    );
   }
   return context;
 }

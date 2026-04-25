@@ -1,12 +1,12 @@
 export type AdminListingRecord = {
   id: string;
   title: string;
-  type: "SELL" | "RENT" | "SERVICE";
+  type: 'SELL' | 'RENT' | 'SERVICE';
   category: string;
   price: number;
   unit: string;
   location: string;
-  status: "AVAILABLE" | "UNAVAILABLE" | "SOLD" | "BANNED" | "DELETED";
+  status: 'AVAILABLE' | 'UNAVAILABLE' | 'SOLD' | 'BANNED' | 'DELETED';
   listing_image_url: string;
   seller_id: string;
   seller: string;
@@ -37,25 +37,32 @@ export type AdminListingsResponse = {
   offset: number;
 };
 
-export async function getAdminListings(query?: AdminListingsQuery): Promise<AdminListingsResponse> {
+export async function getAdminListings(
+  query?: AdminListingsQuery,
+): Promise<AdminListingsResponse> {
   try {
     const params = new URLSearchParams();
-    if (query?.search) params.set("search", query.search);
-    if (query?.type) params.set("type", query.type);
-    if (query?.status) params.set("status", query.status);
-    if (query?.category) params.set("category", query.category);
-    if (typeof query?.limit === "number") params.set("limit", String(query.limit));
-    if (typeof query?.offset === "number") params.set("offset", String(query.offset));
+    if (query?.search) params.set('search', query.search);
+    if (query?.type) params.set('type', query.type);
+    if (query?.status) params.set('status', query.status);
+    if (query?.category) params.set('category', query.category);
+    if (typeof query?.limit === 'number')
+      params.set('limit', String(query.limit));
+    if (typeof query?.offset === 'number')
+      params.set('offset', String(query.offset));
 
-    const querySuffix = params.toString() ? `?${params.toString()}` : "";
-    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/listings${querySuffix}`, {
-      method: "GET",
-      credentials: "include",
-    });
+    const querySuffix = params.toString() ? `?${params.toString()}` : '';
+    const res = await fetch(
+      `${process.env.NEXT_PUBLIC_API_URL}/admin/listings${querySuffix}`,
+      {
+        method: 'GET',
+        credentials: 'include',
+      },
+    );
 
     const parsedJson = await res.json();
     if (!res.ok) {
-      throw parsedJson?.data?.message || "Failed to fetch listings.";
+      throw parsedJson?.data?.message || 'Failed to fetch listings.';
     }
 
     return {
@@ -65,20 +72,25 @@ export async function getAdminListings(query?: AdminListingsQuery): Promise<Admi
       offset: Number(parsedJson?.data?.offset ?? query?.offset ?? 0),
     };
   } catch {
-    throw "An unexpected error occurred. Please try again later.";
+    throw 'An unexpected error occurred. Please try again later.';
   }
 }
 
-export async function deleteAdminListing(listingId: string): Promise<{ listingId: string; status: "DELETED" }> {
+export async function deleteAdminListing(
+  listingId: string,
+): Promise<{ listingId: string; status: 'DELETED' }> {
   try {
-    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/listings/${encodeURIComponent(listingId)}`, {
-      method: "DELETE",
-      credentials: "include",
-    });
+    const res = await fetch(
+      `${process.env.NEXT_PUBLIC_API_URL}/admin/listings/${encodeURIComponent(listingId)}`,
+      {
+        method: 'DELETE',
+        credentials: 'include',
+      },
+    );
 
     const parsedJson = await res.json();
     if (!res.ok) {
-      throw parsedJson?.data?.message || "Failed to remove listing.";
+      throw parsedJson?.data?.message || 'Failed to remove listing.';
     }
 
     return {
@@ -86,20 +98,27 @@ export async function deleteAdminListing(listingId: string): Promise<{ listingId
       status: parsedJson?.data?.status,
     };
   } catch (error: any) {
-    throw error?.message || "An unexpected error occurred. Please try again later.";
+    throw (
+      error?.message || 'An unexpected error occurred. Please try again later.'
+    );
   }
 }
 
-export async function toggleAdminListingVisibility(listingId: string): Promise<{ listingId: string; status: "BANNED" | "UNAVAILABLE" }> {
+export async function toggleAdminListingVisibility(
+  listingId: string,
+): Promise<{ listingId: string; status: 'BANNED' | 'UNAVAILABLE' }> {
   try {
-    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/listings/${encodeURIComponent(listingId)}/toggle-visibility`, {
-      method: "PATCH",
-      credentials: "include",
-    });
+    const res = await fetch(
+      `${process.env.NEXT_PUBLIC_API_URL}/admin/listings/${encodeURIComponent(listingId)}/toggle-visibility`,
+      {
+        method: 'PATCH',
+        credentials: 'include',
+      },
+    );
 
     const parsedJson = await res.json();
     if (!res.ok) {
-      throw parsedJson?.data?.message || "Failed to update listing visibility.";
+      throw parsedJson?.data?.message || 'Failed to update listing visibility.';
     }
 
     return {
@@ -107,6 +126,8 @@ export async function toggleAdminListingVisibility(listingId: string): Promise<{
       status: parsedJson?.data?.status,
     };
   } catch (error: any) {
-    throw error?.message || "An unexpected error occurred. Please try again later.";
+    throw (
+      error?.message || 'An unexpected error occurred. Please try again later.'
+    );
   }
 }

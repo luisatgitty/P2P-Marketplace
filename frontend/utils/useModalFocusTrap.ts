@@ -67,14 +67,21 @@ export function useModalFocusTrap(
       const currentElement = document.activeElement as HTMLElement | null;
 
       if (event.shiftKey) {
-        if (!currentElement || currentElement === firstElement || !container.contains(currentElement)) {
+        if (
+          !currentElement ||
+          currentElement === firstElement ||
+          !container.contains(currentElement)
+        ) {
           event.preventDefault();
           lastElement.focus();
         }
         return;
       }
 
-      if (currentElement === lastElement || !container.contains(currentElement)) {
+      if (
+        currentElement === lastElement ||
+        !container.contains(currentElement)
+      ) {
         event.preventDefault();
         firstElement.focus();
       }
@@ -86,7 +93,10 @@ export function useModalFocusTrap(
 
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
-      if (previousActiveElement && typeof previousActiveElement.focus === 'function') {
+      if (
+        previousActiveElement &&
+        typeof previousActiveElement.focus === 'function'
+      ) {
         previousActiveElement.focus();
       }
     };

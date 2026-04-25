@@ -1,27 +1,22 @@
-// ─── Enums (mirror the DB enums) ─────────────────────────────────────────────
+export type ListingType = 'SELL' | 'RENT' | 'SERVICE';
 
-export type ListingType    = "SELL" | "RENT" | "SERVICE";
-export type MessageStatus  = "SENT" | "DELIVERED" | "READ";
-export type AttachmentType = "IMAGE" | "VIDEO";
+export type MessageStatus = 'SENT' | 'DELIVERED' | 'READ';
 
-/** Mirrors the reaction_type enum in the DB */
-export type ReactionType = "LIKE" | "LOVE" | "LAUGH" | "WOW" | "SAD" | "ANGRY";
+export type AttachmentType = 'IMAGE' | 'VIDEO';
 
-/** The five tabs shown in the messages section */
-export type MessageTab = "all" | "buying" | "selling" | "rental" | "services";
+export type ReactionType = 'LIKE' | 'LOVE' | 'LAUGH' | 'WOW' | 'SAD' | 'ANGRY';
 
-// ─── Reaction config (emoji + label) ─────────────────────────────────────────
+export type MessageTab = 'all' | 'buying' | 'selling' | 'rental' | 'services';
 
-export const REACTIONS: { type: ReactionType; emoji: string; label: string }[] = [
-  { type: "LIKE",  emoji: "👍", label: "Like"  },
-  { type: "LOVE",  emoji: "❤️", label: "Love"  },
-  { type: "LAUGH", emoji: "😂", label: "Haha"  },
-  { type: "WOW",   emoji: "😮", label: "Wow"   },
-  { type: "SAD",   emoji: "😢", label: "Sad"   },
-  { type: "ANGRY", emoji: "😡", label: "Angry" },
-];
-
-// ─── Entities ─────────────────────────────────────────────────────────────────
+export const REACTIONS: { type: ReactionType; emoji: string; label: string }[] =
+  [
+    { type: 'LIKE', emoji: '👍', label: 'Like' },
+    { type: 'LOVE', emoji: '❤️', label: 'Love' },
+    { type: 'LAUGH', emoji: '😂', label: 'Haha' },
+    { type: 'WOW', emoji: '😮', label: 'Wow' },
+    { type: 'SAD', emoji: '😢', label: 'Sad' },
+    { type: 'ANGRY', emoji: '😡', label: 'Angry' },
+  ];
 
 export interface ConversationParticipant {
   id: string;

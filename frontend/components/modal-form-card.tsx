@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import { LucideIcon, X } from 'lucide-react';
 import { Button } from './ui/button';
@@ -78,7 +78,7 @@ export function ModalFormCard({
     return null;
   }
 
-  return createPortal((
+  return createPortal(
     <div
       className='fixed inset-0 z-100 flex items-end sm:items-center justify-center p-4 bg-black/60 backdrop-blur-sm'
       onClick={(e) => e.target === e.currentTarget && onClose()}
@@ -142,6 +142,7 @@ export function ModalFormCard({
           </Button>
         </CardFooter>
       </Card>
-    </div>
-  ), document.body);
+    </div>,
+    document.body,
+  );
 }

@@ -19,29 +19,38 @@ export type SubmitVerificationPayload = {
   selfieImage: VerificationImagePayload;
 };
 
-export async function submitVerification(payload: SubmitVerificationPayload): Promise<void> {
+export async function submitVerification(
+  payload: SubmitVerificationPayload,
+): Promise<void> {
   try {
-    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/profile/me/verification`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify(payload),
-    });
+    const res = await fetch(
+      `${process.env.NEXT_PUBLIC_API_URL}/profile/me/verification`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(payload),
+      },
+    );
 
     const parsedJson = await res.json();
     if (!res.ok) {
-      throw parsedJson?.data?.message || "Failed to submit seller verification.";
+      throw (
+        parsedJson?.data?.message || 'Failed to submit seller verification.'
+      );
     }
   } catch (error: any) {
-    throw error?.message || "An unexpected error occurred. Please try again later.";
+    throw (
+      error?.message || 'An unexpected error occurred. Please try again later.'
+    );
   }
 }
 
 async function post<T = unknown>(route: string, payload: unknown): Promise<T> {
   const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}${route}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    credentials: "include", // send session cookie
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include', // send session cookie
     body: JSON.stringify(payload),
   });
 
@@ -51,7 +60,7 @@ async function post<T = unknown>(route: string, payload: unknown): Promise<T> {
     const message: string =
       json?.data?.message ??
       json?.message ??
-      "An unexpected error occurred. Please try again.";
+      'An unexpected error occurred. Please try again.';
     throw new Error(message);
   }
 
@@ -63,12 +72,12 @@ export async function sendPhoneOTP(
   ipAddress: string,
   userAgent: string,
 ): Promise<void> {
-  await post("/auth/otp/send", { phoneNumber, ipAddress, userAgent });
+  await post('/auth/otp/send', { phoneNumber, ipAddress, userAgent });
 }
 
 export async function verifyPhoneOTP(
   phoneNumber: string,
   otpCode: string,
 ): Promise<void> {
-  await post("/auth/otp/verify", { phoneNumber, otpCode });
+  await post('/auth/otp/verify', { phoneNumber, otpCode });
 }
