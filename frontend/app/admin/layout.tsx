@@ -1,31 +1,32 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import Link from 'next/link';
-import Image from 'next/image';
-import { usePathname } from 'next/navigation';
-import { useUser } from '@/utils/UserContext';
-import { LogoutModal } from '@/components/auth/logout-modal';
 import {
-  LayoutDashboard,
-  Users,
-  Package,
-  Handshake,
-  Flag,
-  ShieldCheck,
-  Settings,
-  UserCog,
-  LogOut,
-  ChevronUp,
   ChevronRight,
+  ChevronUp,
+  Flag,
+  Handshake,
+  LayoutDashboard,
+  LogOut,
+  Package,
   PanelLeftClose,
   PanelLeftOpen,
+  Settings,
+  ShieldCheck,
+  UserCog,
+  Users,
 } from 'lucide-react';
+import Image from 'next/image';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { useEffect, useRef, useState } from 'react';
+
+import { LogoutModal } from '@/components/auth/logout-modal';
+import { ThemeModeSwitch } from '@/components/theme-mode-switch';
+import { SafeImage } from '@/components/ui/safe-image';
 import { cn } from '@/lib/utils';
 import { getAdminReports } from '@/services/adminReportsService';
 import { getAdminVerifications } from '@/services/adminVerificationsService';
-import { SafeImage } from '@/components/ui/safe-image';
-import { ThemeModeSwitch } from '@/components/theme-mode-switch';
+import { useUser } from '@/utils/UserContext';
 
 const BADGE_KEYS = {
   reports: '/admin/reports',
@@ -142,7 +143,7 @@ function SidebarContent({
   return (
     // overflow-visible so the user dropdown can render above the bottom section
     // without being clipped by the sidebar container.
-    <div className='flex flex-col h-full overflow-visible'>
+    <div className="flex flex-col h-full overflow-visible">
       {/* ── Logo + collapse toggle ─────────────────────────────────────── */}
       <div
         className={cn(
@@ -153,36 +154,36 @@ function SidebarContent({
         )}
       >
         <Image
-          src='/logo.png'
-          alt='P2P Marketplace'
-          loading='eager'
+          src="/logo.png"
+          alt="P2P Marketplace"
+          loading="eager"
           width={32}
           height={32}
-          className='shrink-0'
+          className="shrink-0"
         />
 
         {/* Text — only shown when expanded */}
         {!collapsed && (
-          <div className='flex-1 min-w-0'>
-            <p className='text-sm font-bold text-white leading-none'>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-bold text-white leading-none">
               P2P Marketplace
             </p>
-            <p className='text-xs text-slate-400 mt-0.5'>Admin Panel</p>
+            <p className="text-xs text-slate-400 mt-0.5">Admin Panel</p>
           </div>
         )}
 
         {/* Collapse toggle button */}
         {onToggleCollapse && (
           <button
-            type='button'
+            type="button"
             onClick={onToggleCollapse}
             title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-            className='shrink-0 w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:bg-white/10 hover:text-white transition-colors'
+            className="shrink-0 w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:bg-white/10 hover:text-white transition-colors"
           >
             {collapsed ? (
-              <PanelLeftOpen className='w-4 h-4' />
+              <PanelLeftOpen className="w-4 h-4" />
             ) : (
-              <PanelLeftClose className='w-4 h-4' />
+              <PanelLeftClose className="w-4 h-4" />
             )}
           </button>
         )}
@@ -217,22 +218,22 @@ function SidebarContent({
                   : 'text-slate-400 hover:bg-white/5 hover:text-white',
               )}
             >
-              <Icon className='w-4 h-4 shrink-0' />
+              <Icon className="w-4 h-4 shrink-0" />
 
               {/* Label (expanded only) */}
-              {!collapsed && <span className='flex-1'>{label}</span>}
+              {!collapsed && <span className="flex-1">{label}</span>}
 
               {/* Badge: count when expanded, red dot when collapsed */}
               {badge ? (
                 collapsed ? (
-                  <span className='absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-red-500' />
+                  <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-red-500" />
                 ) : (
-                  <span className='w-4 h-4 pb-0.5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center'>
+                  <span className="w-4 h-4 pb-0.5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
                     {badge > 9 ? '9+' : badge}
                   </span>
                 )
               ) : active && !collapsed ? (
-                <ChevronRight className='w-3.5 h-3.5 text-slate-500 shrink-0' />
+                <ChevronRight className="w-3.5 h-3.5 text-slate-500 shrink-0" />
               ) : null}
             </Link>
           );
@@ -253,7 +254,7 @@ function SidebarContent({
         {/* Close dropdown on outside click */}
         {dropdownOpen && (
           <div
-            className='fixed inset-0 z-40'
+            className="fixed inset-0 z-40"
             onClick={() => setDropdown(false)}
           />
         )}
@@ -270,7 +271,7 @@ function SidebarContent({
             )}
           >
             {/* User menu items */}
-            <div className='py-1.5'>
+            <div className="py-1.5">
               {filteredUserMenu.map(({ href, label, Icon }) => (
                 <Link
                   key={href}
@@ -279,25 +280,25 @@ function SidebarContent({
                     setDropdown(false);
                     onNavigate?.();
                   }}
-                  className='flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-slate-300 hover:bg-white/5 hover:text-white transition-colors'
+                  className="flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-slate-300 hover:bg-white/5 hover:text-white transition-colors"
                 >
-                  <Icon className='w-4 h-4 shrink-0 text-slate-400' />
+                  <Icon className="w-4 h-4 shrink-0 text-slate-400" />
                   {label}
                 </Link>
               ))}
             </div>
 
             {/* Log out */}
-            <div className='border-t border-white/10 py-1.5'>
+            <div className="border-t border-white/10 py-1.5">
               <button
-                type='button'
+                type="button"
                 onClick={() => {
                   setDropdown(false);
                   onRequestLogout?.();
                 }}
-                className='flex items-center gap-3 w-full px-4 py-2.5 text-sm font-medium text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors'
+                className="flex items-center gap-3 w-full px-4 py-2.5 text-sm font-medium text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors"
               >
-                <LogOut className='w-3.5 h-3.5 shrink-0' />
+                <LogOut className="w-3.5 h-3.5 shrink-0" />
                 Log Out
               </button>
             </div>
@@ -306,7 +307,7 @@ function SidebarContent({
 
         {/* ── User trigger button ── */}
         <button
-          type='button'
+          type="button"
           onClick={() => setDropdown((v) => !v)}
           className={cn(
             'w-full flex items-center rounded-lg transition-all',
@@ -315,10 +316,10 @@ function SidebarContent({
           )}
         >
           {/* Avatar */}
-          <div className='w-8 h-8 rounded-full overflow-hidden shrink-0 ring-2 ring-white/10'>
+          <div className="w-8 h-8 rounded-full overflow-hidden shrink-0 ring-2 ring-white/10">
             <SafeImage
               src={user?.profileImageUrl}
-              type='profile'
+              type="profile"
               alt={`${user?.firstName}'s profile picture`}
               width={32}
               height={32}
@@ -328,11 +329,11 @@ function SidebarContent({
           {/* Name + email (expanded only) */}
           {!collapsed && (
             <>
-              <div className='flex-1 min-w-0 text-left'>
-                <p className='text-sm font-bold text-white truncate leading-tight'>
+              <div className="flex-1 min-w-0 text-left">
+                <p className="text-sm font-bold text-white truncate leading-tight">
                   {user?.firstName} {user?.lastName}
                 </p>
-                <p className='text-xs text-slate-400 truncate mt-0.5'>
+                <p className="text-xs text-slate-400 truncate mt-0.5">
                   {user?.email}
                 </p>
               </div>
@@ -397,7 +398,7 @@ export default function AdminLayout({
         onClose={() => setLogoutModalOpen(false)}
       />
 
-      <div className='fixed inset-0 z-100 bg-stone-100 dark:bg-[#0f1117] overflow-hidden'>
+      <div className="fixed inset-0 z-100 bg-stone-100 dark:bg-[#0f1117] overflow-hidden">
         {/* ── Sidebar ─────────────────────────────────────────────────────── */}
         <div
           ref={sidebarRef}
@@ -418,7 +419,7 @@ export default function AdminLayout({
 
         {/* ── Main area ───────────────────────────────────────────────────── */}
         <div className={'absolute inset-0 flex flex-col ml-0 overflow-hidden'}>
-          <main className='flex-1 overflow-y-auto ml-16'>{children}</main>
+          <main className="flex-1 overflow-y-auto ml-16">{children}</main>
         </div>
       </div>
     </>

@@ -1,9 +1,10 @@
 'use client';
 
-import { use } from 'react';
 import { notFound } from 'next/navigation';
+import { use } from 'react';
+
 import ListingForm from '@/components/listing-form';
-import { ListingType } from '@/types/listings';
+import type { ListingType } from '@/types/listings';
 
 interface PageProps {
   params: Promise<{ type: string }>;

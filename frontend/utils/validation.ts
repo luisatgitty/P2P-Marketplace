@@ -1,10 +1,10 @@
 import type { SignupForm } from '@/types/forms';
 import {
-  ListingType,
   CATEGORIES,
-  PRICE_UNITS,
   CONDITIONS,
   DELIVERY_OPTIONS,
+  type ListingType,
+  PRICE_UNITS,
 } from '@/types/listings';
 
 export const MESSAGE_MAX_LENGTH = 2000;
@@ -382,7 +382,7 @@ export function validateListingStep(
 
 export function isValidEmail(email: string): string | null {
   const normalizedEmail = email.trim();
-  const emailRegex = /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/;
+  const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
   if (!normalizedEmail) return 'Email is required';
   if (normalizedEmail.length < AUTH_LIMITS.emailMinLength) {
     return `Email must be at least ${AUTH_LIMITS.emailMinLength} characters`;

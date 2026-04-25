@@ -1,8 +1,9 @@
 import Link from 'next/link';
-import { type ReactNode } from 'react';
-import { SafeImage } from './ui/safe-image';
-import { ImageType } from '@/types/image';
+import type { ReactNode } from 'react';
+
+import { SafeImage } from '@/components/ui/safe-image';
 import { cn } from '@/lib/utils';
+import type { ImageType } from '@/types/image';
 
 interface ImageLinkProps {
   href: string;
@@ -35,7 +36,7 @@ export function ImageLink({
     <Link
       href={href}
       target={newTab ? '_blank' : '_self'}
-      rel='noopener noreferrer'
+      rel="noopener noreferrer"
       title={title}
       aria-label={title}
       className={cn('w-9 h-9 shrink-0 relative block', className)}

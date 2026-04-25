@@ -1,6 +1,7 @@
 'use client';
 
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+
 import { cn } from '@/lib/utils';
 
 const MONTH_NAMES = [
@@ -91,44 +92,44 @@ export function BookingCalendar({
   }
 
   return (
-    <div className='select-none'>
-      <div className='mb-3 flex items-center justify-between'>
+    <div className="select-none">
+      <div className="mb-3 flex items-center justify-between">
         <button
-          type='button'
+          type="button"
           onClick={onPrevMonth}
-          className='flex h-8 w-8 items-center justify-center rounded-full text-stone-400 transition-colors hover:bg-stone-200 dark:text-stone-500 dark:hover:bg-[#252837]'
-          aria-label='Previous month'
+          className="flex h-8 w-8 items-center justify-center rounded-full text-stone-400 transition-colors hover:bg-stone-200 dark:text-stone-500 dark:hover:bg-[#252837]"
+          aria-label="Previous month"
         >
-          <ChevronLeft className='h-4 w-4' />
+          <ChevronLeft className="h-4 w-4" />
         </button>
-        <span className='text-sm font-bold text-stone-900 dark:text-stone-50'>
+        <span className="text-sm font-bold text-stone-900 dark:text-stone-50">
           {MONTH_NAMES[viewMonth]} {viewYear}
         </span>
         <button
-          type='button'
+          type="button"
           onClick={onNextMonth}
-          className='flex h-8 w-8 items-center justify-center rounded-full text-stone-400 transition-colors hover:bg-stone-200 dark:text-stone-500 dark:hover:bg-[#252837]'
-          aria-label='Next month'
+          className="flex h-8 w-8 items-center justify-center rounded-full text-stone-400 transition-colors hover:bg-stone-200 dark:text-stone-500 dark:hover:bg-[#252837]"
+          aria-label="Next month"
         >
-          <ChevronRight className='h-4 w-4' />
+          <ChevronRight className="h-4 w-4" />
         </button>
       </div>
 
-      <div className='mb-1 grid grid-cols-7'>
+      <div className="mb-1 grid grid-cols-7">
         {DAY_LABELS.map((label) => (
           <div
             key={label}
-            className='pb-1 text-center text-xs font-bold text-stone-400 dark:text-stone-600'
+            className="pb-1 text-center text-xs font-bold text-stone-400 dark:text-stone-600"
           >
             {label}
           </div>
         ))}
       </div>
 
-      <div className='grid grid-cols-7'>
+      <div className="grid grid-cols-7">
         {cells.map((date, i) => {
           if (date.getMonth() !== viewMonth) {
-            return <div key={i} className='h-9' />;
+            return <div key={i} className="h-9" />;
           }
 
           const day = startOfDay(date);
@@ -156,7 +157,7 @@ export function BookingCalendar({
           return (
             <div
               key={i}
-              className='relative flex h-10 items-center justify-center'
+              className="relative flex h-10 items-center justify-center"
             >
               {(inRange || isRangeStart || isRangeEnd) && (
                 <div
@@ -173,7 +174,7 @@ export function BookingCalendar({
               )}
 
               <button
-                type='button'
+                type="button"
                 disabled={disabled}
                 onClick={() => !disabled && onSelect(date)}
                 onMouseEnter={() => !disabled && onHover(date)}

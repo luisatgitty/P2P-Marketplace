@@ -1,28 +1,23 @@
 'use client';
 
-import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  Search,
-  X,
-  CheckCircle2,
-  XCircle,
-  Flag,
   AlertTriangle,
-  ChevronUp,
+  CheckCircle2,
   ChevronDown,
   ChevronsUpDown,
+  ChevronUp,
   Eye,
+  Flag,
   RotateCw,
+  Search,
+  X,
+  XCircle,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import { ImageLink } from '@/components/image-link';
-import { useUser } from '@/utils/UserContext';
-import {
-  getAdminReports,
-  setAdminReportAction,
-} from '@/services/adminReportsService';
 
+import ReportActionsModal from '@/components/admin/report-actions-modal';
+import { ImageLink } from '@/components/image-link';
 // ── shadcn components ──────────────────────────────────────────────────────────
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -36,9 +31,14 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { AdminReport, ReportStatus } from '@/types/admin';
-import ReportActionsModal from '@/components/admin/report-actions-modal';
+import { cn } from '@/lib/utils';
+import {
+  getAdminReports,
+  setAdminReportAction,
+} from '@/services/adminReportsService';
+import type { AdminReport, ReportStatus } from '@/types/admin';
 import { formatPrice } from '@/utils/string-builder';
+import { useUser } from '@/utils/UserContext';
 
 type SortField =
   | 'reporter'
@@ -87,11 +87,11 @@ function FilterSelect({
   options: [string, string][];
 }) {
   return (
-    <div className='relative shrink-0'>
+    <div className="relative shrink-0">
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className='pl-3 pr-8 py-2 h-9 bg-transparent border border-stone-200 dark:border-[#2a2d3e] rounded-lg text-sm text-stone-700 dark:text-stone-200 outline-none focus:border-stone-400 transition-colors appearance-none cursor-pointer dark:bg-[#13151f]'
+        className="pl-3 pr-8 py-2 h-9 bg-transparent border border-stone-200 dark:border-[#2a2d3e] rounded-lg text-sm text-stone-700 dark:text-stone-200 outline-none focus:border-stone-400 transition-colors appearance-none cursor-pointer dark:bg-[#13151f]"
       >
         {options.map(([v, l]) => (
           <option key={v} value={v}>
@@ -99,18 +99,18 @@ function FilterSelect({
           </option>
         ))}
       </select>
-      <div className='pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2'>
+      <div className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2">
         <svg
-          className='w-3.5 h-3.5 text-stone-400'
-          fill='none'
-          viewBox='0 0 24 24'
-          stroke='currentColor'
+          className="w-3.5 h-3.5 text-stone-400"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
           strokeWidth={2}
         >
           <path
-            strokeLinecap='round'
-            strokeLinejoin='round'
-            d='M19 9l-7 7-7-7'
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M19 9l-7 7-7-7"
           />
         </svg>
       </div>
@@ -204,7 +204,7 @@ export default function ReportsPage() {
 
   // ── Sort loaded chunk ──────────────────────────────────────────────────────────
   const filtered = useMemo(() => {
-    let data = [...reports];
+    const data = [...reports];
 
     data.sort((a, b) => {
       let va: string | number = '';
@@ -333,7 +333,7 @@ export default function ReportsPage() {
   const paginationPages = useMemo(() => {
     const maxButtons = 5;
     let start = Math.max(1, currentPage - 2);
-    let end = Math.min(totalPages, start + maxButtons - 1);
+    const end = Math.min(totalPages, start + maxButtons - 1);
     start = Math.max(1, end - maxButtons + 1);
     return Array.from({ length: end - start + 1 }, (_, idx) => start + idx);
   }, [currentPage, totalPages]);
@@ -341,12 +341,12 @@ export default function ReportsPage() {
   const SortIcon = ({ field }: { field: SortField }) => {
     if (sort.field !== field)
       return (
-        <ChevronsUpDown className='w-3 h-3 text-stone-300 dark:text-stone-600 ml-1' />
+        <ChevronsUpDown className="w-3 h-3 text-stone-300 dark:text-stone-600 ml-1" />
       );
     return sort.dir === 'asc' ? (
-      <ChevronUp className='w-3 h-3 ml-1' />
+      <ChevronUp className="w-3 h-3 ml-1" />
     ) : (
-      <ChevronDown className='w-3 h-3 ml-1' />
+      <ChevronDown className="w-3 h-3 ml-1" />
     );
   };
 
@@ -358,10 +358,10 @@ export default function ReportsPage() {
     field: SortField;
   }) => (
     <TableHead
-      className='text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest cursor-pointer select-none hover:text-stone-700 dark:hover:text-stone-200 whitespace-nowrap'
+      className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest cursor-pointer select-none hover:text-stone-700 dark:hover:text-stone-200 whitespace-nowrap"
       onClick={() => toggleSort(field)}
     >
-      <span className='inline-flex items-center'>
+      <span className="inline-flex items-center">
         {label}
         <SortIcon field={field} />
       </span>
@@ -370,7 +370,7 @@ export default function ReportsPage() {
 
   // ── Render ────────────────────────────────────────────────────────────────────
   return (
-    <div className='h-[calc(100vh)] p-5 sm:p-6 flex flex-col gap-5 min-h-0'>
+    <div className="h-[calc(100vh)] p-5 sm:p-6 flex flex-col gap-5 min-h-0">
       {/* ── Page header ── */}
       {/* <div>
         <h2 className="text-xl font-extrabold text-stone-900 dark:text-stone-50">
@@ -382,7 +382,7 @@ export default function ReportsPage() {
       </div> */}
 
       {/* ── Summary cards — clickable to filter by status ── */}
-      <div className='grid grid-cols-2 lg:grid-cols-4 gap-3'>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {[
           {
             label: 'Total',
@@ -427,10 +427,10 @@ export default function ReportsPage() {
               });
             }}
           >
-            <CardContent className='text-center'>
+            <CardContent className="text-center">
               {/* <Icon className={cn("w-5 h-5 mx-auto mb-1.5", color)} /> */}
               <p className={cn('text-xl font-extrabold', color)}>{count}</p>
-              <p className='text-sm text-stone-500 dark:text-stone-400 mt-0.5'>
+              <p className="text-sm text-stone-500 dark:text-stone-400 mt-0.5">
                 {label}
               </p>
             </CardContent>
@@ -439,21 +439,21 @@ export default function ReportsPage() {
       </div>
 
       {/* ── Search + filter bar ── */}
-      <div className='flex flex-col sm:flex-row gap-3'>
+      <div className="flex flex-col sm:flex-row gap-3">
         {/* Search */}
-        <div className='relative flex-1'>
-          <Search className='absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400 pointer-events-none' />
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400 pointer-events-none" />
           <Input
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);
             }}
-            placeholder='Search reporter, listing, or reason…'
-            className='pl-9 dark:bg-[#13151f] dark:border-[#2a2d3e]'
+            placeholder="Search reporter, listing, or reason…"
+            className="pl-9 dark:bg-[#13151f] dark:border-[#2a2d3e]"
           />
         </div>
 
-        <div className='flex gap-2'>
+        <div className="flex gap-2">
           {/* Reason filter */}
           <FilterSelect
             value={reasonFilter}
@@ -487,29 +487,29 @@ export default function ReportsPage() {
           {/* Clear filters */}
           {hasActiveFilters && (
             <Button
-              variant='outline'
+              variant="outline"
               onClick={() => {
                 setSearch('');
                 setReasonFilter('ALL');
                 setStatusFilter('ALL');
                 setCurrentPage(1);
               }}
-              className='hover:bg-destructive/10! text-destructive! border-destructive! focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40'
+              className="hover:bg-destructive/10! text-destructive! border-destructive! focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40"
             >
-              <X className='w-3 h-3' /> Clear
+              <X className="w-3 h-3" /> Clear
             </Button>
           )}
         </div>
 
         <Button
-          type='button'
-          variant='outline'
+          type="button"
+          variant="outline"
           onClick={() => {
             setIsRefreshing(true);
             void loadReports(currentPage);
           }}
           disabled={loadingReports}
-          className='border-sky-600 text-sky-600! hover:bg-sky-600/10 focus-visible:border-sky-600 focus-visible:ring-sky-600/20 dark:border-sky-400 dark:text-sky-400! dark:hover:bg-sky-400/10 dark:focus-visible:border-sky-400 dark:focus-visible:ring-sky-400/40'
+          className="border-sky-600 text-sky-600! hover:bg-sky-600/10 focus-visible:border-sky-600 focus-visible:ring-sky-600/20 dark:border-sky-400 dark:text-sky-400! dark:hover:bg-sky-400/10 dark:focus-visible:border-sky-400 dark:focus-visible:ring-sky-400/40"
         >
           <RotateCw
             className={cn(
@@ -522,31 +522,31 @@ export default function ReportsPage() {
       </div>
 
       {/* ── Table ── */}
-      <div className='relative flex-1 min-h-0'>
-        <Card className='p-0 rounded-lg dark:bg-[#1c1f2e] dark:border-[#2a2d3e] overflow-hidden h-full min-h-0'>
-          <CardContent className='p-0 h-full min-h-0 flex flex-col'>
-            <div className='overflow-auto h-full'>
+      <div className="relative flex-1 min-h-0">
+        <Card className="p-0 rounded-lg dark:bg-[#1c1f2e] dark:border-[#2a2d3e] overflow-hidden h-full min-h-0">
+          <CardContent className="p-0 h-full min-h-0 flex flex-col">
+            <div className="overflow-auto h-full">
               <Table>
                 <TableHeader>
-                  <TableRow className='border-stone-200 dark:border-[#2a2d3e] bg-stone-50 dark:bg-[#13151f] hover:bg-stone-50 dark:hover:bg-[#13151f]'>
-                    <SortableTH label='Reporter' field='reporter' />
-                    <SortableTH label='Reported User' field='listingOwner' />
+                  <TableRow className="border-stone-200 dark:border-[#2a2d3e] bg-stone-50 dark:bg-[#13151f] hover:bg-stone-50 dark:hover:bg-[#13151f]">
+                    <SortableTH label="Reporter" field="reporter" />
+                    <SortableTH label="Reported User" field="listingOwner" />
                     <SortableTH
-                      label='Reported Listing'
-                      field='reportedListing'
+                      label="Reported Listing"
+                      field="reportedListing"
                     />
-                    <TableHead className='text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest'>
+                    <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest">
                       Reason
                     </TableHead>
-                    <TableHead className='text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest'>
+                    <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest">
                       Status
                     </TableHead>
-                    <SortableTH label='Submitted' field='submitted' />
-                    <SortableTH label='Reviewer' field='reviewedAt' />
-                    <TableHead className='text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest whitespace-nowrap'>
+                    <SortableTH label="Submitted" field="submitted" />
+                    <SortableTH label="Reviewer" field="reviewedAt" />
+                    <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest whitespace-nowrap">
                       Action Taken
                     </TableHead>
-                    <TableHead className='text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest text-right'>
+                    <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest text-right">
                       Actions
                     </TableHead>
                   </TableRow>
@@ -557,7 +557,7 @@ export default function ReportsPage() {
                     <TableRow>
                       <TableCell
                         colSpan={9}
-                        className='py-16 text-center text-sm text-stone-400 dark:text-stone-500'
+                        className="py-16 text-center text-sm text-stone-400 dark:text-stone-500"
                       >
                         Loading reports…
                       </TableCell>
@@ -566,7 +566,7 @@ export default function ReportsPage() {
                     <TableRow>
                       <TableCell
                         colSpan={9}
-                        className='py-16 text-center text-sm text-stone-400 dark:text-stone-500'
+                        className="py-16 text-center text-sm text-stone-400 dark:text-stone-500"
                       >
                         No reports match the current filters.
                       </TableCell>
@@ -575,22 +575,22 @@ export default function ReportsPage() {
                     filtered.map((report) => (
                       <Fragment key={report.id}>
                         {/* ── Main row ── */}
-                        <TableRow className='border-stone-100 dark:border-[#2a2d3e] hover:bg-stone-50 dark:hover:bg-[#252837] transition-colors'>
+                        <TableRow className="border-stone-100 dark:border-[#2a2d3e] hover:bg-stone-50 dark:hover:bg-[#252837] transition-colors">
                           {/* Reporter */}
-                          <TableCell className='py-3.5'>
-                            <div className='flex items-center gap-2.5'>
+                          <TableCell className="py-3.5">
+                            <div className="flex items-center gap-2.5">
                               <ImageLink
                                 href={`/profile?userId=${report.reporter_id}`}
                                 newTab
                                 src={report.reporter_profile_image_url}
-                                type='profile'
+                                type="profile"
                                 label={report.reporter}
                               />
-                              <div className='min-w-0'>
-                                <p className='text-sm font-semibold text-stone-800 dark:text-stone-100 whitespace-nowrap truncate'>
+                              <div className="min-w-0">
+                                <p className="text-sm font-semibold text-stone-800 dark:text-stone-100 whitespace-nowrap truncate">
                                   {report.reporter}
                                 </p>
-                                <p className='text-xs text-stone-500 dark:text-stone-400 whitespace-nowrap truncate'>
+                                <p className="text-xs text-stone-500 dark:text-stone-400 whitespace-nowrap truncate">
                                   {report.reporter_location || '-'}
                                 </p>
                               </div>
@@ -598,21 +598,21 @@ export default function ReportsPage() {
                           </TableCell>
 
                           {/* Listing owner */}
-                          <TableCell className='py-3.5 text-sm text-stone-600 dark:text-stone-300 whitespace-nowrap'>
+                          <TableCell className="py-3.5 text-sm text-stone-600 dark:text-stone-300 whitespace-nowrap">
                             {report.target_type === 'LISTING' ? (
-                              <div className='flex items-center gap-2.5'>
+                              <div className="flex items-center gap-2.5">
                                 <ImageLink
                                   href={`/profile?userId=${report.listing_owner_id}`}
                                   newTab
                                   src={report.listing_owner_profile_image_url}
-                                  type='profile'
+                                  type="profile"
                                   label={report.listing_owner}
                                 />
-                                <div className='min-w-0'>
-                                  <p className='text-sm font-semibold text-stone-800 dark:text-stone-100 whitespace-nowrap truncate'>
+                                <div className="min-w-0">
+                                  <p className="text-sm font-semibold text-stone-800 dark:text-stone-100 whitespace-nowrap truncate">
                                     {report.listing_owner}
                                   </p>
-                                  <p className='text-xs text-stone-500 dark:text-stone-400 whitespace-nowrap truncate'>
+                                  <p className="text-xs text-stone-500 dark:text-stone-400 whitespace-nowrap truncate">
                                     {report.listing_owner_location || '-'}
                                   </p>
                                 </div>
@@ -623,41 +623,41 @@ export default function ReportsPage() {
                           </TableCell>
 
                           {/* Reported listing */}
-                          <TableCell className='py-3.5 max-w-65'>
+                          <TableCell className="py-3.5 max-w-65">
                             {report.target_type === 'LISTING' ? (
-                              <div className='flex items-center gap-2.5 min-w-0'>
+                              <div className="flex items-center gap-2.5 min-w-0">
                                 <ImageLink
                                   href={`/listing/${report.target_id}`}
                                   newTab
                                   src={report.listing_image_url}
-                                  type='thumbnail'
+                                  type="thumbnail"
                                   label={report.target_name}
                                 />
-                                <div className='min-w-0'>
-                                  <p className='text-sm font-semibold text-stone-700 dark:text-stone-200 truncate'>
+                                <div className="min-w-0">
+                                  <p className="text-sm font-semibold text-stone-700 dark:text-stone-200 truncate">
                                     {report.target_name}
                                   </p>
-                                  <p className='text-xs text-stone-500 dark:text-stone-400 truncate'>
+                                  <p className="text-xs text-stone-500 dark:text-stone-400 truncate">
                                     {formatPrice(report.listing_price ?? 0)}{' '}
                                     {report.listing_price_unit}
                                   </p>
                                 </div>
                               </div>
                             ) : (
-                              <span className='text-xs text-stone-400'>—</span>
+                              <span className="text-xs text-stone-400">—</span>
                             )}
                           </TableCell>
 
                           {/* Reason */}
-                          <TableCell className='py-3.5'>
-                            <span className='inline-flex items-center gap-1 text-xs font-semibold text-stone-600 dark:text-stone-300 bg-stone-100 dark:bg-[#13151f] px-2 py-0.5 rounded-lg'>
-                              <Flag className='w-2.5 h-2.5 text-red-400 shrink-0' />
+                          <TableCell className="py-3.5">
+                            <span className="inline-flex items-center gap-1 text-xs font-semibold text-stone-600 dark:text-stone-300 bg-stone-100 dark:bg-[#13151f] px-2 py-0.5 rounded-lg">
+                              <Flag className="w-2.5 h-2.5 text-red-400 shrink-0" />
                               {report.reason}
                             </span>
                           </TableCell>
 
                           {/* Status badge */}
-                          <TableCell className='py-3.5 whitespace-nowrap'>
+                          <TableCell className="py-3.5 whitespace-nowrap">
                             <span
                               className={cn(
                                 'text-xs font-bold px-2 py-0.5 rounded-md',
@@ -669,51 +669,51 @@ export default function ReportsPage() {
                           </TableCell>
 
                           {/* Submitted date */}
-                          <TableCell className='py-3.5 text-sm text-stone-500 dark:text-stone-400 whitespace-nowrap'>
+                          <TableCell className="py-3.5 text-sm text-stone-500 dark:text-stone-400 whitespace-nowrap">
                             {formatDateTime(report.created_at)}
                           </TableCell>
 
                           {/* Reviewer */}
-                          <TableCell className='py-3.5 text-sm text-stone-500 dark:text-stone-400 whitespace-nowrap'>
+                          <TableCell className="py-3.5 text-sm text-stone-500 dark:text-stone-400 whitespace-nowrap">
                             {report.reviewed_by ? (
                               <div>
-                                <p className='text-sm font-bold text-stone-800 dark:text-stone-100'>
+                                <p className="text-sm font-bold text-stone-800 dark:text-stone-100">
                                   {report.reviewed_by}
                                 </p>
-                                <p className='text-xs text-stone-400 dark:text-stone-500'>
+                                <p className="text-xs text-stone-400 dark:text-stone-500">
                                   {formatDateTime(report.reviewed_at)}
                                 </p>
                               </div>
                             ) : (
-                              <span className='text-stone-300 dark:text-stone-600'>
+                              <span className="text-stone-300 dark:text-stone-600">
                                 —
                               </span>
                             )}
                           </TableCell>
 
                           {/* Action Taken */}
-                          <TableCell className='py-3.5 text-sm text-stone-500 dark:text-stone-400 whitespace-nowrap'>
+                          <TableCell className="py-3.5 text-sm text-stone-500 dark:text-stone-400 whitespace-nowrap">
                             {report.action_taken ? (
                               report.action_taken.replaceAll('_', ' ')
                             ) : (
-                              <span className='text-stone-300 dark:text-stone-600'>
+                              <span className="text-stone-300 dark:text-stone-600">
                                 —
                               </span>
                             )}
                           </TableCell>
 
                           {/* Actions */}
-                          <TableCell className='py-3.5'>
-                            <div className='flex items-center justify-end gap-1'>
+                          <TableCell className="py-3.5">
+                            <div className="flex items-center justify-end gap-1">
                               <Button
-                                variant='ghost'
-                                type='button'
-                                size='icon'
+                                variant="ghost"
+                                type="button"
+                                size="icon"
                                 onClick={() => setResolving(report)}
                                 disabled={actionLoadingId === report.id}
-                                className='w-7 h-7 text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-100 hover:bg-stone-100 dark:hover:bg-[#252837]'
+                                className="w-7 h-7 text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-100 hover:bg-stone-100 dark:hover:bg-[#252837]"
                               >
-                                <Eye className='w-4 h-4' />
+                                <Eye className="w-4 h-4" />
                               </Button>
                             </div>
                           </TableCell>
@@ -725,48 +725,48 @@ export default function ReportsPage() {
               </Table>
             </div>
 
-            <Separator className='dark:bg-[#2a2d3e]' />
-            <div className='px-4 py-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between text-sm text-stone-400 dark:text-stone-500'>
+            <Separator className="dark:bg-[#2a2d3e]" />
+            <div className="px-4 py-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between text-sm text-stone-400 dark:text-stone-500">
               <span>
                 Showing {filtered.length.toLocaleString()} of{' '}
                 {totalCount.toLocaleString()} result
                 {totalCount !== 1 ? 's' : ''}
               </span>
-              <div className='flex items-center gap-1.5 self-end sm:self-auto'>
+              <div className="flex items-center gap-1.5 self-end sm:self-auto">
                 <Button
-                  type='button'
-                  variant='outline'
-                  size='sm'
+                  type="button"
+                  variant="outline"
+                  size="sm"
                   onClick={() =>
                     setCurrentPage((prev) => Math.max(1, prev - 1))
                   }
                   disabled={loadingReports || currentPage <= 1}
-                  className='h-8 px-2.5'
+                  className="h-8 px-2.5"
                 >
                   Prev
                 </Button>
                 {paginationPages.map((page) => (
                   <Button
                     key={page}
-                    type='button'
+                    type="button"
                     variant={page === currentPage ? 'default' : 'outline'}
-                    size='sm'
+                    size="sm"
                     onClick={() => setCurrentPage(page)}
                     disabled={loadingReports}
-                    className='h-8 min-w-8 px-2'
+                    className="h-8 min-w-8 px-2"
                   >
                     {page}
                   </Button>
                 ))}
                 <Button
-                  type='button'
-                  variant='outline'
-                  size='sm'
+                  type="button"
+                  variant="outline"
+                  size="sm"
                   onClick={() =>
                     setCurrentPage((prev) => Math.min(totalPages, prev + 1))
                   }
                   disabled={loadingReports || currentPage >= totalPages}
-                  className='h-8 px-2.5'
+                  className="h-8 px-2.5"
                 >
                   Next
                 </Button>

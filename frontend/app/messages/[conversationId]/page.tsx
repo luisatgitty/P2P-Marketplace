@@ -1,40 +1,41 @@
 'use client';
 
-import {
-  useState,
-  useEffect,
-  useRef,
-  useCallback,
-  useMemo,
-  useLayoutEffect,
-} from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import { cn } from '@/lib/utils';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { toast } from 'sonner';
+
+import { MediaViewerModal } from '@/components/media-viewer-modal';
+import MessageBubble from '@/components/messages/message-bubble';
+import { MessageEditModal } from '@/components/messages/message-edit-modal';
+import { useMessageShell } from '@/components/messages/message-shell-context';
 import type { PostCardProps } from '@/components/post-card';
+import { cn } from '@/lib/utils';
+import { getListingDetailById } from '@/services/listingDetailService';
+import {
+  deleteConversation,
+  deleteMessage,
+  getConversation,
+  getConversations,
+  getMessages,
+  markConversationRead,
+  openOrCreateConversationFromListing,
+  reactToMessage,
+  sendMessage,
+} from '@/services/messagingService';
 import type {
   Conversation,
   Message,
   ReactionType,
   ReplyPreview,
 } from '@/types/messaging';
-import { MediaViewerModal } from '@/components/media-viewer-modal';
-import { getListingDetailById } from '@/services/listingDetailService';
-import {
-  getConversations,
-  getConversation,
-  getMessages,
-  sendMessage,
-  markConversationRead,
-  deleteConversation,
-  reactToMessage,
-  deleteMessage,
-  openOrCreateConversationFromListing,
-} from '@/services/messagingService';
 import { useUser } from '@/utils/UserContext';
-import { MessageEditModal } from '@/components/messages/message-edit-modal';
-import MessageBubble from '@/components/messages/message-bubble';
-import { useMessageShell } from '@/components/messages/message-shell-context';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -942,27 +943,27 @@ export default function ConversationPage() {
   if (!conversation) {
     if (loading) {
       if (!showSkeleton) {
-        return <div className='h-full' />;
+        return <div className="h-full" />;
       }
 
       return (
-        <div className='h-full overflow-y-auto no-scroll px-4 pt-24 pb-3 flex flex-col-reverse gap-4 fade-in duration-100'>
-          <div className='h-12 bg-stone-200 dark:bg-[#1f2230] rounded-lg w-2/3 ml-auto' />
-          <div className='h-16 bg-stone-200 dark:bg-[#1f2230] rounded-lg w-1/2' />
-          <div className='h-12 bg-stone-200 dark:bg-[#1f2230] rounded-lg w-3/4 ml-auto' />
-          <div className='h-20 bg-stone-200 dark:bg-[#1f2230] rounded-lg w-2/3' />
+        <div className="h-full overflow-y-auto no-scroll px-4 pt-24 pb-3 flex flex-col-reverse gap-4 fade-in duration-100">
+          <div className="h-12 bg-stone-200 dark:bg-[#1f2230] rounded-lg w-2/3 ml-auto" />
+          <div className="h-16 bg-stone-200 dark:bg-[#1f2230] rounded-lg w-1/2" />
+          <div className="h-12 bg-stone-200 dark:bg-[#1f2230] rounded-lg w-3/4 ml-auto" />
+          <div className="h-20 bg-stone-200 dark:bg-[#1f2230] rounded-lg w-2/3" />
         </div>
       );
     }
 
     return (
-      <div className='flex-1 flex flex-col items-center justify-center gap-3 bg-stone-50 dark:bg-[#0f1117] p-8 text-center'>
-        <p className='text-sm font-semibold text-stone-600 dark:text-stone-400'>
+      <div className="flex-1 flex flex-col items-center justify-center gap-3 bg-stone-50 dark:bg-[#0f1117] p-8 text-center">
+        <p className="text-sm font-semibold text-stone-600 dark:text-stone-400">
           Conversation not found
         </p>
         <button
           onClick={() => router.push('/messages')}
-          className='text-xs text-amber-700 dark:text-amber-500 hover:underline'
+          className="text-xs text-amber-700 dark:text-amber-500 hover:underline"
         >
           ← Back to messages
         </button>
@@ -975,11 +976,11 @@ export default function ConversationPage() {
   return (
     <>
       {showSkeleton && (
-        <div className='h-full overflow-y-auto no-scroll px-4 pt-24 pb-3 flex flex-col-reverse gap-4 fade-in duration-100'>
-          <div className='h-12 bg-stone-200 dark:bg-[#1f2230] rounded-lg w-2/3 ml-auto' />
-          <div className='h-16 bg-stone-200 dark:bg-[#1f2230] rounded-lg w-1/2' />
-          <div className='h-12 bg-stone-200 dark:bg-[#1f2230] rounded-lg w-3/4 ml-auto' />
-          <div className='h-20 bg-stone-200 dark:bg-[#1f2230] rounded-lg w-2/3' />
+        <div className="h-full overflow-y-auto no-scroll px-4 pt-24 pb-3 flex flex-col-reverse gap-4 fade-in duration-100">
+          <div className="h-12 bg-stone-200 dark:bg-[#1f2230] rounded-lg w-2/3 ml-auto" />
+          <div className="h-16 bg-stone-200 dark:bg-[#1f2230] rounded-lg w-1/2" />
+          <div className="h-12 bg-stone-200 dark:bg-[#1f2230] rounded-lg w-3/4 ml-auto" />
+          <div className="h-20 bg-stone-200 dark:bg-[#1f2230] rounded-lg w-2/3" />
         </div>
       )}
 
@@ -988,19 +989,19 @@ export default function ConversationPage() {
           key={conversationId}
           ref={messagesContainerRef}
           onScroll={handleMessagesScroll}
-          className='h-full pt-24 pb-3 px-4 2xl:px-64 overflow-y-auto animate-in fade-in duration-500'
+          className="h-full pt-24 pb-3 px-4 2xl:px-64 overflow-y-auto animate-in fade-in duration-500"
         >
-          <div className='min-h-full flex flex-col'>
+          <div className="min-h-full flex flex-col">
             {loadingOlder && (
-              <div className='py-2 text-center text-[11px] text-stone-400 dark:text-stone-500'>
+              <div className="py-2 text-center text-[11px] text-stone-400 dark:text-stone-500">
                 Loading older messages...
               </div>
             )}
 
-            <div className='mt-auto'>
+            <div className="mt-auto">
               {messages.length === 0 && (
-                <div className='flex flex-col items-center justify-center gap-2 text-center py-8'>
-                  <p className='text-xs text-stone-400 dark:text-stone-600'>
+                <div className="flex flex-col items-center justify-center gap-2 text-center py-8">
+                  <p className="text-xs text-stone-400 dark:text-stone-600">
                     No messages yet. Say hello!
                   </p>
                 </div>
@@ -1023,18 +1024,18 @@ export default function ConversationPage() {
                 return (
                   <div key={msg.id}>
                     {showDate && (
-                      <div className='flex items-center gap-3 my-4'>
-                        <div className='flex-1 h-px bg-border' />
-                        <span className='text-[11px] font-medium text-stone-400 dark:text-stone-500 px-2'>
+                      <div className="flex items-center gap-3 my-4">
+                        <div className="flex-1 h-px bg-border" />
+                        <span className="text-[11px] font-medium text-stone-400 dark:text-stone-500 px-2">
                           {formatDateSeparator(msg.createdAt)}
                         </span>
-                        <div className='flex-1 h-px bg-border' />
+                        <div className="flex-1 h-px bg-border" />
                       </div>
                     )}
 
                     {actionLabel ? (
-                      <div className='flex justify-center my-1.5'>
-                        <span className='text-[11px] text-stone-400 dark:text-stone-500 bg-stone-100 dark:bg-[#1c1f2e] border border-border rounded-full px-3 py-1'>
+                      <div className="flex justify-center my-1.5">
+                        <span className="text-[11px] text-stone-400 dark:text-stone-500 bg-stone-100 dark:bg-[#1c1f2e] border border-border rounded-full px-3 py-1">
                           {actionLabel}
                         </span>
                       </div>
@@ -1055,7 +1056,7 @@ export default function ConversationPage() {
                     {!actionLabel &&
                       msg.senderId === effectiveCurrentUserId &&
                       conversation.otherLastReadMessageId === msg.id && (
-                        <div className='flex justify-end pr-1 mt-0.5'>
+                        <div className="flex justify-end pr-1 mt-0.5">
                           {conversation.otherParticipant.profileImageUrl ? (
                             <img
                               src={

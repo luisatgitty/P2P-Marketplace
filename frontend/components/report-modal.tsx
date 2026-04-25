@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { Flag } from 'lucide-react';
-import { Textarea } from './ui/textarea';
-import { ModalFormCard } from './modal-form-card';
+import { useEffect, useState } from 'react';
+
+import { ModalFormCard } from '@/components/modal-form-card';
+import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 
 const REPORT_REASONS = [
@@ -63,18 +64,18 @@ export function ReportModal({
   return (
     <ModalFormCard
       icon={Flag}
-      type='report'
+      type="report"
       title={title}
       subTitle={target}
       onClose={onClose}
       handleSend={handleSubmit}
       canSend={!!reason}
       sending={submitting}
-      submitLabel='Submit Report'
+      submitLabel="Submit Report"
     >
-      <p className='text-sm text-stone-500 dark:text-stone-400'>{subtitle}</p>
+      <p className="text-sm text-stone-500 dark:text-stone-400">{subtitle}</p>
 
-      <div className='grid grid-cols-2 gap-2'>
+      <div className="grid grid-cols-2 gap-2">
         {REPORT_REASONS.map((item) => (
           <button
             key={item}
@@ -92,7 +93,7 @@ export function ReportModal({
       </div>
 
       <div>
-        <label className='text-sm font-medium text-stone-500 dark:text-stone-400 mb-2 block'>
+        <label className="text-sm font-medium text-stone-500 dark:text-stone-400 mb-2 block">
           Report details
         </label>
         <Textarea
@@ -100,8 +101,8 @@ export function ReportModal({
           value={details}
           onChange={(e) => handleDetailsChange(e.target.value)}
           maxLength={REPORT_MAX_LENGTH}
-          placeholder='Describe what happened or why this should be reported...'
-          className='w-full max-h-24 bg-stone-50 dark:bg-[#13151f] border border-stone-200 dark:border-[#2a2d3e] rounded-lg px-3 py-2.5 text-sm text-stone-800 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-600 outline-none focus:border-stone-400 dark:focus:border-stone-500 resize-none'
+          placeholder="Describe what happened or why this should be reported..."
+          className="w-full max-h-24 bg-stone-50 dark:bg-[#13151f] border border-stone-200 dark:border-[#2a2d3e] rounded-lg px-3 py-2.5 text-sm text-stone-800 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-600 outline-none focus:border-stone-400 dark:focus:border-stone-500 resize-none"
         />
       </div>
     </ModalFormCard>

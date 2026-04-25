@@ -1,7 +1,8 @@
 'use client';
 
+import { Compass, Home, SearchX, ShoppingBag, Tag, Wrench } from 'lucide-react';
 import Link from 'next/link';
-import { SearchX, Home, Compass, ShoppingBag, Wrench, Tag } from 'lucide-react';
+
 import { cn } from '@/lib/utils';
 
 // ── Browse suggestion cards ───────────────────────────────────────────────────
@@ -43,30 +44,30 @@ const SUGGESTIONS = [
 
 export default function NotFoundPage() {
   return (
-    <div className='min-h-screen bg-stone-100 dark:bg-[#0f1117] flex flex-col'>
+    <div className="min-h-screen bg-stone-100 dark:bg-[#0f1117] flex flex-col">
       {/* ── Top accent bar ── */}
-      <div className='h-1 w-full bg-linear-to-r from-[#1e2433] via-[#3a4a6a] to-[#1e2433] shrink-0' />
+      <div className="h-1 w-full bg-linear-to-r from-[#1e2433] via-[#3a4a6a] to-[#1e2433] shrink-0" />
 
       {/* ── Main content ── */}
-      <div className='flex-1 flex items-center justify-center px-4 py-8'>
-        <div className='w-full max-w-lg'>
+      <div className="flex-1 flex items-center justify-center px-4 py-8">
+        <div className="w-full max-w-lg">
           {/* ── Card ── */}
-          <div className='bg-white dark:bg-[#1c1f2e] rounded-lg border border-stone-200 dark:border-[#2a2d3e] shadow-sm overflow-hidden'>
+          <div className="bg-white dark:bg-[#1c1f2e] rounded-lg border border-stone-200 dark:border-[#2a2d3e] shadow-sm overflow-hidden">
             {/* Card header */}
-            <div className='bg-[#1e2433] px-8 py-10 flex flex-col items-center text-center relative overflow-hidden'>
+            <div className="bg-[#1e2433] px-8 py-10 flex flex-col items-center text-center relative overflow-hidden">
               {/* Decorative background rings */}
-              <div className='absolute inset-0 flex items-center justify-center pointer-events-none'>
-                <div className='w-72 h-72 rounded-full border border-white/4' />
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <div className="w-72 h-72 rounded-full border border-white/4" />
               </div>
-              <div className='absolute inset-0 flex items-center justify-center pointer-events-none'>
-                <div className='w-52 h-52 rounded-full border border-white/5' />
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <div className="w-52 h-52 rounded-full border border-white/5" />
               </div>
 
               {/* Large "404" typographic element */}
-              <div className='relative mb-5 select-none'>
+              <div className="relative mb-5 select-none">
                 {/* Ghost number behind the icon */}
                 <p
-                  className='text-[88px] font-extrabold leading-none tracking-tighter'
+                  className="text-[88px] font-extrabold leading-none tracking-tighter"
                   style={{
                     color: 'transparent',
                     WebkitTextStroke: '1.5px rgba(255,255,255,0.07)',
@@ -77,11 +78,11 @@ export default function NotFoundPage() {
                 </p>
 
                 {/* Floating icon centred over the ghost number */}
-                <div className='absolute inset-0 flex items-center justify-center'>
-                  <div className='w-20 h-20 rounded-full bg-stone-700/30 border border-stone-600/30 flex items-center justify-center'>
-                    <div className='w-14 h-14 rounded-full bg-stone-600/30 border border-stone-500/30 flex items-center justify-center'>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="w-20 h-20 rounded-full bg-stone-700/30 border border-stone-600/30 flex items-center justify-center">
+                    <div className="w-14 h-14 rounded-full bg-stone-600/30 border border-stone-500/30 flex items-center justify-center">
                       <SearchX
-                        className='w-7 h-7 text-stone-300'
+                        className="w-7 h-7 text-stone-300"
                         strokeWidth={1.75}
                       />
                     </div>
@@ -90,58 +91,58 @@ export default function NotFoundPage() {
               </div>
 
               {/* Error code label */}
-              <p className='text-[11px] font-bold text-stone-500 uppercase tracking-[0.2em] mb-1.5'>
+              <p className="text-[11px] font-bold text-stone-500 uppercase tracking-[0.2em] mb-1.5">
                 Error 404
               </p>
 
               {/* Heading */}
-              <h1 className='text-2xl font-extrabold text-white leading-tight mb-2.5'>
+              <h1 className="text-2xl font-extrabold text-white leading-tight mb-2.5">
                 Page Not Found
               </h1>
 
               {/* Description */}
-              <p className='text-sm text-slate-400 leading-relaxed max-w-xs'>
+              <p className="text-sm text-slate-400 leading-relaxed max-w-xs">
                 The page you&apos;re looking for doesn&apos;t exist, may have
                 been removed, or the link might be incorrect.
               </p>
             </div>
 
             {/* ── Card body ── */}
-            <div className='px-8 py-7 flex flex-col gap-6'>
+            <div className="px-8 py-7 flex flex-col gap-6">
               {/* Primary CTAs */}
-              <div className='flex flex-col gap-2.5'>
+              <div className="flex flex-col gap-2.5">
                 <Link
-                  href='/'
-                  className='flex items-center justify-center gap-2 w-full py-3 rounded-lg text-sm font-bold text-white transition-all hover:opacity-90 active:scale-[0.98]'
+                  href="/"
+                  className="flex items-center justify-center gap-2 w-full py-3 rounded-lg text-sm font-bold text-white transition-all hover:opacity-90 active:scale-[0.98]"
                   style={{
                     background:
                       'linear-gradient(135deg, #1e2433 0%, #3a4a6a 100%)',
                   }}
                 >
-                  <Home className='w-4 h-4' />
+                  <Home className="w-4 h-4" />
                   Back to Home
                 </Link>
 
                 <Link
-                  href='/'
-                  className='flex items-center justify-center gap-2 w-full py-3 rounded-lg border-2 border-stone-200 dark:border-[#2a2d3e] text-stone-700 dark:text-stone-200 text-sm font-semibold hover:border-stone-400 dark:hover:border-stone-500 hover:bg-stone-50 dark:hover:bg-[#252837] transition-all'
+                  href="/"
+                  className="flex items-center justify-center gap-2 w-full py-3 rounded-lg border-2 border-stone-200 dark:border-[#2a2d3e] text-stone-700 dark:text-stone-200 text-sm font-semibold hover:border-stone-400 dark:hover:border-stone-500 hover:bg-stone-50 dark:hover:bg-[#252837] transition-all"
                 >
-                  <Compass className='w-4 h-4' />
+                  <Compass className="w-4 h-4" />
                   Browse All Listings
                 </Link>
               </div>
 
               {/* Divider */}
-              <div className='flex items-center gap-3'>
-                <div className='flex-1 h-px bg-stone-200 dark:bg-[#2a2d3e]' />
-                <span className='text-xs text-stone-400 dark:text-stone-600 shrink-0'>
+              <div className="flex items-center gap-3">
+                <div className="flex-1 h-px bg-stone-200 dark:bg-[#2a2d3e]" />
+                <span className="text-xs text-stone-400 dark:text-stone-600 shrink-0">
                   or browse by type
                 </span>
-                <div className='flex-1 h-px bg-stone-200 dark:bg-[#2a2d3e]' />
+                <div className="flex-1 h-px bg-stone-200 dark:bg-[#2a2d3e]" />
               </div>
 
               {/* Browse suggestion cards */}
-              <div className='grid grid-cols-3 gap-2.5'>
+              <div className="grid grid-cols-3 gap-2.5">
                 {SUGGESTIONS.map(
                   ({ label, desc, href, Icon, color, bg, border, hover }) => (
                     <Link
@@ -172,7 +173,7 @@ export default function NotFoundPage() {
                         >
                           {label}
                         </p>
-                        <p className='text-[11px] text-stone-400 dark:text-stone-500 mt-0.5 leading-tight'>
+                        <p className="text-[11px] text-stone-400 dark:text-stone-500 mt-0.5 leading-tight">
                           {desc}
                         </p>
                       </div>
@@ -186,7 +187,7 @@ export default function NotFoundPage() {
       </div>
 
       {/* ── Bottom accent bar ── */}
-      <div className='h-1 w-full bg-linear-to-r from-[#1e2433] via-[#3a4a6a] to-[#1e2433] shrink-0' />
+      <div className="h-1 w-full bg-linear-to-r from-[#1e2433] via-[#3a4a6a] to-[#1e2433] shrink-0" />
     </div>
   );
 }

@@ -1,13 +1,14 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { ListingType } from '@/types/listings';
+import { useEffect, useState } from 'react';
+
 import ListingForm from '@/components/listing-form';
 import {
   getListingEditById,
   type ListingEditData,
 } from '@/services/listingEditService';
+import type { ListingType } from '@/types/listings';
 
 export default function EditListingPage() {
   const { id } = useParams<{ id: string }>();
@@ -46,8 +47,8 @@ export default function EditListingPage() {
 
   if (loading) {
     return (
-      <div className='min-h-screen flex items-center justify-center bg-stone-100 dark:bg-[#0f1117]'>
-        <p className='text-stone-600 dark:text-stone-400 font-medium'>
+      <div className="min-h-screen flex items-center justify-center bg-stone-100 dark:bg-[#0f1117]">
+        <p className="text-stone-600 dark:text-stone-400 font-medium">
           Loading listing data...
         </p>
       </div>
@@ -56,13 +57,13 @@ export default function EditListingPage() {
 
   if (!data || error) {
     return (
-      <div className='min-h-screen flex items-center justify-center bg-stone-100 dark:bg-[#0f1117] px-4'>
-        <div className='text-center'>
-          <p className='text-4xl mb-3'>⚠️</p>
-          <p className='text-stone-700 dark:text-stone-200 font-semibold'>
+      <div className="min-h-screen flex items-center justify-center bg-stone-100 dark:bg-[#0f1117] px-4">
+        <div className="text-center">
+          <p className="text-4xl mb-3">⚠️</p>
+          <p className="text-stone-700 dark:text-stone-200 font-semibold">
             Unable to load listing for edit
           </p>
-          <p className='text-stone-500 dark:text-stone-400 text-sm mt-1'>
+          <p className="text-stone-500 dark:text-stone-400 text-sm mt-1">
             {error || 'Please try again.'}
           </p>
         </div>

@@ -1,18 +1,18 @@
 'use client';
 
-import { useRef, useState } from 'react';
-import { useUser } from '@/utils/UserContext';
 import {
-  Lock,
+  AlertTriangle,
+  Camera,
+  CheckCircle2,
   Eye,
   EyeOff,
-  CheckCircle2,
-  AlertTriangle,
-  User,
-  Camera,
+  Lock,
   Trash2,
+  User,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { useRef, useState } from 'react';
+import { toast } from 'sonner';
+
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -23,14 +23,15 @@ import {
 } from '@/components/ui/card';
 import { FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
+import { SafeImage } from '@/components/ui/safe-image';
 import { Separator } from '@/components/ui/separator';
+import { encodeImageToPayload } from '@/lib/imageCompression';
+import { cn } from '@/lib/utils';
 import {
   updateProfileData,
   updateProfileImages,
 } from '@/services/profileService';
-import { toast } from 'sonner';
-import { SafeImage } from '@/components/ui/safe-image';
-import { encodeImageToPayload } from '@/lib/imageCompression';
+import { useUser } from '@/utils/UserContext';
 
 // ── Mock current admin ─────────────────────────────────────────────────────────
 const CURRENT_ADMIN = {
@@ -72,9 +73,9 @@ function EyeToggle({
 }) {
   return (
     <Button
-      variant='icon'
+      variant="icon"
       onClick={onToggle}
-      className='text-muted-foreground absolute inset-y-0 right-0 rounded-l-none'
+      className="text-muted-foreground absolute inset-y-0 right-0 rounded-l-none"
     >
       {show ? <EyeOff /> : <Eye />}
     </Button>
@@ -99,9 +100,9 @@ function InlineFeedback({
       )}
     >
       {type === 'success' ? (
-        <CheckCircle2 className='w-4 h-4 shrink-0' />
+        <CheckCircle2 className="w-4 h-4 shrink-0" />
       ) : (
-        <AlertTriangle className='w-4 h-4 shrink-0' />
+        <AlertTriangle className="w-4 h-4 shrink-0" />
       )}
       {msg}
     </div>
@@ -117,9 +118,9 @@ function PasswordStrengthBar({ password }: { password: string }) {
   const filled = Math.max(1, score); // always show at least 1 segment
 
   return (
-    <div className='space-y-2'>
+    <div className="space-y-2">
       {/* Segmented bar */}
-      <div className='flex gap-1.5'>
+      <div className="flex gap-1.5">
         {Array.from({ length: 4 }, (_, i) => (
           <div
             key={i}
@@ -356,59 +357,59 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className='p-5 sm:p-6 space-y-5 max-w-2xl'>
+    <div className="p-5 sm:p-6 space-y-5 max-w-2xl">
       {/* ── Page title ── */}
       <div>
-        <h1 className='text-xl font-extrabold text-stone-900 dark:text-stone-50'>
+        <h1 className="text-xl font-extrabold text-stone-900 dark:text-stone-50">
           Settings
         </h1>
       </div>
 
       {/* ── Profile summary banner ── */}
       <Card>
-        <CardContent className='flex items-center gap-4'>
-          <div className='relative'>
+        <CardContent className="flex items-center gap-4">
+          <div className="relative">
             <div
-              className='relative group w-14 h-14 rounded-full ring-2 ring-black/30 dark:ring-white/10 shrink-0 cursor-pointer'
+              className="relative group w-14 h-14 rounded-full ring-2 ring-black/30 dark:ring-white/10 shrink-0 cursor-pointer"
               onClick={() =>
                 !updatingProfileImage && setShowProfileImageMenu((v) => !v)
               }
             >
               <SafeImage
                 src={profilePreview || user?.profileImageUrl}
-                type='profile'
+                type="profile"
                 alt={`${user?.firstName ?? 'User'}'s profile picture`}
                 width={56}
                 height={56}
               />
-              <div className='absolute inset-0 rounded-full bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center'>
-                <Camera className='w-4 h-4 text-white opacity-0 group-hover:opacity-100 transition-opacity' />
+              <div className="absolute inset-0 rounded-full bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
+                <Camera className="w-4 h-4 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
               </div>
             </div>
 
             {showProfileImageMenu && (
               <>
                 <div
-                  className='fixed inset-0 z-10'
+                  className="fixed inset-0 z-10"
                   onClick={() => setShowProfileImageMenu(false)}
                 />
-                <div className='absolute top-full left-0 mt-2 z-20 bg-white dark:bg-[#1c1f2e] border border-stone-200 dark:border-[#2a2d3e] rounded-lg shadow-lg overflow-hidden w-44'>
+                <div className="absolute top-full left-0 mt-2 z-20 bg-white dark:bg-[#1c1f2e] border border-stone-200 dark:border-[#2a2d3e] rounded-lg shadow-lg overflow-hidden w-44">
                   <button
-                    type='button'
-                    className='w-full flex items-center gap-2.5 px-4 py-2.5 text-xs text-stone-700 dark:text-stone-300 hover:bg-stone-50 dark:hover:bg-[#252837] transition-colors disabled:opacity-60'
+                    type="button"
+                    className="w-full flex items-center gap-2.5 px-4 py-2.5 text-xs text-stone-700 dark:text-stone-300 hover:bg-stone-50 dark:hover:bg-[#252837] transition-colors disabled:opacity-60"
                     onClick={handlePickImage}
                     disabled={updatingProfileImage}
                   >
-                    <Camera className='w-4 h-4 text-stone-400' />
+                    <Camera className="w-4 h-4 text-stone-400" />
                     {updatingProfileImage ? 'Updating...' : 'Update Photo'}
                   </button>
                   <button
-                    type='button'
-                    className='w-full flex items-center gap-2.5 px-4 py-2.5 text-xs text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors border-t border-stone-100 dark:border-[#2a2d3e] disabled:opacity-60'
+                    type="button"
+                    className="w-full flex items-center gap-2.5 px-4 py-2.5 text-xs text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors border-t border-stone-100 dark:border-[#2a2d3e] disabled:opacity-60"
                     onClick={handleRemoveProfileImage}
                     disabled={updatingProfileImage}
                   >
-                    <Trash2 className='w-4 h-4' />
+                    <Trash2 className="w-4 h-4" />
                     Remove Photo
                   </button>
                 </div>
@@ -417,21 +418,21 @@ export default function SettingsPage() {
 
             <input
               ref={fileInputRef}
-              type='file'
-              accept='image/*'
-              className='hidden'
+              type="file"
+              accept="image/*"
+              className="hidden"
               onChange={(e) => {
                 handleImageChange(e.target.files?.[0] ?? null);
                 e.currentTarget.value = '';
               }}
             />
           </div>
-          <div className='flex-1 min-w-0'>
-            <p className='text-base font-extrabold text-white truncate'>
+          <div className="flex-1 min-w-0">
+            <p className="text-base font-extrabold text-white truncate">
               {user?.firstName} {user?.lastName}
             </p>
-            <p className='text-sm text-slate-400 truncate'>{user?.email}</p>
-            <span className='inline-block mt-1.5 text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30'>
+            <p className="text-sm text-slate-400 truncate">{user?.email}</p>
+            <span className="inline-block mt-1.5 text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
               {user?.role === 'SUPER_ADMIN' ? 'Super Admin' : 'Admin'}
             </span>
           </div>
@@ -439,35 +440,35 @@ export default function SettingsPage() {
       </Card>
 
       {/* ══ Account Settings card ═══════════════════════════════════════════ */}
-      <Card className='dark:bg-[#1c1f2e] dark:border-[#2a2d3e]'>
+      <Card className="dark:bg-[#1c1f2e] dark:border-[#2a2d3e]">
         <CardHeader>
           <CardTitle>Account Settings</CardTitle>
           <CardDescription>
             Request Super Admin to update your admin account credentials
           </CardDescription>
         </CardHeader>
-        <CardContent className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
+        <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {/* Wraps name inputs in form to disable browser autocomplete */}
-          <form className='contents' autoComplete='off'>
+          <form className="contents" autoComplete="off">
             {/* ── Name ── */}
-            <div className='space-y-2 cursor-not-allowed'>
-              <FieldLabel htmlFor='firstName'>First Name</FieldLabel>
-              <Input id='firstName' value={user?.firstName ?? ''} disabled />
+            <div className="space-y-2 cursor-not-allowed">
+              <FieldLabel htmlFor="firstName">First Name</FieldLabel>
+              <Input id="firstName" value={user?.firstName ?? ''} disabled />
             </div>
-            <div className='space-y-2 cursor-not-allowed'>
-              <FieldLabel htmlFor='lastName'>Last Name</FieldLabel>
-              <Input id='lastName' value={user?.lastName ?? ''} disabled />
+            <div className="space-y-2 cursor-not-allowed">
+              <FieldLabel htmlFor="lastName">Last Name</FieldLabel>
+              <Input id="lastName" value={user?.lastName ?? ''} disabled />
             </div>
           </form>
 
           {/* ── Contact info ── */}
-          <div className='space-y-2 cursor-not-allowed'>
-            <FieldLabel htmlFor='currentEmail'>Email Address</FieldLabel>
-            <Input id='currentEmail' value={user?.email ?? ''} disabled />
+          <div className="space-y-2 cursor-not-allowed">
+            <FieldLabel htmlFor="currentEmail">Email Address</FieldLabel>
+            <Input id="currentEmail" value={user?.email ?? ''} disabled />
           </div>
-          <div className='space-y-2 cursor-not-allowed'>
-            <FieldLabel htmlFor='currentPhone'>Contact Number</FieldLabel>
-            <Input id='currentPhone' value={user?.phoneNumber ?? ''} disabled />
+          <div className="space-y-2 cursor-not-allowed">
+            <FieldLabel htmlFor="currentPhone">Contact Number</FieldLabel>
+            <Input id="currentPhone" value={user?.phoneNumber ?? ''} disabled />
           </div>
         </CardContent>
 
@@ -480,13 +481,13 @@ export default function SettingsPage() {
             password
           </CardDescription>
         </CardHeader>
-        <CardContent className='space-y-4'>
+        <CardContent className="space-y-4">
           {/* Current password */}
-          <div className='space-y-2'>
-            <FieldLabel htmlFor='currentPw'>Current Password</FieldLabel>
-            <div className='relative'>
+          <div className="space-y-2">
+            <FieldLabel htmlFor="currentPw">Current Password</FieldLabel>
+            <div className="relative">
               <Input
-                id='currentPw'
+                id="currentPw"
                 type={showCurr ? 'text' : 'password'}
                 value={currentPw}
                 onChange={(e) => {
@@ -498,7 +499,7 @@ export default function SettingsPage() {
                   }
                   if (passwordInputsError) setPasswordInputsError(false);
                 }}
-                placeholder='Enter current password'
+                placeholder="Enter current password"
                 aria-invalid={passwordInputsError}
                 className={'pr-10 dark:bg-[#13151f] dark:border-[#2a2d3e]'}
               />
@@ -510,12 +511,12 @@ export default function SettingsPage() {
           </div>
 
           {/* New + Confirm Password */}
-          <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
-            <div className='space-y-2'>
-              <FieldLabel htmlFor='newPw'>New Password</FieldLabel>
-              <div className='relative'>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <FieldLabel htmlFor="newPw">New Password</FieldLabel>
+              <div className="relative">
                 <Input
-                  id='newPw'
+                  id="newPw"
                   type={showNew ? 'text' : 'password'}
                   disabled={!currentPw.trim()}
                   value={newPw}
@@ -523,7 +524,7 @@ export default function SettingsPage() {
                     setNewPw(e.target.value);
                     if (passwordInputsError) setPasswordInputsError(false);
                   }}
-                  placeholder='Enter new password'
+                  placeholder="Enter new password"
                   aria-invalid={passwordInputsError}
                   className={'pr-10 dark:bg-[#13151f] dark:border-[#2a2d3e]'}
                 />
@@ -533,11 +534,11 @@ export default function SettingsPage() {
                 />
               </div>
             </div>
-            <div className='space-y-2'>
-              <FieldLabel htmlFor='confirmPw'>Confirm New Password</FieldLabel>
-              <div className='relative'>
+            <div className="space-y-2">
+              <FieldLabel htmlFor="confirmPw">Confirm New Password</FieldLabel>
+              <div className="relative">
                 <Input
-                  id='confirmPw'
+                  id="confirmPw"
                   type={showConf ? 'text' : 'password'}
                   disabled={!currentPw.trim()}
                   value={confirmPw}
@@ -545,7 +546,7 @@ export default function SettingsPage() {
                     setConfirmPw(e.target.value);
                     if (passwordInputsError) setPasswordInputsError(false);
                   }}
-                  placeholder='Re-enter new password'
+                  placeholder="Re-enter new password"
                   aria-invalid={passwordInputsError}
                   className={'pr-10 dark:bg-[#13151f] dark:border-[#2a2d3e]'}
                 />
@@ -555,12 +556,12 @@ export default function SettingsPage() {
 
           {/* Strength + checklist — only shown when typing a new password */}
           {newPw && (
-            <div className='space-y-3 pt-1'>
+            <div className="space-y-3 pt-1">
               {/* ── Strength progress bar ── */}
               <PasswordStrengthBar password={newPw} />
 
               {/* ── Complexity checklist ── */}
-              <div className='grid grid-cols-2 gap-x-6 gap-y-1.5'>
+              <div className="grid grid-cols-2 gap-x-6 gap-y-1.5">
                 {[
                   { label: 'At least 8 characters', ok: newPw.length >= 8 },
                   { label: 'One uppercase letter', ok: /[A-Z]/.test(newPw) },
@@ -570,7 +571,7 @@ export default function SettingsPage() {
                     ok: /[!@#$%^&*()_+\-=[\]{}|;',.<>?]/.test(newPw),
                   },
                 ].map(({ label, ok }) => (
-                  <div key={label} className='flex items-center gap-2'>
+                  <div key={label} className="flex items-center gap-2">
                     <CheckCircle2
                       className={cn(
                         'w-3.5 h-3.5 shrink-0 transition-colors duration-200',
@@ -596,32 +597,32 @@ export default function SettingsPage() {
           )}
         </CardContent>
 
-        <CardContent className='space-y-4'>
+        <CardContent className="space-y-4">
           {/* ── Error Message ── */}
           {formMsg && <InlineFeedback msg={formMsg.text} type={formMsg.type} />}
 
           {/* ── Save Button ── */}
           <Button
-            type='button'
+            type="button"
             disabled={savingForm || !canSaveChanges}
             onClick={handleSave}
-            className='rounded-lg px-6 bg-[#1e2433] hover:bg-[#2a3650] dark:bg-stone-100 dark:text-stone-900 dark:hover:bg-stone-200 text-white font-bold gap-2'
+            className="rounded-lg px-6 bg-[#1e2433] hover:bg-[#2a3650] dark:bg-stone-100 dark:text-stone-900 dark:hover:bg-stone-200 text-white font-bold gap-2"
           >
-            <User className='w-4 h-4' />
+            <User className="w-4 h-4" />
             {savingForm ? 'Saving…' : 'Save Changes'}
           </Button>
         </CardContent>
       </Card>
 
       {/* ── Security reminders ── */}
-      <div className='bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4'>
-        <div className='flex items-center gap-2 mb-2.5'>
-          <Lock className='w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0' />
-          <p className='text-sm font-bold text-amber-800 dark:text-amber-300'>
+      <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
+        <div className="flex items-center gap-2 mb-2.5">
+          <Lock className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+          <p className="text-sm font-bold text-amber-800 dark:text-amber-300">
             Security Reminders
           </p>
         </div>
-        <ul className='space-y-1.5'>
+        <ul className="space-y-1.5">
           {[
             'Never share your admin credentials with anyone, including other admins.',
             'Always use a strong, unique password. Enable a password manager.',
@@ -629,9 +630,9 @@ export default function SettingsPage() {
           ].map((tip) => (
             <li
               key={tip}
-              className='flex items-start gap-2 text-xs text-amber-700 dark:text-amber-400'
+              className="flex items-start gap-2 text-xs text-amber-700 dark:text-amber-400"
             >
-              <span className='text-amber-400 mt-0.5 shrink-0'>•</span>
+              <span className="text-amber-400 mt-0.5 shrink-0">•</span>
               {tip}
             </li>
           ))}

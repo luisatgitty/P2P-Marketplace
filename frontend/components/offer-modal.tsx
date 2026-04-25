@@ -1,14 +1,15 @@
 'use client';
 
-import { useMemo } from 'react';
 import { HandHelping } from 'lucide-react';
-import { Textarea } from './ui/textarea';
-import { ModalFormCard } from './modal-form-card';
+import { useMemo } from 'react';
+
+import { ModalFormCard } from '@/components/modal-form-card';
+import { Textarea } from '@/components/ui/textarea';
 import { formatPrice } from '@/utils/string-builder';
-import { isValidPrice } from '@/utils/validation';
 import {
-  MESSAGE_MAX_LENGTH,
+  isValidPrice,
   limitMessageInputLength,
+  MESSAGE_MAX_LENGTH,
 } from '@/utils/validation';
 
 interface OfferModalProps {
@@ -58,7 +59,7 @@ export default function OfferModal({
   return (
     <ModalFormCard
       icon={HandHelping}
-      type='SELL'
+      type="SELL"
       title={title}
       subTitle={subtitle}
       onClose={onClose}
@@ -67,18 +68,18 @@ export default function OfferModal({
       sending={submitting}
       submitLabel={submitLabel}
     >
-      <div className='mb-4'>
-        <div className='flex justify-between text-sm text-stone-500 dark:text-stone-400 mb-2'>
+      <div className="mb-4">
+        <div className="flex justify-between text-sm text-stone-500 dark:text-stone-400 mb-2">
           <span>Your offer</span>
           <span>Listed at {formatPrice(listedPrice)}</span>
         </div>
 
-        <div className='flex items-center border-2 border-stone-200 dark:border-[#2a2d3e] rounded-lg overflow-hidden focus-within:border-stone-400 dark:focus-within:border-stone-500 transition-colors'>
-          <span className='px-4 text-stone-400 dark:text-stone-500 font-semibold text-md bg-stone-50 dark:bg-[#13151f] py-2 border-r border-stone-200 dark:border-[#2a2d3e]'>
+        <div className="flex items-center border-2 border-stone-200 dark:border-[#2a2d3e] rounded-lg overflow-hidden focus-within:border-stone-400 dark:focus-within:border-stone-500 transition-colors">
+          <span className="px-4 text-stone-400 dark:text-stone-500 font-semibold text-md bg-stone-50 dark:bg-[#13151f] py-2 border-r border-stone-200 dark:border-[#2a2d3e]">
             ₱
           </span>
           <input
-            type='number'
+            type="number"
             value={offerAmount}
             onChange={(e) => {
               const nextValue = e.target.value;
@@ -97,16 +98,16 @@ export default function OfferModal({
                 e.preventDefault();
               }
             }}
-            className='flex-1 px-3 text-stone-900 dark:text-stone-50 bg-transparent text-sm font-semibold outline-none'
+            className="flex-1 px-3 text-stone-900 dark:text-stone-50 bg-transparent text-sm font-semibold outline-none"
           />
         </div>
 
-        <div className='flex gap-2 mt-4'>
+        <div className="flex gap-2 mt-4">
           {presetValues.map((preset) => (
             <button
               key={preset.label}
               onClick={() => onOfferAmountChange(preset.value)}
-              className='flex-1 text-sm py-1.5 rounded-lg border-2 border-stone-200 dark:border-[#2a2d3e] text-stone-500 dark:text-stone-400 hover:border-stone-400 hover:text-stone-700 dark:hover:text-white dark:hover:bg-slate-800 transition-colors'
+              className="flex-1 text-sm py-1.5 rounded-lg border-2 border-stone-200 dark:border-[#2a2d3e] text-stone-500 dark:text-stone-400 hover:border-stone-400 hover:text-stone-700 dark:hover:text-white dark:hover:bg-slate-800 transition-colors"
             >
               {preset.label}
             </button>
@@ -115,9 +116,9 @@ export default function OfferModal({
       </div>
 
       <div>
-        <label className='text-[11px] font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest mb-2 block'>
+        <label className="text-[11px] font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest mb-2 block">
           Message{' '}
-          <span className='font-normal normal-case tracking-normal text-stone-400 dark:text-stone-500'>
+          <span className="font-normal normal-case tracking-normal text-stone-400 dark:text-stone-500">
             (optional)
           </span>
         </label>
@@ -129,7 +130,7 @@ export default function OfferModal({
           }
           maxLength={MESSAGE_MAX_LENGTH}
           placeholder={'Add context for your offer...'}
-          className='w-full max-h-24 bg-stone-50 dark:bg-[#13151f] border border-stone-200 dark:border-[#2a2d3e] rounded-lg px-3 py-2.5 text-sm text-stone-800 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-600 outline-none focus:border-stone-400 dark:focus:border-stone-500 resize-none'
+          className="w-full max-h-24 bg-stone-50 dark:bg-[#13151f] border border-stone-200 dark:border-[#2a2d3e] rounded-lg px-3 py-2.5 text-sm text-stone-800 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-600 outline-none focus:border-stone-400 dark:focus:border-stone-500 resize-none"
         />
       </div>
     </ModalFormCard>

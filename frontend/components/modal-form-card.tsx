@@ -1,19 +1,20 @@
 'use client';
 
-import { LucideIcon, X } from 'lucide-react';
-import { Button } from './ui/button';
+import { type LucideIcon, X } from 'lucide-react';
+import { type ReactNode, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
+import { useModalFocusTrap } from '@/utils/useModalFocusTrap';
 import {
   Card,
-  CardHeader,
-  CardTitle,
+  CardContent,
   CardDescription,
   CardFooter,
-  CardContent,
+  CardHeader,
+  CardTitle,
 } from './ui/card';
-import { cn } from '@/lib/utils';
-import { ReactNode, useEffect, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
-import { useModalFocusTrap } from '@/utils/useModalFocusTrap';
 
 export interface ModalFormCardProps {
   icon: LucideIcon;
@@ -80,57 +81,57 @@ export function ModalFormCard({
 
   return createPortal(
     <div
-      className='fixed inset-0 z-100 flex items-end sm:items-center justify-center p-4 bg-black/60 backdrop-blur-sm'
+      className="fixed inset-0 z-100 flex items-end sm:items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
       <Card
         ref={dialogRef}
-        role='dialog'
-        aria-modal='true'
+        role="dialog"
+        aria-modal="true"
         tabIndex={-1}
-        className='relative bg-background rounded-lg w-full max-w-sm shadow-2xl flex flex-col max-h-[95vh]'
+        className="relative bg-background rounded-lg w-full max-w-sm shadow-2xl flex flex-col max-h-[95vh]"
       >
         {/* Close Button */}
         <Button
           variant={'ghost'}
           size={'sm'}
-          type='button'
+          type="button"
           onClick={onClose}
-          className='absolute top-2 right-2'
+          className="absolute top-2 right-2"
         >
-          <X className='w-4 h-4 text-foreground' />
+          <X className="w-4 h-4 text-foreground" />
         </Button>
 
         {/* ── Header ── */}
-        <CardHeader className='flex items-start justify-between shrink-0'>
-          <div className='min-w-0'>
-            <CardTitle className='flex items-center gap-2 mb-1 text-foreground'>
+        <CardHeader className="flex items-start justify-between shrink-0">
+          <div className="min-w-0">
+            <CardTitle className="flex items-center gap-2 mb-1 text-foreground">
               <Icon className={cn('w-5 h-5 shrink-0', iconColorClass)} />
               {title}
             </CardTitle>
-            <CardDescription className='truncate'>{subTitle}</CardDescription>
+            <CardDescription className="truncate">{subTitle}</CardDescription>
           </div>
         </CardHeader>
 
         {/* ── Content ── */}
-        <CardContent className='flex flex-col py-4 bg-card overflow-y-auto gap-4'>
+        <CardContent className="flex flex-col py-4 bg-card overflow-y-auto gap-4">
           {children}
         </CardContent>
 
         {/* ── Footer ── */}
-        <CardFooter className='flex gap-3 shrink-0'>
+        <CardFooter className="flex gap-3 shrink-0">
           <Button
             variant={'outline'}
-            size='lg'
-            type='button'
+            size="lg"
+            type="button"
             onClick={onCancel || onClose}
-            className='flex-1 rounded-lg border  text-sm font-semibold hover:bg-stone-200 transition-colors'
+            className="flex-1 rounded-lg border  text-sm font-semibold hover:bg-stone-200 transition-colors"
           >
             {cancelLabel || 'Cancel'}
           </Button>
           <Button
-            size='lg'
-            type='button'
+            size="lg"
+            type="button"
             onClick={handleSend}
             disabled={!canSend}
             className={cn(

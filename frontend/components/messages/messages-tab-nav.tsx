@@ -1,6 +1,7 @@
 'use client';
 
-import { ShoppingCart, Tag, Key, Wrench } from 'lucide-react';
+import { Key, ShoppingCart, Tag, Wrench } from 'lucide-react';
+
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import type { MessageTab } from '@/types/messaging';
@@ -28,10 +29,10 @@ export default function MessagesTabNav({
   return (
     <Tabs
       value={activeTab}
-      className='w-full gap-0'
-      aria-label='Message categories'
+      className="w-full gap-0"
+      aria-label="Message categories"
     >
-      <TabsList className='h-auto w-full justify-start bg-transparent p-0'>
+      <TabsList className="h-auto w-full justify-start bg-transparent p-0">
         {MESSAGE_TABS.map(({ id, label, Icon }) => (
           <TabsTrigger
             key={id}

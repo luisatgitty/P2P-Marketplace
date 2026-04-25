@@ -1,17 +1,18 @@
 'use client';
 
+import { usePathname, useRouter } from 'next/navigation';
 import {
   createContext,
   useCallback,
   useContext,
-  useState,
   useEffect,
+  useState,
 } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
-import { User } from '@/types/forms';
+
 import { LoadingPage } from '@/components/loading';
-import { validateImageURL } from '@/utils/validation';
 import { sendDeleteRequest, sendGetRequest } from '@/services/authService';
+import type { User } from '@/types/forms';
+import { validateImageURL } from '@/utils/validation';
 
 interface UserContextType {
   user: User | null;

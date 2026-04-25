@@ -1,31 +1,32 @@
 'use client';
 
+import {
+  Activity,
+  AlertTriangle,
+  ArrowUpRight,
+  CheckCircle2,
+  Flag,
+  Home,
+  Package,
+  ShieldCheck,
+  ShoppingBag,
+  TrendingDown,
+  TrendingUp,
+  UserCheck,
+  Users,
+  UserX,
+  Wrench,
+} from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
-import {
-  Users,
-  Package,
-  Flag,
-  ShieldCheck,
-  TrendingUp,
-  TrendingDown,
-  ArrowUpRight,
-  Activity,
-  ShoppingBag,
-  Home,
-  Wrench,
-  UserCheck,
-  UserX,
-  AlertTriangle,
-  CheckCircle2,
-} from 'lucide-react';
-import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+
+import { cn } from '@/lib/utils';
 import {
-  getAdminDashboardStats,
   type AdminDashboardStats,
   type AdminListingTypeBreakdown,
   type AdminWeeklyNewUsers,
+  getAdminDashboardStats,
 } from '@/services/adminService';
 
 // ── Placeholder data ───────────────────────────────────────────────────────────
@@ -320,27 +321,27 @@ export default function DashboardPage() {
   ];
 
   return (
-    <div className='p-5 sm:p-6 space-y-4'>
+    <div className="p-5 sm:p-6 space-y-4">
       {/* ── Page header ── */}
       <div>
-        <h2 className='text-xl font-extrabold text-stone-900 dark:text-stone-50'>
+        <h2 className="text-xl font-extrabold text-stone-900 dark:text-stone-50">
           Dashboard
         </h2>
-        <p className='text-sm text-stone-500 dark:text-stone-400'>
+        <p className="text-sm text-stone-500 dark:text-stone-400">
           Overview of key metrics and recent activity
         </p>
       </div>
 
       {/* ── Stat cards ── */}
-      <div className='grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 pt-1'>
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 pt-1">
         {statCards.map(
           ({ label, value, sub, trend, Icon, color, bg, href }) => (
             <Link
               key={label}
               href={href}
-              className='bg-white dark:bg-[#1c1f2e] rounded-lg border border-stone-200 dark:border-[#2a2d3e] p-4 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 group'
+              className="bg-white dark:bg-[#1c1f2e] rounded-lg border border-stone-200 dark:border-[#2a2d3e] p-4 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 group"
             >
-              <div className='flex items-start justify-between mb-3'>
+              <div className="flex items-start justify-between mb-3">
                 <div
                   className={cn(
                     'w-10 h-10 rounded-lg flex items-center justify-center shrink-0',
@@ -350,19 +351,19 @@ export default function DashboardPage() {
                   <Icon className={cn('w-5 h-5', color)} />
                 </div>
                 {trend === 'up' && (
-                  <TrendingUp className='w-4 h-4 text-teal-500' />
+                  <TrendingUp className="w-4 h-4 text-teal-500" />
                 )}
                 {trend === 'down' && (
-                  <TrendingDown className='w-4 h-4 text-red-500' />
+                  <TrendingDown className="w-4 h-4 text-red-500" />
                 )}
                 {trend === 'neutral' && (
-                  <Activity className='w-4 h-4 text-stone-400 dark:text-stone-500' />
+                  <Activity className="w-4 h-4 text-stone-400 dark:text-stone-500" />
                 )}
               </div>
-              <p className='text-2xl font-extrabold text-stone-900 dark:text-stone-50 leading-none'>
+              <p className="text-2xl font-extrabold text-stone-900 dark:text-stone-50 leading-none">
                 {value}
               </p>
-              <p className='text-sm font-medium text-stone-500 dark:text-stone-400 mt-1'>
+              <p className="text-sm font-medium text-stone-500 dark:text-stone-400 mt-1">
                 {label}
               </p>
               <p
@@ -388,15 +389,15 @@ export default function DashboardPage() {
       </div>
 
       {/* ── Charts row ── */}
-      <div className='grid grid-cols-1 lg:grid-cols-3 gap-4'>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* New users this week */}
-        <div className='lg:col-span-2 bg-white dark:bg-[#1c1f2e] rounded-lg border border-stone-200 dark:border-[#2a2d3e] p-4'>
-          <div className='flex items-center justify-between mb-5'>
+        <div className="lg:col-span-2 bg-white dark:bg-[#1c1f2e] rounded-lg border border-stone-200 dark:border-[#2a2d3e] p-4">
+          <div className="flex items-center justify-between mb-5">
             <div>
-              <p className='text-md font-bold text-stone-900 dark:text-stone-50'>
+              <p className="text-md font-bold text-stone-900 dark:text-stone-50">
                 New Users This Week
               </p>
-              <p className='text-sm text-stone-400 dark:text-stone-500 mt-0.5'>
+              <p className="text-sm text-stone-400 dark:text-stone-500 mt-0.5">
                 {totalWeeklyRegistrations.toLocaleString()} total registrations
               </p>
             </div>
@@ -415,23 +416,23 @@ export default function DashboardPage() {
               {Math.abs(weeklyChangePct).toFixed(1)}%
             </span>
           </div>
-          <div className='flex items-end gap-2 h-32'>
+          <div className="flex items-end gap-2 h-32">
             {weeklyNewUsers.map(({ day, count }) => (
               <div
                 key={day}
-                className='flex-1 flex flex-col items-center gap-1.5'
+                className="flex-1 flex flex-col items-center gap-1.5"
               >
-                <span className='text-sm font-bold text-stone-500 dark:text-stone-400'>
+                <span className="text-sm font-bold text-stone-500 dark:text-stone-400">
                   {count}
                 </span>
                 <div
-                  className='w-full rounded-t-lg bg-[#1e2433] dark:bg-stone-300 transition-all duration-300'
+                  className="w-full rounded-t-lg bg-[#1e2433] dark:bg-stone-300 transition-all duration-300"
                   style={{
                     height: `${(count / maxWeekly) * 100}%`,
                     minHeight: 6,
                   }}
                 />
-                <span className='text-sm text-stone-400 dark:text-stone-500'>
+                <span className="text-sm text-stone-400 dark:text-stone-500">
                   {day}
                 </span>
               </div>
@@ -440,21 +441,21 @@ export default function DashboardPage() {
         </div>
 
         {/* User health */}
-        <div className='bg-white dark:bg-[#1c1f2e] rounded-lg border border-stone-200 dark:border-[#2a2d3e] p-4'>
-          <p className='text-md font-bold text-stone-900 dark:text-stone-50 mb-4'>
+        <div className="bg-white dark:bg-[#1c1f2e] rounded-lg border border-stone-200 dark:border-[#2a2d3e] p-4">
+          <p className="text-md font-bold text-stone-900 dark:text-stone-50 mb-4">
             User Health Breakdown
           </p>
-          <div className='grid grid-cols-2 gap-4 bg-white dark:bg-[#1c1f2e] rounded-lg'>
+          <div className="grid grid-cols-2 gap-4 bg-white dark:bg-[#1c1f2e] rounded-lg">
             {userHealthCards.map(({ Icon, label, value, color }) => (
               <div
                 key={label}
-                className='bg-stone-50 dark:bg-[#13151f] rounded-lg p-2.5 text-center flex flex-col items-center justify-center'
+                className="bg-stone-50 dark:bg-[#13151f] rounded-lg p-2.5 text-center flex flex-col items-center justify-center"
               >
                 <Icon className={cn('w-4 h-4 mx-auto mb-1', color)} />
-                <p className='text-sm font-bold text-stone-800 dark:text-stone-100'>
+                <p className="text-sm font-bold text-stone-800 dark:text-stone-100">
                   {value}
                 </p>
-                <p className='text-xs text-stone-400 dark:text-stone-500'>
+                <p className="text-xs text-stone-400 dark:text-stone-500">
                   {label}
                 </p>
               </div>
@@ -464,13 +465,13 @@ export default function DashboardPage() {
 
         {/* ── Second row ── */}
         {/* New listings created this week */}
-        <div className='lg:col-span-2 bg-white dark:bg-[#1c1f2e] rounded-lg border border-stone-200 dark:border-[#2a2d3e] p-4'>
-          <div className='flex items-center justify-between mb-5'>
+        <div className="lg:col-span-2 bg-white dark:bg-[#1c1f2e] rounded-lg border border-stone-200 dark:border-[#2a2d3e] p-4">
+          <div className="flex items-center justify-between mb-5">
             <div>
-              <p className='text-md font-bold text-stone-900 dark:text-stone-50'>
+              <p className="text-md font-bold text-stone-900 dark:text-stone-50">
                 New Listings This Week
               </p>
-              <p className='text-sm text-stone-400 dark:text-stone-500 mt-0.5'>
+              <p className="text-sm text-stone-400 dark:text-stone-500 mt-0.5">
                 {totalWeeklyListings.toLocaleString()} total listings
               </p>
             </div>
@@ -493,23 +494,23 @@ export default function DashboardPage() {
               {Math.abs(weeklyListingsChangePct).toFixed(1)}%
             </span>
           </div>
-          <div className='flex items-end gap-2 h-32'>
+          <div className="flex items-end gap-2 h-32">
             {weeklyNewListings.map(({ day, count }) => (
               <div
                 key={day}
-                className='flex-1 flex flex-col items-center gap-1.5'
+                className="flex-1 flex flex-col items-center gap-1.5"
               >
-                <span className='text-sm font-bold text-stone-500 dark:text-stone-400'>
+                <span className="text-sm font-bold text-stone-500 dark:text-stone-400">
                   {count}
                 </span>
                 <div
-                  className='w-full rounded-t-lg bg-[#1e2433] dark:bg-stone-300 transition-all duration-300'
+                  className="w-full rounded-t-lg bg-[#1e2433] dark:bg-stone-300 transition-all duration-300"
                   style={{
                     height: `${(count / maxWeeklyListings) * 100}%`,
                     minHeight: 6,
                   }}
                 />
-                <span className='text-sm text-stone-400 dark:text-stone-500'>
+                <span className="text-sm text-stone-400 dark:text-stone-500">
                   {day}
                 </span>
               </div>
@@ -518,26 +519,26 @@ export default function DashboardPage() {
         </div>
 
         {/* Listing type breakdown */}
-        <div className='bg-white dark:bg-[#1c1f2e] rounded-lg border border-stone-200 dark:border-[#2a2d3e] p-4'>
-          <p className='text-md font-bold text-stone-900 dark:text-stone-50 mb-4'>
+        <div className="bg-white dark:bg-[#1c1f2e] rounded-lg border border-stone-200 dark:border-[#2a2d3e] p-4">
+          <p className="text-md font-bold text-stone-900 dark:text-stone-50 mb-4">
             Listings by Type
           </p>
-          <div className='space-y-4'>
+          <div className="space-y-4">
             {listingTypeRows.map(
               ({ type, label, count, pct, color, text, Icon }) => (
                 <div key={label}>
-                  <div className='flex items-center justify-between mb-1.5'>
-                    <div className='flex items-center gap-2'>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <div className="flex items-center gap-2">
                       <Icon className={cn('w-3.5 h-3.5', text)} />
-                      <span className='text-sm font-semibold text-stone-700 dark:text-stone-200'>
+                      <span className="text-sm font-semibold text-stone-700 dark:text-stone-200">
                         {label}
                       </span>
                     </div>
-                    <span className='text-sm font-bold text-stone-500 dark:text-stone-400'>
+                    <span className="text-sm font-bold text-stone-500 dark:text-stone-400">
                       {count.toLocaleString()}
                     </span>
                   </div>
-                  <div className='h-2 bg-stone-100 dark:bg-[#13151f] rounded-full overflow-hidden'>
+                  <div className="h-2 bg-stone-100 dark:bg-[#13151f] rounded-full overflow-hidden">
                     <div
                       className={cn(
                         'h-full rounded-full transition-all duration-500',
@@ -546,7 +547,7 @@ export default function DashboardPage() {
                       style={{ width: `${pct}%` }}
                     />
                   </div>
-                  <p className='text-xs text-stone-400 dark:text-stone-500 mt-0.5 text-right'>
+                  <p className="text-xs text-stone-400 dark:text-stone-500 mt-0.5 text-right">
                     {pct.toFixed(1)}%
                   </p>
                 </div>

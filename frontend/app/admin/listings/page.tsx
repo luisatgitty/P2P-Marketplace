@@ -1,33 +1,26 @@
 'use client';
 
-import { useState, useMemo, useEffect, useCallback } from 'react';
 import {
-  Search,
   AlertTriangle,
+  Ban,
   CheckCircle2,
-  XCircle,
-  ChevronUp,
   ChevronDown,
   ChevronsUpDown,
-  Trash2,
-  Ban,
+  ChevronUp,
   CircleDashed,
-  RotateCw,
-  X,
-  ShoppingBag,
   Home,
+  RotateCw,
+  Search,
+  ShoppingBag,
+  Trash2,
   Wrench,
+  X,
+  XCircle,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import { useConfirmDialog } from '@/utils/ConfirmDialogContext';
-import {
-  getAdminListings,
-  deleteAdminListing,
-  toggleAdminListingVisibility,
-  type AdminListingRecord,
-} from '@/services/adminListingsService';
 
+import { ImageLink } from '@/components/image-link';
 // ── shadcn components ──────────────────────────────────────────────────────────
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -41,7 +34,14 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { ImageLink } from '@/components/image-link';
+import { cn } from '@/lib/utils';
+import {
+  type AdminListingRecord,
+  deleteAdminListing,
+  getAdminListings,
+  toggleAdminListingVisibility,
+} from '@/services/adminListingsService';
+import { useConfirmDialog } from '@/utils/ConfirmDialogContext';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 type ListingType = 'SELL' | 'RENT' | 'SERVICE';
@@ -170,12 +170,12 @@ function SortIcon({
 }) {
   if (sort.field !== field)
     return (
-      <ChevronsUpDown className='w-3 h-3 text-stone-300 dark:text-stone-600 ml-1' />
+      <ChevronsUpDown className="w-3 h-3 text-stone-300 dark:text-stone-600 ml-1" />
     );
   return sort.dir === 'asc' ? (
-    <ChevronUp className='w-3 h-3 ml-1' />
+    <ChevronUp className="w-3 h-3 ml-1" />
   ) : (
-    <ChevronDown className='w-3 h-3 ml-1' />
+    <ChevronDown className="w-3 h-3 ml-1" />
   );
 }
 
@@ -190,11 +190,11 @@ function FilterSelect({
   options: [string, string][];
 }) {
   return (
-    <div className='relative shrink-0'>
+    <div className="relative shrink-0">
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className='pl-3 pr-8 py-2 h-9 bg-transparent border border-stone-200 dark:border-[#2a2d3e] rounded-lg text-sm text-stone-700 dark:text-stone-200 outline-none focus:border-stone-400 transition-colors appearance-none cursor-pointer dark:bg-[#13151f]'
+        className="pl-3 pr-8 py-2 h-9 bg-transparent border border-stone-200 dark:border-[#2a2d3e] rounded-lg text-sm text-stone-700 dark:text-stone-200 outline-none focus:border-stone-400 transition-colors appearance-none cursor-pointer dark:bg-[#13151f]"
       >
         {options.map(([v, l]) => (
           <option key={v} value={v}>
@@ -202,18 +202,18 @@ function FilterSelect({
           </option>
         ))}
       </select>
-      <div className='pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2'>
+      <div className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2">
         <svg
-          className='w-3.5 h-3.5 text-stone-400'
-          fill='none'
-          viewBox='0 0 24 24'
-          stroke='currentColor'
+          className="w-3.5 h-3.5 text-stone-400"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
           strokeWidth={2}
         >
           <path
-            strokeLinecap='round'
-            strokeLinejoin='round'
-            d='M19 9l-7 7-7-7'
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M19 9l-7 7-7-7"
           />
         </svg>
       </div>
@@ -311,7 +311,7 @@ export default function ListingsPage() {
 
   // ── Sort loaded chunk ─────────────────────────────────────────────────────────
   const filtered = useMemo(() => {
-    let data = [...listings];
+    const data = [...listings];
     data.sort((a, b) => {
       let va: any, vb: any;
       if (sort.field === 'title') {
@@ -480,7 +480,7 @@ export default function ListingsPage() {
   const paginationPages = useMemo(() => {
     const maxButtons = 5;
     let start = Math.max(1, currentPage - 2);
-    let end = Math.min(totalPages, start + maxButtons - 1);
+    const end = Math.min(totalPages, start + maxButtons - 1);
     start = Math.max(1, end - maxButtons + 1);
     return Array.from({ length: end - start + 1 }, (_, idx) => start + idx);
   }, [currentPage, totalPages]);
@@ -494,10 +494,10 @@ export default function ListingsPage() {
     field: SortField;
   }) => (
     <TableHead
-      className='text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest cursor-pointer select-none hover:text-stone-700 dark:hover:text-stone-200 whitespace-nowrap'
+      className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest cursor-pointer select-none hover:text-stone-700 dark:hover:text-stone-200 whitespace-nowrap"
       onClick={() => toggleSort(field)}
     >
-      <span className='inline-flex items-center'>
+      <span className="inline-flex items-center">
         {label}
         <SortIcon field={field} sort={sort} />
       </span>
@@ -506,7 +506,7 @@ export default function ListingsPage() {
 
   // ── Render ────────────────────────────────────────────────────────────────────
   return (
-    <div className='h-[calc(100vh)] p-5 sm:p-6 flex flex-col gap-5 min-h-0'>
+    <div className="h-[calc(100vh)] p-5 sm:p-6 flex flex-col gap-5 min-h-0">
       {/* ── Page header ── */}
       {/* <div>
         <h2 className="text-xl font-extrabold text-stone-900 dark:text-stone-50">
@@ -518,7 +518,7 @@ export default function ListingsPage() {
       </div> */}
 
       {/* ── Summary cards — clickable to filter by status ── */}
-      <div className='grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3'>
+      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
         {[
           {
             label: 'Total',
@@ -577,10 +577,10 @@ export default function ListingsPage() {
               });
             }}
           >
-            <CardContent className='text-center'>
+            <CardContent className="text-center">
               {/* <Icon className={cn("w-5 h-5 mx-auto mb-1.5", color)} /> */}
               <p className={cn('text-xl font-extrabold', color)}>{count}</p>
-              <p className='text-sm text-stone-500 dark:text-stone-400 mt-0.5'>
+              <p className="text-sm text-stone-500 dark:text-stone-400 mt-0.5">
                 {label}
               </p>
             </CardContent>
@@ -589,22 +589,22 @@ export default function ListingsPage() {
       </div>
 
       {/* ── Filters ── */}
-      <div className='flex flex-col sm:flex-row gap-3'>
+      <div className="flex flex-col sm:flex-row gap-3">
         {/* Search */}
-        <div className='relative flex-1'>
-          <Search className='absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400 pointer-events-none' />
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400 pointer-events-none" />
           <Input
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);
             }}
-            placeholder='Search by title or seller…'
-            className='pl-9 dark:bg-[#13151f] dark:border-[#2a2d3e]'
+            placeholder="Search by title or seller…"
+            className="pl-9 dark:bg-[#13151f] dark:border-[#2a2d3e]"
           />
         </div>
 
         {/* Filter selects */}
-        <div className='flex gap-2 flex-wrap'>
+        <div className="flex gap-2 flex-wrap">
           <FilterSelect
             value={typeFilter}
             onChange={(v) => {
@@ -648,7 +648,7 @@ export default function ListingsPage() {
           {/* Clear filters */}
           {hasActiveFilters && (
             <Button
-              variant='outline'
+              variant="outline"
               onClick={() => {
                 setSearch('');
                 setTypeFilter('ALL');
@@ -656,22 +656,22 @@ export default function ListingsPage() {
                 setCategoryFilter('ALL');
                 setCurrentPage(1);
               }}
-              className='hover:bg-destructive/10! text-destructive! border-destructive! focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40'
+              className="hover:bg-destructive/10! text-destructive! border-destructive! focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40"
             >
-              <X className='w-3 h-3' /> Clear
+              <X className="w-3 h-3" /> Clear
             </Button>
           )}
         </div>
 
         <Button
-          type='button'
-          variant='outline'
+          type="button"
+          variant="outline"
           onClick={() => {
             setIsRefreshing(true);
             void loadListings(currentPage);
           }}
           disabled={loadingListings}
-          className='border-sky-600 text-sky-600! hover:bg-sky-600/10 focus-visible:border-sky-600 focus-visible:ring-sky-600/20 dark:border-sky-400 dark:text-sky-400! dark:hover:bg-sky-400/10 dark:focus-visible:border-sky-400 dark:focus-visible:ring-sky-400/40'
+          className="border-sky-600 text-sky-600! hover:bg-sky-600/10 focus-visible:border-sky-600 focus-visible:ring-sky-600/20 dark:border-sky-400 dark:text-sky-400! dark:hover:bg-sky-400/10 dark:focus-visible:border-sky-400 dark:focus-visible:ring-sky-400/40"
         >
           <RotateCw
             className={cn(
@@ -684,34 +684,34 @@ export default function ListingsPage() {
       </div>
 
       {/* ── Table ── */}
-      <Card className='p-0 rounded-lg dark:bg-[#1c1f2e] dark:border-[#2a2d3e] overflow-hidden flex-1 min-h-0'>
-        <CardContent className='p-0 h-full min-h-0 flex flex-col'>
-          <div className='overflow-auto h-full'>
+      <Card className="p-0 rounded-lg dark:bg-[#1c1f2e] dark:border-[#2a2d3e] overflow-hidden flex-1 min-h-0">
+        <CardContent className="p-0 h-full min-h-0 flex flex-col">
+          <div className="overflow-auto h-full">
             <Table>
               <TableHeader>
-                <TableRow className='border-stone-200 dark:border-[#2a2d3e] bg-stone-50 dark:bg-[#13151f] hover:bg-stone-50 dark:hover:bg-[#13151f]'>
-                  <SortableTH label='Title' field='title' />
-                  <SortableTH label='Owner' field='owner' />
-                  <TableHead className='text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest whitespace-nowrap'>
+                <TableRow className="border-stone-200 dark:border-[#2a2d3e] bg-stone-50 dark:bg-[#13151f] hover:bg-stone-50 dark:hover:bg-[#13151f]">
+                  <SortableTH label="Title" field="title" />
+                  <SortableTH label="Owner" field="owner" />
+                  <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest whitespace-nowrap">
                     Type
                   </TableHead>
-                  <TableHead className='text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest whitespace-nowrap'>
+                  <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest whitespace-nowrap">
                     Category
                   </TableHead>
-                  <SortableTH label='Price' field='price' />
-                  <TableHead className='text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest whitespace-nowrap'>
+                  <SortableTH label="Price" field="price" />
+                  <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest whitespace-nowrap">
                     Status
                   </TableHead>
-                  <SortableTH label='Transactions' field='transactions' />
-                  <SortableTH label='Reviews' field='reviews' />
-                  <SortableTH label='Created' field='created' />
-                  <SortableTH label='Updated' field='updated' />
-                  <SortableTH label='Banned Until' field='bannedUntil' />
-                  <SortableTH label='Deleted At' field='deletedAt' />
-                  <TableHead className='text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest whitespace-nowrap'>
+                  <SortableTH label="Transactions" field="transactions" />
+                  <SortableTH label="Reviews" field="reviews" />
+                  <SortableTH label="Created" field="created" />
+                  <SortableTH label="Updated" field="updated" />
+                  <SortableTH label="Banned Until" field="bannedUntil" />
+                  <SortableTH label="Deleted At" field="deletedAt" />
+                  <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest whitespace-nowrap">
                     Action By
                   </TableHead>
-                  <TableHead className='text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest text-right'>
+                  <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest text-right">
                     Actions
                   </TableHead>
                 </TableRow>
@@ -722,7 +722,7 @@ export default function ListingsPage() {
                   <TableRow>
                     <TableCell
                       colSpan={14}
-                      className='py-16 text-center text-sm text-stone-400 dark:text-stone-500'
+                      className="py-16 text-center text-sm text-stone-400 dark:text-stone-500"
                     >
                       Loading listings…
                     </TableCell>
@@ -731,7 +731,7 @@ export default function ListingsPage() {
                   <TableRow>
                     <TableCell
                       colSpan={14}
-                      className='py-16 text-center text-sm text-stone-400 dark:text-stone-500'
+                      className="py-16 text-center text-sm text-stone-400 dark:text-stone-500"
                     >
                       No listings match the current filters.
                     </TableCell>
@@ -743,23 +743,23 @@ export default function ListingsPage() {
                     return (
                       <TableRow
                         key={listing.id}
-                        className='border-stone-100 dark:border-[#2a2d3e] hover:bg-stone-50 dark:hover:bg-[#252837] transition-colors'
+                        className="border-stone-100 dark:border-[#2a2d3e] hover:bg-stone-50 dark:hover:bg-[#252837] transition-colors"
                       >
                         {/* Listing */}
-                        <TableCell className='py-3.5 max-w-50'>
-                          <div className='flex items-center gap-2.5 min-w-0'>
+                        <TableCell className="py-3.5 max-w-50">
+                          <div className="flex items-center gap-2.5 min-w-0">
                             <ImageLink
                               href={`/listing/${listing.id}`}
                               newTab
                               src={listing.listing_image_url}
-                              type='thumbnail'
+                              type="thumbnail"
                               label={listing.title}
                             />
-                            <div className='min-w-0'>
-                              <p className='text-sm font-bold text-stone-800 dark:text-stone-100 truncate'>
+                            <div className="min-w-0">
+                              <p className="text-sm font-bold text-stone-800 dark:text-stone-100 truncate">
                                 {listing.title}
                               </p>
-                              <p className='text-xs text-stone-400 dark:text-stone-500 truncate'>
+                              <p className="text-xs text-stone-400 dark:text-stone-500 truncate">
                                 {listing.location}
                               </p>
                             </div>
@@ -767,20 +767,20 @@ export default function ListingsPage() {
                         </TableCell>
 
                         {/* Listing Owner */}
-                        <TableCell className='py-3.5 text-sm text-stone-600 dark:text-stone-300 whitespace-nowrap'>
-                          <div className='flex items-center gap-2.5 min-w-0'>
+                        <TableCell className="py-3.5 text-sm text-stone-600 dark:text-stone-300 whitespace-nowrap">
+                          <div className="flex items-center gap-2.5 min-w-0">
                             <ImageLink
                               href={`/profile?userId=${listing.seller_id}`}
                               newTab
                               src={listing.seller_profile_image_url}
-                              type='profile'
+                              type="profile"
                               label={listing.seller}
                             />
-                            <div className='min-w-0'>
-                              <p className='text-sm font-bold text-stone-800 dark:text-stone-100 truncate'>
+                            <div className="min-w-0">
+                              <p className="text-sm font-bold text-stone-800 dark:text-stone-100 truncate">
                                 {listing.seller}
                               </p>
-                              <p className='text-xs text-stone-400 dark:text-stone-500 truncate'>
+                              <p className="text-xs text-stone-400 dark:text-stone-500 truncate">
                                 {listing.seller_location}
                               </p>
                             </div>
@@ -788,34 +788,34 @@ export default function ListingsPage() {
                         </TableCell>
 
                         {/* Type Badge */}
-                        <TableCell className='py-3.5 whitespace-nowrap'>
+                        <TableCell className="py-3.5 whitespace-nowrap">
                           <span
                             className={cn(
                               'inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-md',
                               tc.cls,
                             )}
                           >
-                            <Icon className='w-2.5 h-2.5' /> {tc.label}
+                            <Icon className="w-2.5 h-2.5" /> {tc.label}
                           </span>
                         </TableCell>
 
                         {/* Category */}
-                        <TableCell className='text-sm text-stone-500 dark:text-stone-400'>
+                        <TableCell className="text-sm text-stone-500 dark:text-stone-400">
                           {listing.category}
                         </TableCell>
 
                         {/* Price */}
-                        <TableCell className='py-3.5 whitespace-nowrap'>
-                          <p className='text-sm font-bold text-stone-800 dark:text-stone-100'>
+                        <TableCell className="py-3.5 whitespace-nowrap">
+                          <p className="text-sm font-bold text-stone-800 dark:text-stone-100">
                             {phpFmt.format(listing.price)}
                           </p>
-                          <p className='text-xs text-stone-400 dark:text-stone-500'>
+                          <p className="text-xs text-stone-400 dark:text-stone-500">
                             {listing.unit}
                           </p>
                         </TableCell>
 
                         {/* Status badge */}
-                        <TableCell className='py-3.5 whitespace-nowrap'>
+                        <TableCell className="py-3.5 whitespace-nowrap">
                           <span
                             className={cn(
                               'text-xs font-bold px-2 py-0.5 rounded-md',
@@ -828,52 +828,52 @@ export default function ListingsPage() {
                         </TableCell>
 
                         {/* Transactions */}
-                        <TableCell className='py-3.5 text-sm font-semibold text-stone-600 dark:text-stone-300 text-center'>
+                        <TableCell className="py-3.5 text-sm font-semibold text-stone-600 dark:text-stone-300 text-center">
                           {listing.transaction_count.toLocaleString()}
                         </TableCell>
 
                         {/* Reviews */}
-                        <TableCell className='py-3.5 text-sm font-semibold text-stone-600 dark:text-stone-300 text-center'>
+                        <TableCell className="py-3.5 text-sm font-semibold text-stone-600 dark:text-stone-300 text-center">
                           {listing.review_count.toLocaleString()}
                         </TableCell>
 
                         {/* Created */}
-                        <TableCell className='py-3.5 text-sm text-stone-500 dark:text-stone-400 whitespace-nowrap'>
+                        <TableCell className="py-3.5 text-sm text-stone-500 dark:text-stone-400 whitespace-nowrap">
                           {formatDateTime(listing.created)}
                         </TableCell>
 
                         {/* Updated */}
-                        <TableCell className='py-3.5 text-sm text-stone-500 dark:text-stone-400 whitespace-nowrap'>
+                        <TableCell className="py-3.5 text-sm text-stone-500 dark:text-stone-400 whitespace-nowrap">
                           {formatDateTime(listing.updated_at)}
                         </TableCell>
 
                         {/* Banned Until */}
-                        <TableCell className='py-3.5 text-sm text-stone-500 dark:text-stone-400 whitespace-nowrap'>
+                        <TableCell className="py-3.5 text-sm text-stone-500 dark:text-stone-400 whitespace-nowrap">
                           {formatDateTime(listing.banned_until)}
                         </TableCell>
 
                         {/* Deleted At */}
-                        <TableCell className='py-3.5 text-sm text-stone-500 dark:text-stone-400 whitespace-nowrap'>
+                        <TableCell className="py-3.5 text-sm text-stone-500 dark:text-stone-400 whitespace-nowrap">
                           {formatDateTime(listing.deleted_at)}
                         </TableCell>
 
                         {/* Action By */}
-                        <TableCell className='py-3.5 text-xs text-stone-500 dark:text-stone-400 whitespace-nowrap'>
-                          <p className='text-sm font-medium text-stone-700 dark:text-stone-200'>
+                        <TableCell className="py-3.5 text-xs text-stone-500 dark:text-stone-400 whitespace-nowrap">
+                          <p className="text-sm font-medium text-stone-700 dark:text-stone-200">
                             {listing.action_by_name || '—'}
                           </p>
                         </TableCell>
 
                         {/* Actions */}
-                        <TableCell className='py-3.5'>
-                          <div className='flex items-center justify-end gap-1'>
+                        <TableCell className="py-3.5">
+                          <div className="flex items-center justify-end gap-1">
                             {/* Shadow Ban Button */}
                             {(listing.status === 'AVAILABLE' ||
                               listing.status === 'BANNED') && (
                               <Button
-                                variant='ghost'
-                                size='icon'
-                                type='button'
+                                variant="ghost"
+                                size="icon"
+                                type="button"
                                 title={
                                   listing.status === 'BANNED'
                                     ? 'Unban'
@@ -891,27 +891,27 @@ export default function ListingsPage() {
                                   )
                                 }
                                 disabled={actionLoadingListingId === listing.id}
-                                className='w-7 h-7 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/20 hover:text-amber-700 disabled:opacity-50'
+                                className="w-7 h-7 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/20 hover:text-amber-700 disabled:opacity-50"
                               >
                                 {listing.status === 'BANNED' ? (
-                                  <CircleDashed className='w-4 h-4' />
+                                  <CircleDashed className="w-4 h-4" />
                                 ) : (
-                                  <Ban className='w-4 h-4' />
+                                  <Ban className="w-4 h-4" />
                                 )}
                               </Button>
                             )}
                             {listing.status !== 'DELETED' && (
                               <Button
-                                variant='ghost'
-                                size='icon'
-                                type='button'
-                                title='Delete listing'
-                                aria-label='Delete listing'
+                                variant="ghost"
+                                size="icon"
+                                type="button"
+                                title="Delete listing"
+                                aria-label="Delete listing"
                                 onClick={() => handleRemove(listing.id)}
                                 disabled={actionLoadingListingId === listing.id}
-                                className='w-7 h-7 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 hover:text-red-600 disabled:opacity-50'
+                                className="w-7 h-7 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 hover:text-red-600 disabled:opacity-50"
                               >
-                                <Trash2 className='w-4 h-4' />
+                                <Trash2 className="w-4 h-4" />
                               </Button>
                             )}
                           </div>
@@ -924,45 +924,45 @@ export default function ListingsPage() {
             </Table>
           </div>
 
-          <Separator className='dark:bg-[#2a2d3e]' />
-          <div className='px-4 py-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between text-sm text-stone-400 dark:text-stone-500'>
+          <Separator className="dark:bg-[#2a2d3e]" />
+          <div className="px-4 py-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between text-sm text-stone-400 dark:text-stone-500">
             <span>
               Showing {filtered.length.toLocaleString()} of{' '}
               {totalCount.toLocaleString()} result{totalCount !== 1 ? 's' : ''}
             </span>
-            <div className='flex items-center gap-1.5 self-end sm:self-auto'>
+            <div className="flex items-center gap-1.5 self-end sm:self-auto">
               <Button
-                type='button'
-                variant='outline'
-                size='sm'
+                type="button"
+                variant="outline"
+                size="sm"
                 onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
                 disabled={loadingListings || currentPage <= 1}
-                className='h-8 px-2.5'
+                className="h-8 px-2.5"
               >
                 Prev
               </Button>
               {paginationPages.map((page) => (
                 <Button
                   key={page}
-                  type='button'
+                  type="button"
                   variant={page === currentPage ? 'default' : 'outline'}
-                  size='sm'
+                  size="sm"
                   onClick={() => setCurrentPage(page)}
                   disabled={loadingListings}
-                  className='h-8 min-w-8 px-2'
+                  className="h-8 min-w-8 px-2"
                 >
                   {page}
                 </Button>
               ))}
               <Button
-                type='button'
-                variant='outline'
-                size='sm'
+                type="button"
+                variant="outline"
+                size="sm"
                 onClick={() =>
                   setCurrentPage((prev) => Math.min(totalPages, prev + 1))
                 }
                 disabled={loadingListings || currentPage >= totalPages}
-                className='h-8 px-2.5'
+                className="h-8 px-2.5"
               >
                 Next
               </Button>

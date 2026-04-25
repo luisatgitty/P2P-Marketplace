@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
 import Image, { type ImageProps } from 'next/image';
-import { validateImageURL } from '@/utils/validation';
+import { useEffect, useMemo, useState } from 'react';
+
 import { cn } from '@/lib/utils';
-import { ImageType } from '@/types/image';
+import type { ImageType } from '@/types/image';
+import { validateImageURL } from '@/utils/validation';
 
 type SafeImageProps = Omit<ImageProps, 'src' | 'alt'> & {
   src?: string;
@@ -124,7 +125,7 @@ export function SafeImage({
       {...props}
       src={imgSrc}
       alt={alt || config.alt}
-      loading='eager'
+      loading="eager"
       className={cn(config.class, className)}
       // If the src fails to load, fallback to the placeholder image
       // NOTE: Broken image can cause flickering if the URL is valid but the server is down

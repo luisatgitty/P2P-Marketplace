@@ -1,62 +1,62 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { useSearchParams } from 'next/navigation';
 import {
-  MapPin,
-  Mail,
+  AlertTriangle,
+  Bookmark,
   Calendar,
+  Camera,
+  Edit2,
   Eye,
   EyeOff,
-  Star,
-  Edit2,
-  Plus,
+  Mail,
+  MapPin,
   Package,
-  Bookmark,
-  Camera,
+  Plus,
+  Star,
   Trash2,
-  AlertTriangle,
 } from 'lucide-react';
-import { useUser } from '@/utils/UserContext';
+import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useEffect, useRef, useState } from 'react';
+import { toast } from 'sonner';
+
+import { ImageLink } from '@/components/image-link';
+import PostCard from '@/components/post-card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { SafeImage } from '@/components/ui/safe-image';
 import VerificationBadge from '@/components/verification-badge';
-import PostCard from '@/components/post-card';
-import { toast } from 'sonner';
 import {
-  deactivateProfile,
-  getProfileData,
-  getUserProfileData,
-  type ProfilePageQuery,
-  type ProfilePayload,
-  updateProfileImages,
-  updateProfileData,
-  type ProfileListingItem,
-  type ProfileReviewItem,
-} from '@/services/profileService';
+  encodeImageToPayload,
+  encodeSquareProfileImageToPayload,
+} from '@/lib/imageCompression';
+import { cn } from '@/lib/utils';
 import {
   getBarangaysByCity,
   getCitiesByProvince,
   getProvinces,
   type LocationOption,
 } from '@/services/locationService';
-import { cn } from '@/lib/utils';
-import { SafeImage } from '@/components/ui/safe-image';
-import { ImageLink } from '@/components/image-link';
-import { formatPrice } from '@/utils/string-builder';
-import { AUTH_LIMITS, isValidName } from '@/utils/validation';
+import {
+  deactivateProfile,
+  getProfileData,
+  getUserProfileData,
+  type ProfileListingItem,
+  type ProfilePageQuery,
+  type ProfilePayload,
+  type ProfileReviewItem,
+  updateProfileData,
+  updateProfileImages,
+} from '@/services/profileService';
 import { useConfirmDialog } from '@/utils/ConfirmDialogContext';
 import {
-  encodeImageToPayload,
-  encodeSquareProfileImageToPayload,
-} from '@/lib/imageCompression';
-import {
-  formatMemberSince,
   formatLastActive,
+  formatMemberSince,
   formatOverallRating,
+  formatPrice,
 } from '@/utils/string-builder';
+import { useUser } from '@/utils/UserContext';
+import { AUTH_LIMITS, isValidName } from '@/utils/validation';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type ListingTab = 'all' | 'active' | 'sold' | 'booked';
@@ -107,18 +107,18 @@ function normalizeEditableProfile(
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function AddListingCard() {
   return (
-    <Link href='/create' className='block group'>
-      <div className='bg-white dark:bg-[#1c1f2e] rounded-lg overflow-hidden border border-dashed border-stone-300 dark:border-[#3a3e52] hover:-translate-y-1 hover:shadow-md transition-all duration-200 h-full'>
-        <div className='relative aspect-square bg-stone-50 dark:bg-[#13151f] flex items-center justify-center'>
-          <div className='w-11 h-11 rounded-full bg-stone-900 dark:bg-stone-200 text-white dark:text-stone-900 flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform duration-200'>
-            <Plus className='w-5 h-5' />
+    <Link href="/create" className="block group">
+      <div className="bg-white dark:bg-[#1c1f2e] rounded-lg overflow-hidden border border-dashed border-stone-300 dark:border-[#3a3e52] hover:-translate-y-1 hover:shadow-md transition-all duration-200 h-full">
+        <div className="relative aspect-square bg-stone-50 dark:bg-[#13151f] flex items-center justify-center">
+          <div className="w-11 h-11 rounded-full bg-stone-900 dark:bg-stone-200 text-white dark:text-stone-900 flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform duration-200">
+            <Plus className="w-5 h-5" />
           </div>
         </div>
-        <div className='p-3'>
-          <p className='text-stone-800 dark:text-stone-100 font-semibold text-sm leading-tight'>
+        <div className="p-3">
+          <p className="text-stone-800 dark:text-stone-100 font-semibold text-sm leading-tight">
             Add Listing
           </p>
-          <p className='text-xs text-stone-400 dark:text-stone-500 mt-1'>
+          <p className="text-xs text-stone-400 dark:text-stone-500 mt-1">
             Post a new item or service
           </p>
         </div>
@@ -148,30 +148,30 @@ function ProfileReviewCard({ review }: { review: ProfileReviewItem }) {
   })();
 
   return (
-    <div className='bg-white dark:bg-[#1c1f2e] rounded-lg border border-stone-200 dark:border-[#2a2d3e] shadow-sm p-4'>
-      <div className='flex items-start justify-between gap-3'>
-        <div className='flex items-center gap-3 min-w-0'>
+    <div className="bg-white dark:bg-[#1c1f2e] rounded-lg border border-stone-200 dark:border-[#2a2d3e] shadow-sm p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
           <ImageLink
             href={reviewerProfileHref}
             src={review.reviewer.profileImageUrl}
-            type='profile'
+            type="profile"
             label={reviewerName}
-            className='w-9 h-9 shrink-0'
+            className="w-9 h-9 shrink-0"
           />
-          <div className='min-w-0'>
-            <div className='flex items-center gap-1.5 min-w-0'>
-              <p className='text-sm font-bold text-stone-900 dark:text-stone-100 truncate'>
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <p className="text-sm font-bold text-stone-900 dark:text-stone-100 truncate">
                 {reviewerName}
               </p>
               <VerificationBadge verified={isReviewerVerified} />
             </div>
-            <p className='text-xs text-stone-400 dark:text-stone-500'>
+            <p className="text-xs text-stone-400 dark:text-stone-500">
               {review.reviewDate}
             </p>
           </div>
         </div>
 
-        <div className='flex items-center gap-1 shrink-0'>
+        <div className="flex items-center gap-1 shrink-0">
           {[1, 2, 3, 4, 5].map((value) => (
             <Star
               key={value}
@@ -187,38 +187,38 @@ function ProfileReviewCard({ review }: { review: ProfileReviewItem }) {
       </div>
 
       {review.comment && review.comment.trim() !== '' && (
-        <p className='mt-3 text-sm leading-relaxed text-stone-700 dark:text-stone-200'>
+        <p className="mt-3 text-sm leading-relaxed text-stone-700 dark:text-stone-200">
           {review.comment}
         </p>
       )}
 
-      <div className='mt-3 flex items-center gap-3 rounded-lg border border-stone-200 dark:border-[#2a2d3e] bg-stone-50 dark:bg-[#13151f] p-2.5 hover:border-stone-300 dark:hover:border-[#3a3e52] transition-colors'>
+      <div className="mt-3 flex items-center gap-3 rounded-lg border border-stone-200 dark:border-[#2a2d3e] bg-stone-50 dark:bg-[#13151f] p-2.5 hover:border-stone-300 dark:hover:border-[#3a3e52] transition-colors">
         <ImageLink
           href={`/listing/${review.listing.id}`}
           src={review.listing.imageUrl}
-          type='thumbnail'
+          type="thumbnail"
           label={review.listing.title}
-          className='w-15 h-15'
+          className="w-15 h-15"
         />
-        <div className='min-w-0 flex-1'>
-          <div className='flex items-center gap-1.5'>
-            <p className='text-sm font-semibold text-stone-800 dark:text-stone-100 line-clamp-1'>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-1.5">
+            <p className="text-sm font-semibold text-stone-800 dark:text-stone-100 line-clamp-1">
               {review.listing.title}
             </p>
             {listingTypeLabel && (
-              <span className='shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300'>
+              <span className="shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300">
                 {listingTypeLabel}
               </span>
             )}
           </div>
-          <p className='text-sm font-bold text-amber-700 dark:text-amber-500 mt-0.5'>
+          <p className="text-sm font-bold text-amber-700 dark:text-amber-500 mt-0.5">
             {formatPrice(review.listing.price)}
-            <span className='text-[11px] font-normal text-stone-400 dark:text-stone-500 ml-1'>
+            <span className="text-[11px] font-normal text-stone-400 dark:text-stone-500 ml-1">
               {review.listing.priceUnit}
             </span>
           </p>
           {/* Listing Location */}
-          <p className='text-xs text-stone-400 dark:text-stone-500 mt-0.5 truncate'>
+          <p className="text-xs text-stone-400 dark:text-stone-500 mt-0.5 truncate">
             {review.listing.location || 'Location unavailable'}
           </p>
         </div>
@@ -897,8 +897,8 @@ export default function ProfilePage() {
       JSON.stringify(currentComparable) !== JSON.stringify(baselineComparable);
     const hasPasswordChanges = Boolean(
       form.currentPassword.trim() ||
-      form.newPassword.trim() ||
-      form.confirmPassword.trim(),
+        form.newPassword.trim() ||
+        form.confirmPassword.trim(),
     );
 
     if (!hasProfileChanges && !hasPasswordChanges) {
@@ -1058,10 +1058,10 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className='min-h-fit bg-[#faf6f0] dark:bg-[#111827]'>
-      <div className='max-w-5xl mx-auto px-4 sm:px-6 py-8'>
+    <div className="min-h-fit bg-[#faf6f0] dark:bg-[#111827]">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
         {/* ── Profile header card ── */}
-        <div className='bg-white dark:bg-[#1c1f2e] rounded-lg border border-stone-200 dark:border-[#2a2d3e] shadow-sm overflow-hidden mb-4'>
+        <div className="bg-white dark:bg-[#1c1f2e] rounded-lg border border-stone-200 dark:border-[#2a2d3e] shadow-sm overflow-hidden mb-4">
           {/* Cover photo */}
           <div
             className={cn(
@@ -1073,13 +1073,13 @@ export default function ProfilePage() {
             {cover.src ? (
               <SafeImage
                 src={cover.src}
-                type='cover'
+                type="cover"
                 alt={`${fullName}'s cover photo`}
                 fill
               />
             ) : (
               <div
-                className='absolute inset-0 opacity-10'
+                className="absolute inset-0 opacity-10"
                 style={{
                   backgroundImage:
                     'radial-gradient(circle, #fff 1px, transparent 1px)',
@@ -1088,9 +1088,9 @@ export default function ProfilePage() {
               />
             )}
             {!isViewingExternalProfile && (
-              <div className='absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center'>
-                <div className='opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-2 text-white text-sm font-medium bg-black/40 px-4 py-2 rounded-lg'>
-                  <Camera className='w-4 h-4' />{' '}
+              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
+                <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-2 text-white text-sm font-medium bg-black/40 px-4 py-2 rounded-lg">
+                  <Camera className="w-4 h-4" />{' '}
                   {cover.src ? 'Change Cover' : 'Upload Cover Photo'}
                 </div>
               </div>
@@ -1106,27 +1106,27 @@ export default function ProfilePage() {
                     // toast already handled in remove flow
                   }
                 }}
-                className='absolute top-2 right-2 w-7 h-7 rounded-lg bg-black/50 hover:bg-black/70 flex items-center justify-center text-white transition-colors opacity-0 group-hover:opacity-100'
-                title='Remove cover photo'
+                className="absolute top-2 right-2 w-7 h-7 rounded-lg bg-black/50 hover:bg-black/70 flex items-center justify-center text-white transition-colors opacity-0 group-hover:opacity-100"
+                title="Remove cover photo"
               >
-                <Trash2 className='w-3.5 h-3.5' />
+                <Trash2 className="w-3.5 h-3.5" />
               </Button>
             )}
             {!isViewingExternalProfile && (
               <input
                 ref={cover.inputRef}
-                type='file'
-                accept='image/*'
-                className='hidden'
+                type="file"
+                accept="image/*"
+                className="hidden"
                 onChange={cover.onFileChange}
               />
             )}
           </div>
 
-          <div className='px-6 pb-5'>
-            <div className='flex items-end justify-between -mt-10 mb-3'>
+          <div className="px-6 pb-5">
+            <div className="flex items-end justify-between -mt-10 mb-3">
               {/* Avatar with change/remove menu */}
-              <div className='relative'>
+              <div className="relative">
                 <div
                   className={cn(
                     'relative group w-20 h-20',
@@ -1138,22 +1138,22 @@ export default function ProfilePage() {
                 >
                   <SafeImage
                     src={avatar.src ?? undefined}
-                    type='profile'
+                    type="profile"
                     alt={`${fullName}'s profile photo`}
                     width={80}
                     height={80}
-                    className='w-20 h-20 border-4 border-white dark:border-slate-900 overflow-hidden shadow-md flex items-center justify-center'
+                    className="w-20 h-20 border-4 border-white dark:border-slate-900 overflow-hidden shadow-md flex items-center justify-center"
                   />
                   {isProfileOnline && (
-                    <span className='absolute bottom-1.5 right-1.5 w-4 h-4 rounded-full bg-emerald-500 border-3 border-white dark:border-[#1c1f2e]' />
+                    <span className="absolute bottom-1.5 right-1.5 w-4 h-4 rounded-full bg-emerald-500 border-3 border-white dark:border-[#1c1f2e]" />
                   )}
                   {!isViewingExternalProfile && (
                     <>
-                      <div className='absolute inset-0 rounded-full bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center'>
-                        <Camera className='w-5 h-5 text-white opacity-0 group-hover:opacity-100 transition-opacity' />
+                      <div className="absolute inset-0 rounded-full bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
+                        <Camera className="w-5 h-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
                       </div>
-                      <div className='absolute bottom-1 right-0 w-6 h-6 bg-stone-800 border-2 border-white dark:border-[#1c1f2e] rounded-full flex items-center justify-center pointer-events-none'>
-                        <Edit2 className='w-2.5 h-2.5 text-stone-300' />
+                      <div className="absolute bottom-1 right-0 w-6 h-6 bg-stone-800 border-2 border-white dark:border-[#1c1f2e] rounded-full flex items-center justify-center pointer-events-none">
+                        <Edit2 className="w-2.5 h-2.5 text-stone-300" />
                       </div>
                     </>
                   )}
@@ -1163,25 +1163,25 @@ export default function ProfilePage() {
                 {!isViewingExternalProfile && showAvatarMenu && (
                   <>
                     <div
-                      className='fixed inset-0 z-10'
+                      className="fixed inset-0 z-10"
                       onClick={() => setShowAvatarMenu(false)}
                     />
-                    <div className='absolute top-full left-0 mt-2 z-20 bg-white dark:bg-[#1c1f2e] border border-stone-200 dark:border-[#2a2d3e] rounded-lg shadow-lg overflow-hidden w-44'>
+                    <div className="absolute top-full left-0 mt-2 z-20 bg-white dark:bg-[#1c1f2e] border border-stone-200 dark:border-[#2a2d3e] rounded-lg shadow-lg overflow-hidden w-44">
                       <Button
                         variant={'ghost'}
-                        className='rounded-none w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-stone-700 dark:text-stone-300 hover:bg-stone-50 dark:hover:bg-[#252837] transition-colors'
+                        className="rounded-none w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-stone-700 dark:text-stone-300 hover:bg-stone-50 dark:hover:bg-[#252837] transition-colors"
                         onClick={() => {
                           avatar.trigger();
                           setShowAvatarMenu(false);
                         }}
                       >
-                        <Camera className='w-4 h-4 text-stone-400' />
+                        <Camera className="w-4 h-4 text-stone-400" />
                         {avatar.src ? 'Change Photo' : 'Upload Photo'}
                       </Button>
                       {avatar.src && (
                         <Button
                           variant={'ghost'}
-                          className='rounded-none w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors border-t border-stone-100 dark:border-[#2a2d3e]'
+                          className="rounded-none w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors border-t border-stone-100 dark:border-[#2a2d3e]"
                           onClick={async () => {
                             try {
                               await avatar.remove();
@@ -1192,7 +1192,7 @@ export default function ProfilePage() {
                             }
                           }}
                         >
-                          <Trash2 className='w-4 h-4' />
+                          <Trash2 className="w-4 h-4" />
                           Remove Photo
                         </Button>
                       )}
@@ -1202,9 +1202,9 @@ export default function ProfilePage() {
                 {!isViewingExternalProfile && (
                   <input
                     ref={avatar.inputRef}
-                    type='file'
-                    accept='image/*'
-                    className='hidden'
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
                     onChange={avatar.onFileChange}
                   />
                 )}
@@ -1212,15 +1212,15 @@ export default function ProfilePage() {
 
               {/* Action buttons */}
               {!isViewingExternalProfile && (
-                <div className='flex items-center gap-2 pb-1'>
+                <div className="flex items-center gap-2 pb-1">
                   <Button
-                    variant='outline'
-                    size='sm'
-                    className='rounded-lg'
+                    variant="outline"
+                    size="sm"
+                    className="rounded-lg"
                     onClick={handleEditProfileClick}
                     disabled={loadingEditProfile}
                   >
-                    <Edit2 className='w-3 h-3' />
+                    <Edit2 className="w-3 h-3" />
                     {loadingEditProfile
                       ? 'Loading...'
                       : editOpen
@@ -1232,8 +1232,8 @@ export default function ProfilePage() {
             </div>
 
             {/* Name + badge */}
-            <div className='flex flex-wrap items-center gap-2 mb-1'>
-              <h1 className='text-xl font-bold text-stone-900 dark:text-stone-100'>
+            <div className="flex flex-wrap items-center gap-2 mb-1">
+              <h1 className="text-xl font-bold text-stone-900 dark:text-stone-100">
                 {fullName}
               </h1>
               <VerificationBadge
@@ -1241,32 +1241,32 @@ export default function ProfilePage() {
                 size={16}
               />
             </div>
-            <p className='text-sm text-stone-400 dark:text-stone-500 mb-3'>
+            <p className="text-sm text-stone-400 dark:text-stone-500 mb-3">
               {profileUser?.bio}
             </p>
 
             {/* Meta row */}
-            <div className='flex flex-wrap gap-x-5 gap-y-1.5'>
-              <span className='flex items-center gap-1.5 text-xs text-stone-500 dark:text-stone-400'>
-                <MapPin className='w-3.5 h-3.5 text-stone-400 dark:text-stone-500' />{' '}
+            <div className="flex flex-wrap gap-x-5 gap-y-1.5">
+              <span className="flex items-center gap-1.5 text-xs text-stone-500 dark:text-stone-400">
+                <MapPin className="w-3.5 h-3.5 text-stone-400 dark:text-stone-500" />{' '}
                 {locationText}
               </span>
               {!isViewingExternalProfile && (
-                <span className='flex items-center gap-1.5 text-xs text-stone-500 dark:text-stone-400'>
-                  <Mail className='w-3.5 h-3.5 text-stone-400 dark:text-stone-500' />{' '}
+                <span className="flex items-center gap-1.5 text-xs text-stone-500 dark:text-stone-400">
+                  <Mail className="w-3.5 h-3.5 text-stone-400 dark:text-stone-500" />{' '}
                   {profileUser?.email}
                 </span>
               )}
 
-              <span className='flex items-center gap-1.5 text-xs text-stone-500 dark:text-stone-400'>
-                <Calendar className='w-3.5 h-3.5 text-stone-400 dark:text-stone-500' />{' '}
+              <span className="flex items-center gap-1.5 text-xs text-stone-500 dark:text-stone-400">
+                <Calendar className="w-3.5 h-3.5 text-stone-400 dark:text-stone-500" />{' '}
                 {memberSinceText}
               </span>
-              <span className='flex items-center gap-1.5 text-xs text-stone-500 dark:text-stone-400'>
-                <Calendar className='w-3.5 h-3.5 text-stone-400 dark:text-stone-500' />{' '}
+              <span className="flex items-center gap-1.5 text-xs text-stone-500 dark:text-stone-400">
+                <Calendar className="w-3.5 h-3.5 text-stone-400 dark:text-stone-500" />{' '}
                 {lastActiveText}
               </span>
-              <span className='flex items-center gap-1.5 text-xs text-stone-500 dark:text-stone-400'>
+              <span className="flex items-center gap-1.5 text-xs text-stone-500 dark:text-stone-400">
                 <Star
                   className={cn(
                     'w-3.5 h-3.5',
@@ -1283,14 +1283,14 @@ export default function ProfilePage() {
 
         {/* ── Edit profile form ── */}
         {!isViewingExternalProfile && editOpen && (
-          <div className='bg-white dark:bg-[#1c1f2e] rounded-lg border border-stone-200 dark:border-[#2a2d3e] shadow-sm mb-5'>
-            <div className='flex items-center justify-between px-6 py-4 border-b border-stone-200 dark:border-[#2a2d3e]'>
-              <h2 className='font-bold text-stone-900 dark:text-stone-100 text-sm'>
+          <div className="bg-white dark:bg-[#1c1f2e] rounded-lg border border-stone-200 dark:border-[#2a2d3e] shadow-sm mb-5">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-stone-200 dark:border-[#2a2d3e]">
+              <h2 className="font-bold text-stone-900 dark:text-stone-100 text-sm">
                 Edit Profile
               </h2>
             </div>
-            <div className='px-6 py-5'>
-              <div className='grid grid-cols-2 gap-4'>
+            <div className="px-6 py-5">
+              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className={lbl}>First Name</label>
                   <Input
@@ -1325,7 +1325,7 @@ export default function ProfilePage() {
                     maxLength={AUTH_LIMITS.nameMaxLength}
                   />
                 </div>
-                <div className='col-span-2'>
+                <div className="col-span-2">
                   <label className={lbl}>Bio</label>
                   <textarea
                     rows={3}
@@ -1340,18 +1340,18 @@ export default function ProfilePage() {
                       })
                     }
                     maxLength={AUTH_LIMITS.profileBioMaxLength}
-                    placeholder='Tell buyers and sellers a bit about yourself…'
-                    className='w-full bg-stone-50 dark:bg-[#13151f] border border-stone-200 dark:border-[#2a2d3e] rounded-lg px-3 py-2 text-sm text-stone-800 dark:text-stone-200 placeholder-stone-400 dark:placeholder-stone-600 outline-none focus:border-stone-400 dark:focus:border-stone-500 resize-none'
+                    placeholder="Tell buyers and sellers a bit about yourself…"
+                    className="w-full bg-stone-50 dark:bg-[#13151f] border border-stone-200 dark:border-[#2a2d3e] rounded-lg px-3 py-2 text-sm text-stone-800 dark:text-stone-200 placeholder-stone-400 dark:placeholder-stone-600 outline-none focus:border-stone-400 dark:focus:border-stone-500 resize-none"
                   />
-                  <p className='text-xs text-stone-400 dark:text-stone-500 mt-1'>
+                  <p className="text-xs text-stone-400 dark:text-stone-500 mt-1">
                     {form.bio.length} / {AUTH_LIMITS.profileBioMaxLength}
                   </p>
                 </div>
                 <div>
                   <label className={lbl}>Phone Number</label>
                   <Input
-                    id='phoneNumber'
-                    name='phoneNumber'
+                    id="phoneNumber"
+                    name="phoneNumber"
                     value={form.phone}
                     onChange={(e) =>
                       setForm({
@@ -1361,10 +1361,10 @@ export default function ProfilePage() {
                           .slice(0, AUTH_LIMITS.phoneLength),
                       })
                     }
-                    placeholder='09XX XXX XXXX'
-                    type='tel'
-                    autoComplete='tel-national'
-                    inputMode='tel'
+                    placeholder="09XX XXX XXXX"
+                    type="tel"
+                    autoComplete="tel-national"
+                    inputMode="tel"
                     maxLength={AUTH_LIMITS.phoneLength}
                   />
                 </div>
@@ -1384,9 +1384,9 @@ export default function ProfilePage() {
                       });
                       setSelectedCityCode('');
                     }}
-                    className='w-full bg-stone-50 dark:bg-[#13151f] border border-stone-200 dark:border-[#2a2d3e] rounded-lg px-3 py-2 text-sm text-stone-800 dark:text-stone-200 outline-none focus:border-stone-400 dark:focus:border-stone-500'
+                    className="w-full bg-stone-50 dark:bg-[#13151f] border border-stone-200 dark:border-[#2a2d3e] rounded-lg px-3 py-2 text-sm text-stone-800 dark:text-stone-200 outline-none focus:border-stone-400 dark:focus:border-stone-500"
                   >
-                    <option value=''>Select province</option>
+                    <option value="">Select province</option>
                     {provinces.map((prov) => (
                       <option key={prov.code} value={prov.code}>
                         {prov.name}
@@ -1409,9 +1409,9 @@ export default function ProfilePage() {
                       });
                     }}
                     disabled={!selectedProvCode}
-                    className='w-full bg-stone-50 dark:bg-[#13151f] border border-stone-200 dark:border-[#2a2d3e] rounded-lg px-3 py-2 text-sm text-stone-800 dark:text-stone-200 outline-none focus:border-stone-400 dark:focus:border-stone-500 disabled:opacity-60'
+                    className="w-full bg-stone-50 dark:bg-[#13151f] border border-stone-200 dark:border-[#2a2d3e] rounded-lg px-3 py-2 text-sm text-stone-800 dark:text-stone-200 outline-none focus:border-stone-400 dark:focus:border-stone-500 disabled:opacity-60"
                   >
-                    <option value=''>Select city/municipality</option>
+                    <option value="">Select city/municipality</option>
                     {cities.map((city) => (
                       <option key={city.code} value={city.code}>
                         {city.name}
@@ -1427,9 +1427,9 @@ export default function ProfilePage() {
                       setForm({ ...form, locationBrgy: e.target.value })
                     }
                     disabled={!selectedCityCode}
-                    className='w-full bg-stone-50 dark:bg-[#13151f] border border-stone-200 dark:border-[#2a2d3e] rounded-lg px-3 py-2 text-sm text-stone-800 dark:text-stone-200 outline-none focus:border-stone-400 dark:focus:border-stone-500 disabled:opacity-60'
+                    className="w-full bg-stone-50 dark:bg-[#13151f] border border-stone-200 dark:border-[#2a2d3e] rounded-lg px-3 py-2 text-sm text-stone-800 dark:text-stone-200 outline-none focus:border-stone-400 dark:focus:border-stone-500 disabled:opacity-60"
                   >
-                    <option value=''>Select barangay</option>
+                    <option value="">Select barangay</option>
                     {barangays.map((brgy) => (
                       <option key={brgy.code} value={brgy.name}>
                         {brgy.name}
@@ -1437,14 +1437,14 @@ export default function ProfilePage() {
                     ))}
                   </select>
                 </div>
-                <div className='col-span-2 border-t border-stone-200 dark:border-[#2a2d3e] pt-4 mt-1'>
-                  <p className='text-xs font-semibold text-stone-500 dark:text-stone-400 mb-3 uppercase tracking-wider'>
+                <div className="col-span-2 border-t border-stone-200 dark:border-[#2a2d3e] pt-4 mt-1">
+                  <p className="text-xs font-semibold text-stone-500 dark:text-stone-400 mb-3 uppercase tracking-wider">
                     Change Password
                   </p>
-                  <div className='grid grid-cols-1 sm:grid-cols-3 gap-3'>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div>
                       <label className={lbl}>Current Password</label>
-                      <div className='relative'>
+                      <div className="relative">
                         <Input
                           type={showCurrentPassword ? 'text' : 'password'}
                           value={form.currentPassword}
@@ -1457,13 +1457,13 @@ export default function ProfilePage() {
                               ),
                             })
                           }
-                          placeholder='Required if changing'
+                          placeholder="Required if changing"
                           maxLength={AUTH_LIMITS.passwordMaxLength}
-                          className='pr-9'
+                          className="pr-9"
                         />
                         <Button
                           variant={'ghost'}
-                          className='absolute inset-y-0 right-0 pr-3 flex items-center text-sm leading-5'
+                          className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm leading-5"
                           onClick={() =>
                             setShowCurrentPassword(!showCurrentPassword)
                           }
@@ -1478,7 +1478,7 @@ export default function ProfilePage() {
                     </div>
                     <div>
                       <label className={lbl}>New Password</label>
-                      <div className='relative'>
+                      <div className="relative">
                         <Input
                           type={showNewPassword ? 'text' : 'password'}
                           value={form.newPassword}
@@ -1491,13 +1491,13 @@ export default function ProfilePage() {
                               ),
                             })
                           }
-                          placeholder='Leave blank to keep'
+                          placeholder="Leave blank to keep"
                           maxLength={AUTH_LIMITS.passwordMaxLength}
-                          className='pr-9'
+                          className="pr-9"
                         />
                         <Button
                           variant={'ghost'}
-                          className='absolute inset-y-0 right-0 pr-3 flex items-center text-sm leading-5'
+                          className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm leading-5"
                           onClick={() => setShowNewPassword(!showNewPassword)}
                         >
                           {showNewPassword ? (
@@ -1522,23 +1522,23 @@ export default function ProfilePage() {
                             ),
                           })
                         }
-                        placeholder='Repeat new password'
+                        placeholder="Repeat new password"
                         maxLength={AUTH_LIMITS.passwordMaxLength}
                       />
                     </div>
                   </div>
                 </div>
               </div>
-              <div className='flex justify-end gap-2 mt-5 pt-4 border-t border-stone-200 dark:border-[#2a2d3e]'>
+              <div className="flex justify-end gap-2 mt-5 pt-4 border-t border-stone-200 dark:border-[#2a2d3e]">
                 <Button
-                  variant='outline'
-                  className='rounded-lg dark:border-[#2a2d3e] dark:text-stone-300 dark:hover:bg-[#252837]'
+                  variant="outline"
+                  className="rounded-lg dark:border-[#2a2d3e] dark:text-stone-300 dark:hover:bg-[#252837]"
                   onClick={() => setEditOpen(false)}
                 >
                   Discard
                 </Button>
                 <Button
-                  className='bg-stone-900 hover:bg-stone-800 text-white'
+                  className="bg-stone-900 hover:bg-stone-800 text-white"
                   onClick={handleSave}
                   disabled={saving || uploadingAvatar || uploadingCover}
                 >
@@ -1549,17 +1549,17 @@ export default function ProfilePage() {
                       : 'Save Changes'}
                 </Button>
               </div>
-              <div className='mt-4 rounded-lg border border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-950/20 p-3'>
-                <p className='text-xs font-semibold text-red-600 dark:text-red-400 flex items-center gap-1.5 mb-1'>
-                  <AlertTriangle className='w-3.5 h-3.5' /> Danger Zone
+              <div className="mt-4 rounded-lg border border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-950/20 p-3">
+                <p className="text-xs font-semibold text-red-600 dark:text-red-400 flex items-center gap-1.5 mb-1">
+                  <AlertTriangle className="w-3.5 h-3.5" /> Danger Zone
                 </p>
-                <p className='text-xs text-red-500/90 dark:text-red-400/80 mb-3'>
+                <p className="text-xs text-red-500/90 dark:text-red-400/80 mb-3">
                   Deactivating your account logs you out and prevents future
                   login.
                 </p>
                 <Button
-                  variant='outline'
-                  className='w-full border-red-300 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40'
+                  variant="outline"
+                  className="w-full border-red-300 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40"
                   onClick={handleDeactivateAccount}
                   disabled={deactivating}
                 >
@@ -1570,9 +1570,9 @@ export default function ProfilePage() {
           </div>
         )}
 
-        <div className='bg-white dark:bg-[#1c1f2e] rounded-lg border border-stone-200 dark:border-[#2a2d3e] shadow-sm overflow-hidden'>
+        <div className="bg-white dark:bg-[#1c1f2e] rounded-lg border border-stone-200 dark:border-[#2a2d3e] shadow-sm overflow-hidden">
           {/* Tab bar */}
-          <div className='flex border-b border-stone-200 dark:border-[#2a2d3e]'>
+          <div className="flex border-b border-stone-200 dark:border-[#2a2d3e]">
             {profileTabs.map((t) => (
               <button
                 key={t}
@@ -1584,13 +1584,13 @@ export default function ProfilePage() {
                     : 'text-stone-400 dark:text-stone-500 hover:text-stone-600 dark:hover:text-stone-300',
                 )}
               >
-                <span className='inline-flex items-center gap-1.5'>
+                <span className="inline-flex items-center gap-1.5">
                   {t === 'listings' ? (
-                    <Package className='w-4 h-4' />
+                    <Package className="w-4 h-4" />
                   ) : t === 'bookmarks' ? (
-                    <Bookmark className='w-4 h-4' />
+                    <Bookmark className="w-4 h-4" />
                   ) : (
-                    <Star className='w-4 h-4' />
+                    <Star className="w-4 h-4" />
                   )}
                   <span>
                     {t === 'listings'
@@ -1607,8 +1607,8 @@ export default function ProfilePage() {
           {/* My Listings */}
           {profileTab === 'listings' && (
             <>
-              <div className='flex items-center justify-between px-4 pt-3 pb-2'>
-                <div className='flex gap-1'>
+              <div className="flex items-center justify-between px-4 pt-3 pb-2">
+                <div className="flex gap-1">
                   {(['all', 'active', 'sold', 'booked'] as const).map((tab) => (
                     <button
                       key={tab}
@@ -1630,40 +1630,40 @@ export default function ProfilePage() {
                 </div>
               </div>
               {loadingProfile ? (
-                <div className='text-center py-14 px-6'>
-                  <p className='font-semibold text-stone-400 text-sm'>
+                <div className="text-center py-14 px-6">
+                  <p className="font-semibold text-stone-400 text-sm">
                     Loading listings...
                   </p>
                 </div>
               ) : allListings.length > 0 ? (
-                <div className='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 p-4'>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 p-4">
                   {allListings.map((l) => (
                     <PostCard key={l.id} {...l} />
                   ))}
                   {isVerifiedSeller && <AddListingCard />}
                 </div>
               ) : (
-                <div className='text-center py-14 px-6'>
-                  <Package className='w-10 h-10 text-stone-200 dark:text-stone-700 mx-auto mb-3' />
-                  <p className='font-semibold text-stone-400 text-sm'>
+                <div className="text-center py-14 px-6">
+                  <Package className="w-10 h-10 text-stone-200 dark:text-stone-700 mx-auto mb-3" />
+                  <p className="font-semibold text-stone-400 text-sm">
                     No listings yet
                   </p>
                   {isVerifiedSeller && (
-                    <Link href='/create'>
-                      <Button className='mt-4 rounded-lg bg-stone-900 hover:bg-stone-800 text-white text-sm'>
-                        <Plus className='w-3 h-3' /> Add Listing
+                    <Link href="/create">
+                      <Button className="mt-4 rounded-lg bg-stone-900 hover:bg-stone-800 text-white text-sm">
+                        <Plus className="w-3 h-3" /> Add Listing
                       </Button>
                     </Link>
                   )}
                 </div>
               )}
               {!loadingProfile && hasMoreListings && (
-                <p className='pb-4 text-center text-xs text-stone-400 dark:text-stone-500'>
+                <p className="pb-4 text-center text-xs text-stone-400 dark:text-stone-500">
                   Scroll down to load more listings...
                 </p>
               )}
               {loadingMoreListings && (
-                <p className='pb-4 text-center text-xs text-stone-400 dark:text-stone-500'>
+                <p className="pb-4 text-center text-xs text-stone-400 dark:text-stone-500">
                   Loading more listings...
                 </p>
               )}
@@ -1674,33 +1674,33 @@ export default function ProfilePage() {
           {!isViewingExternalProfile &&
             profileTab === 'bookmarks' &&
             (loadingProfile ? (
-              <div className='text-center py-14'>
-                <p className='font-semibold text-stone-400 text-sm'>
+              <div className="text-center py-14">
+                <p className="font-semibold text-stone-400 text-sm">
                   Loading bookmarked items...
                 </p>
               </div>
             ) : visibleBookmarkListings.length > 0 ? (
               <>
-                <div className='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 p-4'>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 p-4">
                   {visibleBookmarkListings.map((l) => (
                     <PostCard key={l.id} {...l} />
                   ))}
                 </div>
                 {hasMoreBookmarks && (
-                  <p className='pb-4 text-center text-xs text-stone-400 dark:text-stone-500'>
+                  <p className="pb-4 text-center text-xs text-stone-400 dark:text-stone-500">
                     Scroll down to load more bookmarks...
                   </p>
                 )}
                 {loadingMoreBookmarks && (
-                  <p className='pb-4 text-center text-xs text-stone-400 dark:text-stone-500'>
+                  <p className="pb-4 text-center text-xs text-stone-400 dark:text-stone-500">
                     Loading more bookmarks...
                   </p>
                 )}
               </>
             ) : (
-              <div className='text-center py-14'>
-                <Bookmark className='w-10 h-10 text-stone-200 dark:text-stone-700 mx-auto mb-3' />
-                <p className='font-semibold text-stone-400 text-sm'>
+              <div className="text-center py-14">
+                <Bookmark className="w-10 h-10 text-stone-200 dark:text-stone-700 mx-auto mb-3" />
+                <p className="font-semibold text-stone-400 text-sm">
                   No bookmarked items yet
                 </p>
               </div>
@@ -1709,8 +1709,8 @@ export default function ProfilePage() {
           {/* Reviews */}
           {profileTab === 'reviews' && (
             <>
-              <div className='flex items-center justify-between px-4 pt-3 pb-2'>
-                <div className='flex gap-1'>
+              <div className="flex items-center justify-between px-4 pt-3 pb-2">
+                <div className="flex gap-1">
                   {(
                     [
                       {
@@ -1740,15 +1740,15 @@ export default function ProfilePage() {
               </div>
 
               {loadingProfile ? (
-                <div className='text-center py-14'>
-                  <p className='font-semibold text-stone-400 text-sm'>
+                <div className="text-center py-14">
+                  <p className="font-semibold text-stone-400 text-sm">
                     Loading reviews...
                   </p>
                 </div>
               ) : (reviewTab === 'received' ? receivedReviews : personalReviews)
                   .length > 0 ? (
                 <>
-                  <div className='grid grid-cols-1 md:grid-cols-2 gap-3 p-4'>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-4">
                     {(reviewTab === 'received'
                       ? receivedReviews
                       : personalReviews
@@ -1761,22 +1761,22 @@ export default function ProfilePage() {
                   </div>
                   {((reviewTab === 'received' && hasMoreReceivedReviews) ||
                     (reviewTab === 'personal' && hasMorePersonalReviews)) && (
-                    <p className='pb-4 text-center text-xs text-stone-400 dark:text-stone-500'>
+                    <p className="pb-4 text-center text-xs text-stone-400 dark:text-stone-500">
                       Scroll down to load more reviews...
                     </p>
                   )}
                   {((reviewTab === 'received' && loadingMoreReceivedReviews) ||
                     (reviewTab === 'personal' &&
                       loadingMorePersonalReviews)) && (
-                    <p className='pb-4 text-center text-xs text-stone-400 dark:text-stone-500'>
+                    <p className="pb-4 text-center text-xs text-stone-400 dark:text-stone-500">
                       Loading more reviews...
                     </p>
                   )}
                 </>
               ) : (
-                <div className='text-center py-14 px-6'>
-                  <Star className='w-10 h-10 text-stone-200 dark:text-stone-700 mx-auto mb-3' />
-                  <p className='font-semibold text-stone-400 text-sm'>
+                <div className="text-center py-14 px-6">
+                  <Star className="w-10 h-10 text-stone-200 dark:text-stone-700 mx-auto mb-3" />
+                  <p className="font-semibold text-stone-400 text-sm">
                     {reviewTab === 'received'
                       ? 'No reviews by others yet'
                       : 'No personal reviews yet'}

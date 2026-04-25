@@ -1,32 +1,33 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import {
   ArrowLeft,
-  MoreVertical,
-  User,
-  ExternalLink,
-  Flag,
-  Trash2,
+  CalendarDays,
   CheckCircle,
   Edit2,
-  CalendarDays,
+  ExternalLink,
+  Flag,
   Handshake,
+  MoreVertical,
   Star,
+  Trash2,
+  User,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { useRouter } from 'next/navigation';
+import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import type { Conversation } from '@/types/messaging';
-import { useUser } from '@/utils/UserContext';
-import { useConfirmDialog } from '@/utils/ConfirmDialogContext';
-import { submitUserListingReport } from '@/services/listingDetailService';
-import { ReportModal } from '@/components/report-modal';
+
 import ListingTypeBadge from '@/components/listing-type-badge';
-import VerificationBadge from '@/components/verification-badge';
-import { ImageLink } from '../image-link';
 import OfferModal from '@/components/offer-modal';
+import { ReportModal } from '@/components/report-modal';
 import { ScheduleModal } from '@/components/schedule-modal';
+import VerificationBadge from '@/components/verification-badge';
+import { cn } from '@/lib/utils';
+import { submitUserListingReport } from '@/services/listingDetailService';
+import type { Conversation } from '@/types/messaging';
+import { useConfirmDialog } from '@/utils/ConfirmDialogContext';
+import { useUser } from '@/utils/UserContext';
+import { ImageLink } from '../image-link';
 import { useListingContextActions } from './use-listing-context-actions';
 
 interface ChatHeaderProps {
@@ -338,12 +339,12 @@ export default function ChatHeader({
 
   return (
     <>
-      <header className='flex items-center gap-3 px-4 pt-4 pb-2 border-b border-border bg-white dark:bg-[#1c1f2e] shrink-0'>
+      <header className="flex items-center gap-3 px-4 pt-4 pb-2 border-b border-border bg-white dark:bg-[#1c1f2e] shrink-0">
         {/* Back button (mobile only) */}
         <button
           onClick={() => router.push('/messages')}
-          className='md:hidden p-1.5 -ml-1 rounded-lg text-stone-500 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-white/5 transition-colors'
-          aria-label='Back to conversations'
+          className="md:hidden p-1.5 -ml-1 rounded-lg text-stone-500 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-white/5 transition-colors"
+          aria-label="Back to conversations"
         >
           <ArrowLeft size={18} />
         </button>
@@ -352,19 +353,19 @@ export default function ChatHeader({
         <ImageLink
           href={profileHref}
           src={otherParticipant.profileImageUrl || undefined}
-          type='profile'
+          type="profile"
           label={`${otherParticipant.firstName} ${otherParticipant.lastName}`}
-          className='relative shrink-0 rounded-full'
+          className="relative shrink-0 rounded-full"
         >
           {otherParticipant.isOnline && (
-            <span className='absolute bottom-0 right-0 w-3 h-3 rounded-full bg-emerald-500 border-2 border-white dark:border-[#1c1f2e]' />
+            <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-emerald-500 border-2 border-white dark:border-[#1c1f2e]" />
           )}
         </ImageLink>
 
         {/* Info */}
-        <div className='flex-1 min-w-0 text-left'>
-          <div className='flex items-center gap-2 flex-wrap'>
-            <span className='text-sm font-bold text-stone-900 dark:text-stone-50 truncate'>
+        <div className="flex-1 min-w-0 text-left">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-sm font-bold text-stone-900 dark:text-stone-50 truncate">
               {otherParticipant.firstName} {otherParticipant.lastName}
             </span>
             <VerificationBadge verified={isParticipantVerified} />
@@ -384,18 +385,18 @@ export default function ChatHeader({
         </div>
 
         {/* More menu */}
-        <div className='flex items-center gap-0.5 shrink-0'>
-          <div className='relative' ref={menuRef}>
+        <div className="flex items-center gap-0.5 shrink-0">
+          <div className="relative" ref={menuRef}>
             <button
               onClick={() => setMenuOpen((v) => !v)}
-              className='p-2 rounded-lg text-stone-500 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-white/5 transition-colors'
-              aria-label='More options'
+              className="p-2 rounded-lg text-stone-500 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-white/5 transition-colors"
+              aria-label="More options"
             >
               <MoreVertical size={16} />
             </button>
 
             {menuOpen && (
-              <div className='absolute right-0 top-full mt-1 w-44 bg-white dark:bg-[#1c1f2e] border border-border rounded-lg shadow-xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-1 duration-100'>
+              <div className="absolute right-0 top-full mt-1 w-44 bg-white dark:bg-[#1c1f2e] border border-border rounded-lg shadow-xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-1 duration-100">
                 {menuItems.map(
                   ({ icon: Icon, label, action, danger, disabled }) => (
                     <button
@@ -421,8 +422,8 @@ export default function ChatHeader({
       </header>
       <ReportModal
         open={reportOpen}
-        title='Report User'
-        subtitle='Why are you reporting this user?'
+        title="Report User"
+        subtitle="Why are you reporting this user?"
         target={`${otherParticipant.firstName} ${otherParticipant.lastName}`}
         submitting={submittingReport}
         onClose={() => setReportOpen(false)}
@@ -431,14 +432,14 @@ export default function ChatHeader({
 
       <OfferModal
         open={editPriceOpen}
-        title='Edit Offered Price'
+        title="Edit Offered Price"
         subtitle={listing.title}
         listedPrice={listing.price}
         offerAmount={String(newPrice)}
         onOfferAmountChange={(value) => setNewPrice(Number.parseInt(value, 10))}
         note={offerMessage}
         onNoteChange={setOfferMessage}
-        submitLabel='Update Offer'
+        submitLabel="Update Offer"
         submitDisabled={!isOfferChanged}
         submitting={priceSubmitting}
         onSubmit={handleEditPriceAction}
@@ -469,36 +470,36 @@ export default function ChatHeader({
 
       {reviewOpen && (
         <div
-          className='fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/60 backdrop-blur-sm'
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
           onClick={(e) =>
             e.target === e.currentTarget && handleCloseReviewModal()
           }
         >
-          <div className='w-full max-w-md rounded-lg bg-white dark:bg-[#1c1f2e] border border-stone-200 dark:border-[#2a2d3e] shadow-2xl overflow-hidden'>
-            <div className='px-5 py-4 border-b border-stone-200 dark:border-[#2a2d3e]'>
-              <h3 className='text-sm font-bold text-stone-900 dark:text-stone-50'>
+          <div className="w-full max-w-md rounded-lg bg-white dark:bg-[#1c1f2e] border border-stone-200 dark:border-[#2a2d3e] shadow-2xl overflow-hidden">
+            <div className="px-5 py-4 border-b border-stone-200 dark:border-[#2a2d3e]">
+              <h3 className="text-sm font-bold text-stone-900 dark:text-stone-50">
                 Review Item
               </h3>
-              <p className='text-xs text-stone-500 dark:text-stone-400 mt-0.5 truncate'>
+              <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5 truncate">
                 {listing.title}
               </p>
             </div>
 
-            <div className='px-5 py-4 space-y-4'>
+            <div className="px-5 py-4 space-y-4">
               <div>
-                <p className='text-xs font-semibold text-stone-500 dark:text-stone-400 mb-2'>
+                <p className="text-xs font-semibold text-stone-500 dark:text-stone-400 mb-2">
                   Your rating
                 </p>
-                <div className='flex items-center gap-1.5'>
+                <div className="flex items-center gap-1.5">
                   {[1, 2, 3, 4, 5].map((value) => {
                     const active = value <= rating;
                     return (
                       <button
                         key={value}
-                        type='button'
+                        type="button"
                         onClick={() => setRating(value)}
                         disabled={reviewSubmitting || reviewDeleting}
-                        className='p-1 rounded-lg hover:bg-stone-100 dark:hover:bg-white/5 transition-colors disabled:opacity-60 disabled:cursor-not-allowed'
+                        className="p-1 rounded-lg hover:bg-stone-100 dark:hover:bg-white/5 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
                         aria-label={`Rate ${value} star${value > 1 ? 's' : ''}`}
                       >
                         <Star
@@ -511,10 +512,10 @@ export default function ChatHeader({
               </div>
 
               <div>
-                <label className='text-xs font-semibold text-stone-500 dark:text-stone-400 mb-2 block'>
+                <label className="text-xs font-semibold text-stone-500 dark:text-stone-400 mb-2 block">
                   Comment
                 </label>
-                <div className='space-y-1'>
+                <div className="space-y-1">
                   <textarea
                     rows={4}
                     value={comment}
@@ -523,22 +524,22 @@ export default function ChatHeader({
                     }
                     maxLength={REVIEW_MAX_LENGTH}
                     disabled={reviewSubmitting || reviewDeleting}
-                    placeholder='Share your experience with this transaction...'
-                    className='w-full bg-stone-50 dark:bg-[#13151f] border border-stone-200 dark:border-[#2a2d3e] rounded-xl px-3 py-2.5 text-sm text-stone-800 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-600 outline-none focus:border-stone-400 dark:focus:border-stone-500 resize-none disabled:opacity-60 disabled:cursor-not-allowed'
+                    placeholder="Share your experience with this transaction..."
+                    className="w-full bg-stone-50 dark:bg-[#13151f] border border-stone-200 dark:border-[#2a2d3e] rounded-xl px-3 py-2.5 text-sm text-stone-800 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-600 outline-none focus:border-stone-400 dark:focus:border-stone-500 resize-none disabled:opacity-60 disabled:cursor-not-allowed"
                   />
-                  <p className='text-right text-[11px] text-stone-500 dark:text-stone-400'>
+                  <p className="text-right text-[11px] text-stone-500 dark:text-stone-400">
                     {comment.length}/{REVIEW_MAX_LENGTH}
                   </p>
                 </div>
               </div>
 
-              <div className='flex items-center justify-between gap-2'>
+              <div className="flex items-center justify-between gap-2">
                 {existingReview ? (
                   <button
-                    type='button'
+                    type="button"
                     onClick={handleDeleteReview}
                     disabled={reviewSubmitting || reviewDeleting}
-                    className='px-4 py-2 rounded-full text-xs font-semibold border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors disabled:opacity-60 disabled:cursor-not-allowed'
+                    className="px-4 py-2 rounded-full text-xs font-semibold border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
                   >
                     {reviewDeleting ? 'Deleting...' : 'Delete'}
                   </button>
@@ -547,7 +548,7 @@ export default function ChatHeader({
                 )}
 
                 <button
-                  type='button'
+                  type="button"
                   onClick={handleReviewAction}
                   disabled={reviewSubmitting || reviewDeleting}
                   className={`px-4 py-2 rounded-full text-xs font-semibold transition-colors ${

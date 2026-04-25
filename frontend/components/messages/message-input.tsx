@@ -1,17 +1,18 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
-import { Image, MapPin, X, CornerUpLeft, SendHorizontal } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import type { ReplyPreview } from '@/types/messaging';
+import { CornerUpLeft, Image, MapPin, SendHorizontal, X } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
+
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import {
-  MESSAGE_MAX_LENGTH,
-  limitMessageInputLength,
-} from '@/utils/validation';
 import { encodeImageToPayload } from '@/lib/imageCompression';
+import { cn } from '@/lib/utils';
+import type { ReplyPreview } from '@/types/messaging';
+import {
+  limitMessageInputLength,
+  MESSAGE_MAX_LENGTH,
+} from '@/utils/validation';
 
 type OutgoingAttachment = {
   name: string;
@@ -222,7 +223,7 @@ export default function MessageInput({
   };
 
   return (
-    <div className='pt-3 pb-4 px-4 2xl:px-64'>
+    <div className="pt-3 pb-4 px-4 2xl:px-64">
       {/* ── Reply banner ───────────────────────────────────────────────── */}
       {replyTo && (
         <div
@@ -233,20 +234,20 @@ export default function MessageInput({
         >
           <CornerUpLeft
             size={13}
-            className='text-amber-600 dark:text-amber-500 shrink-0'
+            className="text-amber-600 dark:text-amber-500 shrink-0"
           />
-          <div className='flex-1 min-w-0'>
-            <p className='text-xs font-semibold text-amber-700 dark:text-amber-500 leading-none mb-0.5'>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-semibold text-amber-700 dark:text-amber-500 leading-none mb-0.5">
               Replying to {replyTo.senderName}
             </p>
-            <p className='text-sm text-stone-500 dark:text-stone-400 truncate'>
+            <p className="text-sm text-stone-500 dark:text-stone-400 truncate">
               {replyTo.contentPreview}
             </p>
           </div>
           <button
             onClick={onCancelReply}
-            className='shrink-0 p-1 rounded-full text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-200 dark:hover:bg-white/10 transition-colors'
-            aria-label='Cancel reply'
+            className="shrink-0 p-1 rounded-full text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-200 dark:hover:bg-white/10 transition-colors"
+            aria-label="Cancel reply"
           >
             <X size={13} />
           </button>
@@ -257,17 +258,17 @@ export default function MessageInput({
       <div>
         {/* ── Attachment staging area ─────────────────────────────────── */}
         {stagedMedia.length > 0 && (
-          <div className='pl-3 pr-2 pt-2 pb-1'>
-            <div className='flex items-center gap-2 overflow-x-auto no-scroll'>
+          <div className="pl-3 pr-2 pt-2 pb-1">
+            <div className="flex items-center gap-2 overflow-x-auto no-scroll">
               {stagedMedia.map((item) => (
                 <div
                   key={item.id}
-                  className='relative w-16 h-16 rounded-lg overflow-hidden border border-border shrink-0 bg-stone-100 dark:bg-[#13151f]'
+                  className="relative w-16 h-16 rounded-lg overflow-hidden border border-border shrink-0 bg-stone-100 dark:bg-[#13151f]"
                 >
                   {item.isVideo ? (
                     <video
                       src={item.previewUrl}
-                      className='w-full h-full object-cover'
+                      className="w-full h-full object-cover"
                       muted
                       playsInline
                     />
@@ -275,13 +276,13 @@ export default function MessageInput({
                     <img
                       src={item.previewUrl}
                       alt={item.file.name}
-                      className='w-full h-full object-cover'
+                      className="w-full h-full object-cover"
                     />
                   )}
                   <button
-                    type='button'
+                    type="button"
                     onClick={() => handleRemoveStagedMedia(item.id)}
-                    className='absolute top-1 right-1 w-4.5 h-4.5 rounded-full bg-black/65 text-white flex items-center justify-center hover:bg-black/80 transition-colors'
+                    className="absolute top-1 right-1 w-4.5 h-4.5 rounded-full bg-black/65 text-white flex items-center justify-center hover:bg-black/80 transition-colors"
                     aria-label={`Remove ${item.file.name}`}
                   >
                     <X size={11} />
@@ -292,27 +293,27 @@ export default function MessageInput({
           </div>
         )}
 
-        <div className='flex items-end'>
+        <div className="flex items-end">
           {/* Photo / Video */}
           <Button
-            type='button'
-            variant='ghost'
+            type="button"
+            variant="ghost"
             onClick={handlePickPhotoVideo}
-            className='w-8 h-8 inline-flex items-center justify-center text-stone-400 hover:text-amber-600 dark:hover:text-amber-400 transition-colors shrink-0 cursor-pointer'
-            aria-label='Attach photo or video'
-            title='Photo / Video'
+            className="w-8 h-8 inline-flex items-center justify-center text-stone-400 hover:text-amber-600 dark:hover:text-amber-400 transition-colors shrink-0 cursor-pointer"
+            aria-label="Attach photo or video"
+            title="Photo / Video"
           >
             <Image size={18} />
           </Button>
 
           {/* Location */}
           <Button
-            type='button'
-            variant='ghost'
+            type="button"
+            variant="ghost"
             onClick={handleShareLocation}
-            className='w-8 h-8 inline-flex items-center justify-center text-stone-400 hover:text-amber-600 dark:hover:text-amber-400 transition-colors shrink-0 cursor-pointer'
-            aria-label='Share location'
-            title='Location'
+            className="w-8 h-8 inline-flex items-center justify-center text-stone-400 hover:text-amber-600 dark:hover:text-amber-400 transition-colors shrink-0 cursor-pointer"
+            aria-label="Share location"
+            title="Location"
           >
             <MapPin size={20} />
           </Button>
@@ -320,18 +321,18 @@ export default function MessageInput({
           {/* Hidden media input */}
           <input
             ref={mediaInputRef}
-            type='file'
-            accept='image/*,video/*'
+            type="file"
+            accept="image/*,video/*"
             multiple
-            className='hidden'
+            className="hidden"
             onChange={handleMediaSelected}
           />
 
           {/* Message input */}
-          <div className='flex-1 min-w-0 mx-2'>
+          <div className="flex-1 min-w-0 mx-2">
             <Textarea
               ref={textareaRef}
-              id='message-input'
+              id="message-input"
               value={value}
               onChange={(e) =>
                 setValue(limitMessageInputLength(e.target.value))
@@ -353,12 +354,12 @@ export default function MessageInput({
           </div>
 
           <Button
-            type='button'
+            type="button"
             onClick={() => void handleSend()}
             disabled={!canSend}
-            aria-label='Send message'
-            variant='ghost'
-            size='icon'
+            aria-label="Send message"
+            variant="ghost"
+            size="icon"
             className={cn(
               'h-9 w-9 shrink-0 self-end hover:bg-transparent',
               canSend

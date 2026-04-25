@@ -1,7 +1,8 @@
 'use client';
 
+import { ChevronRight, Home, Tag, Wrench } from 'lucide-react';
 import Link from 'next/link';
-import { Tag, Home, Wrench, ChevronRight } from 'lucide-react';
+
 import { cn } from '@/lib/utils';
 import { useUser } from '@/utils/UserContext';
 
@@ -81,25 +82,25 @@ export default function CreateListingPage() {
   if (!isAuth) return null;
 
   return (
-    <div className='min-h-fit bg-[#faf6f0] dark:bg-[#111827]'>
+    <div className="min-h-fit bg-[#faf6f0] dark:bg-[#111827]">
       {/* ── Header band ──────────────────────────────────────────────────────── */}
-      <div className='bg-[#1a2235] border-b border-white/10'>
-        <div className='max-w-4xl mx-auto px-4 sm:px-6 py-4 sm:py-8'>
-          <p className='text-xs font-semibold uppercase tracking-widest text-amber-500 mb-2'>
+      <div className="bg-[#1a2235] border-b border-white/10">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-4 sm:py-8">
+          <p className="text-xs font-semibold uppercase tracking-widest text-amber-500 mb-2">
             Post a Listing
           </p>
-          <h1 className='text-2xl sm:text-3xl font-bold text-white leading-tight'>
+          <h1 className="text-2xl sm:text-3xl font-bold text-white leading-tight">
             What are you listing today?
           </h1>
-          <p className='text-stone-400 text-sm mt-2'>
+          <p className="text-stone-400 text-sm mt-2">
             Choose the listing type that best fits what you want to offer.
           </p>
         </div>
       </div>
 
       {/* ── Cards ────────────────────────────────────────────────────────────── */}
-      <div className='max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-10'>
-        <div className='grid grid-cols-1 sm:grid-cols-3 gap-4'>
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {TYPES.map((t) => (
             <Link
               key={t.slug}
@@ -120,16 +121,16 @@ export default function CreateListingPage() {
                   t.iconBg,
                 )}
               >
-                <t.icon size={20} className='text-white' />
+                <t.icon size={20} className="text-white" />
               </div>
 
               {/* Label */}
-              <h2 className='text-base font-bold text-stone-800 dark:text-stone-100 leading-tight mb-3'>
+              <h2 className="text-base font-bold text-stone-800 dark:text-stone-100 leading-tight mb-3">
                 {t.label}
               </h2>
 
               {/* Description */}
-              <p className='text-sm text-stone-600 dark:text-stone-400 leading-relaxed flex-1'>
+              <p className="text-sm text-stone-600 dark:text-stone-400 leading-relaxed flex-1">
                 {t.description}
               </p>
 
@@ -143,7 +144,7 @@ export default function CreateListingPage() {
                 Get started
                 <ChevronRight
                   size={15}
-                  className='transition-transform duration-150 group-hover:translate-x-0.5'
+                  className="transition-transform duration-150 group-hover:translate-x-0.5"
                 />
               </div>
             </Link>
@@ -151,18 +152,18 @@ export default function CreateListingPage() {
         </div>
 
         {/* Bottom note */}
-        <p className='text-center text-xs text-stone-400 dark:text-stone-500 mt-8'>
+        <p className="text-center text-xs text-stone-400 dark:text-stone-500 mt-8">
           By posting a listing, you agree to our{' '}
           <Link
-            href='#'
-            className='underline underline-offset-2 hover:text-stone-600'
+            href="#"
+            className="underline underline-offset-2 hover:text-stone-600"
           >
             Terms of Service
           </Link>{' '}
           and{' '}
           <Link
-            href='#'
-            className='underline underline-offset-2 hover:text-stone-600'
+            href="#"
+            className="underline underline-offset-2 hover:text-stone-600"
           >
             Community Guidelines
           </Link>

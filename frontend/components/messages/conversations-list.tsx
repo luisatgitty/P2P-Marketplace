@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { usePathname } from 'next/navigation';
 import { Search, X } from 'lucide-react';
+import { usePathname } from 'next/navigation';
+import { useCallback, useEffect, useRef, useState } from 'react';
+
 import { cn } from '@/lib/utils';
-import type { Conversation, MessageTab } from '@/types/messaging';
 import { getConversationsPage } from '@/services/messagingService';
+import type { Conversation, MessageTab } from '@/types/messaging';
 import ConversationItem from './conversation-item';
 import EmptyState from './empty-state';
 
@@ -162,20 +163,20 @@ export default function ConversationsList({
   }, [hasMore, loadMoreConvs, loading, loadingMore]);
 
   return (
-    <div className='flex flex-col h-full pb-16'>
+    <div className="flex flex-col h-full pb-16">
       {/* ── Search bar ──────────────────────────────────────────────── */}
-      <div className='px-3 pt-3 pb-2 border-b border-border shrink-0'>
-        <div className='flex items-center gap-2'>
-          <div className='relative flex-1'>
+      <div className="px-3 pt-3 pb-2 border-b border-border shrink-0">
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1">
             <Search
               size={14}
-              className='absolute left-2.5 top-1/2 -translate-y-1/2 text-stone-400 dark:text-stone-500 pointer-events-none'
+              className="absolute left-2.5 top-1/2 -translate-y-1/2 text-stone-400 dark:text-stone-500 pointer-events-none"
             />
             <input
-              type='search'
+              type="search"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder='Search conversations…'
+              placeholder="Search conversations…"
               className={cn(
                 'w-full pl-8 pr-7 py-2 text-xs rounded-lg bg-stone-100 dark:bg-[#13151f] border border-transparent',
                 '[&::-webkit-search-cancel-button]:appearance-none [&::-webkit-search-decoration]:appearance-none',
@@ -189,8 +190,8 @@ export default function ConversationsList({
             {search && (
               <button
                 onClick={() => setSearch('')}
-                className='absolute right-2 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 transition-colors'
-                aria-label='Clear search'
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 transition-colors"
+                aria-label="Clear search"
               >
                 <X size={12} />
               </button>
@@ -200,30 +201,30 @@ export default function ConversationsList({
       </div>
 
       {/* ── List ────────────────────────────────────────────────────── */}
-      <div ref={listViewportRef} className='flex-1 overflow-y-auto no-scroll'>
+      <div ref={listViewportRef} className="flex-1 overflow-y-auto no-scroll">
         {loading ? (
           // Skeleton — staggered fade-in so it feels intentional
-          <div className='flex flex-col gap-0 animate-in fade-in duration-150'>
+          <div className="flex flex-col gap-0 animate-in fade-in duration-150">
             {Array.from({ length: 5 }).map((_, i) => (
               <div
                 key={i}
-                className='flex items-start gap-3 px-4 py-3 border-l-2 border-l-transparent animate-in fade-in duration-300'
+                className="flex items-start gap-3 px-4 py-3 border-l-2 border-l-transparent animate-in fade-in duration-300"
                 style={{
                   animationDelay: `${i * 50}ms`,
                   animationFillMode: 'both',
                 }}
               >
-                <div className='w-11 h-11 rounded-full bg-stone-100 dark:bg-[#252837] animate-pulse shrink-0' />
-                <div className='flex-1 space-y-1.5'>
-                  <div className='h-3 w-32 rounded bg-stone-100 dark:bg-[#252837] animate-pulse' />
-                  <div className='h-2.5 w-48 rounded bg-stone-100 dark:bg-[#252837] animate-pulse' />
-                  <div className='h-2.5 w-40 rounded bg-stone-100 dark:bg-[#252837] animate-pulse' />
+                <div className="w-11 h-11 rounded-full bg-stone-100 dark:bg-[#252837] animate-pulse shrink-0" />
+                <div className="flex-1 space-y-1.5">
+                  <div className="h-3 w-32 rounded bg-stone-100 dark:bg-[#252837] animate-pulse" />
+                  <div className="h-2.5 w-48 rounded bg-stone-100 dark:bg-[#252837] animate-pulse" />
+                  <div className="h-2.5 w-40 rounded bg-stone-100 dark:bg-[#252837] animate-pulse" />
                 </div>
               </div>
             ))}
           </div>
         ) : (
-          <div className='divide-y divide-border/50 animate-in fade-in duration-300 ease-out'>
+          <div className="divide-y divide-border/50 animate-in fade-in duration-300 ease-out">
             {filtered.length === 0 ? (
               <EmptyState tab={activeTab} hasSearch={!!search} />
             ) : (
@@ -239,7 +240,7 @@ export default function ConversationsList({
             {!search.trim() && hasMore && (
               <div
                 ref={loadMoreTriggerRef}
-                className='px-4 py-3 text-center text-xs text-stone-400 dark:text-stone-500'
+                className="px-4 py-3 text-center text-xs text-stone-400 dark:text-stone-500"
               >
                 {loadingMore
                   ? 'Loading more conversations...'
@@ -248,7 +249,7 @@ export default function ConversationsList({
             )}
 
             {!hasMore && totalCount > PAGE_SIZE && (
-              <div className='px-4 py-3 text-center text-xs text-stone-400 dark:text-stone-500'>
+              <div className="px-4 py-3 text-center text-xs text-stone-400 dark:text-stone-500">
                 End of conversations.
               </div>
             )}

@@ -10,6 +10,6 @@ export default function VerificationBadge({
   size = 13.5,
 }: VerificationBadgeProps) {
   return verified ? (
-    <ShieldCheck size={size} className='text-sky-600 dark:text-blue-400' />
+    <ShieldCheck size={size} className="text-sky-600 dark:text-blue-400" />
   ) : null; // Do not render anything if not verified
 }

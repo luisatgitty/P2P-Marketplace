@@ -1,12 +1,13 @@
 'use client';
 
 import { Star } from 'lucide-react';
-import type { ConversationListing } from '@/types/messaging';
+
 import OfferModal from '@/components/offer-modal';
 import { ScheduleModal } from '@/components/schedule-modal';
-import { ModalFormCard } from '../modal-form-card';
-import { ImageLink } from '../image-link';
+import type { ConversationListing } from '@/types/messaging';
 import { formatPrice } from '@/utils/string-builder';
+import { ImageLink } from '../image-link';
+import { ModalFormCard } from '../modal-form-card';
 import { useListingContextActions } from './use-listing-context-actions';
 
 interface ListingContextCardProps {
@@ -94,24 +95,24 @@ export default function ListingContextCard({
   return (
     <>
       <div
-        data-listing-context-card='true'
-        className='h-16 mx-5 my-2 flex items-center gap-3 px-2 py-2 rounded-lg bg-stone-50 dark:bg-[#13151f] border border-border shrink-0'
+        data-listing-context-card="true"
+        className="h-16 mx-5 my-2 flex items-center gap-3 px-2 py-2 rounded-lg bg-stone-50 dark:bg-[#13151f] border border-border shrink-0"
       >
         {/* Listing primary image */}
         <ImageLink
           href={`/listing/${listing.id}`}
           src={listing.imageUrl || undefined}
-          type='thumbnail'
+          type="thumbnail"
           label={listing.title}
-          className='w-11 h-11'
+          className="w-11 h-11"
         />
 
-        <div className='flex-1 min-w-0'>
-          <p className='text-sm font-semibold text-stone-800 dark:text-stone-100 truncate leading-tight'>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold text-stone-800 dark:text-stone-100 truncate leading-tight">
             {listing.title}
           </p>
-          <div className='flex items-center gap-1.5 mt-0.5'>
-            <span className='text-xs font-bold text-amber-700 dark:text-amber-500'>
+          <div className="flex items-center gap-1.5 mt-0.5">
+            <span className="text-xs font-bold text-amber-700 dark:text-amber-500">
               {formatPrice(listing.price)} {listing.priceUnit ?? ''}
             </span>
           </div>
@@ -120,14 +121,14 @@ export default function ListingContextCard({
         {/* Hidden in mobile */}
 
         {/* Offered Price / Schedule */}
-        <div className='hidden min-w-0 sm:block md:flex-1'>
-          <p className='text-sm font-semibold text-stone-800 dark:text-stone-100 truncate leading-tight'>
+        <div className="hidden min-w-0 sm:block md:flex-1">
+          <p className="text-sm font-semibold text-stone-800 dark:text-stone-100 truncate leading-tight">
             {listing.listingType === 'SELL'
               ? 'Offered Price'
               : 'Provided Schedule'}
           </p>
-          <div className='flex items-center gap-1.5 mt-0.5'>
-            <span className='text-xs font-bold text-amber-700 dark:text-amber-500'>
+          <div className="flex items-center gap-1.5 mt-0.5">
+            <span className="text-xs font-bold text-amber-700 dark:text-amber-500">
               {listing.listingType === 'SELL'
                 ? isSold ||
                   (hasTransaction &&
@@ -140,15 +141,15 @@ export default function ListingContextCard({
           </div>
         </div>
 
-        <div className='hidden lg:flex gap-4'>
+        <div className="hidden lg:flex gap-4">
           {/* Edit Price Button */}
           {canEditPrice && (
             <button
-              type='button'
+              type="button"
               onClick={() => setEditPriceOpen(true)}
               disabled={reviewLoading}
-              className='px-2.5 py-2 rounded-md text-[11px] font-semibold text-white bg-blue-700 hover:bg-blue-600 transition-colors shrink-0 disabled:opacity-60 disabled:cursor-not-allowed'
-              title='Edit offered price'
+              className="px-2.5 py-2 rounded-md text-[11px] font-semibold text-white bg-blue-700 hover:bg-blue-600 transition-colors shrink-0 disabled:opacity-60 disabled:cursor-not-allowed"
+              title="Edit offered price"
             >
               {!isSold &&
               hasTransaction &&
@@ -163,11 +164,11 @@ export default function ListingContextCard({
 
           {canEditSchedule && (
             <button
-              type='button'
+              type="button"
               onClick={() => setEditScheduleOpen(true)}
               disabled={reviewLoading}
-              className='px-2.5 py-2 rounded-md text-[11px] font-semibold text-white bg-blue-700 hover:bg-blue-600 transition-colors shrink-0 disabled:opacity-60 disabled:cursor-not-allowed'
-              title='Edit schedule'
+              className="px-2.5 py-2 rounded-md text-[11px] font-semibold text-white bg-blue-700 hover:bg-blue-600 transition-colors shrink-0 disabled:opacity-60 disabled:cursor-not-allowed"
+              title="Edit schedule"
             >
               {hasTransaction &&
               (normalizedTransactionStatus === 'PENDING' ||
@@ -180,11 +181,11 @@ export default function ListingContextCard({
           {/* Deal Button */}
           {!shouldHideButtons && canDeal && (
             <button
-              type='button'
+              type="button"
               onClick={handleDealAction}
               disabled={dealSubmitting}
               className={`px-2.5 py-2 rounded-md text-[11px] font-semibold text-white transition-colors shrink-0 disabled:opacity-60 disabled:cursor-not-allowed ${hasAgreed ? 'bg-emerald-700 hover:bg-emerald-600' : 'bg-blue-700 hover:bg-blue-600'}`}
-              title='Deal with the offer'
+              title="Deal with the offer"
             >
               {dealSubmitting ? 'Saving...' : hasAgreed ? 'Agreed' : 'Deal'}
             </button>
@@ -193,9 +194,9 @@ export default function ListingContextCard({
           {/* Mark as complete button */}
           {!shouldHideButtons && canMarkAsComplete && (
             <button
-              type='button'
+              type="button"
               onClick={() => handleOpenMarkCompleteDialog()}
-              className='px-2.5 py-2 rounded-md text-[11px] font-semibold text-white bg-amber-700 hover:bg-amber-600 transition-colors shrink-0'
+              className="px-2.5 py-2 rounded-md text-[11px] font-semibold text-white bg-amber-700 hover:bg-amber-600 transition-colors shrink-0"
               title={
                 listing.listingType === 'SELL'
                   ? 'Mark as Sold'
@@ -211,10 +212,10 @@ export default function ListingContextCard({
           {/* Review button */}
           {!shouldHideButtons && canReview && (
             <button
-              type='button'
+              type="button"
               onClick={handleOpenReviewModal}
               disabled={reviewLoading}
-              className='px-2.5 py-2 rounded-md text-[11px] font-semibold text-white bg-blue-700 hover:bg-blue-600 transition-colors shrink-0 disabled:opacity-60 disabled:cursor-not-allowed'
+              className="px-2.5 py-2 rounded-md text-[11px] font-semibold text-white bg-blue-700 hover:bg-blue-600 transition-colors shrink-0 disabled:opacity-60 disabled:cursor-not-allowed"
               title={existingReview ? 'Edit your review' : 'Review this item'}
             >
               {reviewLoading
@@ -229,36 +230,36 @@ export default function ListingContextCard({
 
       {reviewOpen && (
         <div
-          className='fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/60 backdrop-blur-sm'
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
           onClick={(e) =>
             e.target === e.currentTarget && handleCloseReviewModal()
           }
         >
-          <div className='w-full max-w-md rounded-lg bg-white dark:bg-[#1c1f2e] border border-stone-200 dark:border-[#2a2d3e] shadow-2xl overflow-hidden'>
-            <div className='px-5 py-4 border-b border-stone-200 dark:border-[#2a2d3e]'>
-              <h3 className='text-sm font-bold text-stone-900 dark:text-stone-50'>
+          <div className="w-full max-w-md rounded-lg bg-white dark:bg-[#1c1f2e] border border-stone-200 dark:border-[#2a2d3e] shadow-2xl overflow-hidden">
+            <div className="px-5 py-4 border-b border-stone-200 dark:border-[#2a2d3e]">
+              <h3 className="text-sm font-bold text-stone-900 dark:text-stone-50">
                 Review Item
               </h3>
-              <p className='text-xs text-stone-500 dark:text-stone-400 mt-0.5 truncate'>
+              <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5 truncate">
                 {listing.title}
               </p>
             </div>
 
-            <div className='px-5 py-4 space-y-4'>
+            <div className="px-5 py-4 space-y-4">
               <div>
-                <p className='text-xs font-semibold text-stone-500 dark:text-stone-400 mb-2'>
+                <p className="text-xs font-semibold text-stone-500 dark:text-stone-400 mb-2">
                   Your rating
                 </p>
-                <div className='flex items-center gap-1.5'>
+                <div className="flex items-center gap-1.5">
                   {[1, 2, 3, 4, 5].map((value) => {
                     const active = value <= rating;
                     return (
                       <button
                         key={value}
-                        type='button'
+                        type="button"
                         onClick={() => setRating(value)}
                         disabled={reviewSubmitting || reviewDeleting}
-                        className='p-1 rounded-lg hover:bg-stone-100 dark:hover:bg-white/5 transition-colors disabled:opacity-60 disabled:cursor-not-allowed'
+                        className="p-1 rounded-lg hover:bg-stone-100 dark:hover:bg-white/5 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
                         aria-label={`Rate ${value} star${value > 1 ? 's' : ''}`}
                       >
                         <Star
@@ -271,10 +272,10 @@ export default function ListingContextCard({
               </div>
 
               <div>
-                <label className='text-xs font-semibold text-stone-500 dark:text-stone-400 mb-2 block'>
+                <label className="text-xs font-semibold text-stone-500 dark:text-stone-400 mb-2 block">
                   Comment
                 </label>
-                <div className='space-y-1'>
+                <div className="space-y-1">
                   <textarea
                     rows={4}
                     value={comment}
@@ -283,22 +284,22 @@ export default function ListingContextCard({
                     }
                     maxLength={REVIEW_MAX_LENGTH}
                     disabled={reviewSubmitting || reviewDeleting}
-                    placeholder='Share your experience with this transaction...'
-                    className='w-full bg-stone-50 dark:bg-[#13151f] border border-stone-200 dark:border-[#2a2d3e] rounded-xl px-3 py-2.5 text-sm text-stone-800 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-600 outline-none focus:border-stone-400 dark:focus:border-stone-500 resize-none disabled:opacity-60 disabled:cursor-not-allowed'
+                    placeholder="Share your experience with this transaction..."
+                    className="w-full bg-stone-50 dark:bg-[#13151f] border border-stone-200 dark:border-[#2a2d3e] rounded-xl px-3 py-2.5 text-sm text-stone-800 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-600 outline-none focus:border-stone-400 dark:focus:border-stone-500 resize-none disabled:opacity-60 disabled:cursor-not-allowed"
                   />
-                  <p className='text-right text-[11px] text-stone-500 dark:text-stone-400'>
+                  <p className="text-right text-[11px] text-stone-500 dark:text-stone-400">
                     {comment.length}/{REVIEW_MAX_LENGTH}
                   </p>
                 </div>
               </div>
 
-              <div className='flex items-center justify-between gap-2'>
+              <div className="flex items-center justify-between gap-2">
                 {existingReview ? (
                   <button
-                    type='button'
+                    type="button"
                     onClick={handleDeleteReview}
                     disabled={reviewSubmitting || reviewDeleting}
-                    className='px-4 py-2 rounded-full text-xs font-semibold border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors disabled:opacity-60 disabled:cursor-not-allowed'
+                    className="px-4 py-2 rounded-full text-xs font-semibold border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
                   >
                     {reviewDeleting ? 'Deleting...' : 'Delete'}
                   </button>
@@ -307,7 +308,7 @@ export default function ListingContextCard({
                 )}
 
                 <button
-                  type='button'
+                  type="button"
                   onClick={handleReviewAction}
                   disabled={reviewSubmitting || reviewDeleting}
                   className={`px-4 py-2 rounded-full text-xs font-semibold transition-colors ${
@@ -333,31 +334,31 @@ export default function ListingContextCard({
       {reviewOpen && (
         <ModalFormCard
           icon={Star}
-          type='review'
-          title='Review Item'
+          type="review"
+          title="Review Item"
           subTitle={listing.title}
           onClose={handleCloseReviewModal}
           onCancel={handleDeleteReview}
           handleSend={handleReviewAction}
           canSend={rating > 0}
           sending={reviewSubmitting}
-          submitLabel='Submit'
-          cancelLabel='Delete'
+          submitLabel="Submit"
+          cancelLabel="Delete"
         >
           <div>
-            <p className='text-xs font-semibold text-stone-500 dark:text-stone-400 mb-2'>
+            <p className="text-xs font-semibold text-stone-500 dark:text-stone-400 mb-2">
               Your rating
             </p>
-            <div className='flex items-center gap-1.5'>
+            <div className="flex items-center gap-1.5">
               {[1, 2, 3, 4, 5].map((value) => {
                 const active = value <= rating;
                 return (
                   <button
                     key={value}
-                    type='button'
+                    type="button"
                     onClick={() => setRating(value)}
                     disabled={reviewSubmitting || reviewDeleting}
-                    className='p-1 rounded-lg hover:bg-stone-100 dark:hover:bg-white/5 transition-colors disabled:opacity-60 disabled:cursor-not-allowed'
+                    className="p-1 rounded-lg hover:bg-stone-100 dark:hover:bg-white/5 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
                     aria-label={`Rate ${value} star${value > 1 ? 's' : ''}`}
                   >
                     <Star
@@ -370,10 +371,10 @@ export default function ListingContextCard({
           </div>
 
           <div>
-            <label className='text-xs font-semibold text-stone-500 dark:text-stone-400 mb-2 block'>
+            <label className="text-xs font-semibold text-stone-500 dark:text-stone-400 mb-2 block">
               Comment
             </label>
-            <div className='space-y-1'>
+            <div className="space-y-1">
               <textarea
                 rows={4}
                 value={comment}
@@ -382,10 +383,10 @@ export default function ListingContextCard({
                 }
                 maxLength={REVIEW_MAX_LENGTH}
                 disabled={reviewSubmitting || reviewDeleting}
-                placeholder='Share your experience with this transaction...'
-                className='w-full bg-stone-50 dark:bg-[#13151f] border border-stone-200 dark:border-[#2a2d3e] rounded-xl px-3 py-2.5 text-sm text-stone-800 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-600 outline-none focus:border-stone-400 dark:focus:border-stone-500 resize-none disabled:opacity-60 disabled:cursor-not-allowed'
+                placeholder="Share your experience with this transaction..."
+                className="w-full bg-stone-50 dark:bg-[#13151f] border border-stone-200 dark:border-[#2a2d3e] rounded-xl px-3 py-2.5 text-sm text-stone-800 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-600 outline-none focus:border-stone-400 dark:focus:border-stone-500 resize-none disabled:opacity-60 disabled:cursor-not-allowed"
               />
-              <p className='text-right text-[11px] text-stone-500 dark:text-stone-400'>
+              <p className="text-right text-[11px] text-stone-500 dark:text-stone-400">
                 {comment.length}/{REVIEW_MAX_LENGTH}
               </p>
             </div>
@@ -396,7 +397,7 @@ export default function ListingContextCard({
       {editPriceOpen && (
         <OfferModal
           open={editPriceOpen}
-          title='Edit Offered Price'
+          title="Edit Offered Price"
           subtitle={listing.title}
           listedPrice={listing.price}
           offerAmount={String(newPrice)}
@@ -405,7 +406,7 @@ export default function ListingContextCard({
           }
           note={offerMessage}
           onNoteChange={setOfferMessage}
-          submitLabel='Update Offer'
+          submitLabel="Update Offer"
           submitDisabled={!isOfferChanged}
           submitting={priceSubmitting}
           onSubmit={handleEditPriceAction}

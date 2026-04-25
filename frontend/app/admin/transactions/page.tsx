@@ -1,28 +1,24 @@
 'use client';
 
-import { useState, useMemo, useEffect, useCallback } from 'react';
 import {
-  Search,
-  Clock,
-  ChevronUp,
+  CheckCircle2,
   ChevronDown,
   ChevronsUpDown,
-  CheckCircle2,
-  XCircle,
+  ChevronUp,
+  Clock,
   Handshake,
-  RotateCw,
-  X,
-  ShoppingBag,
   Home,
+  RotateCw,
+  Search,
+  ShoppingBag,
   Wrench,
+  X,
+  XCircle,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import {
-  getAdminTransactions,
-  type AdminTransactionRecord,
-} from '@/services/adminTransactionsService';
 
+import { ImageLink } from '@/components/image-link';
 // ── shadcn components ──────────────────────────────────────────────────────────
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -36,7 +32,11 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { ImageLink } from '@/components/image-link';
+import { cn } from '@/lib/utils';
+import {
+  type AdminTransactionRecord,
+  getAdminTransactions,
+} from '@/services/adminTransactionsService';
 import { formatPrice } from '@/utils/string-builder';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -113,11 +113,11 @@ function buildScheduleUnitsLabel(tx: AdminTransaction): string {
 
 function DealStateRow({ label, agreed }: { label: string; agreed: boolean }) {
   return (
-    <div className='flex items-center gap-1.5'>
+    <div className="flex items-center gap-1.5">
       {agreed ? (
-        <CheckCircle2 className='w-4 h-4 text-emerald-500 shrink-0' />
+        <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
       ) : (
-        <XCircle className='w-4 h-4 text-amber-500 shrink-0' />
+        <XCircle className="w-4 h-4 text-amber-500 shrink-0" />
       )}
       <span
         className={cn(
@@ -143,12 +143,12 @@ function SortIcon({
 }) {
   if (sort.field !== field)
     return (
-      <ChevronsUpDown className='w-3 h-3 text-stone-300 dark:text-stone-600 ml-1' />
+      <ChevronsUpDown className="w-3 h-3 text-stone-300 dark:text-stone-600 ml-1" />
     );
   return sort.dir === 'asc' ? (
-    <ChevronUp className='w-3 h-3 ml-1' />
+    <ChevronUp className="w-3 h-3 ml-1" />
   ) : (
-    <ChevronDown className='w-3 h-3 ml-1' />
+    <ChevronDown className="w-3 h-3 ml-1" />
   );
 }
 
@@ -163,11 +163,11 @@ function FilterSelect({
   options: [string, string][];
 }) {
   return (
-    <div className='relative shrink-0'>
+    <div className="relative shrink-0">
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className='pl-3 pr-8 py-2 h-9 bg-transparent border border-stone-200 dark:border-[#2a2d3e] rounded-lg text-sm text-stone-700 dark:text-stone-200 outline-none focus:border-stone-400 transition-colors appearance-none cursor-pointer dark:bg-[#13151f]'
+        className="pl-3 pr-8 py-2 h-9 bg-transparent border border-stone-200 dark:border-[#2a2d3e] rounded-lg text-sm text-stone-700 dark:text-stone-200 outline-none focus:border-stone-400 transition-colors appearance-none cursor-pointer dark:bg-[#13151f]"
       >
         {options.map(([v, l]) => (
           <option key={v} value={v}>
@@ -175,18 +175,18 @@ function FilterSelect({
           </option>
         ))}
       </select>
-      <div className='pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2'>
+      <div className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2">
         <svg
-          className='w-3.5 h-3.5 text-stone-400'
-          fill='none'
-          viewBox='0 0 24 24'
-          stroke='currentColor'
+          className="w-3.5 h-3.5 text-stone-400"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
           strokeWidth={2}
         >
           <path
-            strokeLinecap='round'
-            strokeLinejoin='round'
-            d='M19 9l-7 7-7-7'
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M19 9l-7 7-7-7"
           />
         </svg>
       </div>
@@ -269,7 +269,7 @@ export default function TransactionsPage() {
 
   // ── Sort loaded chunk ─────────────────────────────────────────────────────────
   const filtered = useMemo(() => {
-    let data = [...transactions];
+    const data = [...transactions];
     data.sort((a, b) => {
       let va: string | number = 0;
       let vb: string | number = 0;
@@ -324,7 +324,7 @@ export default function TransactionsPage() {
   const paginationPages = useMemo(() => {
     const maxButtons = 5;
     let start = Math.max(1, currentPage - 2);
-    let end = Math.min(totalPages, start + maxButtons - 1);
+    const end = Math.min(totalPages, start + maxButtons - 1);
     start = Math.max(1, end - maxButtons + 1);
     return Array.from({ length: end - start + 1 }, (_, idx) => start + idx);
   }, [currentPage, totalPages]);
@@ -338,10 +338,10 @@ export default function TransactionsPage() {
     field: SortField;
   }) => (
     <TableHead
-      className='text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest cursor-pointer select-none hover:text-stone-700 dark:hover:text-stone-200 whitespace-nowrap'
+      className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest cursor-pointer select-none hover:text-stone-700 dark:hover:text-stone-200 whitespace-nowrap"
       onClick={() => toggleSort(field)}
     >
-      <span className='inline-flex items-center'>
+      <span className="inline-flex items-center">
         {label}
         <SortIcon field={field} sort={sort} />
       </span>
@@ -350,7 +350,7 @@ export default function TransactionsPage() {
 
   // ── Render ────────────────────────────────────────────────────────────────────
   return (
-    <div className='h-[calc(100vh)] p-5 sm:p-6 flex flex-col gap-5 min-h-0'>
+    <div className="h-[calc(100vh)] p-5 sm:p-6 flex flex-col gap-5 min-h-0">
       {/* ── Page header ── */}
       {/* <div>
         <h2 className="text-xl font-extrabold text-stone-900 dark:text-stone-50">
@@ -362,7 +362,7 @@ export default function TransactionsPage() {
       </div> */}
 
       {/* ── Summary cards — clickable to filter by status ── */}
-      <div className='grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3'>
+      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
         {[
           {
             label: 'Total',
@@ -414,10 +414,10 @@ export default function TransactionsPage() {
               });
             }}
           >
-            <CardContent className='text-center'>
+            <CardContent className="text-center">
               {/* <Icon className={cn("w-5 h-5 mx-auto mb-1.5", color)} /> */}
               <p className={cn('text-xl font-extrabold', color)}>{count}</p>
-              <p className='text-sm text-stone-500 dark:text-stone-400 mt-0.5'>
+              <p className="text-sm text-stone-500 dark:text-stone-400 mt-0.5">
                 {label}
               </p>
             </CardContent>
@@ -426,22 +426,22 @@ export default function TransactionsPage() {
       </div>
 
       {/* ── Filters ── */}
-      <div className='flex flex-col sm:flex-row gap-3'>
+      <div className="flex flex-col sm:flex-row gap-3">
         {/* Search */}
-        <div className='relative flex-1'>
-          <Search className='absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400 pointer-events-none' />
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400 pointer-events-none" />
           <Input
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);
             }}
-            placeholder='Search listing, client, or owner…'
-            className='pl-9 dark:bg-[#13151f] dark:border-[#2a2d3e]'
+            placeholder="Search listing, client, or owner…"
+            className="pl-9 dark:bg-[#13151f] dark:border-[#2a2d3e]"
           />
         </div>
 
         {/* Filter selects */}
-        <div className='flex gap-2 flex-wrap'>
+        <div className="flex gap-2 flex-wrap">
           <FilterSelect
             value={typeFilter}
             onChange={(v) => {
@@ -473,29 +473,29 @@ export default function TransactionsPage() {
           {/* Clear filters */}
           {hasActiveFilters && (
             <Button
-              variant='outline'
+              variant="outline"
               onClick={() => {
                 setSearch('');
                 setTypeFilter('ALL');
                 setStatusFilter('ALL');
                 setCurrentPage(1);
               }}
-              className='hover:bg-destructive/10! text-destructive! border-destructive! focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40'
+              className="hover:bg-destructive/10! text-destructive! border-destructive! focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40"
             >
-              <X className='w-3 h-3' /> Clear
+              <X className="w-3 h-3" /> Clear
             </Button>
           )}
         </div>
 
         <Button
-          type='button'
-          variant='outline'
+          type="button"
+          variant="outline"
           onClick={() => {
             setIsRefreshing(true);
             void loadTransactions(currentPage);
           }}
           disabled={loadingTransactions}
-          className='border-sky-600 text-sky-600! hover:bg-sky-600/10 focus-visible:border-sky-600 focus-visible:ring-sky-600/20 dark:border-sky-400 dark:text-sky-400! dark:hover:bg-sky-400/10 dark:focus-visible:border-sky-400 dark:focus-visible:ring-sky-400/40'
+          className="border-sky-600 text-sky-600! hover:bg-sky-600/10 focus-visible:border-sky-600 focus-visible:ring-sky-600/20 dark:border-sky-400 dark:text-sky-400! dark:hover:bg-sky-400/10 dark:focus-visible:border-sky-400 dark:focus-visible:ring-sky-400/40"
         >
           <RotateCw
             className={cn(
@@ -508,25 +508,25 @@ export default function TransactionsPage() {
       </div>
 
       {/* ── Table ── */}
-      <Card className='p-0 rounded-lg dark:bg-[#1c1f2e] dark:border-[#2a2d3e] overflow-hidden flex-1 min-h-0'>
-        <CardContent className='p-0 h-full min-h-0 flex flex-col'>
-          <div className='overflow-auto h-full'>
+      <Card className="p-0 rounded-lg dark:bg-[#1c1f2e] dark:border-[#2a2d3e] overflow-hidden flex-1 min-h-0">
+        <CardContent className="p-0 h-full min-h-0 flex flex-col">
+          <div className="overflow-auto h-full">
             <Table>
               <TableHeader>
-                <TableRow className='border-stone-200 dark:border-[#2a2d3e] bg-stone-50 dark:bg-[#13151f] hover:bg-stone-50 dark:hover:bg-[#13151f]'>
-                  <SortableTH label='Client' field='client' />
-                  <SortableTH label='Listing Owner' field='owner' />
-                  <SortableTH label='Listing' field='listing' />
-                  <SortableTH label='Schedule' field='scheduleEnd' />
-                  <SortableTH label='Total' field='totalPrice' />
-                  <TableHead className='text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest whitespace-nowrap'>
+                <TableRow className="border-stone-200 dark:border-[#2a2d3e] bg-stone-50 dark:bg-[#13151f] hover:bg-stone-50 dark:hover:bg-[#13151f]">
+                  <SortableTH label="Client" field="client" />
+                  <SortableTH label="Listing Owner" field="owner" />
+                  <SortableTH label="Listing" field="listing" />
+                  <SortableTH label="Schedule" field="scheduleEnd" />
+                  <SortableTH label="Total" field="totalPrice" />
+                  <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest whitespace-nowrap">
                     Agreement
                   </TableHead>
-                  <TableHead className='text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest whitespace-nowrap'>
+                  <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest whitespace-nowrap">
                     Status
                   </TableHead>
-                  <SortableTH label='Completed' field='completedAt' />
-                  <SortableTH label='Created' field='createdAt' />
+                  <SortableTH label="Completed" field="completedAt" />
+                  <SortableTH label="Created" field="createdAt" />
                 </TableRow>
               </TableHeader>
 
@@ -535,7 +535,7 @@ export default function TransactionsPage() {
                   <TableRow>
                     <TableCell
                       colSpan={9}
-                      className='py-16 text-center text-sm text-stone-400 dark:text-stone-500'
+                      className="py-16 text-center text-sm text-stone-400 dark:text-stone-500"
                     >
                       Loading transactions...
                     </TableCell>
@@ -544,7 +544,7 @@ export default function TransactionsPage() {
                   <TableRow>
                     <TableCell
                       colSpan={9}
-                      className='py-16 text-center text-sm text-stone-400 dark:text-stone-500'
+                      className="py-16 text-center text-sm text-stone-400 dark:text-stone-500"
                     >
                       No transactions match the current filters.
                     </TableCell>
@@ -556,23 +556,23 @@ export default function TransactionsPage() {
                     return (
                       <TableRow
                         key={transaction.id}
-                        className='border-stone-100 dark:border-[#2a2d3e] hover:bg-stone-50 dark:hover:bg-[#252837] transition-colors'
+                        className="border-stone-100 dark:border-[#2a2d3e] hover:bg-stone-50 dark:hover:bg-[#252837] transition-colors"
                       >
                         {/* Client */}
-                        <TableCell className='py-3.5 min-w-55'>
-                          <div className='flex items-center gap-2.5'>
+                        <TableCell className="py-3.5 min-w-55">
+                          <div className="flex items-center gap-2.5">
                             <ImageLink
                               href={`/profile?userId=${transaction.client_user_id}`}
                               newTab
                               src={transaction.client_profile_image_url}
-                              type='profile'
+                              type="profile"
                               label={transaction.client_full_name}
                             />
-                            <div className='min-w-0'>
-                              <p className='text-sm font-bold text-stone-800 dark:text-stone-100 truncate'>
+                            <div className="min-w-0">
+                              <p className="text-sm font-bold text-stone-800 dark:text-stone-100 truncate">
                                 {transaction.client_full_name}
                               </p>
-                              <p className='text-xs text-stone-500 dark:text-stone-400 truncate'>
+                              <p className="text-xs text-stone-500 dark:text-stone-400 truncate">
                                 {transaction.client_location || '-'}
                               </p>
                             </div>
@@ -580,20 +580,20 @@ export default function TransactionsPage() {
                         </TableCell>
 
                         {/* Owner */}
-                        <TableCell className='py-3.5 min-w-55'>
-                          <div className='flex items-center gap-2.5'>
+                        <TableCell className="py-3.5 min-w-55">
+                          <div className="flex items-center gap-2.5">
                             <ImageLink
                               href={`/profile?userId=${transaction.owner_user_id}`}
                               newTab
                               src={transaction.owner_profile_image_url}
-                              type='profile'
+                              type="profile"
                               label={transaction.owner_full_name}
                             />
-                            <div className='min-w-0'>
-                              <p className='text-sm font-bold text-stone-800 dark:text-stone-100 truncate'>
+                            <div className="min-w-0">
+                              <p className="text-sm font-bold text-stone-800 dark:text-stone-100 truncate">
                                 {transaction.owner_full_name}
                               </p>
-                              <p className='text-xs text-stone-500 dark:text-stone-400 truncate'>
+                              <p className="text-xs text-stone-500 dark:text-stone-400 truncate">
                                 {transaction.owner_location || '-'}
                               </p>
                             </div>
@@ -601,30 +601,30 @@ export default function TransactionsPage() {
                         </TableCell>
 
                         {/* Listing */}
-                        <TableCell className='py-3.5 min-w-65'>
-                          <div className='flex items-center gap-2.5'>
+                        <TableCell className="py-3.5 min-w-65">
+                          <div className="flex items-center gap-2.5">
                             <ImageLink
                               href={`/listing/${transaction.listing_id}`}
                               newTab
                               src={transaction.listing_image_url}
-                              type='thumbnail'
+                              type="thumbnail"
                               label={transaction.listing_title}
                             />
-                            <div className='min-w-0'>
-                              <p className='text-sm font-bold text-stone-800 dark:text-stone-100 truncate'>
+                            <div className="min-w-0">
+                              <p className="text-sm font-bold text-stone-800 dark:text-stone-100 truncate">
                                 {transaction.listing_title}
                               </p>
-                              <div className='flex items-center gap-2 mt-0.5'>
+                              <div className="flex items-center gap-2 mt-0.5">
                                 <span
                                   className={cn(
                                     'inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-md',
                                     typeConfig.cls,
                                   )}
                                 >
-                                  <TypeIcon className='w-2.5 h-2.5' />{' '}
+                                  <TypeIcon className="w-2.5 h-2.5" />{' '}
                                   {typeConfig.label}
                                 </span>
-                                <p className='text-xs text-stone-500 dark:text-stone-400 truncate'>
+                                <p className="text-xs text-stone-500 dark:text-stone-400 truncate">
                                   {formatPrice(transaction.total_price)}{' '}
                                   {transaction.listing_price_unit}
                                 </p>
@@ -634,42 +634,42 @@ export default function TransactionsPage() {
                         </TableCell>
 
                         {/* Schedule */}
-                        <TableCell className='py-3.5 min-w-57.5 whitespace-nowrap'>
-                          <p className='text-sm text-stone-800 dark:text-stone-100'>
+                        <TableCell className="py-3.5 min-w-57.5 whitespace-nowrap">
+                          <p className="text-sm text-stone-800 dark:text-stone-100">
                             {formatDateRange(
                               transaction.start_date,
                               transaction.end_date,
                             )}
                           </p>
-                          <p className='text-xs text-stone-500 dark:text-stone-400'>
+                          <p className="text-xs text-stone-500 dark:text-stone-400">
                             {transaction.selected_time_window || 'N/A'}
                           </p>
                         </TableCell>
 
                         {/* Total Price */}
-                        <TableCell className='py-3.5 min-w-37.5 whitespace-nowrap'>
-                          <p className='text-sm font-bold text-stone-800 dark:text-stone-100'>
+                        <TableCell className="py-3.5 min-w-37.5 whitespace-nowrap">
+                          <p className="text-sm font-bold text-stone-800 dark:text-stone-100">
                             {formatPrice(transaction.total_price)}
                           </p>
-                          <p className='text-xs text-stone-500 dark:text-stone-400'>
+                          <p className="text-xs text-stone-500 dark:text-stone-400">
                             {buildScheduleUnitsLabel(transaction)}
                           </p>
                         </TableCell>
 
                         {/* Agreement */}
-                        <TableCell className='py-3.5 min-w-45 space-y-1.5'>
+                        <TableCell className="py-3.5 min-w-45 space-y-1.5">
                           <DealStateRow
-                            label='Owner'
+                            label="Owner"
                             agreed={Boolean(transaction.provider_agreed)}
                           />
                           <DealStateRow
-                            label='Client'
+                            label="Client"
                             agreed={Boolean(transaction.client_agreed)}
                           />
                         </TableCell>
 
                         {/* Status */}
-                        <TableCell className='py-3.5 whitespace-nowrap'>
+                        <TableCell className="py-3.5 whitespace-nowrap">
                           <span
                             className={cn(
                               'text-xs font-bold px-2 py-0.5 rounded-md',
@@ -682,12 +682,12 @@ export default function TransactionsPage() {
                         </TableCell>
 
                         {/* Completed At */}
-                        <TableCell className='py-3.5 text-sm text-stone-500 dark:text-stone-400 whitespace-nowrap'>
+                        <TableCell className="py-3.5 text-sm text-stone-500 dark:text-stone-400 whitespace-nowrap">
                           {formatDateTime(transaction.completed_at)}
                         </TableCell>
 
                         {/* Created At */}
-                        <TableCell className='py-3.5 text-sm text-stone-500 dark:text-stone-400 whitespace-nowrap'>
+                        <TableCell className="py-3.5 text-sm text-stone-500 dark:text-stone-400 whitespace-nowrap">
                           {formatDateTime(transaction.created_at)}
                         </TableCell>
                       </TableRow>
@@ -698,45 +698,45 @@ export default function TransactionsPage() {
             </Table>
           </div>
 
-          <Separator className='dark:bg-[#2a2d3e]' />
-          <div className='px-4 py-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between text-sm text-stone-400 dark:text-stone-500'>
+          <Separator className="dark:bg-[#2a2d3e]" />
+          <div className="px-4 py-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between text-sm text-stone-400 dark:text-stone-500">
             <span>
               Showing {filtered.length.toLocaleString()} of{' '}
               {totalCount.toLocaleString()} result{totalCount !== 1 ? 's' : ''}
             </span>
-            <div className='flex items-center gap-1.5 self-end sm:self-auto'>
+            <div className="flex items-center gap-1.5 self-end sm:self-auto">
               <Button
-                type='button'
-                variant='outline'
-                size='sm'
+                type="button"
+                variant="outline"
+                size="sm"
                 onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
                 disabled={loadingTransactions || currentPage <= 1}
-                className='h-8 px-2.5'
+                className="h-8 px-2.5"
               >
                 Prev
               </Button>
               {paginationPages.map((page) => (
                 <Button
                   key={page}
-                  type='button'
+                  type="button"
                   variant={page === currentPage ? 'default' : 'outline'}
-                  size='sm'
+                  size="sm"
                   onClick={() => setCurrentPage(page)}
                   disabled={loadingTransactions}
-                  className='h-8 min-w-8 px-2'
+                  className="h-8 min-w-8 px-2"
                 >
                   {page}
                 </Button>
               ))}
               <Button
-                type='button'
-                variant='outline'
-                size='sm'
+                type="button"
+                variant="outline"
+                size="sm"
                 onClick={() =>
                   setCurrentPage((prev) => Math.min(totalPages, prev + 1))
                 }
                 disabled={loadingTransactions || currentPage >= totalPages}
-                className='h-8 px-2.5'
+                className="h-8 px-2.5"
               >
                 Next
               </Button>

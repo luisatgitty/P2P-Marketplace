@@ -125,7 +125,7 @@ export default function ListingTypeBadge({
   }
 
   return (
-    <span className='inline-flex items-center gap-1.5'>
+    <span className="inline-flex items-center gap-1.5">
       <span
         className={cn(
           'inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded',

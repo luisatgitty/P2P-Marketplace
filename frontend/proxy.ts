@@ -1,4 +1,4 @@
-import { NextResponse, NextRequest } from 'next/server';
+import { type NextRequest, NextResponse } from 'next/server';
 
 export function proxy(request: NextRequest) {
   const PUBLIC_ROUTES = [

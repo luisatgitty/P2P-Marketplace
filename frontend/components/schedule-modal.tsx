@@ -1,26 +1,27 @@
 'use client';
 
+import { ClockIcon, Package } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
-import { Package, ClockIcon } from 'lucide-react';
 import { toast } from 'sonner';
+
+import { ModalFormCard } from '@/components/modal-form-card';
+import {
+  BookingCalendar,
+  type BookingCalendarColors,
+} from '@/components/ui/booking-calendar';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
+import type { ListingType } from '@/types/listings';
 import {
   isDayUnavailableByDaysOff,
   normalizeDaysOff,
   parseDateOnly,
 } from '@/utils/scheduleAvailability';
-import { Label } from './ui/label';
-import { Input } from './ui/input';
-import { Textarea } from './ui/textarea';
-import { ModalFormCard } from './modal-form-card';
 import {
-  BookingCalendar,
-  type BookingCalendarColors,
-} from './ui/booking-calendar';
-import { ListingType } from '@/types/listings';
-import {
-  MESSAGE_MAX_LENGTH,
   limitMessageInputLength,
+  MESSAGE_MAX_LENGTH,
 } from '@/utils/validation';
 
 // ── Date helpers ───────────────────────────────────────────────────────────────
@@ -102,11 +103,11 @@ interface ResolvedTimeWindow {
 // ── Shared legend ──────────────────────────────────────────────────────────────
 function CalLegend({ items }: { items: { dot: string; label: string }[] }) {
   return (
-    <div className='flex flex-wrap gap-x-4 gap-y-1 mt-3 pt-3 border-t border-stone-200 dark:border-[#2a2d3e]'>
+    <div className="flex flex-wrap gap-x-4 gap-y-1 mt-3 pt-3 border-t border-stone-200 dark:border-[#2a2d3e]">
       {items.map(({ dot, label }) => (
         <div
           key={label}
-          className='flex items-center gap-1.5 text-[11px] text-stone-500 dark:text-stone-400'
+          className="flex items-center gap-1.5 text-[11px] text-stone-500 dark:text-stone-400"
         >
           <span className={cn('w-2.5 h-2.5 rounded-full shrink-0', dot)} />
           {label}
@@ -484,7 +485,7 @@ export function ScheduleModal({
     <ModalFormCard
       icon={Package}
       type={type}
-      title='Request a Schedule'
+      title="Request a Schedule"
       subTitle={listingTitle}
       onClose={onClose}
       handleSend={handleSend}
@@ -494,22 +495,22 @@ export function ScheduleModal({
     >
       {/* Calendar section */}
       <div>
-        <div className='flex items-center justify-between mb-3'>
-          <p className='text-[11px] font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest'>
-            Select Dates <span className='text-red-400 text-sm'>*</span>
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-[11px] font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest">
+            Select Dates <span className="text-red-400 text-sm">*</span>
           </p>
           {(startDate || endDate) && (
             <button
-              type='button'
+              type="button"
               onClick={handleClear}
-              className='text-xs text-stone-400 hover:text-red-500 dark:hover:text-red-400 transition-colors'
+              className="text-xs text-stone-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
             >
               Clear selection
             </button>
           )}
         </div>
 
-        <div className='bg-stone-50 dark:bg-[#13151f] rounded-lg p-4 border border-stone-200 dark:border-[#2a2d3e]'>
+        <div className="bg-stone-50 dark:bg-[#13151f] rounded-lg p-4 border border-stone-200 dark:border-[#2a2d3e]">
           <BookingCalendar
             viewYear={viewYear}
             viewMonth={viewMonth}
@@ -537,23 +538,23 @@ export function ScheduleModal({
 
       {/* Time window picker */}
       <div>
-        <div className='flex items-center gap-2 mb-3'>
-          <p className='text-[11px] font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest'>
+        <div className="flex items-center gap-2 mb-3">
+          <p className="text-[11px] font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest">
             Preferred Time Window{' '}
-            <span className='text-red-400 text-sm'>*</span>
+            <span className="text-red-400 text-sm">*</span>
           </p>
         </div>
 
         {hasPresetTimeWindows ? (
           <>
-            <p className='text-xs text-stone-500 dark:text-stone-400 mb-3'>
+            <p className="text-xs text-stone-500 dark:text-stone-400 mb-3">
               Select from the provider&apos;s available time windows.
             </p>
-            <div className='grid grid-cols-2 gap-2'>
+            <div className="grid grid-cols-2 gap-2">
               {resolvedTimeWindows.map((tw) => (
                 <button
                   key={tw.id}
-                  type='button'
+                  type="button"
                   onClick={() =>
                     setWindow((prev) => (prev === tw.id ? null : tw.id))
                   }
@@ -571,46 +572,46 @@ export function ScheduleModal({
           </>
         ) : (
           <>
-            <p className='text-xs text-stone-500 dark:text-stone-400 mb-3'>
+            <p className="text-xs text-stone-500 dark:text-stone-400 mb-3">
               No fixed time windows are set for this listing. Choose your
               preferred time range.
             </p>
-            <div className='flex items-center gap-2 mb-3'>
+            <div className="flex items-center gap-2 mb-3">
               <Label htmlFor={'start-time'}>Start time</Label>
-              <div className='relative grow'>
+              <div className="relative grow">
                 <Input
                   id={'start-time'}
-                  type='time'
+                  type="time"
                   value={manualStartTime}
                   onChange={(e) => setManualStartTime(e.target.value)}
-                  className='peer appearance-none pl-9 text-sm [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none'
+                  className="peer appearance-none pl-9 text-sm [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none"
                 />
-                <div className='text-muted-foreground/80 pointer-events-none absolute inset-y-0 left-0 flex items-center justify-center pl-3 peer-disabled:opacity-50'>
-                  <ClockIcon size={16} aria-hidden='true' />
+                <div className="text-muted-foreground/80 pointer-events-none absolute inset-y-0 left-0 flex items-center justify-center pl-3 peer-disabled:opacity-50">
+                  <ClockIcon size={16} aria-hidden="true" />
                 </div>
               </div>
             </div>
 
-            <div className='flex items-center gap-2 mb-1'>
-              <Label htmlFor={'end-time'} className='pr-1.5'>
+            <div className="flex items-center gap-2 mb-1">
+              <Label htmlFor={'end-time'} className="pr-1.5">
                 End time
               </Label>
-              <div className='relative grow'>
+              <div className="relative grow">
                 <Input
                   id={'end-time'}
-                  type='time'
+                  type="time"
                   value={manualEndTime}
                   onChange={(e) => setManualEndTime(e.target.value)}
-                  className='peer appearance-none pl-9 text-sm [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none'
+                  className="peer appearance-none pl-9 text-sm [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none"
                 />
-                <div className='text-muted-foreground/80 pointer-events-none absolute inset-y-0 left-0 flex items-center justify-center pl-3 peer-disabled:opacity-50'>
-                  <ClockIcon size={16} aria-hidden='true' />
+                <div className="text-muted-foreground/80 pointer-events-none absolute inset-y-0 left-0 flex items-center justify-center pl-3 peer-disabled:opacity-50">
+                  <ClockIcon size={16} aria-hidden="true" />
                 </div>
               </div>
             </div>
 
             {!manualTimeRangeValid && (
-              <p className='text-xs text-red-500 mt-2'>
+              <p className="text-xs text-red-500 mt-2">
                 End time must be later than start time.
               </p>
             )}
@@ -620,7 +621,7 @@ export function ScheduleModal({
 
       {/* Step / selection summary */}
       {stepMessage.phase < 3 ? (
-        <div className='flex items-center gap-3 bg-teal-50 dark:bg-teal-950/20 border border-teal-200 dark:border-teal-800 rounded-lg px-4 py-3'>
+        <div className="flex items-center gap-3 bg-teal-50 dark:bg-teal-950/20 border border-teal-200 dark:border-teal-800 rounded-lg px-4 py-3">
           <div
             className={cn(
               'w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0',
@@ -631,7 +632,7 @@ export function ScheduleModal({
           >
             1
           </div>
-          <div className='w-8 h-0.5 bg-teal-200 dark:bg-teal-800 shrink-0' />
+          <div className="w-8 h-0.5 bg-teal-200 dark:bg-teal-800 shrink-0" />
           <div
             className={cn(
               'w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0',
@@ -642,7 +643,7 @@ export function ScheduleModal({
           >
             2
           </div>
-          <p className='text-xs text-teal-700 dark:text-teal-300 font-medium'>
+          <p className="text-xs text-teal-700 dark:text-teal-300 font-medium">
             {stepMessage.text}
           </p>
         </div>
@@ -650,21 +651,21 @@ export function ScheduleModal({
         /* Complete range summary card */
         startDate &&
         endDate && (
-          <div className='bg-teal-50 dark:bg-teal-950/20 border border-teal-200 dark:border-teal-800 rounded-lg px-4 py-3.5 flex flex-col gap-2'>
-            <div className='grid grid-cols-2 gap-3'>
+          <div className="bg-teal-50 dark:bg-teal-950/20 border border-teal-200 dark:border-teal-800 rounded-lg px-4 py-3.5 flex flex-col gap-2">
+            <div className="grid grid-cols-2 gap-3">
               <div>
-                <p className='text-[10px] font-bold text-teal-600 dark:text-teal-500 uppercase tracking-widest mb-1'>
+                <p className="text-[10px] font-bold text-teal-600 dark:text-teal-500 uppercase tracking-widest mb-1">
                   Check-in
                 </p>
-                <p className='text-sm font-bold text-stone-800 dark:text-stone-100'>
+                <p className="text-sm font-bold text-stone-800 dark:text-stone-100">
                   {fmtDate(startDate)}
                 </p>
               </div>
               <div>
-                <p className='text-[10px] font-bold text-teal-600 dark:text-teal-500 uppercase tracking-widest mb-1'>
+                <p className="text-[10px] font-bold text-teal-600 dark:text-teal-500 uppercase tracking-widest mb-1">
                   Check-out
                 </p>
-                <p className='text-sm font-bold text-stone-800 dark:text-stone-100'>
+                <p className="text-sm font-bold text-stone-800 dark:text-stone-100">
                   {fmtDate(endDate)}
                 </p>
               </div>
@@ -684,11 +685,11 @@ export function ScheduleModal({
             </div> */}
 
             {(selectedWindowLabel || manualTimeLabel) && (
-              <div className='border-t border-teal-200 dark:border-teal-800 pt-2'>
-                <p className='text-xs text-stone-500 dark:text-stone-400'>
+              <div className="border-t border-teal-200 dark:border-teal-800 pt-2">
+                <p className="text-xs text-stone-500 dark:text-stone-400">
                   Preferred time
                 </p>
-                <p className='text-sm font-semibold text-stone-800 dark:text-stone-100'>
+                <p className="text-sm font-semibold text-stone-800 dark:text-stone-100">
                   {selectedWindowLabel || manualTimeLabel}
                 </p>
               </div>
@@ -699,9 +700,9 @@ export function ScheduleModal({
 
       {/* Optional message */}
       <div>
-        <label className='text-[11px] font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest mb-2 block'>
+        <label className="text-[11px] font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest mb-2 block">
           Message{' '}
-          <span className='font-normal normal-case tracking-normal text-stone-400 dark:text-stone-500'>
+          <span className="font-normal normal-case tracking-normal text-stone-400 dark:text-stone-500">
             (optional)
           </span>
         </label>
@@ -710,8 +711,8 @@ export function ScheduleModal({
           value={message}
           onChange={(e) => setMessage(limitMessageInputLength(e.target.value))}
           maxLength={MESSAGE_MAX_LENGTH}
-          placeholder='Enter any specific requests or questions for the seller here.'
-          className='w-full max-h-24 bg-stone-50 dark:bg-[#13151f] border border-stone-200 dark:border-[#2a2d3e] rounded-lg px-3 py-2.5 text-sm text-stone-800 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-600 outline-none focus:border-teal-400 dark:focus:border-teal-600 resize-none transition-colors'
+          placeholder="Enter any specific requests or questions for the seller here."
+          className="w-full max-h-24 bg-stone-50 dark:bg-[#13151f] border border-stone-200 dark:border-[#2a2d3e] rounded-lg px-3 py-2.5 text-sm text-stone-800 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-600 outline-none focus:border-teal-400 dark:focus:border-teal-600 resize-none transition-colors"
         />
       </div>
     </ModalFormCard>

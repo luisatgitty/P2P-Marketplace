@@ -4,9 +4,9 @@ import type {
   MessageTab,
   ReactionType,
   ReplyPreview,
-} from "@/types/messaging";
+} from '@/types/messaging';
 
-const API = process.env.NEXT_PUBLIC_API_URL ?? "";
+const API = process.env.NEXT_PUBLIC_API_URL ?? '';
 
 type ApiSuccess<T> = {
   retCode: string;
@@ -55,15 +55,15 @@ export type MessagesPage = {
 };
 
 function emitMessagesUpdate() {
-  if (typeof window !== "undefined") {
-    window.dispatchEvent(new Event("messages:updated"));
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event('messages:updated'));
   }
 }
 
 async function apiFetch<T>(route: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${API}${route}`, {
-    credentials: "include",
-    headers: { "Content-Type": "application/json" },
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
     ...options,
   });
   const parsed = (await res.json()) as Partial<ApiSuccess<T>> & {
@@ -71,7 +71,10 @@ async function apiFetch<T>(route: string, options?: RequestInit): Promise<T> {
   };
 
   if (!res.ok) {
-    throw new Error(parsed?.data?.message ?? "An unexpected error occurred. Please try again later.");
+    throw new Error(
+      parsed?.data?.message ??
+        'An unexpected error occurred. Please try again later.',
+    );
   }
 
   return (parsed.data ?? {}) as T;
@@ -80,32 +83,42 @@ async function apiFetch<T>(route: string, options?: RequestInit): Promise<T> {
 // ─── Public API ───────────────────────────────────────────────────────────────
 
 export async function getConversations(): Promise<Conversation[]> {
-  const data = await apiFetch<{ conversations: Conversation[] }>("/messages/conversations", {
-    method: "GET",
-  });
+  const data = await apiFetch<{ conversations: Conversation[] }>(
+    '/messages/conversations',
+    {
+      method: 'GET',
+    },
+  );
   return data.conversations ?? [];
 }
 
-export async function getConversationsPage(query: ConversationsPageQuery = {}): Promise<ConversationsPage> {
+export async function getConversationsPage(
+  query: ConversationsPageQuery = {},
+): Promise<ConversationsPage> {
   const params = new URLSearchParams();
   if (Number.isFinite(query.limit)) {
-    params.set("limit", String(query.limit));
+    params.set('limit', String(query.limit));
   }
   if (Number.isFinite(query.offset)) {
-    params.set("offset", String(query.offset));
+    params.set('offset', String(query.offset));
   }
-  if (typeof query.search === "string" && query.search.trim() !== "") {
-    params.set("search", query.search.trim());
+  if (typeof query.search === 'string' && query.search.trim() !== '') {
+    params.set('search', query.search.trim());
   }
-  if (typeof query.tab === "string" && query.tab.trim() !== "") {
-    params.set("tab", query.tab.trim());
+  if (typeof query.tab === 'string' && query.tab.trim() !== '') {
+    params.set('tab', query.tab.trim());
   }
 
-  const suffix = params.size > 0 ? `?${params.toString()}` : "";
+  const suffix = params.size > 0 ? `?${params.toString()}` : '';
 
   try {
-    const data = await apiFetch<{ conversations: Conversation[]; total?: number; limit?: number; offset?: number }>(`/messages/conversations${suffix}`, {
-      method: "GET",
+    const data = await apiFetch<{
+      conversations: Conversation[];
+      total?: number;
+      limit?: number;
+      offset?: number;
+    }>(`/messages/conversations${suffix}`, {
+      method: 'GET',
     });
 
     const conversations = data.conversations ?? [];
@@ -129,31 +142,44 @@ export async function getConversationsPage(query: ConversationsPageQuery = {}): 
   }
 }
 
-export async function getConversation(id: string): Promise<Conversation | null> {
+export async function getConversation(
+  id: string,
+): Promise<Conversation | null> {
   try {
-    const data = await apiFetch<{ conversation: Conversation }>(`/messages/conversations/${id}`, {
-      method: "GET",
-    });
+    const data = await apiFetch<{ conversation: Conversation }>(
+      `/messages/conversations/${id}`,
+      {
+        method: 'GET',
+      },
+    );
     return data.conversation ?? null;
   } catch {
     return null;
   }
 }
 
-export async function getMessages(conversationId: string, query: MessagesPageQuery = {}): Promise<MessagesPage> {
+export async function getMessages(
+  conversationId: string,
+  query: MessagesPageQuery = {},
+): Promise<MessagesPage> {
   const params = new URLSearchParams();
   if (Number.isFinite(query.limit)) {
-    params.set("limit", String(query.limit));
+    params.set('limit', String(query.limit));
   }
   if (Number.isFinite(query.offset)) {
-    params.set("offset", String(query.offset));
+    params.set('offset', String(query.offset));
   }
 
-  const suffix = params.size > 0 ? `?${params.toString()}` : "";
+  const suffix = params.size > 0 ? `?${params.toString()}` : '';
 
   try {
-    const data = await apiFetch<{ messages: Message[]; total?: number; limit?: number; offset?: number }>(`/messages/conversations/${conversationId}/messages${suffix}`, {
-      method: "GET",
+    const data = await apiFetch<{
+      messages: Message[];
+      total?: number;
+      limit?: number;
+      offset?: number;
+    }>(`/messages/conversations/${conversationId}/messages${suffix}`, {
+      method: 'GET',
     });
 
     const messages = data.messages ?? [];
@@ -183,14 +209,17 @@ export async function sendMessage(
   attachments: OutgoingMessageAttachment[],
   replyTo?: ReplyPreview | null,
 ): Promise<Message> {
-  const data = await apiFetch<{ message: Message }>(`/messages/conversations/${conversationId}/messages`, {
-    method: "POST",
-    body: JSON.stringify({
-      content,
-      attachments,
-      replyTo: replyTo?.messageId ? { messageId: replyTo.messageId } : null,
-    }),
-  });
+  const data = await apiFetch<{ message: Message }>(
+    `/messages/conversations/${conversationId}/messages`,
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        content,
+        attachments,
+        replyTo: replyTo?.messageId ? { messageId: replyTo.messageId } : null,
+      }),
+    },
+  );
   emitMessagesUpdate();
   return {
     ...data.message,
@@ -204,10 +233,13 @@ export async function reactToMessage(
   _userId: string,
   reaction: ReactionType | null,
 ): Promise<void> {
-  await apiFetch<{}>(`/messages/conversations/${conversationId}/messages/${messageId}/reaction`, {
-    method: "PATCH",
-    body: JSON.stringify({ reaction }),
-  });
+  await apiFetch<{}>(
+    `/messages/conversations/${conversationId}/messages/${messageId}/reaction`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify({ reaction }),
+    },
+  );
 }
 
 export async function editMessage(
@@ -215,10 +247,13 @@ export async function editMessage(
   messageId: string,
   newContent: string,
 ): Promise<void> {
-  await apiFetch<{}>(`/messages/conversations/${conversationId}/messages/${messageId}`, {
-    method: "PATCH",
-    body: JSON.stringify({ content: newContent }),
-  });
+  await apiFetch<{}>(
+    `/messages/conversations/${conversationId}/messages/${messageId}`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify({ content: newContent }),
+    },
+  );
   emitMessagesUpdate();
 }
 
@@ -227,22 +262,29 @@ export async function deleteMessage(
   messageId: string,
   unsend: boolean,
 ): Promise<void> {
-  await apiFetch<{}>(`/messages/conversations/${conversationId}/messages/${messageId}?unsend=${unsend ? "true" : "false"}`, {
-    method: "DELETE",
-  });
+  await apiFetch<{}>(
+    `/messages/conversations/${conversationId}/messages/${messageId}?unsend=${unsend ? 'true' : 'false'}`,
+    {
+      method: 'DELETE',
+    },
+  );
   emitMessagesUpdate();
 }
 
-export async function markConversationRead(conversationId: string): Promise<void> {
+export async function markConversationRead(
+  conversationId: string,
+): Promise<void> {
   await apiFetch<{}>(`/messages/conversations/${conversationId}/read`, {
-    method: "PATCH",
+    method: 'PATCH',
   });
   emitMessagesUpdate();
 }
 
-export async function deleteConversation(conversationId: string): Promise<void> {
+export async function deleteConversation(
+  conversationId: string,
+): Promise<void> {
   await apiFetch<{}>(`/messages/conversations/${conversationId}`, {
-    method: "DELETE",
+    method: 'DELETE',
   });
   emitMessagesUpdate();
 }
@@ -253,51 +295,69 @@ export async function openOrCreateConversationFromListing(
   offerMessage?: string,
   schedule?: ScheduleRequestPayload,
 ): Promise<string> {
-  const data = await apiFetch<{ conversationId: string }>("/messages/conversations/from-listing", {
-    method: "POST",
-    body: JSON.stringify({
-      listingId,
-      offerPrice: Number.isFinite(offerPrice) && (offerPrice ?? 0) > 0 ? Math.trunc(offerPrice as number) : undefined,
-      offerMessage: (offerMessage ?? "").trim() || undefined,
-      startDate: schedule?.startDate,
-      endDate: schedule?.endDate,
-      startTime: schedule?.startTime,
-      endTime: schedule?.endTime,
-      scheduleMessage: (schedule?.message ?? "").trim() || undefined,
-    }),
-  });
+  const data = await apiFetch<{ conversationId: string }>(
+    '/messages/conversations/from-listing',
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        listingId,
+        offerPrice:
+          Number.isFinite(offerPrice) && (offerPrice ?? 0) > 0
+            ? Math.trunc(offerPrice as number)
+            : undefined,
+        offerMessage: (offerMessage ?? '').trim() || undefined,
+        startDate: schedule?.startDate,
+        endDate: schedule?.endDate,
+        startTime: schedule?.startTime,
+        endTime: schedule?.endTime,
+        scheduleMessage: (schedule?.message ?? '').trim() || undefined,
+      }),
+    },
+  );
   emitMessagesUpdate();
   return data.conversationId;
 }
 
-export async function updateConversationOfferAsOwner(conversationId: string, offerPrice?: number, offerMessage?: string): Promise<void> {
+export async function updateConversationOfferAsOwner(
+  conversationId: string,
+  offerPrice?: number,
+  offerMessage?: string,
+): Promise<void> {
   await apiFetch<{}>(`/messages/conversations/${conversationId}/offer`, {
-    method: "PATCH",
+    method: 'PATCH',
     body: JSON.stringify({
-      offerPrice: Number.isFinite(offerPrice) && (offerPrice ?? 0) > 0 ? Math.trunc(offerPrice as number) : undefined,
-      offerMessage: (offerMessage ?? "").trim() || undefined,
+      offerPrice:
+        Number.isFinite(offerPrice) && (offerPrice ?? 0) > 0
+          ? Math.trunc(offerPrice as number)
+          : undefined,
+      offerMessage: (offerMessage ?? '').trim() || undefined,
     }),
   });
   emitMessagesUpdate();
 }
 
-export async function updateConversationScheduleAsOwner(conversationId: string, schedule: ScheduleRequestPayload): Promise<void> {
+export async function updateConversationScheduleAsOwner(
+  conversationId: string,
+  schedule: ScheduleRequestPayload,
+): Promise<void> {
   await apiFetch<{}>(`/messages/conversations/${conversationId}/schedule`, {
-    method: "PATCH",
+    method: 'PATCH',
     body: JSON.stringify({
       startDate: schedule.startDate,
       endDate: schedule.endDate,
       startTime: schedule.startTime,
       endTime: schedule.endTime,
-      scheduleMessage: (schedule.message ?? "").trim() || undefined,
+      scheduleMessage: (schedule.message ?? '').trim() || undefined,
     }),
   });
   emitMessagesUpdate();
 }
 
-export async function toggleConversationDealAgreement(conversationId: string): Promise<void> {
+export async function toggleConversationDealAgreement(
+  conversationId: string,
+): Promise<void> {
   await apiFetch<{}>(`/messages/conversations/${conversationId}/deal`, {
-    method: "PATCH",
+    method: 'PATCH',
   });
   emitMessagesUpdate();
 }

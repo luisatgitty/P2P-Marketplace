@@ -1,4 +1,4 @@
-import { ListingFormData } from '@/components/listing-form';
+import type { ListingFormData } from '@/components/listing-form';
 
 export type ListingEditData = Partial<ListingFormData> & {
   type: 'sell' | 'rent' | 'service';

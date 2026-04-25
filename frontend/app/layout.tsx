@@ -1,12 +1,13 @@
 import type { Metadata } from 'next';
 import { DM_Sans, Geist_Mono, Inter } from 'next/font/google';
-import { UserProvider } from '@/utils/UserContext';
-import { UnsavedChangesProvider } from '@/utils/UnsavedChangesContext';
-import { ConfirmDialogProvider } from '@/utils/ConfirmDialogContext';
-import QueryProvider from '@/components/query-provider';
 import { ThemeProvider } from 'next-themes';
-import { Toaster } from '@/components/ui/sonner';
+
 import AppChrome from '@/components/app-chrome';
+import QueryProvider from '@/components/query-provider';
+import { Toaster } from '@/components/ui/sonner';
+import { ConfirmDialogProvider } from '@/utils/ConfirmDialogContext';
+import { UnsavedChangesProvider } from '@/utils/UnsavedChangesContext';
+import { UserProvider } from '@/utils/UserContext';
 import './globals.css';
 
 const geistMono = Geist_Mono({
@@ -34,17 +35,17 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang='en' suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning>
       <body className={`${inter.variable} ${dmSans.variable} antialiased`}>
         <QueryProvider>
-          <ThemeProvider attribute='class' defaultTheme='system' enableSystem>
+          <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
             <UserProvider>
               <UnsavedChangesProvider>
                 <ConfirmDialogProvider>
-                  <AppChrome slot='top' />
-                  <main className='flex-1'>{children}</main>
+                  <AppChrome slot="top" />
+                  <main className="flex-1">{children}</main>
                   <Toaster />
-                  <AppChrome slot='bottom' />
+                  <AppChrome slot="bottom" />
                 </ConfirmDialogProvider>
               </UnsavedChangesProvider>
             </UserProvider>

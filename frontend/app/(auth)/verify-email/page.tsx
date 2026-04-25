@@ -1,22 +1,23 @@
 'use client';
 
-import { useState, useEffect, useRef, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
+import { Suspense, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { sendPostRequest, getSessionMeta } from '@/services/authService';
-import { useUser } from '@/utils/UserContext';
+
+import { Banner, Container } from '@/components/auth/auth-container';
+import { LoadingPage } from '@/components/loading';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import {
   Field,
+  FieldDescription,
   FieldGroup,
   FieldLabel,
-  FieldDescription,
 } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
-import { Banner, Container } from '@/components/auth/auth-container';
-import { LoadingPage } from '@/components/loading';
-import { SignupForm } from '@/types/forms';
+import { getSessionMeta, sendPostRequest } from '@/services/authService';
+import type { SignupForm } from '@/types/forms';
+import { useUser } from '@/utils/UserContext';
 import { validateOtpCode } from '@/utils/validation';
 
 function VerifyEmailForm() {
@@ -182,27 +183,27 @@ function VerifyEmailForm() {
 
   return (
     <Container>
-      <Card className='overflow-hidden p-0'>
-        <CardContent className='grid p-0 md:grid-cols-2'>
-          <div className='p-6 md:p-8'>
+      <Card className="overflow-hidden p-0">
+        <CardContent className="grid p-0 md:grid-cols-2">
+          <div className="p-6 md:p-8">
             <FieldGroup>
-              <div className='flex flex-col items-center gap-2 text-center mb-4'>
-                <h1 className='text-2xl font-bold'>Verify your email</h1>
-                <p className='text-muted-foreground text-sm'>
+              <div className="flex flex-col items-center gap-2 text-center mb-4">
+                <h1 className="text-2xl font-bold">Verify your email</h1>
+                <p className="text-muted-foreground text-sm">
                   We sent a 6-digit code to
                 </p>
-                <p className='font-medium text-sm'>{form.email}</p>
+                <p className="font-medium text-sm">{form.email}</p>
               </div>
 
               <form onSubmit={handleSubmit}>
                 <Field>
-                  <FieldLabel className='text-center w-full block'>
+                  <FieldLabel className="text-center w-full block">
                     Enter OTP
                   </FieldLabel>
 
                   {/* 6 individual OTP input boxes */}
                   <div
-                    className='flex gap-2 justify-center my-4'
+                    className="flex gap-2 justify-center my-4"
                     onPaste={handlePaste}
                   >
                     {otp.map((digit, index) => (
@@ -211,19 +212,19 @@ function VerifyEmailForm() {
                         ref={(el) => {
                           inputRefs.current[index] = el;
                         }}
-                        type='text'
-                        inputMode='numeric'
+                        type="text"
+                        inputMode="numeric"
                         maxLength={1}
                         minLength={1}
                         value={digit}
                         onChange={(e) => handleOtpChange(index, e.target.value)}
                         onKeyDown={(e) => handleKeyDown(index, e)}
-                        className='w-10 h-12 text-center text-lg font-bold'
+                        className="w-10 h-12 text-center text-lg font-bold"
                       />
                     ))}
                   </div>
 
-                  <FieldDescription className='text-center'>
+                  <FieldDescription className="text-center">
                     {otpTimeLeft > 0 ? (
                       `Code expires in ${formatTime(otpTimeLeft)}`
                     ) : (
@@ -232,23 +233,23 @@ function VerifyEmailForm() {
                   </FieldDescription>
                 </Field>
 
-                <Field className='mt-4 w-xs mx-auto'>
-                  <Button type='submit' disabled={loading}>
+                <Field className="mt-4 w-xs mx-auto">
+                  <Button type="submit" disabled={loading}>
                     {loading ? 'Verifying...' : 'Verify Email'}
                   </Button>
                 </Field>
               </form>
 
               {/* Resend OTP with cooldown */}
-              <div className='text-center text-sm mt-2'>
-                <span className='text-muted-foreground'>
+              <div className="text-center text-sm mt-2">
+                <span className="text-muted-foreground">
                   Didn't receive the code?{' '}
                 </span>
                 <button
-                  type='button'
+                  type="button"
                   onClick={handleResend}
                   disabled={otpResendCooldown > 0}
-                  className='font-medium underline disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed'
+                  className="font-medium underline disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
                 >
                   {otpResendCooldown > 0
                     ? `Resend in ${otpResendCooldown}s`

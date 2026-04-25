@@ -1,11 +1,12 @@
 'use client';
 
+import { Clock, MapPin } from 'lucide-react';
 import Link from 'next/link';
-import { MapPin, Clock } from 'lucide-react';
-import ListingTypeBadge from '@/components/listing-type-badge';
+
 import { ImageLink } from '@/components/image-link';
+import ListingTypeBadge from '@/components/listing-type-badge';
+import type { ListingType } from '@/types/listings';
 import { formatPrice, formatTimeAgo } from '@/utils/string-builder';
-import { ListingType } from '@/types/listings';
 
 export interface PostCardProps {
   id: string;
@@ -44,24 +45,24 @@ export default function PostCard(props: PostCardProps) {
     imageUrl,
   } = props;
   return (
-    <article className='group relative flex flex-col bg-white dark:bg-[#1e2a3a] rounded-lg border border-stone-200 dark:border-white/10 overflow-hidden shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200'>
+    <article className="group relative flex flex-col bg-white dark:bg-[#1e2a3a] rounded-lg border border-stone-200 dark:border-white/10 overflow-hidden shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
       {/* Image */}
-      <div className='relative aspect-square overflow-hidden bg-stone-100 dark:bg-[#151f2e] shrink-0 block'>
+      <div className="relative aspect-square overflow-hidden bg-stone-100 dark:bg-[#151f2e] shrink-0 block">
         <ImageLink
           href={`/listing/${id}`}
           src={imageUrl}
-          type='card'
+          type="card"
           label={title}
-          className='w-full h-full'
+          className="w-full h-full"
         />
-        <div className='absolute top-1 left-2'>
+        <div className="absolute top-1 left-2">
           <ListingTypeBadge
             type={type}
             status={status}
             sellStatus={sellStatus}
-            variant='solid'
-            className='text-[9px] sm:text-[10px] font-extrabold rounded-sm'
-            soldClassName='text-[9px] sm:text-[10px] font-extrabold rounded-sm'
+            variant="solid"
+            className="text-[9px] sm:text-[10px] font-extrabold rounded-sm"
+            soldClassName="text-[9px] sm:text-[10px] font-extrabold rounded-sm"
           />
         </div>
       </div>
@@ -69,26 +70,26 @@ export default function PostCard(props: PostCardProps) {
       {/* Content */}
       <Link
         href={`/listing/${id}`}
-        className='flex flex-col gap-1 p-2.5 sm:p-3 flex-1'
+        className="flex flex-col gap-1 p-2.5 sm:p-3 flex-1"
       >
-        <h3 className='text-xs sm:text-sm font-semibold text-stone-800 dark:text-stone-100 line-clamp-2 leading-snug'>
+        <h3 className="text-xs sm:text-sm font-semibold text-stone-800 dark:text-stone-100 line-clamp-2 leading-snug">
           {title}
         </h3>
-        <p className='text-sm sm:text-base font-bold text-amber-700 dark:text-amber-500 leading-none mt-0.5'>
+        <p className="text-sm sm:text-base font-bold text-amber-700 dark:text-amber-500 leading-none mt-0.5">
           {formatPrice(price)}
           {priceUnit && (
-            <span className='text-[11px] font-normal text-black dark:text-white ml-1'>
+            <span className="text-[11px] font-normal text-black dark:text-white ml-1">
               {priceUnit}
             </span>
           )}
         </p>
-        <div className='flex-1' />
-        <div className='flex items-center justify-between gap-1 text-[10px] sm:text-[11px] text-stone-400 dark:text-stone-500'>
-          <div className='flex items-center gap-0.5 min-w-0'>
-            <MapPin size={11} className='shrink-0' />
-            <span className='truncate'>{location}</span>
+        <div className="flex-1" />
+        <div className="flex items-center justify-between gap-1 text-[10px] sm:text-[11px] text-stone-400 dark:text-stone-500">
+          <div className="flex items-center gap-0.5 min-w-0">
+            <MapPin size={11} className="shrink-0" />
+            <span className="truncate">{location}</span>
           </div>
-          <div className='flex items-center gap-0.5 shrink-0'>
+          <div className="flex items-center gap-0.5 shrink-0">
             <Clock size={11} />
             <span>{formatTimeAgo(postedAt)}</span>
           </div>

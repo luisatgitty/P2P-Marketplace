@@ -1,21 +1,22 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
 import { Pen, X } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { toast } from 'sonner';
+
+import { Textarea } from '@/components/ui/textarea';
+import { cn } from '@/lib/utils';
+import { editMessage } from '@/services/messagingService';
+import { useModalFocusTrap } from '@/utils/useModalFocusTrap';
+import { MESSAGE_MAX_LENGTH } from '@/utils/validation';
 import { Button } from '../ui/button';
 import {
   Card,
+  CardContent,
+  CardFooter,
   CardHeader,
   CardTitle,
-  CardFooter,
-  CardContent,
 } from '../ui/card';
-import { Textarea } from '@/components/ui/textarea';
-import { MESSAGE_MAX_LENGTH } from '@/utils/validation';
-import { cn } from '@/lib/utils';
-import { toast } from 'sonner';
-import { editMessage } from '@/services/messagingService';
-import { useModalFocusTrap } from '@/utils/useModalFocusTrap';
 
 export function MessageEditModal({
   initial,
@@ -44,38 +45,38 @@ export function MessageEditModal({
 
   return (
     <div
-      className='fixed inset-0 z-100 flex items-end sm:items-center justify-center p-4 bg-black/60 backdrop-blur-sm'
+      className="fixed inset-0 z-100 flex items-end sm:items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
       <Card
         ref={dialogRef}
-        role='dialog'
-        aria-modal='true'
+        role="dialog"
+        aria-modal="true"
         tabIndex={-1}
-        className='relative rounded-lg w-full max-w-sm shadow-2xl flex flex-col max-h-[95vh]'
+        className="relative rounded-lg w-full max-w-sm shadow-2xl flex flex-col max-h-[95vh]"
       >
         {/* Close Button */}
         <Button
           variant={'ghost'}
           size={'sm'}
-          type='button'
+          type="button"
           onClick={onClose}
-          className='absolute top-2 right-2'
+          className="absolute top-2 right-2"
         >
-          <X className='w-4 h-4 text-foreground' />
+          <X className="w-4 h-4 text-foreground" />
         </Button>
 
         {/* ── Header ── */}
-        <CardHeader className='flex items-start justify-between shrink-0'>
-          <div className='min-w-0'>
-            <CardTitle className='flex items-center gap-2 mb-1 text-foreground'>
+        <CardHeader className="flex items-start justify-between shrink-0">
+          <div className="min-w-0">
+            <CardTitle className="flex items-center gap-2 mb-1 text-foreground">
               <Pen className={cn('w-4 h-4 shrink-0')} />
               Edit message
             </CardTitle>
           </div>
         </CardHeader>
 
-        <CardContent className='flex flex-col py-4 bg-card overflow-y-auto gap-4'>
+        <CardContent className="flex flex-col py-4 bg-card overflow-y-auto gap-4">
           <Textarea
             ref={ref}
             value={value}
@@ -97,19 +98,19 @@ export function MessageEditModal({
         </CardContent>
 
         {/* ── Footer ── */}
-        <CardFooter className='flex gap-3 shrink-0'>
+        <CardFooter className="flex gap-3 shrink-0">
           <Button
             variant={'outline'}
-            size='lg'
-            type='button'
+            size="lg"
+            type="button"
             onClick={onClose}
-            className='flex-1 rounded-lg border  text-sm font-semibold hover:bg-stone-200 transition-colors'
+            className="flex-1 rounded-lg border  text-sm font-semibold hover:bg-stone-200 transition-colors"
           >
             Cancel
           </Button>
           <Button
-            size='lg'
-            type='button'
+            size="lg"
+            type="button"
             onClick={async () => {
               if (!value.trim() || value.trim() === initial) return;
               setIsLoading(true);

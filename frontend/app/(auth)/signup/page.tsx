@@ -1,7 +1,7 @@
 'use client';
 
-import { SignupForm } from '@/components/auth/signup-form';
 import { Container } from '@/components/auth/auth-container';
+import { SignupForm } from '@/components/auth/signup-form';
 
 export default function SignUp() {
   return (

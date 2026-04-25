@@ -1,20 +1,21 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
 import {
   Check,
   CheckCheck,
-  MoreHorizontal,
-  SmilePlus,
-  Reply,
   Copy,
-  Pencil,
-  Trash2,
   CornerUpLeft,
+  MoreHorizontal,
+  Pencil,
   Play,
+  Reply,
+  SmilePlus,
+  Trash2,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
+
+import { cn } from '@/lib/utils';
 import type {
   Message,
   MessageAttachment,
@@ -22,9 +23,9 @@ import type {
   ReplyPreview,
 } from '@/types/messaging';
 import { REACTIONS } from '@/types/messaging';
-import { SafeImage } from '../ui/safe-image';
-import { MESSAGE_EDIT_DURATION_MS } from '@/utils/validation';
 import { useConfirmDialog } from '@/utils/ConfirmDialogContext';
+import { MESSAGE_EDIT_DURATION_MS } from '@/utils/validation';
+import { SafeImage } from '../ui/safe-image';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -64,9 +65,9 @@ function renderMessageContent(content: string) {
               <a
                 key={`part-${lineIndex}-${partIndex}`}
                 href={part}
-                target='_blank'
-                rel='noopener noreferrer'
-                className='underline underline-offset-2 break-all'
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline underline-offset-2 break-all"
               >
                 {part}
               </a>
@@ -130,16 +131,16 @@ function AttachmentGrid({
           <>
             <video
               src={att.fileUrl}
-              className='w-full h-full object-cover'
-              preload='metadata'
+              className="w-full h-full object-cover"
+              preload="metadata"
               playsInline
             />
-            <div className='absolute inset-0 flex items-center justify-center bg-black/30'>
-              <div className='w-10 h-10 rounded-full bg-white/90 flex items-center justify-center shadow-md'>
+            <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+              <div className="w-10 h-10 rounded-full bg-white/90 flex items-center justify-center shadow-md">
                 <Play
                   size={16}
-                  className='text-stone-800'
-                  fill='currentColor'
+                  className="text-stone-800"
+                  fill="currentColor"
                 />
               </div>
             </div>
@@ -147,11 +148,11 @@ function AttachmentGrid({
         ) : (
           <SafeImage
             src={att.fileUrl}
-            type='thumbnail'
+            type="thumbnail"
             alt={`Attachment ${att.fileName}`}
             width={36}
             height={36}
-            loading='lazy'
+            loading="lazy"
           />
         )}
         {overlay}
@@ -174,9 +175,9 @@ function AttachmentGrid({
 
   if (count === 2) {
     return (
-      <div className='grid grid-cols-2 gap-1'>
+      <div className="grid grid-cols-2 gap-1">
         {attachments.map((att) => (
-          <MediaCell key={att.id} att={att} className='aspect-square' />
+          <MediaCell key={att.id} att={att} className="aspect-square" />
         ))}
       </div>
     );
@@ -188,14 +189,14 @@ function AttachmentGrid({
   const hiddenCount = count - 2;
 
   return (
-    <div className='grid grid-cols-2 gap-1'>
-      <MediaCell att={first} className='aspect-square' />
+    <div className="grid grid-cols-2 gap-1">
+      <MediaCell att={first} className="aspect-square" />
       <MediaCell
         att={second}
-        className='aspect-square'
+        className="aspect-square"
         overlay={
-          <div className='absolute inset-0 flex items-center justify-center bg-black/55'>
-            <span className='text-white font-bold text-lg'>+{hiddenCount}</span>
+          <div className="absolute inset-0 flex items-center justify-center bg-black/55">
+            <span className="text-white font-bold text-lg">+{hiddenCount}</span>
           </div>
         }
       />
@@ -466,7 +467,7 @@ function ReactionSummary({
         >
           {emoji}
           {count > 1 && (
-            <span className='text-stone-500 dark:text-stone-400 font-medium'>
+            <span className="text-stone-500 dark:text-stone-400 font-medium">
               {count}
             </span>
           )}
@@ -719,7 +720,7 @@ export default function MessageBubble({
       <div
         className={cn('flex my-0.5', isMe ? 'justify-end' : 'justify-start')}
       >
-        <p className='italic text-xs text-stone-400 dark:text-stone-600 px-3.5 py-2 rounded-lg border border-dashed border-stone-200 dark:border-stone-700'>
+        <p className="italic text-xs text-stone-400 dark:text-stone-600 px-3.5 py-2 rounded-lg border border-dashed border-stone-200 dark:border-stone-700">
           {isMe ? 'You unsent a message.' : 'This message was unsent.'}
         </p>
       </div>
@@ -742,15 +743,15 @@ export default function MessageBubble({
       )}
     >
       {/* Reaction trigger */}
-      <div className='relative'>
+      <div className="relative">
         <button
           ref={reactionTriggerRef}
           onClick={() => {
             setShowMenu(false);
             setShowReactionPicker((v) => !v);
           }}
-          className='p-1.5 rounded-lg text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-white/10 transition-colors'
-          aria-label='React'
+          className="p-1.5 rounded-lg text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-white/10 transition-colors"
+          aria-label="React"
         >
           <SmilePlus size={15} />
         </button>
@@ -766,15 +767,15 @@ export default function MessageBubble({
       </div>
 
       {/* More options trigger */}
-      <div className='relative'>
+      <div className="relative">
         <button
           ref={menuTriggerRef}
           onClick={() => {
             setShowReactionPicker(false);
             setShowMenu((v) => !v);
           }}
-          className='p-1.5 rounded-lg text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-white/10 transition-colors'
-          aria-label='More options'
+          className="p-1.5 rounded-lg text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-white/10 transition-colors"
+          aria-label="More options"
         >
           <MoreHorizontal size={15} />
         </button>
@@ -896,16 +897,16 @@ export default function MessageBubble({
             <span>{formatTime(message.createdAt)}</span>
             {isMe &&
               (message.status === 'READ' ? (
-                <CheckCheck size={11} className='text-amber-500' />
+                <CheckCheck size={11} className="text-amber-500" />
               ) : message.status === 'DELIVERED' ? (
                 <CheckCheck
                   size={11}
-                  className='text-stone-400 dark:text-stone-500'
+                  className="text-stone-400 dark:text-stone-500"
                 />
               ) : (
                 <Check
                   size={11}
-                  className='text-stone-400 dark:text-stone-500'
+                  className="text-stone-400 dark:text-stone-500"
                 />
               ))}
           </div>

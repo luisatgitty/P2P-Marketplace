@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { Moon, Sun } from 'lucide-react';
 import { useTheme } from 'next-themes';
+import { useEffect, useState } from 'react';
+
 import { cn } from '@/lib/utils';
 
 type ThemeModeSwitchProps = {
@@ -29,9 +30,9 @@ export function ThemeModeSwitch({
 
   return (
     <button
-      type='button'
+      type="button"
       onClick={() => setTheme(isDarkMode ? 'light' : 'dark')}
-      role='switch'
+      role="switch"
       aria-checked={isDarkMode}
       aria-label={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
       title={!showLabel ? (isDarkMode ? 'Light Mode' : 'Dark Mode') : undefined}
@@ -65,9 +66,9 @@ export function ThemeModeSwitch({
           )}
         >
           {mounted && isDarkMode ? (
-            <Moon className='h-3 w-3' />
+            <Moon className="h-3 w-3" />
           ) : (
-            <Sun className='h-3 w-3' />
+            <Sun className="h-3 w-3" />
           )}
         </span>
       </span>

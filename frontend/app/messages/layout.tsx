@@ -1,18 +1,19 @@
 'use client';
 
-import { useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { cn } from '@/lib/utils';
-import type { MessageTab } from '@/types/messaging';
-import MessagesTabNav from '@/components/messages/messages-tab-nav';
-import ConversationsList from '@/components/messages/conversations-list';
+import { useState } from 'react';
+
 import ChatHeader from '@/components/messages/chat-header';
+import ConversationsList from '@/components/messages/conversations-list';
 import ListingContextCard from '@/components/messages/listing-context-card';
 import MessageInput from '@/components/messages/message-input';
 import {
   MessageShellProvider,
   useMessageShell,
 } from '@/components/messages/message-shell-context';
+import MessagesTabNav from '@/components/messages/messages-tab-nav';
+import { cn } from '@/lib/utils';
+import type { MessageTab } from '@/types/messaging';
 
 function ConversationShell({ children }: { children: React.ReactNode }) {
   const { shellState } = useMessageShell();
@@ -39,7 +40,7 @@ function ConversationShell({ children }: { children: React.ReactNode }) {
   );
 
   return (
-    <div className='flex flex-col h-full overflow-hidden bg-[#faf6f0] dark:bg-[#0b0f1a]'>
+    <div className="flex flex-col h-full overflow-hidden bg-[#faf6f0] dark:bg-[#0b0f1a]">
       {conversation ? (
         <>
           <ChatHeader
@@ -48,8 +49,8 @@ function ConversationShell({ children }: { children: React.ReactNode }) {
             onMarkedComplete={onMarkedComplete}
             onOfferUpdated={onOfferUpdated}
           />
-          <div className='relative flex-1 overflow-hidden'>
-            <div className='absolute top-2 left-0 right-0 z-20 2xl:px-59 pointer-events-auto'>
+          <div className="relative flex-1 overflow-hidden">
+            <div className="absolute top-2 left-0 right-0 z-20 2xl:px-59 pointer-events-auto">
               <ListingContextCard
                 conversationId={conversation.id}
                 listing={conversation.listing}
@@ -100,7 +101,7 @@ export default function MessagesLayout({
 
   return (
     <MessageShellProvider>
-      <div className='h-[calc(100vh-60px)] flex overflow-hidden bg-[#faf6f0] dark:bg-[#0b0f1a]'>
+      <div className="h-[calc(100vh-60px)] flex overflow-hidden bg-[#faf6f0] dark:bg-[#0b0f1a]">
         {/* ══════════════════════════════════════════════
           LEFT — conversations list
           • Always visible on md+
@@ -116,11 +117,11 @@ export default function MessagesLayout({
           )}
         >
           {/* Panel header */}
-          <div className='flex items-center px-3 py-3 border-b border-border'>
-            <h1 className='shrink-0 px-1 pr-2 text-base font-bold text-stone-900 dark:text-stone-50 leading-tight'>
+          <div className="flex items-center px-3 py-3 border-b border-border">
+            <h1 className="shrink-0 px-1 pr-2 text-base font-bold text-stone-900 dark:text-stone-50 leading-tight">
               Messages
             </h1>
-            <div className='min-w-0 flex-1'>
+            <div className="min-w-0 flex-1">
               <MessagesTabNav
                 activeTab={activeTab}
                 onTabChange={handleTabChange}

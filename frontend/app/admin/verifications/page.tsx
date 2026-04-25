@@ -1,53 +1,44 @@
 'use client';
 
-import { useState, useMemo, useEffect, useCallback } from 'react';
 import {
-  Search,
-  X,
-  CheckCircle2,
-  XCircle,
-  ShieldCheck,
-  Clock,
-  Eye,
   AlertTriangle,
-  IdCard,
-  User,
-  Phone,
   Calendar,
-  Hash,
-  Monitor,
-  Globe,
+  CheckCircle2,
+  ChevronDown,
+  ChevronsUpDown,
+  ChevronUp,
+  Clock,
   Cpu,
   CreditCard,
-  ChevronDown,
-  ChevronUp,
-  ChevronsUpDown,
-  RotateCw,
   Expand,
+  Eye,
+  Globe,
+  Hash,
+  IdCard,
+  Monitor,
+  Phone,
+  RotateCw,
+  Search,
+  ShieldCheck,
+  User,
+  X,
+  XCircle,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import { useConfirmDialog } from '@/utils/ConfirmDialogContext';
-import { validateImageURL } from '@/utils/validation';
-import { SafeImage } from '@/components/ui/safe-image';
+
 import { ImageLink } from '@/components/image-link';
 import {
-  MediaViewerModal,
   type MediaViewerItem,
+  MediaViewerModal,
 } from '@/components/media-viewer-modal';
-import {
-  getAdminVerifications,
-  setAdminVerificationStatus,
-  type AdminVerificationRecord,
-} from '@/services/adminVerificationsService';
-
 // ── shadcn ─────────────────────────────────────────────────────────────────────
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { SafeImage } from '@/components/ui/safe-image';
 import { Separator } from '@/components/ui/separator';
-import { Textarea } from '@/components/ui/textarea';
 import {
   Table,
   TableBody,
@@ -56,6 +47,15 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { Textarea } from '@/components/ui/textarea';
+import { cn } from '@/lib/utils';
+import {
+  type AdminVerificationRecord,
+  getAdminVerifications,
+  setAdminVerificationStatus,
+} from '@/services/adminVerificationsService';
+import { useConfirmDialog } from '@/utils/ConfirmDialogContext';
+import { validateImageURL } from '@/utils/validation';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 type VerifStatus = 'PENDING' | 'VERIFIED' | 'REJECTED';
@@ -149,7 +149,7 @@ const STATUS_CONFIG: Record<
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <p className='text-xs font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest mb-2.5'>
+    <p className="text-xs font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest mb-2.5">
       {children}
     </p>
   );
@@ -167,10 +167,10 @@ function InfoRow({
   mono?: boolean;
 }) {
   return (
-    <div className='flex items-start gap-2.5'>
-      <Icon className='w-4 h-4 text-stone-400 dark:text-stone-500 shrink-0 mt-2' />
-      <div className='min-w-0 flex-1'>
-        <p className='text-xs font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest leading-none mb-0.5'>
+    <div className="flex items-start gap-2.5">
+      <Icon className="w-4 h-4 text-stone-400 dark:text-stone-500 shrink-0 mt-2" />
+      <div className="min-w-0 flex-1">
+        <p className="text-xs font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest leading-none mb-0.5">
           {label}
         </p>
         <p
@@ -201,39 +201,39 @@ function IdImageCard({
   const resolvedUrl = imageUrl ? validateImageURL(imageUrl) : '';
 
   return (
-    <div className='space-y-1.5'>
-      <p className='text-xs font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest'>
+    <div className="space-y-1.5">
+      <p className="text-xs font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest">
         {label}
       </p>
       {resolvedUrl ? (
-        <div className='relative w-full rounded-lg overflow-hidden border border-stone-200 dark:border-[#2a2d3e] bg-stone-100 dark:bg-[#13151f] hover:opacity-95 transition-opacity'>
+        <div className="relative w-full rounded-lg overflow-hidden border border-stone-200 dark:border-[#2a2d3e] bg-stone-100 dark:bg-[#13151f] hover:opacity-95 transition-opacity">
           <SafeImage
             src={resolvedUrl}
-            type='id'
+            type="id"
             alt={`Image of ${label}`}
             width={120}
             height={120}
-            className='w-full h-auto'
+            className="w-full h-auto"
           />
           {onOpenFullscreen && (
             <button
-              type='button'
+              type="button"
               onClick={(event) => {
                 event.preventDefault();
                 event.stopPropagation();
                 onOpenFullscreen();
               }}
-              className='absolute bottom-2 right-2 w-8 h-8 rounded-md bg-black/60 text-white flex items-center justify-center hover:bg-black/80 transition-colors'
+              className="absolute bottom-2 right-2 w-8 h-8 rounded-md bg-black/60 text-white flex items-center justify-center hover:bg-black/80 transition-colors"
               aria-label={`Open ${label} fullscreen`}
             >
-              <Expand className='w-3.5 h-3.5' />
+              <Expand className="w-3.5 h-3.5" />
             </button>
           )}
         </div>
       ) : (
-        <div className='aspect-4/3 rounded-lg bg-stone-100 dark:bg-[#13151f] border-2 border-dashed border-stone-200 dark:border-[#2a2d3e] flex flex-col items-center justify-center gap-2'>
-          <IdCard className='w-9 h-9 text-stone-300 dark:text-stone-600' />
-          <span className='text-xs font-medium text-stone-400 dark:text-stone-500'>
+        <div className="aspect-4/3 rounded-lg bg-stone-100 dark:bg-[#13151f] border-2 border-dashed border-stone-200 dark:border-[#2a2d3e] flex flex-col items-center justify-center gap-2">
+          <IdCard className="w-9 h-9 text-stone-300 dark:text-stone-600" />
+          <span className="text-xs font-medium text-stone-400 dark:text-stone-500">
             No image
           </span>
         </div>
@@ -252,11 +252,11 @@ function FilterSelect({
   options: [string, string][];
 }) {
   return (
-    <div className='relative shrink-0'>
+    <div className="relative shrink-0">
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className='pl-3 pr-8 py-2 h-9 bg-transparent border border-stone-200 dark:border-[#2a2d3e] rounded-lg text-sm text-stone-700 dark:text-stone-200 outline-none focus:border-stone-400 transition-colors appearance-none cursor-pointer dark:bg-[#13151f]'
+        className="pl-3 pr-8 py-2 h-9 bg-transparent border border-stone-200 dark:border-[#2a2d3e] rounded-lg text-sm text-stone-700 dark:text-stone-200 outline-none focus:border-stone-400 transition-colors appearance-none cursor-pointer dark:bg-[#13151f]"
       >
         {options.map(([v, l]) => (
           <option key={v} value={v}>
@@ -264,18 +264,18 @@ function FilterSelect({
           </option>
         ))}
       </select>
-      <div className='pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2'>
+      <div className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2">
         <svg
-          className='w-3.5 h-3.5 text-stone-400'
-          fill='none'
-          viewBox='0 0 24 24'
-          stroke='currentColor'
+          className="w-3.5 h-3.5 text-stone-400"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
           strokeWidth={2}
         >
           <path
-            strokeLinecap='round'
-            strokeLinejoin='round'
-            d='M19 9l-7 7-7-7'
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M19 9l-7 7-7-7"
           />
         </svg>
       </div>
@@ -362,20 +362,20 @@ function DetailModal({
 
   return (
     <div
-      className='fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm'
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
       {/* ── Modal shell — max-w-5xl two-column ── */}
-      <div className='bg-white dark:bg-[#1c1f2e] rounded-lg w-full max-w-5xl shadow-2xl flex flex-col max-h-[92vh] overflow-hidden'>
+      <div className="bg-white dark:bg-[#1c1f2e] rounded-lg w-full max-w-5xl shadow-2xl flex flex-col max-h-[92vh] overflow-hidden">
         {/* ── Header ─────────────────────────────────────────────────────────── */}
-        <div className='bg-[#1e2433] px-6 py-4 flex items-center justify-between shrink-0 rounded-t-lg'>
-          <div className='flex items-center gap-3 min-w-0'>
-            <IdCard className='w-4 h-4 text-amber-400 shrink-0' />
-            <div className='min-w-0'>
-              <h2 className='text-white font-bold text-base leading-none'>
+        <div className="bg-[#1e2433] px-6 py-4 flex items-center justify-between shrink-0 rounded-t-lg">
+          <div className="flex items-center gap-3 min-w-0">
+            <IdCard className="w-4 h-4 text-amber-400 shrink-0" />
+            <div className="min-w-0">
+              <h2 className="text-white font-bold text-base leading-none">
                 Verification Request
               </h2>
-              <p className='text-slate-400 text-sm mt-0.5 truncate'>
+              <p className="text-slate-400 text-sm mt-0.5 truncate">
                 By {verif.user_name} · Submitted on {verif.submitted_date} ·{' '}
                 {verif.submitted_time}
               </p>
@@ -386,48 +386,48 @@ function DetailModal({
                 sc.cls,
               )}
             >
-              <Icon className='w-3 h-3' /> {sc.label}
+              <Icon className="w-3 h-3" /> {sc.label}
             </span>
           </div>
           <Button
-            type='button'
-            variant='ghost'
-            size='icon'
+            type="button"
+            variant="ghost"
+            size="icon"
             onClick={onClose}
-            className='text-slate-400 hover:text-white hover:bg-white/10 h-7 w-7 shrink-0 ml-3'
+            className="text-slate-400 hover:text-white hover:bg-white/10 h-7 w-7 shrink-0 ml-3"
           >
-            <X className='w-4 h-4' />
+            <X className="w-4 h-4" />
           </Button>
         </div>
 
         {/* ── Two-column body ─────────────────────────────────────────────────── */}
-        <div className='flex-1 overflow-hidden flex flex-col lg:flex-row min-h-0'>
+        <div className="flex-1 overflow-hidden flex flex-col lg:flex-row min-h-0">
           {/* ════ LEFT — Personal + metadata ════ */}
-          <div className='lg:w-[35%] overflow-y-auto border-b lg:border-b-0 lg:border-r border-stone-200 dark:border-[#2a2d3e] p-5 space-y-5'>
+          <div className="lg:w-[35%] overflow-y-auto border-b lg:border-b-0 lg:border-r border-stone-200 dark:border-[#2a2d3e] p-5 space-y-5">
             {/* ── Profile vs. Submitted comparison card ── */}
             <div>
               <SectionLabel>Identity Comparison</SectionLabel>
-              <Card className='py-0 overflow-hidden dark:bg-[#13151f] dark:border-[#2a2d3e]'>
-                <CardContent className='p-0'>
-                  <div className='grid divide-x divide-stone-200 dark:divide-[#2a2d3e]'>
+              <Card className="py-0 overflow-hidden dark:bg-[#13151f] dark:border-[#2a2d3e]">
+                <CardContent className="p-0">
+                  <div className="grid divide-x divide-stone-200 dark:divide-[#2a2d3e]">
                     {/* Registered profile side */}
-                    <div className='p-3.5 space-y-2.5'>
-                      <p className='text-xs font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest'>
+                    <div className="p-3.5 space-y-2.5">
+                      <p className="text-xs font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest">
                         Profile
                       </p>
-                      <div className='flex items-center gap-2.5'>
+                      <div className="flex items-center gap-2.5">
                         <ImageLink
                           href={`/profile?userId=${verif.user_id}`}
                           newTab
                           src={verif.profile_image_url}
-                          type='profile'
+                          type="profile"
                           label={verif.user_name}
                         />
-                        <div className='min-w-0'>
-                          <p className='text-sm font-bold text-stone-800 dark:text-stone-100 truncate'>
+                        <div className="min-w-0">
+                          <p className="text-sm font-bold text-stone-800 dark:text-stone-100 truncate">
                             {verif.user_name}
                           </p>
-                          <p className='text-xs text-stone-400 dark:text-stone-500 truncate'>
+                          <p className="text-xs text-stone-400 dark:text-stone-500 truncate">
                             {verif.user_email}
                           </p>
                         </div>
@@ -437,13 +437,13 @@ function DetailModal({
                     <Separator />
 
                     {/* Submitted info side */}
-                    <div className='p-3.5 space-y-2.5'>
-                      <p className='text-xs font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest'>
+                    <div className="p-3.5 space-y-2.5">
+                      <p className="text-xs font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest">
                         Submitted
                       </p>
-                      <div className='space-y-1.5'>
-                        <div className='flex items-center gap-1.5'>
-                          <User className='w-4 h-4 text-stone-400 shrink-0' />
+                      <div className="space-y-1.5">
+                        <div className="flex items-center gap-1.5">
+                          <User className="w-4 h-4 text-stone-400 shrink-0" />
                           <p
                             className={cn(
                               'text-sm font-semibold truncate',
@@ -455,14 +455,14 @@ function DetailModal({
                             {submittedName}
                           </p>
                           {nameMatch ? (
-                            <CheckCircle2 className='w-4 h-4 text-teal-500 shrink-0' />
+                            <CheckCircle2 className="w-4 h-4 text-teal-500 shrink-0" />
                           ) : (
-                            <AlertTriangle className='w-4 h-4 text-amber-500 shrink-0' />
+                            <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />
                           )}
                         </div>
-                        <div className='flex items-center gap-1.5'>
-                          <Phone className='w-4 h-4 text-stone-400 shrink-0' />
-                          <p className='text-sm font-mono text-stone-700 dark:text-stone-200 truncate'>
+                        <div className="flex items-center gap-1.5">
+                          <Phone className="w-4 h-4 text-stone-400 shrink-0" />
+                          <p className="text-sm font-mono text-stone-700 dark:text-stone-200 truncate">
                             {verif.mobile_number}
                           </p>
                         </div>
@@ -481,12 +481,12 @@ function DetailModal({
                   >
                     {nameMatch ? (
                       <>
-                        <CheckCircle2 className='w-4 h-4' /> Name matches
+                        <CheckCircle2 className="w-4 h-4" /> Name matches
                         registered profile
                       </>
                     ) : (
                       <>
-                        <AlertTriangle className='w-4 h-4' /> Name differs from
+                        <AlertTriangle className="w-4 h-4" /> Name differs from
                         registered profile
                       </>
                     )}
@@ -495,73 +495,73 @@ function DetailModal({
               </Card>
             </div>
 
-            <Separator className='dark:bg-[#2a2d3e]' />
+            <Separator className="dark:bg-[#2a2d3e]" />
 
             {/* ── ID document details ── */}
             <div>
               <SectionLabel>ID Document Details</SectionLabel>
-              <div className='space-y-3.5'>
+              <div className="space-y-3.5">
                 <InfoRow
                   icon={CreditCard}
-                  label='ID Type'
+                  label="ID Type"
                   value={verif.id_type.toUpperCase()}
                 />
                 <InfoRow
                   icon={Hash}
-                  label='ID Number'
+                  label="ID Number"
                   value={verif.id_number}
                   mono
                 />
                 <InfoRow
                   icon={Calendar}
-                  label='Date of Birth'
+                  label="Date of Birth"
                   value={verif.id_birthdate}
                 />
                 <InfoRow
                   icon={Phone}
-                  label='Mobile Number'
+                  label="Mobile Number"
                   value={verif.mobile_number}
                 />
               </div>
             </div>
 
-            <Separator className='dark:bg-[#2a2d3e]' />
+            <Separator className="dark:bg-[#2a2d3e]" />
 
             {/* ── Submission metadata ── */}
             <div>
               <SectionLabel>Submission Metadata</SectionLabel>
-              <div className='space-y-3.5'>
+              <div className="space-y-3.5">
                 <InfoRow
                   icon={Globe}
-                  label='IP Address'
+                  label="IP Address"
                   value={verif.ip_address}
                   mono
                 />
                 <InfoRow
                   icon={Monitor}
-                  label='User Agent'
+                  label="User Agent"
                   value={verif.user_agent}
                 />
               </div>
 
               {/* Hardware JSON — collapsible */}
               {hardwarePretty && (
-                <div className='mt-4'>
+                <div className="mt-4">
                   <button
-                    type='button'
+                    type="button"
                     onClick={() => setHardwareOpen((v) => !v)}
-                    className='w-full flex items-center gap-1.5 text-xs font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest hover:text-stone-600 dark:hover:text-stone-300 transition-colors mb-2'
+                    className="w-full flex items-center gap-1.5 text-xs font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest hover:text-stone-600 dark:hover:text-stone-300 transition-colors mb-2"
                   >
-                    <Cpu className='w-4 h-4' />
+                    <Cpu className="w-4 h-4" />
                     Device Hardware Info
                     {hardwareOpen ? (
-                      <ChevronUp className='w-3 h-3 ml-auto' />
+                      <ChevronUp className="w-3 h-3 ml-auto" />
                     ) : (
-                      <ChevronDown className='w-3 h-3 ml-auto' />
+                      <ChevronDown className="w-3 h-3 ml-auto" />
                     )}
                   </button>
                   {hardwareOpen && (
-                    <pre className='text-sm leading-relaxed font-mono bg-stone-100 dark:bg-[#13151f] border border-stone-200 dark:border-[#2a2d3e] rounded-lg p-3 overflow-x-auto text-stone-600 dark:text-stone-300 whitespace-pre-wrap break-all'>
+                    <pre className="text-sm leading-relaxed font-mono bg-stone-100 dark:bg-[#13151f] border border-stone-200 dark:border-[#2a2d3e] rounded-lg p-3 overflow-x-auto text-stone-600 dark:text-stone-300 whitespace-pre-wrap break-all">
                       {hardwarePretty}
                     </pre>
                   )}
@@ -572,14 +572,14 @@ function DetailModal({
             {/* ── Existing reason ── */}
             {verif.reason && (
               <>
-                <Separator className='dark:bg-[#2a2d3e]' />
-                <div className='rounded-lg bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 p-3.5 space-y-1.5'>
+                <Separator className="dark:bg-[#2a2d3e]" />
+                <div className="rounded-lg bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 p-3.5 space-y-1.5">
                   <SectionLabel>Reason</SectionLabel>
-                  <p className='text-sm text-red-600 dark:text-red-400 leading-relaxed'>
+                  <p className="text-sm text-red-600 dark:text-red-400 leading-relaxed">
                     {verif.reason}
                   </p>
                   {verif.reviewed_by && (
-                    <p className='text-xs text-red-400 dark:text-red-500 mt-1'>
+                    <p className="text-xs text-red-400 dark:text-red-500 mt-1">
                       By {verif.reviewed_by} · {verif.reviewed_at}
                     </p>
                   )}
@@ -589,13 +589,13 @@ function DetailModal({
           </div>
 
           {/* ════ RIGHT — ID images + reject input ════ */}
-          <div className='flex-1 overflow-y-auto p-5 flex flex-col gap-5'>
+          <div className="flex-1 overflow-y-auto p-5 flex flex-col gap-5">
             {/* ID photo captures — larger for easier review */}
             <div>
               <SectionLabel>Uploaded Photos</SectionLabel>
-              <div className='space-y-4'>
+              <div className="space-y-4">
                 <IdImageCard
-                  label='Front of ID'
+                  label="Front of ID"
                   imageUrl={verif.id_image_front_url}
                   onOpenFullscreen={
                     frontImageIndex >= 0
@@ -604,7 +604,7 @@ function DetailModal({
                   }
                 />
                 <IdImageCard
-                  label='Back of ID'
+                  label="Back of ID"
                   imageUrl={verif.id_image_back_url}
                   onOpenFullscreen={
                     backImageIndex >= 0
@@ -613,7 +613,7 @@ function DetailModal({
                   }
                 />
                 <IdImageCard
-                  label='Selfie while holding ID'
+                  label="Selfie while holding ID"
                   imageUrl={verif.selfie_url}
                   onOpenFullscreen={
                     selfieImageIndex >= 0
@@ -627,11 +627,11 @@ function DetailModal({
             {/* ── Reject reason field — visible for PENDING only ── */}
             {verif.status === 'PENDING' && (
               <>
-                <Separator className='dark:bg-[#2a2d3e]' />
-                <div className='space-y-1.5'>
-                  <Label className='text-xs font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest'>
+                <Separator className="dark:bg-[#2a2d3e]" />
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest">
                     Reason
-                    <span className='normal-case font-normal text-stone-400 dark:text-stone-600 ml-1.5'>
+                    <span className="normal-case font-normal text-stone-400 dark:text-stone-600 ml-1.5">
                       — required for approve/reject
                     </span>
                   </Label>
@@ -642,10 +642,10 @@ function DetailModal({
                       setRejectReason(e.target.value.slice(0, reasonMaxLength))
                     }
                     maxLength={reasonMaxLength}
-                    placeholder='Explain clearly why the submission is being rejected so the user can resubmit correctly…'
-                    className='resize-none text-xs dark:bg-[#13151f] dark:border-[#2a2d3e] dark:text-stone-100 dark:placeholder-stone-600'
+                    placeholder="Explain clearly why the submission is being rejected so the user can resubmit correctly…"
+                    className="resize-none text-xs dark:bg-[#13151f] dark:border-[#2a2d3e] dark:text-stone-100 dark:placeholder-stone-600"
                   />
-                  <p className='text-xs text-stone-400 dark:text-stone-500'>
+                  <p className="text-xs text-stone-400 dark:text-stone-500">
                     This message will be shown to the applicant.{' '}
                     {rejectReason.length} / {reasonMaxLength}
                   </p>
@@ -656,35 +656,35 @@ function DetailModal({
         </div>
 
         {/* ── Footer actions ───────────────────────────────────────────────────── */}
-        <div className='shrink-0 border-t border-stone-200 dark:border-[#2a2d3e] px-6 py-4 flex items-center gap-2.5 rounded-b-lg bg-white dark:bg-[#1c1f2e]'>
+        <div className="shrink-0 border-t border-stone-200 dark:border-[#2a2d3e] px-6 py-4 flex items-center gap-2.5 rounded-b-lg bg-white dark:bg-[#1c1f2e]">
           <Button
-            type='button'
-            variant='outline'
+            type="button"
+            variant="outline"
             onClick={onClose}
-            className='rounded-lg dark:border-[#2a2d3e] dark:text-stone-300 dark:hover:bg-[#252837]'
+            className="rounded-lg dark:border-[#2a2d3e] dark:text-stone-300 dark:hover:bg-[#252837]"
           >
             Close
           </Button>
 
           {verif.status === 'PENDING' && (
-            <div className='flex items-center gap-2.5 ml-auto'>
+            <div className="flex items-center gap-2.5 ml-auto">
               <Button
-                type='button'
-                variant='outline'
+                type="button"
+                variant="outline"
                 disabled={!hasReason || actionLoading}
                 onClick={() => void onReject(verif.id, rejectReason.trim())}
-                className='rounded-lg border-red-200 dark:border-red-800 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 hover:text-red-600 hover:border-red-300 disabled:opacity-40 disabled:cursor-not-allowed'
+                className="rounded-lg border-red-200 dark:border-red-800 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 hover:text-red-600 hover:border-red-300 disabled:opacity-40 disabled:cursor-not-allowed"
               >
-                <XCircle className='w-4 h-4 mr-1.5' />
+                <XCircle className="w-4 h-4 mr-1.5" />
                 Reject
               </Button>
               <Button
-                type='button'
+                type="button"
                 disabled={!hasReason || actionLoading}
                 onClick={() => void onApprove(verif.id, rejectReason.trim())}
-                className='rounded-lg bg-teal-700 hover:bg-teal-600 text-white font-bold'
+                className="rounded-lg bg-teal-700 hover:bg-teal-600 text-white font-bold"
               >
-                <CheckCircle2 className='w-4 h-4 mr-1.5' />
+                <CheckCircle2 className="w-4 h-4 mr-1.5" />
                 Approve
               </Button>
             </div>
@@ -842,7 +842,7 @@ export default function VerificationsPage() {
   }, [currentPage, loadVerifications]);
 
   const filtered = useMemo(() => {
-    let data = [...records];
+    const data = [...records];
 
     data.sort((a, b) => {
       let va: string | number = '';
@@ -883,7 +883,7 @@ export default function VerificationsPage() {
   const paginationPages = useMemo(() => {
     const maxButtons = 5;
     let start = Math.max(1, currentPage - 2);
-    let end = Math.min(totalPages, start + maxButtons - 1);
+    const end = Math.min(totalPages, start + maxButtons - 1);
     start = Math.max(1, end - maxButtons + 1);
     return Array.from({ length: end - start + 1 }, (_, idx) => start + idx);
   }, [currentPage, totalPages]);
@@ -891,12 +891,12 @@ export default function VerificationsPage() {
   const SortIcon = ({ field }: { field: SortField }) => {
     if (sort.field !== field)
       return (
-        <ChevronsUpDown className='w-3 h-3 text-stone-300 dark:text-stone-600 ml-1' />
+        <ChevronsUpDown className="w-3 h-3 text-stone-300 dark:text-stone-600 ml-1" />
       );
     return sort.dir === 'asc' ? (
-      <ChevronUp className='w-3 h-3 ml-1' />
+      <ChevronUp className="w-3 h-3 ml-1" />
     ) : (
-      <ChevronDown className='w-3 h-3 ml-1' />
+      <ChevronDown className="w-3 h-3 ml-1" />
     );
   };
 
@@ -908,10 +908,10 @@ export default function VerificationsPage() {
     field: SortField;
   }) => (
     <TableHead
-      className='text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest cursor-pointer select-none hover:text-stone-700 dark:hover:text-stone-200 whitespace-nowrap'
+      className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest cursor-pointer select-none hover:text-stone-700 dark:hover:text-stone-200 whitespace-nowrap"
       onClick={() => toggleSort(field)}
     >
-      <span className='inline-flex items-center'>
+      <span className="inline-flex items-center">
         {label}
         <SortIcon field={field} />
       </span>
@@ -1055,7 +1055,7 @@ export default function VerificationsPage() {
   }
 
   return (
-    <div className='h-[calc(100vh)] p-5 sm:p-6 flex flex-col gap-5 min-h-0'>
+    <div className="h-[calc(100vh)] p-5 sm:p-6 flex flex-col gap-5 min-h-0">
       {/* Page header */}
       {/* <div>
         <h2 className="text-xl font-extrabold text-stone-900 dark:text-stone-50">
@@ -1067,7 +1067,7 @@ export default function VerificationsPage() {
       </div> */}
 
       {/* Summary cards */}
-      <div className='grid grid-cols-2 lg:grid-cols-4 gap-3'>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {[
           {
             label: 'Total',
@@ -1112,10 +1112,10 @@ export default function VerificationsPage() {
               });
             }}
           >
-            <CardContent className='text-center'>
+            <CardContent className="text-center">
               {/* <Icon className={cn("w-5 h-5 mx-auto mb-1.5", color)} /> */}
               <p className={cn('text-xl font-extrabold', color)}>{count}</p>
-              <p className='text-sm text-stone-500 dark:text-stone-400 mt-0.5'>
+              <p className="text-sm text-stone-500 dark:text-stone-400 mt-0.5">
                 {label}
               </p>
             </CardContent>
@@ -1124,19 +1124,19 @@ export default function VerificationsPage() {
       </div>
 
       {/* Search + filter */}
-      <div className='flex flex-col sm:flex-row gap-3'>
-        <div className='relative flex-1'>
-          <Search className='absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400 pointer-events-none' />
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400 pointer-events-none" />
           <Input
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);
             }}
-            placeholder='Search by name or email…'
-            className='pl-9 dark:bg-[#13151f] dark:border-[#2a2d3e]'
+            placeholder="Search by name or email…"
+            className="pl-9 dark:bg-[#13151f] dark:border-[#2a2d3e]"
           />
         </div>
-        <div className='flex gap-2'>
+        <div className="flex gap-2">
           <FilterSelect
             value={idTypeFilter}
             onChange={(v) => {
@@ -1160,28 +1160,28 @@ export default function VerificationsPage() {
           />
           {hasActiveFilters && (
             <Button
-              variant='outline'
+              variant="outline"
               onClick={() => {
                 setSearch('');
                 setIdTypeFilter('ALL');
                 setStatusFilter('ALL');
                 setCurrentPage(1);
               }}
-              className='hover:bg-destructive/10! text-destructive! border-destructive! focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40'
+              className="hover:bg-destructive/10! text-destructive! border-destructive! focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40"
             >
-              <X className='w-3 h-3' /> Clear
+              <X className="w-3 h-3" /> Clear
             </Button>
           )}
         </div>
         <Button
-          type='button'
-          variant='outline'
+          type="button"
+          variant="outline"
           onClick={() => {
             setIsRefreshing(true);
             void loadVerifications(currentPage);
           }}
           disabled={loading}
-          className='border-sky-600 text-sky-600! hover:bg-sky-600/10 focus-visible:border-sky-600 focus-visible:ring-sky-600/20 dark:border-sky-400 dark:text-sky-400! dark:hover:bg-sky-400/10 dark:focus-visible:border-sky-400 dark:focus-visible:ring-sky-400/40'
+          className="border-sky-600 text-sky-600! hover:bg-sky-600/10 focus-visible:border-sky-600 focus-visible:ring-sky-600/20 dark:border-sky-400 dark:text-sky-400! dark:hover:bg-sky-400/10 dark:focus-visible:border-sky-400 dark:focus-visible:ring-sky-400/40"
         >
           <RotateCw
             className={cn(
@@ -1194,29 +1194,29 @@ export default function VerificationsPage() {
       </div>
 
       {/* Table */}
-      <Card className='p-0 rounded-lg dark:bg-[#1c1f2e] dark:border-[#2a2d3e] overflow-hidden flex-1 min-h-0'>
-        <CardContent className='p-0 h-full min-h-0 flex flex-col'>
-          <div className='overflow-auto h-full'>
+      <Card className="p-0 rounded-lg dark:bg-[#1c1f2e] dark:border-[#2a2d3e] overflow-hidden flex-1 min-h-0">
+        <CardContent className="p-0 h-full min-h-0 flex flex-col">
+          <div className="overflow-auto h-full">
             <Table>
               <TableHeader>
-                <TableRow className='border-stone-200 dark:border-[#2a2d3e] bg-stone-50 dark:bg-[#13151f] hover:bg-stone-50 dark:hover:bg-[#13151f]'>
-                  <SortableTH label='Applicant' field='applicant' />
-                  <TableHead className='text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest'>
+                <TableRow className="border-stone-200 dark:border-[#2a2d3e] bg-stone-50 dark:bg-[#13151f] hover:bg-stone-50 dark:hover:bg-[#13151f]">
+                  <SortableTH label="Applicant" field="applicant" />
+                  <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest">
                     Name
                   </TableHead>
-                  <TableHead className='text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest whitespace-nowrap'>
+                  <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest whitespace-nowrap">
                     Mobile Number
                   </TableHead>
-                  <SortableTH label='Date of Birth' field='dateOfBirth' />
-                  <TableHead className='text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest whitespace-nowrap'>
+                  <SortableTH label="Date of Birth" field="dateOfBirth" />
+                  <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest whitespace-nowrap">
                     ID Type
                   </TableHead>
-                  <TableHead className='text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest'>
+                  <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest">
                     Status
                   </TableHead>
-                  <SortableTH label='Submitted' field='submitted' />
-                  <SortableTH label='Reviewed By' field='reviewedBy' />
-                  <TableHead className='text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest text-right'>
+                  <SortableTH label="Submitted" field="submitted" />
+                  <SortableTH label="Reviewed By" field="reviewedBy" />
+                  <TableHead className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest text-right">
                     Actions
                   </TableHead>
                 </TableRow>
@@ -1226,7 +1226,7 @@ export default function VerificationsPage() {
                   <TableRow>
                     <TableCell
                       colSpan={9}
-                      className='py-16 text-center text-sm text-stone-400 dark:text-stone-500'
+                      className="py-16 text-center text-sm text-stone-400 dark:text-stone-500"
                     >
                       Loading verification requests...
                     </TableCell>
@@ -1235,7 +1235,7 @@ export default function VerificationsPage() {
                   <TableRow>
                     <TableCell
                       colSpan={9}
-                      className='py-16 text-center text-sm text-stone-400 dark:text-stone-500'
+                      className="py-16 text-center text-sm text-stone-400 dark:text-stone-500"
                     >
                       No verification requests found.
                     </TableCell>
@@ -1247,100 +1247,100 @@ export default function VerificationsPage() {
                     return (
                       <TableRow
                         key={verif.id}
-                        className='border-stone-100 dark:border-[#2a2d3e] hover:bg-stone-50 dark:hover:bg-[#252837] transition-colors'
+                        className="border-stone-100 dark:border-[#2a2d3e] hover:bg-stone-50 dark:hover:bg-[#252837] transition-colors"
                       >
                         {/* Applicant */}
-                        <TableCell className='py-2'>
-                          <div className='flex items-center gap-3'>
+                        <TableCell className="py-2">
+                          <div className="flex items-center gap-3">
                             <ImageLink
                               href={`/profile?userId=${verif.user_id}`}
                               newTab
                               src={verif.profile_image_url}
-                              type='profile'
+                              type="profile"
                               label={verif.user_name}
                             />
-                            <div className='min-w-0'>
-                              <p className='text-sm font-bold text-stone-800 dark:text-stone-100 truncate'>
+                            <div className="min-w-0">
+                              <p className="text-sm font-bold text-stone-800 dark:text-stone-100 truncate">
                                 {verif.user_name}
                               </p>
-                              <p className='text-xs text-stone-400 dark:text-stone-500 truncate'>
+                              <p className="text-xs text-stone-400 dark:text-stone-500 truncate">
                                 {verif.user_email}
                               </p>
                             </div>
                           </div>
                         </TableCell>
 
-                        <TableCell className='py-3.5 text-sm text-stone-500 dark:text-stone-400 whitespace-nowrap'>
-                          <p className='text-stone-800 dark:text-stone-100'>{`${verif.id_first_name} ${verif.id_last_name}`}</p>
+                        <TableCell className="py-3.5 text-sm text-stone-500 dark:text-stone-400 whitespace-nowrap">
+                          <p className="text-stone-800 dark:text-stone-100">{`${verif.id_first_name} ${verif.id_last_name}`}</p>
                         </TableCell>
 
                         {/* Mobile Number */}
-                        <TableCell className='py-3.5 text-sm text-stone-500 dark:text-stone-400 whitespace-nowrap'>
+                        <TableCell className="py-3.5 text-sm text-stone-500 dark:text-stone-400 whitespace-nowrap">
                           {verif.mobile_number}
                         </TableCell>
 
                         {/* Date of Birth */}
-                        <TableCell className='py-3.5 text-sm text-stone-500 dark:text-stone-400 whitespace-nowrap'>
+                        <TableCell className="py-3.5 text-sm text-stone-500 dark:text-stone-400 whitespace-nowrap">
                           {verif.id_birthdate || '—'}
                         </TableCell>
 
                         {/* ID Type */}
-                        <TableCell className='py-3.5'>
-                          <span className='inline-flex items-center gap-1.5 text-xs font-bold text-stone-600 dark:text-stone-300 bg-stone-100 dark:bg-[#13151f] px-2 py-1 rounded-lg'>
-                            <IdCard className='w-3 h-3 text-stone-400' />{' '}
+                        <TableCell className="py-3.5">
+                          <span className="inline-flex items-center gap-1.5 text-xs font-bold text-stone-600 dark:text-stone-300 bg-stone-100 dark:bg-[#13151f] px-2 py-1 rounded-lg">
+                            <IdCard className="w-3 h-3 text-stone-400" />{' '}
                             {verif.id_type.toUpperCase()}
                           </span>
                         </TableCell>
 
                         {/* Status */}
-                        <TableCell className='py-3.5 whitespace-nowrap'>
+                        <TableCell className="py-3.5 whitespace-nowrap">
                           <span
                             className={cn(
                               'inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-md',
                               sc.cls,
                             )}
                           >
-                            <StatusIcon className='w-2.5 h-2.5' /> {sc.label}
+                            <StatusIcon className="w-2.5 h-2.5" /> {sc.label}
                           </span>
                         </TableCell>
 
                         {/* Submitted At */}
-                        <TableCell className='py-3.5 text-sm text-stone-500 dark:text-stone-400 whitespace-nowrap'>
+                        <TableCell className="py-3.5 text-sm text-stone-500 dark:text-stone-400 whitespace-nowrap">
                           <div>
-                            <p className='text-sm font-bold text-stone-800 dark:text-stone-100'>
+                            <p className="text-sm font-bold text-stone-800 dark:text-stone-100">
                               {verif.submitted_date}
                             </p>
-                            <p className='text-xs text-stone-400 dark:text-stone-500'>
+                            <p className="text-xs text-stone-400 dark:text-stone-500">
                               {verif.submitted_time}
                             </p>
                           </div>
                         </TableCell>
 
                         {/* Reviewed By */}
-                        <TableCell className='py-3.5 text-sm text-stone-500 dark:text-stone-400 whitespace-nowrap'>
+                        <TableCell className="py-3.5 text-sm text-stone-500 dark:text-stone-400 whitespace-nowrap">
                           {verif.reviewed_by ? (
                             <div>
-                              <p className='text-sm font-bold text-stone-800 dark:text-stone-100'>
+                              <p className="text-sm font-bold text-stone-800 dark:text-stone-100">
                                 {verif.reviewed_by}
                               </p>
-                              <p className='text-xs text-stone-400 dark:text-stone-500'>
+                              <p className="text-xs text-stone-400 dark:text-stone-500">
                                 {verif.reviewed_at}
                               </p>
                             </div>
                           ) : (
-                            <span className='text-stone-300 dark:text-stone-600'>
+                            <span className="text-stone-300 dark:text-stone-600">
                               Not yet reviewed
                             </span>
                           )}
                         </TableCell>
 
                         {/* Actions */}
-                        <TableCell className='py-3.5'>
-                          <div className='flex items-center justify-end gap-1'>
+                        <TableCell className="py-3.5">
+                          <div className="flex items-center justify-end gap-1">
                             <Button
-                              variant='ghost'
-                              size='icon'
-                              type='button'
+                              variant="ghost"
+                              size="icon"
+                              type="button"
                               title={
                                 verif.status === 'PENDING' ? 'Review' : 'View'
                               }
@@ -1348,9 +1348,9 @@ export default function VerificationsPage() {
                                 verif.status === 'PENDING' ? 'Review' : 'View'
                               }
                               onClick={() => setSelected(verif)}
-                              className='w-7 h-7 text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-100 hover:bg-stone-100 dark:hover:bg-[#252837]'
+                              className="w-7 h-7 text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-100 hover:bg-stone-100 dark:hover:bg-[#252837]"
                             >
-                              <Eye className='w-4 h-4' />
+                              <Eye className="w-4 h-4" />
                             </Button>
                           </div>
                         </TableCell>
@@ -1362,45 +1362,45 @@ export default function VerificationsPage() {
             </Table>
           </div>
 
-          <Separator className='dark:bg-[#2a2d3e]' />
-          <div className='px-4 py-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between text-sm text-stone-400 dark:text-stone-500'>
+          <Separator className="dark:bg-[#2a2d3e]" />
+          <div className="px-4 py-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between text-sm text-stone-400 dark:text-stone-500">
             <span>
               Showing {filtered.length.toLocaleString()} of{' '}
               {totalCount.toLocaleString()} result{totalCount !== 1 ? 's' : ''}
             </span>
-            <div className='flex items-center gap-1.5 self-end sm:self-auto'>
+            <div className="flex items-center gap-1.5 self-end sm:self-auto">
               <Button
-                type='button'
-                variant='outline'
-                size='sm'
+                type="button"
+                variant="outline"
+                size="sm"
                 onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
                 disabled={loading || currentPage <= 1}
-                className='h-8 px-2.5'
+                className="h-8 px-2.5"
               >
                 Prev
               </Button>
               {paginationPages.map((page) => (
                 <Button
                   key={page}
-                  type='button'
+                  type="button"
                   variant={page === currentPage ? 'default' : 'outline'}
-                  size='sm'
+                  size="sm"
                   onClick={() => setCurrentPage(page)}
                   disabled={loading}
-                  className='h-8 min-w-8 px-2'
+                  className="h-8 min-w-8 px-2"
                 >
                   {page}
                 </Button>
               ))}
               <Button
-                type='button'
-                variant='outline'
-                size='sm'
+                type="button"
+                variant="outline"
+                size="sm"
                 onClick={() =>
                   setCurrentPage((prev) => Math.min(totalPages, prev + 1))
                 }
                 disabled={loading || currentPage >= totalPages}
-                className='h-8 px-2.5'
+                className="h-8 px-2.5"
               >
                 Next
               </Button>

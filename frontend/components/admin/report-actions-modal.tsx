@@ -1,27 +1,28 @@
 'use client';
 
-import { useState } from 'react';
 import {
-  X,
-  Flag,
-  User,
-  FileText,
   AlertTriangle,
-  Trash2,
-  Clock,
-  ShieldX,
-  ChevronDown,
   CheckCircle2,
+  ChevronDown,
+  Clock,
+  FileText,
+  Flag,
   Gavel,
+  ShieldX,
+  Trash2,
+  User,
+  X,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { useState } from 'react';
+
+import { ImageLink } from '@/components/image-link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { ImageLink } from '@/components/image-link';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
-import { AdminReport, ReportActionType } from '@/types/admin';
+import { cn } from '@/lib/utils';
+import type { AdminReport, ReportActionType } from '@/types/admin';
 import { formatPrice } from '@/utils/string-builder';
 
 interface ReportActionsModalProps {
@@ -154,10 +155,10 @@ function InfoPair({
   mono?: boolean;
 }) {
   return (
-    <div className='flex items-start gap-2'>
-      <Icon className='w-3.5 h-3.5 text-stone-400 dark:text-stone-500 shrink-0 mt-0.75' />
-      <div className='min-w-0'>
-        <p className='text-xs font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest leading-none mb-0.5'>
+    <div className="flex items-start gap-2">
+      <Icon className="w-3.5 h-3.5 text-stone-400 dark:text-stone-500 shrink-0 mt-0.75" />
+      <div className="min-w-0">
+        <p className="text-xs font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest leading-none mb-0.5">
           {label}
         </p>
         <p
@@ -176,7 +177,7 @@ function InfoPair({
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <p className='text-xs font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest mb-2.5'>
+    <p className="text-xs font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest mb-2.5">
       {children}
     </p>
   );
@@ -250,27 +251,27 @@ export default function ReportActionsModal({
 
   return (
     <div
-      className='fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm'
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div className='bg-white dark:bg-[#1c1f2e] rounded-lg w-full max-w-4xl shadow-2xl flex flex-col max-h-[92vh] overflow-hidden'>
+      <div className="bg-white dark:bg-[#1c1f2e] rounded-lg w-full max-w-4xl shadow-2xl flex flex-col max-h-[92vh] overflow-hidden">
         {/* ── Header ────────────────────────────────────────────────────────── */}
-        <div className='bg-[#1e2433] px-6 py-4 flex items-center justify-between shrink-0 rounded-t-lg'>
-          <div className='flex items-center gap-3'>
-            <div className='w-8 h-8 rounded-lg bg-red-500/20 border border-red-500/30 flex items-center justify-center shrink-0'>
-              <Gavel className='w-4 h-4 text-red-400' />
+        <div className="bg-[#1e2433] px-6 py-4 flex items-center justify-between shrink-0 rounded-t-lg">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-red-500/20 border border-red-500/30 flex items-center justify-center shrink-0">
+              <Gavel className="w-4 h-4 text-red-400" />
             </div>
             <div>
-              <h2 className='text-white font-bold text-base leading-none'>
+              <h2 className="text-white font-bold text-base leading-none">
                 Report Resolution
               </h2>
-              <p className='text-slate-400 text-xs mt-0.5'>
+              <p className="text-slate-400 text-xs mt-0.5">
                 Report #{report.id.slice(0, 8).toUpperCase()} · Submitted{' '}
                 {formatReportDate(report.submitted_at)}
               </p>
             </div>
           </div>
-          <div className='flex items-center gap-2'>
+          <div className="flex items-center gap-2">
             <span
               className={cn(
                 'text-xs font-bold px-2.5 py-1 rounded-md inline-flex items-center gap-1',
@@ -294,33 +295,33 @@ export default function ReportActionsModal({
               {report.status}
             </span>
             <Button
-              type='button'
-              variant='ghost'
-              size='icon'
+              type="button"
+              variant="ghost"
+              size="icon"
               onClick={onClose}
-              className='text-slate-400 hover:text-white hover:bg-white/10 h-7 w-7'
+              className="text-slate-400 hover:text-white hover:bg-white/10 h-7 w-7"
             >
-              <X className='w-4 h-4' />
+              <X className="w-4 h-4" />
             </Button>
           </div>
         </div>
 
         {/* ── Body ──────────────────────────────────────────────────────────── */}
-        <div className='flex-1 overflow-y-auto'>
-          <div className='flex flex-col lg:flex-row min-h-0'>
+        <div className="flex-1 overflow-y-auto">
+          <div className="flex flex-col lg:flex-row min-h-0">
             {/* ══ LEFT — Report details ══ */}
-            <div className='lg:w-[42%] border-b lg:border-b-0 lg:border-r border-stone-200 dark:border-[#2a2d3e] p-5 space-y-5'>
+            <div className="lg:w-[42%] border-b lg:border-b-0 lg:border-r border-stone-200 dark:border-[#2a2d3e] p-5 space-y-5">
               {/* Collapsible report detail toggle on mobile */}
               <button
-                type='button'
+                type="button"
                 onClick={() => setDetailOpen((v) => !v)}
-                className='lg:hidden w-full flex items-center justify-between text-xs font-semibold text-stone-600 dark:text-stone-300'
+                className="lg:hidden w-full flex items-center justify-between text-xs font-semibold text-stone-600 dark:text-stone-300"
               >
                 Report Details
                 {detailOpen ? (
-                  <ChevronDown className='w-3.5 h-3.5' />
+                  <ChevronDown className="w-3.5 h-3.5" />
                 ) : (
-                  <ChevronDown className='w-3.5 h-3.5 -rotate-90' />
+                  <ChevronDown className="w-3.5 h-3.5 -rotate-90" />
                 )}
               </button>
 
@@ -330,22 +331,22 @@ export default function ReportActionsModal({
                 {/* Reporter */}
                 <div>
                   <SectionLabel>Reporter</SectionLabel>
-                  <Card className='p-0 dark:bg-[#13151f] dark:border-[#2a2d3e]'>
-                    <CardContent className='p-3.5'>
-                      <div className='flex items-center gap-2.5 mb-1'>
+                  <Card className="p-0 dark:bg-[#13151f] dark:border-[#2a2d3e]">
+                    <CardContent className="p-3.5">
+                      <div className="flex items-center gap-2.5 mb-1">
                         <ImageLink
                           href={`/profile?userId=${report.reporter_id}`}
                           newTab
                           src={report.reporter_profile_image_url}
-                          type='profile'
+                          type="profile"
                           label={report.reporter}
                         />
 
                         <div>
-                          <p className='text-sm font-bold text-stone-800 dark:text-stone-100'>
+                          <p className="text-sm font-bold text-stone-800 dark:text-stone-100">
                             {report.reporter}
                           </p>
-                          <p className='text-xs text-stone-400 dark:text-stone-500'>
+                          <p className="text-xs text-stone-400 dark:text-stone-500">
                             {report.reporter_location}
                           </p>
                         </div>
@@ -357,21 +358,21 @@ export default function ReportActionsModal({
                 {/* Reported user */}
                 <div>
                   <SectionLabel>Reported User</SectionLabel>
-                  <Card className='p-0 dark:bg-[#13151f] border-red-100 dark:border-red-900/40'>
-                    <CardContent className='p-3.5'>
-                      <div className='flex items-center gap-2.5 mb-1'>
+                  <Card className="p-0 dark:bg-[#13151f] border-red-100 dark:border-red-900/40">
+                    <CardContent className="p-3.5">
+                      <div className="flex items-center gap-2.5 mb-1">
                         <ImageLink
                           href={`/profile?userId=${report.listing_owner_id}`}
                           newTab
                           src={report.listing_owner_profile_image_url}
-                          type='profile'
+                          type="profile"
                           label={report.listing_owner}
                         />
                         <div>
-                          <p className='text-sm font-bold text-stone-800 dark:text-stone-100'>
+                          <p className="text-sm font-bold text-stone-800 dark:text-stone-100">
                             {report.reported_name}
                           </p>
-                          <p className='text-xs text-stone-400 dark:text-stone-500'>
+                          <p className="text-xs text-stone-400 dark:text-stone-500">
                             {report.reported_location}
                           </p>
                         </div>
@@ -384,21 +385,21 @@ export default function ReportActionsModal({
                 {report.listing_title && (
                   <div>
                     <SectionLabel>Reported Listing</SectionLabel>
-                    <Card className='p-0 dark:bg-[#13151f] dark:border-[#2a2d3e]'>
-                      <CardContent className='p-3.5'>
-                        <div className='flex items-center gap-2.5 min-w-0'>
+                    <Card className="p-0 dark:bg-[#13151f] dark:border-[#2a2d3e]">
+                      <CardContent className="p-3.5">
+                        <div className="flex items-center gap-2.5 min-w-0">
                           <ImageLink
                             href={`/listing/${report.target_id}`}
                             newTab
                             src={report.listing_image_url}
-                            type='thumbnail'
+                            type="thumbnail"
                             label={report.target_name}
                           />
-                          <div className='min-w-0'>
-                            <p className='text-sm font-semibold text-stone-700 dark:text-stone-200 line-clamp-2'>
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold text-stone-700 dark:text-stone-200 line-clamp-2">
                               {report.target_name}
                             </p>
-                            <p className='text-xs text-stone-500 dark:text-stone-400 truncate'>
+                            <p className="text-xs text-stone-500 dark:text-stone-400 truncate">
                               {formatPrice(report.listing_price ?? 0)}{' '}
                               {report.listing_price_unit}
                             </p>
@@ -409,24 +410,24 @@ export default function ReportActionsModal({
                   </div>
                 )}
 
-                <Separator className='dark:bg-[#2a2d3e]' />
+                <Separator className="dark:bg-[#2a2d3e]" />
 
                 {/* Report reason + description */}
                 <div>
                   <SectionLabel>Report Content</SectionLabel>
-                  <div className='rounded-lg bg-stone-50 dark:bg-[#13151f] border border-stone-200 dark:border-[#2a2d3e] p-3.5'>
-                    <div className='flex items-start justify-between gap-2 mb-1.5'>
-                      <p className='text-xs font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest'>
+                  <div className="rounded-lg bg-stone-50 dark:bg-[#13151f] border border-stone-200 dark:border-[#2a2d3e] p-3.5">
+                    <div className="flex items-start justify-between gap-2 mb-1.5">
+                      <p className="text-xs font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest">
                         Description
                       </p>
-                      <div className='inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-stone-100 dark:bg-[#1c1f2e] border border-stone-200 dark:border-[#2a2d3e] shrink-0'>
-                        <Flag className='w-3 h-3 text-red-400 shrink-0' />
-                        <span className='text-xs font-semibold text-stone-700 dark:text-stone-200'>
+                      <div className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-stone-100 dark:bg-[#1c1f2e] border border-stone-200 dark:border-[#2a2d3e] shrink-0">
+                        <Flag className="w-3 h-3 text-red-400 shrink-0" />
+                        <span className="text-xs font-semibold text-stone-700 dark:text-stone-200">
                           {report.reason}
                         </span>
                       </div>
                     </div>
-                    <p className='text-sm text-stone-600 dark:text-stone-300 leading-relaxed'>
+                    <p className="text-sm text-stone-600 dark:text-stone-300 leading-relaxed">
                       {report.description || 'No description provided.'}
                     </p>
                   </div>
@@ -435,7 +436,7 @@ export default function ReportActionsModal({
             </div>
 
             {/* ══ RIGHT — Action selection + reason ══ */}
-            <div className='flex-1 p-5 space-y-5'>
+            <div className="flex-1 p-5 space-y-5">
               {!isResolved && !report.action_taken ? (
                 <>
                   <div>
@@ -443,7 +444,7 @@ export default function ReportActionsModal({
                       {isPending ? (
                         <>
                           Select Action
-                          <span className='text-red-500 ml-0.5'>*</span>
+                          <span className="text-red-500 ml-0.5">*</span>
                         </>
                       ) : (
                         'Action Taken'
@@ -451,7 +452,7 @@ export default function ReportActionsModal({
                     </SectionLabel>
 
                     {isPending ? (
-                      <div className='space-y-2'>
+                      <div className="space-y-2">
                         {ACTION_GROUPS.map((group) => {
                           const groupOptions = visibleActionOptions.filter(
                             (a) => a.group === group,
@@ -459,10 +460,10 @@ export default function ReportActionsModal({
                           return (
                             <div key={group}>
                               {/* Group label */}
-                              <p className='text-xs font-bold text-stone-300 dark:text-stone-600 uppercase tracking-widest mb-1.5 mt-3 first:mt-0'>
+                              <p className="text-xs font-bold text-stone-300 dark:text-stone-600 uppercase tracking-widest mb-1.5 mt-3 first:mt-0">
                                 {group}
                               </p>
-                              <div className='space-y-1.5'>
+                              <div className="space-y-1.5">
                                 {groupOptions.map((opt) => {
                                   const styles = SEVERITY_STYLES[opt.severity];
                                   const isSelected =
@@ -471,7 +472,7 @@ export default function ReportActionsModal({
                                   return (
                                     <button
                                       key={opt.value}
-                                      type='button'
+                                      type="button"
                                       onClick={() =>
                                         setSelectedAction(opt.value)
                                       }
@@ -506,7 +507,7 @@ export default function ReportActionsModal({
                                           )}
                                         />
                                       </div>
-                                      <div className='flex-1 min-w-0'>
+                                      <div className="flex-1 min-w-0">
                                         <p
                                           className={cn(
                                             'text-sm font-semibold leading-none',
@@ -523,7 +524,7 @@ export default function ReportActionsModal({
                                         >
                                           {opt.label}
                                         </p>
-                                        <p className='text-xs text-stone-400 dark:text-stone-500 mt-0.5 leading-none'>
+                                        <p className="text-xs text-stone-400 dark:text-stone-500 mt-0.5 leading-none">
                                           {opt.description}
                                         </p>
                                       </div>
@@ -556,8 +557,8 @@ export default function ReportActionsModal({
                       >
                         {selectedOpt && (
                           <>
-                            <selectedOpt.icon className='w-4 h-4 shrink-0 text-stone-500' />
-                            <p className='text-sm font-semibold text-stone-700 dark:text-stone-200'>
+                            <selectedOpt.icon className="w-4 h-4 shrink-0 text-stone-500" />
+                            <p className="text-sm font-semibold text-stone-700 dark:text-stone-200">
                               {selectedOpt.label}
                             </p>
                           </>
@@ -566,14 +567,14 @@ export default function ReportActionsModal({
                     )}
                   </div>
 
-                  <Separator className='dark:bg-[#2a2d3e]' />
+                  <Separator className="dark:bg-[#2a2d3e]" />
 
                   {/* Reason textarea */}
-                  <div className='space-y-1.5'>
-                    <Label className='text-xs font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest'>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest">
                       Action Reason
                       {isPending && (
-                        <span className='text-red-500 ml-0.5'>*</span>
+                        <span className="text-red-500 ml-0.5">*</span>
                       )}
                     </Label>
                     <Textarea
@@ -595,7 +596,7 @@ export default function ReportActionsModal({
                         !isPending && 'cursor-default opacity-75',
                       )}
                     />
-                    <p className='text-xs text-stone-400 dark:text-stone-500'>
+                    <p className="text-xs text-stone-400 dark:text-stone-500">
                       {reason.length} / {reasonMaxLength}
                     </p>
                   </div>
@@ -603,11 +604,11 @@ export default function ReportActionsModal({
               ) : (
                 <div>
                   <SectionLabel>Resolution Record</SectionLabel>
-                  <Card className='p-0 dark:bg-[#13151f] border-teal-200 dark:border-teal-900/40'>
-                    <CardContent className='p-3.5 space-y-2.5'>
+                  <Card className="p-0 dark:bg-[#13151f] border-teal-200 dark:border-teal-900/40">
+                    <CardContent className="p-3.5 space-y-2.5">
                       <InfoPair
                         icon={Gavel}
-                        label='Action Taken'
+                        label="Action Taken"
                         value={
                           ACTION_OPTIONS.find(
                             (a) => a.value === report.action_taken,
@@ -616,17 +617,17 @@ export default function ReportActionsModal({
                       />
                       <InfoPair
                         icon={User}
-                        label='Reviewed By'
+                        label="Reviewed By"
                         value={report.resolved_by}
                       />
                       <InfoPair
                         icon={FileText}
-                        label='Reason'
+                        label="Reason"
                         value={report.action_reason}
                       />
                       <InfoPair
                         icon={Clock}
-                        label='Reviewed At'
+                        label="Reviewed At"
                         value={formatReportDate(report.resolved_at)}
                       />
                     </CardContent>
@@ -648,8 +649,8 @@ export default function ReportActionsModal({
                         : 'bg-orange-50 dark:bg-orange-950/20 border-orange-200 dark:border-orange-800 text-orange-700 dark:text-orange-400',
                     )}
                   >
-                    <AlertTriangle className='w-3.5 h-3.5 shrink-0 mt-0.5' />
-                    <p className='leading-relaxed'>
+                    <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                    <p className="leading-relaxed">
                       {selectedOpt.severity === 'critical'
                         ? 'Permanent Ban is irreversible. The account will be permanently removed from the platform. Ensure this action is warranted.'
                         : "This action will affect the user's account. Double-check your reason before submitting."}
@@ -661,28 +662,28 @@ export default function ReportActionsModal({
         </div>
 
         {/* ── Footer ────────────────────────────────────────────────────────── */}
-        <div className='shrink-0 border-t border-stone-200 dark:border-[#2a2d3e] px-6 py-4 flex items-center gap-2.5 bg-white dark:bg-[#1c1f2e] rounded-b-lg'>
+        <div className="shrink-0 border-t border-stone-200 dark:border-[#2a2d3e] px-6 py-4 flex items-center gap-2.5 bg-white dark:bg-[#1c1f2e] rounded-b-lg">
           <Button
-            type='button'
-            variant='outline'
+            type="button"
+            variant="outline"
             onClick={onClose}
-            className='rounded-lg dark:border-[#2a2d3e] dark:text-stone-300 dark:hover:bg-[#252837]'
+            className="rounded-lg dark:border-[#2a2d3e] dark:text-stone-300 dark:hover:bg-[#252837]"
           >
             {isPending ? 'Cancel' : 'Close'}
           </Button>
 
           {isPending && (
-            <div className='ml-auto flex items-center gap-2.5'>
+            <div className="ml-auto flex items-center gap-2.5">
               {/* Preview of selected action */}
               {selectedOpt && (
-                <div className='hidden sm:flex items-center gap-1.5 text-xs text-stone-400 dark:text-stone-500'>
-                  <selectedOpt.icon className='w-3.5 h-3.5' />
+                <div className="hidden sm:flex items-center gap-1.5 text-xs text-stone-400 dark:text-stone-500">
+                  <selectedOpt.icon className="w-3.5 h-3.5" />
                   <span>{selectedOpt.label}</span>
                 </div>
               )}
 
               <Button
-                type='button'
+                type="button"
                 onClick={handleSubmit}
                 disabled={!canSubmit || submitting}
                 className={cn(
@@ -696,7 +697,7 @@ export default function ReportActionsModal({
                         : 'bg-teal-700 hover:bg-teal-600 text-white',
                 )}
               >
-                <Gavel className='w-4 h-4' />
+                <Gavel className="w-4 h-4" />
                 {submitting ? 'Submitting…' : 'Submit Action'}
               </Button>
             </div>

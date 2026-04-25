@@ -1,42 +1,9 @@
 'use client';
 
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { useMemo, useRef, useState, useEffect } from 'react';
-import { useUser } from '@/utils/UserContext';
-import { useUnsavedChanges } from '@/utils/UnsavedChangesContext';
-import { useConfirmDialog } from '@/utils/ConfirmDialogContext';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { NumberInput } from '@/components/ui/number-input';
-import { Separator } from '@/components/ui/separator';
-import {
-  InputOTP,
-  InputOTPGroup,
-  InputOTPSlot,
-  InputOTPSeparator,
-} from '@/components/ui/input-otp';
-import { Calendar } from '@/components/ui/calendar';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { cn } from '@/lib/utils';
-import { toast } from 'sonner';
 import {
   AlertTriangle,
-  Camera,
   CalendarDays,
+  Camera,
   CheckCircle2,
   CreditCard,
   Crown,
@@ -49,22 +16,56 @@ import {
   Smartphone,
   X,
 } from 'lucide-react';
-import { getDeviceInfo } from '@/utils/device';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { toast } from 'sonner';
+
+import { Button } from '@/components/ui/button';
+import { Calendar } from '@/components/ui/calendar';
+import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import {
-  submitVerification,
-  type VerificationImagePayload,
+  InputOTP,
+  InputOTPGroup,
+  InputOTPSeparator,
+  InputOTPSlot,
+} from '@/components/ui/input-otp';
+import { Label } from '@/components/ui/label';
+import { NumberInput } from '@/components/ui/number-input';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Separator } from '@/components/ui/separator';
+import { encodeImageToPayload } from '@/lib/imageCompression';
+import { cn } from '@/lib/utils';
+import {
   // ── NEW: import the two OTP functions added to verificationService.ts ──
   sendPhoneOTP,
+  submitVerification,
+  type VerificationImagePayload,
   verifyPhoneOTP,
 } from '@/services/verificationService';
+import { useConfirmDialog } from '@/utils/ConfirmDialogContext';
+import { getDeviceInfo } from '@/utils/device';
+import { useUnsavedChanges } from '@/utils/UnsavedChangesContext';
+import { useUser } from '@/utils/UserContext';
 import {
   AUTH_LIMITS,
+  isValidName,
   LISTING_LIMITS,
   VERIFICATION_ID_TYPES,
   VERIFICATION_LIMITS,
-  isValidName,
 } from '@/utils/validation';
-import { encodeImageToPayload } from '@/lib/imageCompression';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 type VerifyStep = 1 | 2 | 3;
@@ -165,12 +166,12 @@ function CameraInput({
   onChange,
 }: CameraInputProps) {
   return (
-    <div className='space-y-1.5'>
-      <Label className='text-[11px] font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest'>
-        {label} <span className='text-red-500'>*</span>
+    <div className="space-y-1.5">
+      <Label className="text-[11px] font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest">
+        {label} <span className="text-red-500">*</span>
       </Label>
       <div
-        role='button'
+        role="button"
         tabIndex={0}
         onClick={() => inputRef.current?.click()}
         onKeyDown={(e) => e.key === 'Enter' && inputRef.current?.click()}
@@ -183,21 +184,21 @@ function CameraInput({
       >
         {file ? (
           <>
-            <CheckCircle2 className='w-7 h-7 text-teal-500 dark:text-teal-400' />
-            <p className='text-xs font-semibold text-teal-700 dark:text-teal-400 text-center truncate max-w-full px-2'>
+            <CheckCircle2 className="w-7 h-7 text-teal-500 dark:text-teal-400" />
+            <p className="text-xs font-semibold text-teal-700 dark:text-teal-400 text-center truncate max-w-full px-2">
               {file.name}
             </p>
-            <p className='text-[10px] text-stone-400 dark:text-stone-500'>
+            <p className="text-[10px] text-stone-400 dark:text-stone-500">
               Tap to retake
             </p>
           </>
         ) : (
           <>
-            <Camera className='w-6 h-6 text-stone-400 dark:text-stone-500' />
-            <p className='text-sm font-medium text-stone-600 dark:text-stone-300'>
+            <Camera className="w-6 h-6 text-stone-400 dark:text-stone-500" />
+            <p className="text-sm font-medium text-stone-600 dark:text-stone-300">
               Tap to open camera
             </p>
-            <p className='text-xs text-stone-400 dark:text-stone-500'>
+            <p className="text-xs text-stone-400 dark:text-stone-500">
               Camera opens automatically
             </p>
           </>
@@ -205,10 +206,10 @@ function CameraInput({
       </div>
       <input
         ref={inputRef}
-        type='file'
-        accept='image/*'
+        type="file"
+        accept="image/*"
         capture={capture}
-        className='hidden'
+        className="hidden"
         onChange={(e) => onChange(e.target.files?.[0] ?? null)}
       />
     </div>
@@ -760,21 +761,21 @@ export default function BecomeSellerPage() {
   // ── Terminal states ────────────────────────────────────────────────────────
   if (verificationState === 'verified') {
     return (
-      <div className='min-h-screen bg-stone-100 dark:bg-[#111827] py-8 px-4 sm:px-6 flex items-center justify-center'>
-        <Card className='w-full max-w-md dark:bg-[#1c1f2e] dark:border-[#2a2d3e]'>
-          <CardContent className='p-8 text-center'>
-            <Crown className='w-10 h-10 text-amber-500 mx-auto mb-3' />
-            <h1 className='text-xl font-bold text-stone-900 dark:text-stone-100 mb-2'>
+      <div className="min-h-screen bg-stone-100 dark:bg-[#111827] py-8 px-4 sm:px-6 flex items-center justify-center">
+        <Card className="w-full max-w-md dark:bg-[#1c1f2e] dark:border-[#2a2d3e]">
+          <CardContent className="p-8 text-center">
+            <Crown className="w-10 h-10 text-amber-500 mx-auto mb-3" />
+            <h1 className="text-xl font-bold text-stone-900 dark:text-stone-100 mb-2">
               You are already a verified seller
             </h1>
-            <p className='text-sm text-stone-500 dark:text-stone-400'>
+            <p className="text-sm text-stone-500 dark:text-stone-400">
               You can post listings anytime.
             </p>
             <Button
               asChild
-              className='mt-6 w-full rounded-full bg-stone-900 hover:bg-stone-800 text-white font-bold'
+              className="mt-6 w-full rounded-full bg-stone-900 hover:bg-stone-800 text-white font-bold"
             >
-              <Link href='/create'>Post a Listing</Link>
+              <Link href="/create">Post a Listing</Link>
             </Button>
           </CardContent>
         </Card>
@@ -784,23 +785,23 @@ export default function BecomeSellerPage() {
 
   if (verificationState === 'pending' || submitted) {
     return (
-      <div className='min-h-screen bg-stone-100 dark:bg-[#111827] py-8 px-4 sm:px-6 flex items-center justify-center'>
-        <Card className='w-full max-w-md dark:bg-[#1c1f2e] dark:border-[#2a2d3e]'>
-          <CardContent className='p-8 text-center'>
-            <Hourglass className='w-10 h-10 text-amber-500 mx-auto mb-3' />
-            <h1 className='text-xl font-bold text-stone-900 dark:text-stone-100 mb-2'>
+      <div className="min-h-screen bg-stone-100 dark:bg-[#111827] py-8 px-4 sm:px-6 flex items-center justify-center">
+        <Card className="w-full max-w-md dark:bg-[#1c1f2e] dark:border-[#2a2d3e]">
+          <CardContent className="p-8 text-center">
+            <Hourglass className="w-10 h-10 text-amber-500 mx-auto mb-3" />
+            <h1 className="text-xl font-bold text-stone-900 dark:text-stone-100 mb-2">
               Application In Review
             </h1>
-            <p className='text-sm text-stone-500 dark:text-stone-400'>
+            <p className="text-sm text-stone-500 dark:text-stone-400">
               Your seller application is being reviewed. We&apos;ll notify you
               in 1–2 business days.
             </p>
             <Button
               asChild
-              variant='outline'
-              className='mt-6 w-full rounded-full dark:border-[#2a2d3e] dark:text-stone-300 dark:hover:bg-[#252837]'
+              variant="outline"
+              className="mt-6 w-full rounded-full dark:border-[#2a2d3e] dark:text-stone-300 dark:hover:bg-[#252837]"
             >
-              <Link href='/profile'>Go to Profile</Link>
+              <Link href="/profile">Go to Profile</Link>
             </Button>
           </CardContent>
         </Card>
@@ -810,16 +811,16 @@ export default function BecomeSellerPage() {
 
   // ── Multi-step form ────────────────────────────────────────────────────────
   return (
-    <div className='bg-stone-100 dark:bg-[#111827] py-8 px-4 sm:px-6'>
-      <div className='max-w-2xl mx-auto'>
-        <Card className='overflow-hidden dark:bg-[#1c1f2e] dark:border-[#2a2d3e] shadow-sm py-0'>
+    <div className="bg-stone-100 dark:bg-[#111827] py-8 px-4 sm:px-6">
+      <div className="max-w-2xl mx-auto">
+        <Card className="overflow-hidden dark:bg-[#1c1f2e] dark:border-[#2a2d3e] shadow-sm py-0">
           {/* Progress header */}
-          <div className='bg-[#1e2433] px-7 py-5'>
-            <h1 className='text-white font-bold text-xl'>Become a Seller</h1>
-            <p className='text-slate-400 text-sm mt-1'>
+          <div className="bg-[#1e2433] px-7 py-5">
+            <h1 className="text-white font-bold text-xl">Become a Seller</h1>
+            <p className="text-slate-400 text-sm mt-1">
               Complete {TOTAL} quick steps to get verified
             </p>
-            <div className='flex gap-1.5 mt-4'>
+            <div className="flex gap-1.5 mt-4">
               {Array.from({ length: TOTAL }, (_, i) => i + 1).map((i) => (
                 <div
                   key={i}
@@ -839,12 +840,12 @@ export default function BecomeSellerPage() {
           <CardContent>
             {/* ══ STEP 1 — Requirements + device check (unchanged) ══ */}
             {step === 1 && (
-              <div className='space-y-5'>
+              <div className="space-y-5">
                 <div>
-                  <h3 className='font-bold text-stone-900 dark:text-stone-100 text-base mb-1'>
+                  <h3 className="font-bold text-stone-900 dark:text-stone-100 text-base mb-1">
                     What you&apos;ll need
                   </h3>
-                  <p className='text-sm text-stone-500 dark:text-stone-400 leading-relaxed'>
+                  <p className="text-sm text-stone-500 dark:text-stone-400 leading-relaxed">
                     To become a verified seller, we need a few things to confirm
                     your identity.
                   </p>
@@ -859,9 +860,9 @@ export default function BecomeSellerPage() {
                   )}
                 >
                   {isMobile ? (
-                    <Smartphone className='w-5 h-5 text-teal-600 dark:text-teal-400 shrink-0 mt-0.5' />
+                    <Smartphone className="w-5 h-5 text-teal-600 dark:text-teal-400 shrink-0 mt-0.5" />
                   ) : (
-                    <AlertTriangle className='w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5' />
+                    <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
                   )}
                   <div>
                     <p
@@ -900,9 +901,9 @@ export default function BecomeSellerPage() {
                   )}
                 >
                   {hasProfileSetupRequirement ? (
-                    <CheckCircle2 className='w-5 h-5 text-teal-600 dark:text-teal-400 shrink-0 mt-0.5' />
+                    <CheckCircle2 className="w-5 h-5 text-teal-600 dark:text-teal-400 shrink-0 mt-0.5" />
                   ) : (
-                    <AlertTriangle className='w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5' />
+                    <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
                   )}
                   <div>
                     <p
@@ -929,8 +930,8 @@ export default function BecomeSellerPage() {
                     </p>
                     {!hasProfileSetupRequirement && (
                       <Link
-                        href='/profile'
-                        className='inline-flex mt-2 text-xs font-semibold text-amber-700 dark:text-amber-300 underline underline-offset-2 hover:no-underline'
+                        href="/profile"
+                        className="inline-flex mt-2 text-xs font-semibold text-amber-700 dark:text-amber-300 underline underline-offset-2 hover:no-underline"
                       >
                         Update profile now
                       </Link>
@@ -938,7 +939,7 @@ export default function BecomeSellerPage() {
                   </div>
                 </div>
 
-                <div className='space-y-3'>
+                <div className="space-y-3">
                   {[
                     {
                       Icon: IdCard,
@@ -961,16 +962,16 @@ export default function BecomeSellerPage() {
                   ].map(({ Icon, iconCls, title, desc }) => (
                     <div
                       key={title}
-                      className='flex items-start gap-3 p-4 border border-stone-200 dark:border-[#2a2d3e] rounded-lg bg-stone-50 dark:bg-[#13151f]'
+                      className="flex items-start gap-3 p-4 border border-stone-200 dark:border-[#2a2d3e] rounded-lg bg-stone-50 dark:bg-[#13151f]"
                     >
                       <Icon
                         className={cn('w-5 h-5 shrink-0 mt-0.5', iconCls)}
                       />
                       <div>
-                        <p className='font-semibold text-sm text-stone-800 dark:text-stone-200'>
+                        <p className="font-semibold text-sm text-stone-800 dark:text-stone-200">
                           {title}
                         </p>
-                        <p className='text-xs text-stone-500 dark:text-stone-400 mt-0.5 leading-relaxed'>
+                        <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5 leading-relaxed">
                           {desc}
                         </p>
                       </div>
@@ -987,17 +988,17 @@ export default function BecomeSellerPage() {
                   )}
                 >
                   <input
-                    type='checkbox'
+                    type="checkbox"
                     checked={agreed}
                     onChange={(e) => isMobile && setAgreed(e.target.checked)}
                     disabled={!isMobile}
-                    className='mt-0.5 accent-teal-600'
+                    className="mt-0.5 accent-teal-600"
                   />
-                  <span className='text-sm text-stone-500 dark:text-stone-400 leading-relaxed'>
+                  <span className="text-sm text-stone-500 dark:text-stone-400 leading-relaxed">
                     I agree to the{' '}
                     <Link
-                      href='/terms-seller'
-                      className='underline hover:no-underline'
+                      href="/terms-seller"
+                      className="underline hover:no-underline"
                     >
                       Seller Terms of Service
                     </Link>{' '}
@@ -1010,36 +1011,36 @@ export default function BecomeSellerPage() {
 
             {/* ══ STEP 2 — ID details + camera captures (unchanged) ══ */}
             {step === 2 && (
-              <div className='space-y-4'>
+              <div className="space-y-4">
                 <div>
-                  <h3 className='font-bold text-stone-900 dark:text-stone-100 text-base mb-1 flex items-center gap-2'>
-                    <IdCard className='w-5 h-5 text-stone-500 dark:text-stone-400' />
+                  <h3 className="font-bold text-stone-900 dark:text-stone-100 text-base mb-1 flex items-center gap-2">
+                    <IdCard className="w-5 h-5 text-stone-500 dark:text-stone-400" />
                     Identity Verification
                   </h3>
-                  <p className='text-sm text-stone-500 dark:text-stone-400 leading-relaxed'>
+                  <p className="text-sm text-stone-500 dark:text-stone-400 leading-relaxed">
                     Provide your ID details and capture photos using your
                     camera.
                   </p>
                 </div>
 
-                <div className='space-y-1.5'>
+                <div className="space-y-1.5">
                   <Label
-                    htmlFor='idType'
-                    className='text-[11px] font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest'
+                    htmlFor="idType"
+                    className="text-[11px] font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest"
                   >
-                    ID Type <span className='text-red-500'>*</span>
+                    ID Type <span className="text-red-500">*</span>
                   </Label>
-                  <div className='relative'>
-                    <CreditCard className='pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400' />
+                  <div className="relative">
+                    <CreditCard className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
                     <Select
                       value={idType || undefined}
                       onValueChange={(value) => setIdType(value as IdType)}
                     >
                       <SelectTrigger
-                        id='idType'
-                        className='w-full pl-9 py-2.5 rounded-lg text-sm'
+                        id="idType"
+                        className="w-full pl-9 py-2.5 rounded-lg text-sm"
                       >
-                        <SelectValue placeholder='Select an ID type...' />
+                        <SelectValue placeholder="Select an ID type..." />
                       </SelectTrigger>
                       <SelectContent>
                         {ID_OPTIONS.filter((opt) => opt.value !== '').map(
@@ -1054,61 +1055,61 @@ export default function BecomeSellerPage() {
                   </div>
                 </div>
 
-                <div className='grid grid-cols-2 gap-3'>
-                  <div className='space-y-1.5'>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
                     <Label
-                      htmlFor='firstName'
-                      className='text-[11px] font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest'
+                      htmlFor="firstName"
+                      className="text-[11px] font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest"
                     >
-                      First Name <span className='text-red-500'>*</span>
+                      First Name <span className="text-red-500">*</span>
                     </Label>
                     <Input
-                      id='firstName'
-                      name='given-name'
-                      autoComplete='given-name'
+                      id="firstName"
+                      name="given-name"
+                      autoComplete="given-name"
                       value={firstName}
                       onChange={(e) => setFirstName(e.target.value)}
-                      placeholder='First name'
+                      placeholder="First name"
                       minLength={AUTH_LIMITS.nameMinLength}
                       maxLength={AUTH_LIMITS.nameMaxLength}
                     />
                   </div>
-                  <div className='space-y-1.5'>
+                  <div className="space-y-1.5">
                     <Label
-                      htmlFor='lastName'
-                      className='text-[11px] font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest'
+                      htmlFor="lastName"
+                      className="text-[11px] font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest"
                     >
-                      Last Name <span className='text-red-500'>*</span>
+                      Last Name <span className="text-red-500">*</span>
                     </Label>
                     <Input
-                      id='lastName'
-                      name='family-name'
-                      autoComplete='family-name'
+                      id="lastName"
+                      name="family-name"
+                      autoComplete="family-name"
                       value={lastName}
                       onChange={(e) => setLastName(e.target.value)}
-                      placeholder='Last name'
+                      placeholder="Last name"
                       minLength={AUTH_LIMITS.nameMinLength}
                       maxLength={AUTH_LIMITS.nameMaxLength}
                     />
                   </div>
                 </div>
 
-                <div className='grid grid-cols-2 gap-3'>
-                  <div className='space-y-1.5'>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
                     <Label
-                      htmlFor='dob'
-                      className='text-[11px] font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest'
+                      htmlFor="dob"
+                      className="text-[11px] font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest"
                     >
-                      Date of Birth <span className='text-red-500'>*</span>
+                      Date of Birth <span className="text-red-500">*</span>
                     </Label>
                     <Popover open={dobOpen} onOpenChange={setDobOpen}>
                       <PopoverTrigger asChild>
                         <Button
-                          variant='outline'
-                          id='dob'
-                          className='w-full justify-start font-normal'
+                          variant="outline"
+                          id="dob"
+                          className="w-full justify-start font-normal"
                         >
-                          <CalendarDays className='w-4 h-4 mr-2 text-stone-400' />
+                          <CalendarDays className="w-4 h-4 mr-2 text-stone-400" />
                           {dob
                             ? parseDobIso(dob)?.toLocaleDateString('en-PH', {
                                 month: 'long',
@@ -1119,14 +1120,14 @@ export default function BecomeSellerPage() {
                         </Button>
                       </PopoverTrigger>
                       <PopoverContent
-                        className='w-auto overflow-hidden p-0'
-                        align='start'
+                        className="w-auto overflow-hidden p-0"
+                        align="start"
                       >
                         <Calendar
-                          mode='single'
+                          mode="single"
                           selected={parseDobIso(dob)}
                           defaultMonth={parseDobIso(dob)}
-                          captionLayout='dropdown'
+                          captionLayout="dropdown"
                           endMonth={new Date()}
                           disabled={(date) => date > new Date()}
                           onSelect={(selectedDate) => {
@@ -1139,15 +1140,15 @@ export default function BecomeSellerPage() {
                       </PopoverContent>
                     </Popover>
                   </div>
-                  <div className='space-y-1.5'>
+                  <div className="space-y-1.5">
                     <Label
-                      htmlFor='idNumber'
-                      className='text-[11px] font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest'
+                      htmlFor="idNumber"
+                      className="text-[11px] font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest"
                     >
-                      ID Number <span className='text-red-500'>*</span>
+                      ID Number <span className="text-red-500">*</span>
                     </Label>
                     <Input
-                      id='idNumber'
+                      id="idNumber"
                       value={idNumber}
                       onChange={(e) =>
                         setIdNumber(
@@ -1157,50 +1158,50 @@ export default function BecomeSellerPage() {
                           ),
                         )
                       }
-                      placeholder='1234-5678-9012'
+                      placeholder="1234-5678-9012"
                       minLength={VERIFICATION_LIMITS.idNumberMinLength}
                       maxLength={VERIFICATION_LIMITS.idNumberMaxLength}
-                      className='dark:bg-[#13151f] dark:border-[#2a2d3e] font-mono'
+                      className="dark:bg-[#13151f] dark:border-[#2a2d3e] font-mono"
                     />
                   </div>
                 </div>
 
-                <Separator className='dark:bg-[#2a2d3e]' />
-                <p className='text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest'>
-                  Photo Captures <span className='text-red-500'>*</span>
+                <Separator className="dark:bg-[#2a2d3e]" />
+                <p className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest">
+                  Photo Captures <span className="text-red-500">*</span>
                 </p>
 
                 <CameraInput
-                  label='ID Front'
-                  capture='environment'
+                  label="ID Front"
+                  capture="environment"
                   file={idFront}
                   inputRef={frontRef}
                   onChange={setIdFront}
                 />
                 <CameraInput
-                  label='ID Back'
-                  capture='environment'
+                  label="ID Back"
+                  capture="environment"
                   file={idBack}
                   inputRef={backRef}
                   onChange={setIdBack}
                 />
                 <CameraInput
-                  label='Selfie while holding your ID'
-                  capture='user'
+                  label="Selfie while holding your ID"
+                  capture="user"
                   file={selfie}
                   inputRef={selfieRef}
                   onChange={setSelfie}
                 />
 
-                <p className='text-[10px] text-stone-400 dark:text-stone-500 leading-relaxed'>
+                <p className="text-[10px] text-stone-400 dark:text-stone-500 leading-relaxed">
                   All photos are captured directly from your smartphone camera
                   and stored securely. Ensure images are clear, well-lit, and
                   unedited.
                 </p>
 
                 {step2Err && (
-                  <div className='flex items-center gap-2 px-3 py-2.5 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-lg text-xs text-red-600 dark:text-red-400'>
-                    <AlertTriangle className='w-3.5 h-3.5 shrink-0' />{' '}
+                  <div className="flex items-center gap-2 px-3 py-2.5 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-lg text-xs text-red-600 dark:text-red-400">
+                    <AlertTriangle className="w-3.5 h-3.5 shrink-0" />{' '}
                     {step2Err}
                   </div>
                 )}
@@ -1209,42 +1210,42 @@ export default function BecomeSellerPage() {
 
             {/* ══ STEP 3a — Phone number entry ══ */}
             {step === 3 && !showOtp && (
-              <div className='space-y-5'>
+              <div className="space-y-5">
                 <div>
-                  <h3 className='font-bold text-stone-900 dark:text-stone-100 text-base mb-1 flex items-center gap-2'>
-                    <Phone className='w-5 h-5 text-stone-500 dark:text-stone-400' />
+                  <h3 className="font-bold text-stone-900 dark:text-stone-100 text-base mb-1 flex items-center gap-2">
+                    <Phone className="w-5 h-5 text-stone-500 dark:text-stone-400" />
                     Verify your phone
                   </h3>
-                  <p className='text-sm text-stone-500 dark:text-stone-400 leading-relaxed'>
+                  <p className="text-sm text-stone-500 dark:text-stone-400 leading-relaxed">
                     Enter your Philippine mobile number to receive a one-time
                     passcode.
                   </p>
                 </div>
 
-                <div className='space-y-1.5'>
-                  <Label className='text-[11px] font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest'>
-                    Mobile Number <span className='text-red-500'>*</span>
+                <div className="space-y-1.5">
+                  <Label className="text-[11px] font-bold text-stone-500 dark:text-stone-400 uppercase tracking-widest">
+                    Mobile Number <span className="text-red-500">*</span>
                   </Label>
-                  <div className='flex gap-2'>
-                    <div className='flex items-center justify-center bg-stone-100 dark:bg-[#13151f] border border-stone-200 dark:border-[#2a2d3e] rounded-lg px-3 text-sm text-stone-500 dark:text-stone-400 font-medium w-12 shrink-0 select-none'>
+                  <div className="flex gap-2">
+                    <div className="flex items-center justify-center bg-stone-100 dark:bg-[#13151f] border border-stone-200 dark:border-[#2a2d3e] rounded-lg px-3 text-sm text-stone-500 dark:text-stone-400 font-medium w-12 shrink-0 select-none">
                       +63
                     </div>
                     <NumberInput
                       value={phoneNumber}
                       onChange={setPhoneNumber}
-                      placeholder='9XX XXX XXXX'
+                      placeholder="9XX XXX XXXX"
                       maxLength={PHONE_DIGITS}
                     />
                     {/* ── CHANGED: button now shows loading state and calls real API ── */}
                     <Button
-                      className='rounded-lg bg-stone-900 hover:bg-stone-800 text-white font-bold gap-2 disabled:opacity-50'
+                      className="rounded-lg bg-stone-900 hover:bg-stone-800 text-white font-bold gap-2 disabled:opacity-50"
                       onClick={() => void handleSendOtp()}
                       disabled={!phoneComplete || sendingOtp}
                     >
                       {sendingOtp ? (
-                        <RefreshCw className='w-4 h-4 animate-spin' />
+                        <RefreshCw className="w-4 h-4 animate-spin" />
                       ) : (
-                        <Send className='w-4 h-4' />
+                        <Send className="w-4 h-4" />
                       )}
                       {sendingOtp ? 'Sending…' : 'Send OTP Code'}
                     </Button>
@@ -1255,23 +1256,23 @@ export default function BecomeSellerPage() {
 
             {/* ══ STEP 3b — OTP entry ══ */}
             {step === 3 && showOtp && (
-              <div className='space-y-5'>
+              <div className="space-y-5">
                 <div>
-                  <h3 className='font-bold text-stone-900 dark:text-stone-100 text-base mb-1 flex items-center gap-2'>
-                    <ShieldCheck className='w-5 h-5 text-stone-500 dark:text-stone-400' />
+                  <h3 className="font-bold text-stone-900 dark:text-stone-100 text-base mb-1 flex items-center gap-2">
+                    <ShieldCheck className="w-5 h-5 text-stone-500 dark:text-stone-400" />
                     Enter OTP
                   </h3>
-                  <p className='text-sm text-stone-500 dark:text-stone-400'>
+                  <p className="text-sm text-stone-500 dark:text-stone-400">
                     We sent a 6-digit code to{' '}
-                    <span className='font-semibold text-stone-700 dark:text-stone-300'>
+                    <span className="font-semibold text-stone-700 dark:text-stone-300">
                       +63 {phoneNumber}
                     </span>
                   </p>
                 </div>
 
                 {/* ── CHANGED: OTP slots reflect verification state ── */}
-                <div className='flex justify-center'>
-                  <div className='relative'>
+                <div className="flex justify-center">
+                  <div className="relative">
                     <InputOTP
                       maxLength={OTP_LENGTH}
                       value={otpValue}
@@ -1294,8 +1295,8 @@ export default function BecomeSellerPage() {
 
                     {/* Overlay shown while the verify API call is in-flight */}
                     {verifyingOtp && (
-                      <div className='absolute inset-0 flex items-center justify-center bg-white/60 dark:bg-[#1c1f2e]/60 rounded-lg'>
-                        <RefreshCw className='w-5 h-5 animate-spin text-stone-500 dark:text-stone-400' />
+                      <div className="absolute inset-0 flex items-center justify-center bg-white/60 dark:bg-[#1c1f2e]/60 rounded-lg">
+                        <RefreshCw className="w-5 h-5 animate-spin text-stone-500 dark:text-stone-400" />
                       </div>
                     )}
                   </div>
@@ -1303,21 +1304,21 @@ export default function BecomeSellerPage() {
 
                 {/* ── CHANGED: show verified badge once the backend confirms ── */}
                 {otpVerified ? (
-                  <div className='flex items-center justify-center gap-2 text-teal-600 dark:text-teal-400 text-sm font-semibold'>
-                    <CheckCircle2 className='w-4 h-4' />
+                  <div className="flex items-center justify-center gap-2 text-teal-600 dark:text-teal-400 text-sm font-semibold">
+                    <CheckCircle2 className="w-4 h-4" />
                     Phone number verified
                   </div>
                 ) : (
-                  <div className='text-center text-sm mt-2'>
-                    <span className='text-muted-foreground'>
+                  <div className="text-center text-sm mt-2">
+                    <span className="text-muted-foreground">
                       Didn&apos;t receive the code?{' '}
                     </span>
                     {/* ── CHANGED: Resend also calls the real API ── */}
                     <button
-                      type='button'
+                      type="button"
                       onClick={() => void handleResend()}
                       disabled={!canResend || sendingOtp}
-                      className='underline disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed'
+                      className="underline disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
                     >
                       {sendingOtp
                         ? 'Sending…'
@@ -1329,14 +1330,14 @@ export default function BecomeSellerPage() {
                 )}
 
                 <button
-                  type='button'
+                  type="button"
                   onClick={() => {
                     setShowOtp(false);
                     setOtpValue('');
                     setOtpVerified(false);
                   }}
                   disabled={!canResend || sendingOtp}
-                  className='w-full text-xs text-stone-400 dark:text-stone-500 hover:text-stone-600 dark:hover:text-stone-300 transition-colors underline underline-offset-2 disabled:cursor-not-allowed disabled:opacity-50'
+                  className="w-full text-xs text-stone-400 dark:text-stone-500 hover:text-stone-600 dark:hover:text-stone-300 transition-colors underline underline-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Change phone number
                 </button>
@@ -1344,31 +1345,31 @@ export default function BecomeSellerPage() {
             )}
 
             {/* Footer navigation */}
-            <Separator className='mt-6 dark:bg-[#2a2d3e]' />
-            <div className='flex items-center justify-between my-4'>
-              <span className='text-xs text-stone-400 dark:text-stone-500'>
+            <Separator className="mt-6 dark:bg-[#2a2d3e]" />
+            <div className="flex items-center justify-between my-4">
+              <span className="text-xs text-stone-400 dark:text-stone-500">
                 Step {step} of {TOTAL}
               </span>
-              <div className='flex gap-2'>
+              <div className="flex gap-2">
                 <Button
-                  variant='destructive'
+                  variant="destructive"
                   onClick={discardProgress}
-                  className='rounded-lg text-sm font-bold hover:bg-red-600 dark:hover:bg-red-600'
+                  className="rounded-lg text-sm font-bold hover:bg-red-600 dark:hover:bg-red-600"
                 >
-                  <X className='w-4 h-4' /> Discard
+                  <X className="w-4 h-4" /> Discard
                 </Button>
                 {step > 1 && (
                   <Button
-                    variant='outline'
+                    variant="outline"
                     onClick={prev}
-                    className='rounded-lg text-sm dark:border-[#2a2d3e] dark:text-stone-300 dark:hover:bg-[#252837] disabled:opacity-50'
+                    className="rounded-lg text-sm dark:border-[#2a2d3e] dark:text-stone-300 dark:hover:bg-[#252837] disabled:opacity-50"
                     disabled={!canResend || sendingOtp}
                   >
                     Back
                   </Button>
                 )}
                 <Button
-                  className='rounded-lg bg-stone-900 hover:bg-stone-800 text-white text-sm font-bold disabled:opacity-50'
+                  className="rounded-lg bg-stone-900 hover:bg-stone-800 text-white text-sm font-bold disabled:opacity-50"
                   onClick={() => void next()}
                   disabled={isNextDisabled}
                   title={
@@ -1390,7 +1391,7 @@ export default function BecomeSellerPage() {
       </div>
 
       {toastMessage && (
-        <div className='fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-stone-900 text-white text-sm font-medium px-5 py-3 rounded-full shadow-xl animate-in fade-in slide-in-from-bottom-2 duration-300'>
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-stone-900 text-white text-sm font-medium px-5 py-3 rounded-full shadow-xl animate-in fade-in slide-in-from-bottom-2 duration-300">
           {toastMessage}
         </div>
       )}

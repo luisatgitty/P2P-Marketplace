@@ -3,10 +3,11 @@
 import { useEffect, useRef } from 'react';
 import Lightbox from 'yet-another-react-lightbox';
 import Thumbnails from 'yet-another-react-lightbox/plugins/thumbnails';
-import Zoom from 'yet-another-react-lightbox/plugins/zoom';
 import Video from 'yet-another-react-lightbox/plugins/video';
+import Zoom from 'yet-another-react-lightbox/plugins/zoom';
 import 'yet-another-react-lightbox/styles.css';
 import 'yet-another-react-lightbox/plugins/thumbnails.css';
+
 import { useModalFocusTrap } from '@/utils/useModalFocusTrap';
 
 export type MediaViewerItem = {
@@ -57,9 +58,9 @@ export function MediaViewerModal({
     <div
       ref={containerRef}
       tabIndex={-1}
-      role='dialog'
-      aria-modal='true'
-      className='outline-none'
+      role="dialog"
+      aria-modal="true"
+      className="outline-none"
     >
       <Lightbox
         open={activeIndex >= 0}
