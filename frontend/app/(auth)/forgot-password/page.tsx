@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { sendPostRequest } from '@/services/authService';
-import { AUTH_LIMITS, validateForgotPasswordInput } from '@/utils/validation';
+import { AUTH_LIMITS, isValidEmail } from '@/utils/validation';
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
@@ -25,7 +25,7 @@ export default function ForgotPasswordPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const validationError = validateForgotPasswordInput(email);
+    const validationError = isValidEmail(email);
     if (validationError) {
       toast.error(validationError, { position: 'top-center' });
       return;

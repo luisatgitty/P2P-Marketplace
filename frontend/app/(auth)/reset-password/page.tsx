@@ -17,7 +17,7 @@ import {
   FieldLabel,
 } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
-import { AUTH_LIMITS, validateResetPasswordInput } from '@/utils/validation';
+import { AUTH_LIMITS, isValidPassword } from '@/utils/validation';
 
 export default function ResetPasswordPage() {
   const searchParams = useSearchParams();
@@ -70,7 +70,7 @@ export default function ResetPasswordPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const validationError = validateResetPasswordInput(
+    const validationError = isValidPassword(
       password,
       confirmPassword,
     );

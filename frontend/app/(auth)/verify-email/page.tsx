@@ -18,7 +18,8 @@ import { Input } from '@/components/ui/input';
 import { getSessionMeta, sendPostRequest } from '@/services/authService';
 import type { SignupForm } from '@/types/forms';
 import { useUser } from '@/utils/UserContext';
-import { validateOtpCode } from '@/utils/validation';
+
+import { validateOtpCode } from './_utils/validation';
 
 function VerifyEmailForm() {
   const router = useRouter();

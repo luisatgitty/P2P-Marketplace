@@ -1,4 +1,3 @@
-import type { SignupForm } from '@/types/forms';
 import {
   CATEGORIES,
   CONDITIONS,
@@ -453,55 +452,6 @@ export function isValidPrice(
   if (nextNumber > max) return false;
   if (nextNumber < min) return false;
   return true;
-}
-
-export function validateSignupForm(form: SignupForm) {
-  if (!form) return 'Form data is required';
-
-  const firstNameError = isValidName(form.firstName, 'First name');
-  if (firstNameError) return firstNameError;
-
-  const lastNameError = isValidName(form.lastName, 'Last name');
-  if (lastNameError) return lastNameError;
-
-  const emailError = isValidEmail(form.email);
-  if (emailError) return emailError;
-
-  const passwordError = isValidPassword(form.password, form.confirmPassword);
-  if (passwordError) return passwordError;
-}
-
-export function validateLoginForm(form: {
-  email: string;
-  password: string;
-}): string | null {
-  const emailError = isValidEmail(form.email);
-  if (emailError) return emailError;
-
-  const passwordError = isValidPassword(form.password);
-  if (passwordError) return passwordError;
-
-  return null;
-}
-
-export function validateForgotPasswordInput(email: string): string | null {
-  return isValidEmail(email);
-}
-
-export function validateResetPasswordInput(
-  password: string,
-  confirmPassword: string,
-): string | null {
-  return isValidPassword(password, confirmPassword);
-}
-
-export function validateOtpCode(otpCode: string): string | null {
-  if (!otpCode) return 'OTP is required';
-  if (!/^\d+$/.test(otpCode)) return 'OTP must contain numbers only';
-  if (otpCode.length !== AUTH_LIMITS.otpLength) {
-    return `OTP must be ${AUTH_LIMITS.otpLength} digits`;
-  }
-  return null;
 }
 
 export function validateImageURL(url: string): string {
