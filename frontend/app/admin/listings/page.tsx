@@ -21,7 +21,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
 import { ImageLink } from '@/components/image-link';
-// ── shadcn components ──────────────────────────────────────────────────────────
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -35,13 +34,14 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
+import { useConfirmDialog } from '@/utils/ConfirmDialogContext';
+
 import {
   type AdminListingRecord,
   deleteAdminListing,
   getAdminListings,
   toggleAdminListingVisibility,
-} from '@/services/adminListingsService';
-import { useConfirmDialog } from '@/utils/ConfirmDialogContext';
+} from './_services/admin-listings';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 type ListingType = 'SELL' | 'RENT' | 'SERVICE';

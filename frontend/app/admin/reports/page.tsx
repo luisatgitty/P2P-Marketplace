@@ -16,9 +16,7 @@ import {
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
-import ReportActionsModal from '@/components/admin/report-actions-modal';
 import { ImageLink } from '@/components/image-link';
-// ── shadcn components ──────────────────────────────────────────────────────────
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -32,13 +30,13 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
-import {
-  getAdminReports,
-  setAdminReportAction,
-} from '@/services/adminReportsService';
+import { getAdminReports } from '@/services/adminReportsService';
 import type { AdminReport, ReportStatus } from '@/types/admin';
 import { formatPrice } from '@/utils/string-builder';
 import { useUser } from '@/utils/UserContext';
+
+import ReportActionsModal from './_components/ReportActionsModal';
+import { setAdminReportAction } from './_services/admin-reports';
 
 type SortField =
   | 'reporter'

@@ -22,12 +22,13 @@ import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
 import { cn } from '@/lib/utils';
+
 import {
   type AdminDashboardStats,
   type AdminListingTypeBreakdown,
   type AdminWeeklyNewUsers,
   getAdminDashboardStats,
-} from '@/services/adminService';
+} from './_services/admin-dashboard';
 
 // ── Placeholder data ───────────────────────────────────────────────────────────
 type Trend = 'up' | 'down' | 'neutral';

@@ -33,15 +33,6 @@ import {
 } from '@/services/profileService';
 import { useUser } from '@/utils/UserContext';
 
-// ── Mock current admin ─────────────────────────────────────────────────────────
-const CURRENT_ADMIN = {
-  firstName: 'Super',
-  lastName: 'Admin',
-  email: 'superadmin@p2pmarket.ph',
-  phone: '09171234000',
-  role: 'SUPER_ADMIN',
-};
-
 // ── Password strength ──────────────────────────────────────────────────────────
 const STRENGTH_CONFIG = [
   { label: 'Weak', bar: 'bg-red-500', text: 'text-red-500' },
@@ -146,8 +137,6 @@ function PasswordStrengthBar({ password }: { password: string }) {
 export default function SettingsPage() {
   const { user, saveUserData } = useUser();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const originalFirstName = user?.firstName ?? CURRENT_ADMIN.firstName;
-  const originalLastName = user?.lastName ?? CURRENT_ADMIN.lastName;
 
   // ── Profile state
   const [profilePreview, setProfilePreview] = useState<string | null>(null);

@@ -38,16 +38,18 @@ import {
 } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
 import {
-  type AdminAccountRecord,
-  createAdminAccount,
-  getAdminAccounts,
-} from '@/services/adminAdminsService';
-import {
   deleteAdminUser,
   setAdminUserActive,
 } from '@/services/adminUsersService';
 import { useConfirmDialog } from '@/utils/ConfirmDialogContext';
-import { AUTH_LIMITS, validateCreateAdminInput } from '@/utils/validation';
+import { AUTH_LIMITS } from '@/utils/validation';
+
+import {
+  type AdminAccountRecord,
+  createAdminAccount,
+  getAdminAccounts,
+} from './_services/admin-management';
+import { validateCreateAdminInput } from './_utils/validation';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 type AdminRole = 'ADMIN' | 'SUPER_ADMIN';

@@ -19,7 +19,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
 import { ImageLink } from '@/components/image-link';
-// ── shadcn components ──────────────────────────────────────────────────────────
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -33,11 +32,12 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
+import { formatPrice } from '@/utils/string-builder';
+
 import {
   type AdminTransactionRecord,
   getAdminTransactions,
-} from '@/services/adminTransactionsService';
-import { formatPrice } from '@/utils/string-builder';
+} from './_services/admin-transactions';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 type ListingType = 'SELL' | 'RENT' | 'SERVICE';

@@ -20,7 +20,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
 import { ImageLink } from '@/components/image-link';
-// ── shadcn components ──────────────────────────────────────────────────────────
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -35,12 +34,15 @@ import {
 } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
 import {
-  type AdminUserRecord,
-  deleteAdminUser,
-  getAdminUsers,
-  setAdminUserActive,
+  setAdminUserActive, 
+  deleteAdminUser
 } from '@/services/adminUsersService';
 import { useConfirmDialog } from '@/utils/ConfirmDialogContext';
+
+import {
+  type AdminUserRecord,
+  getAdminUsers,
+} from './_services/admin-users';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 type Role = 'USER' | 'ADMIN' | 'SUPER_ADMIN';

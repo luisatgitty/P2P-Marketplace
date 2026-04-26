@@ -32,7 +32,6 @@ import {
   type MediaViewerItem,
   MediaViewerModal,
 } from '@/components/media-viewer-modal';
-// ── shadcn ─────────────────────────────────────────────────────────────────────
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -51,11 +50,12 @@ import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import {
   type AdminVerificationRecord,
-  getAdminVerifications,
-  setAdminVerificationStatus,
+  getAdminVerifications
 } from '@/services/adminVerificationsService';
 import { useConfirmDialog } from '@/utils/ConfirmDialogContext';
 import { validateImageURL } from '@/utils/validation';
+
+import { setAdminVerificationStatus } from './_services/admin-verifications';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 type VerifStatus = 'PENDING' | 'VERIFIED' | 'REJECTED';
