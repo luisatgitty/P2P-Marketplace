@@ -38,13 +38,11 @@ import {
   type LocationOption,
 } from '@/services/locationService';
 import {
-  deactivateProfile,
-  getProfileData,
-  getUserProfileData,
   type ProfileListingItem,
   type ProfilePageQuery,
   type ProfilePayload,
   type ProfileReviewItem,
+  getUserProfileData,
   updateProfileData,
   updateProfileImages,
 } from '@/services/profileService';
@@ -57,6 +55,11 @@ import {
 } from '@/utils/string-builder';
 import { useUser } from '@/utils/UserContext';
 import { AUTH_LIMITS, isValidName } from '@/utils/validation';
+
+import {
+  deactivateProfile,
+  getProfileData
+} from './_services/profile';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type ListingTab = 'all' | 'active' | 'sold' | 'booked';

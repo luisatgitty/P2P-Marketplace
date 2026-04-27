@@ -56,20 +56,6 @@ export const LISTING_LIMITS = {
   maxTimeWindows: 8,
 } as const;
 
-export const VERIFICATION_LIMITS = {
-  minimumAge: 18,
-  idTypeMinLength: 3,
-  idTypeMaxLength: 20,
-  idNumberMinLength: 4,
-  idNumberMaxLength: 50,
-  mobileNumberLength: 11,
-  userAgentMaxLength: 1024,
-  ipAddressMinLength: 7,
-  ipAddressMaxLength: 45,
-  hardwareInfoMinLength: 200,
-  hardwareInfoMaxLength: 350,
-} as const;
-
 export const VERIFICATION_ID_TYPES = [
   'philsys',
   'postal',

@@ -23,12 +23,13 @@ import { ReportModal } from '@/components/report-modal';
 import { ScheduleModal } from '@/components/schedule-modal';
 import VerificationBadge from '@/components/verification-badge';
 import { cn } from '@/lib/utils';
-import { submitUserListingReport } from '@/services/listingDetailService';
 import type { Conversation } from '@/types/messaging';
 import { useConfirmDialog } from '@/utils/ConfirmDialogContext';
 import { useUser } from '@/utils/UserContext';
-import { ImageLink } from '../image-link';
+import { ImageLink } from '@/components/image-link';
+
 import { useListingContextActions } from './use-listing-context-actions';
+import { submitUserListingReport } from '../_services/listings';
 
 interface ChatHeaderProps {
   conversation: Conversation;

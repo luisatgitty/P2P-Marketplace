@@ -48,13 +48,6 @@ import {
 import { Separator } from '@/components/ui/separator';
 import { encodeImageToPayload } from '@/lib/imageCompression';
 import { cn } from '@/lib/utils';
-import {
-  // ── NEW: import the two OTP functions added to verificationService.ts ──
-  sendPhoneOTP,
-  submitVerification,
-  type VerificationImagePayload,
-  verifyPhoneOTP,
-} from '@/services/verificationService';
 import { useConfirmDialog } from '@/utils/ConfirmDialogContext';
 import { getDeviceInfo } from '@/utils/device';
 import { useUnsavedChanges } from '@/utils/UnsavedChangesContext';
@@ -63,9 +56,15 @@ import {
   AUTH_LIMITS,
   isValidName,
   LISTING_LIMITS,
-  VERIFICATION_ID_TYPES,
-  VERIFICATION_LIMITS,
+  VERIFICATION_ID_TYPES
 } from '@/utils/validation';
+
+import {
+  sendPhoneOTP,
+  submitVerification,
+  type VerificationImagePayload,
+  verifyPhoneOTP,
+} from './_services/become-seller';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 type VerifyStep = 1 | 2 | 3;
@@ -95,6 +94,20 @@ const ID_OPTIONS: { value: IdType; label: string }[] = [
   { value: 'voters', label: "Voter's ID" },
   { value: 'acr', label: 'ACR (Foreigners)' },
 ];
+
+export const VERIFICATION_LIMITS = {
+  minimumAge: 18,
+  idTypeMinLength: 3,
+  idTypeMaxLength: 20,
+  idNumberMinLength: 4,
+  idNumberMaxLength: 50,
+  mobileNumberLength: 11,
+  userAgentMaxLength: 1024,
+  ipAddressMinLength: 7,
+  ipAddressMaxLength: 45,
+  hardwareInfoMinLength: 200,
+  hardwareInfoMaxLength: 350,
+} as const;
 
 const TOTAL = 3;
 const OTP_LENGTH = 6;

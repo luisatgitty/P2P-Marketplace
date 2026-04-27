@@ -4,11 +4,12 @@ import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
 import ListingForm from '@/components/listing-form';
+import type { ListingType } from '@/types/listings';
+
 import {
   getListingEditById,
   type ListingEditData,
-} from '@/services/listingEditService';
-import type { ListingType } from '@/types/listings';
+} from './_services/listing-edit';
 
 export default function EditListingPage() {
   const { id } = useParams<{ id: string }>();

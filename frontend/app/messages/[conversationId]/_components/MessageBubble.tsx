@@ -25,7 +25,7 @@ import type {
 import { REACTIONS } from '@/types/messaging';
 import { useConfirmDialog } from '@/utils/ConfirmDialogContext';
 import { MESSAGE_EDIT_DURATION_MS } from '@/utils/validation';
-import { SafeImage } from '../ui/safe-image';
+import { SafeImage } from '@/components/ui/safe-image';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 

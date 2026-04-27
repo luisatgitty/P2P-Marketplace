@@ -6,17 +6,18 @@ import { toast } from 'sonner';
 
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
-import { editMessage } from '@/services/messagingService';
 import { useModalFocusTrap } from '@/utils/useModalFocusTrap';
 import { MESSAGE_MAX_LENGTH } from '@/utils/validation';
-import { Button } from '../ui/button';
+import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
   CardFooter,
   CardHeader,
   CardTitle,
-} from '../ui/card';
+} from '@/components/ui/card';
+
+import { editMessage } from '../_services/conversation';
 
 export function MessageEditModal({
   initial,

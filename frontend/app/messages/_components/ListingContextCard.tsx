@@ -6,8 +6,9 @@ import OfferModal from '@/components/offer-modal';
 import { ScheduleModal } from '@/components/schedule-modal';
 import type { ConversationListing } from '@/types/messaging';
 import { formatPrice } from '@/utils/string-builder';
-import { ImageLink } from '../image-link';
-import { ModalFormCard } from '../modal-form-card';
+import { ImageLink } from '@/components/image-link';
+import { ModalFormCard } from '@/components/modal-form-card';
+
 import { useListingContextActions } from './use-listing-context-actions';
 
 interface ListingContextCardProps {

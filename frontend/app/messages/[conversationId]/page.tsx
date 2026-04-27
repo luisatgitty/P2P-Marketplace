@@ -12,22 +12,12 @@ import {
 import { toast } from 'sonner';
 
 import { MediaViewerModal } from '@/components/media-viewer-modal';
-import MessageBubble from '@/components/messages/message-bubble';
-import { MessageEditModal } from '@/components/messages/message-edit-modal';
-import { useMessageShell } from '@/components/messages/message-shell-context';
 import type { PostCardProps } from '@/components/post-card';
 import { cn } from '@/lib/utils';
-import { getListingDetailById } from '@/services/listingDetailService';
+import { getListingDetailById } from '@/app/messages/_services/listings';
 import {
-  deleteConversation,
-  deleteMessage,
-  getConversation,
   getConversations,
-  getMessages,
-  markConversationRead,
   openOrCreateConversationFromListing,
-  reactToMessage,
-  sendMessage,
 } from '@/services/messagingService';
 import type {
   Conversation,
@@ -36,6 +26,19 @@ import type {
   ReplyPreview,
 } from '@/types/messaging';
 import { useUser } from '@/utils/UserContext';
+
+import MessageBubble from './_components/MessageBubble';
+import { MessageEditModal } from './_components/MessageEditModal';
+import { useMessageShell } from '../_components/MessageShellContext';
+import {
+  deleteConversation,
+  deleteMessage,
+  getConversation,
+  getMessages,
+  markConversationRead,
+  reactToMessage,
+  sendMessage,
+} from './_services/conversation';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 

@@ -45,19 +45,20 @@ import { Button } from '@/components/ui/button';
 import { SafeImage } from '@/components/ui/safe-image';
 import VerificationBadge from '@/components/verification-badge';
 import { cn } from '@/lib/utils';
-import {
-  addListingBookmark,
-  deleteListing,
-  getListingDetailById,
-  removeListingBookmark,
-  submitListingReport,
-  toggleListingVisibility,
-} from '@/services/listingDetailService';
+import { getListingDetailById } from '@/app/messages/_services/listings';
 import { openOrCreateConversationFromListing } from '@/services/messagingService';
 import { getUserProfileData } from '@/services/profileService';
 import { useConfirmDialog } from '@/utils/ConfirmDialogContext';
 import { formatPrice, formatTimeAgo } from '@/utils/string-builder';
 import { useUser } from '@/utils/UserContext';
+
+import {
+  addListingBookmark,
+  deleteListing,
+  removeListingBookmark,
+  submitListingReport,
+  toggleListingVisibility,
+} from './_services/listings';
 
 // ── ExtraDetail — mirrors every field the listing form collects ────────────────
 interface ExtraDetail {
@@ -224,7 +225,7 @@ function ServiceInfoCard({ extra }: { extra: ExtraDetail }) {
 }
 
 // ── Main page ─────────────────────────────────────────────────────────────────
-export default function ListingDetailPage() {
+export default function ListingPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const { user, isAuth, isUserOnline } = useUser();

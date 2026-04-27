@@ -3,17 +3,18 @@
 import { usePathname, useRouter } from 'next/navigation';
 import { useState } from 'react';
 
-import ChatHeader from '@/components/messages/chat-header';
-import ConversationsList from '@/components/messages/conversations-list';
-import ListingContextCard from '@/components/messages/listing-context-card';
-import MessageInput from '@/components/messages/message-input';
+import { cn } from '@/lib/utils';
+import type { MessageTab } from '@/types/messaging';
+
+import ChatHeader from './_components/ChatHeader';
+import ConversationsList from './_components/ConversationsList';
+import MessageInput from './_components/MessageInput';
+import ListingContextCard from './_components/ListingContextCard';
 import {
   MessageShellProvider,
   useMessageShell,
-} from '@/components/messages/message-shell-context';
-import MessagesTabNav from '@/components/messages/messages-tab-nav';
-import { cn } from '@/lib/utils';
-import type { MessageTab } from '@/types/messaging';
+} from './_components/MessageShellContext';
+import MessagesTabNav from './_components/MessagesTabNav';
 
 function ConversationShell({ children }: { children: React.ReactNode }) {
   const { shellState } = useMessageShell();

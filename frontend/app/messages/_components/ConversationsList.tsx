@@ -5,10 +5,11 @@ import { usePathname } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { cn } from '@/lib/utils';
-import { getConversationsPage } from '@/services/messagingService';
 import type { Conversation, MessageTab } from '@/types/messaging';
-import ConversationItem from './conversation-item';
-import EmptyState from './empty-state';
+
+import ConversationItem from './ConversationItem';
+import EmptyState from './EmptyState';
+import { getConversationsPage } from '../[conversationId]/_services/conversation';
 
 interface ConversationsListProps {
   activeTab: MessageTab;

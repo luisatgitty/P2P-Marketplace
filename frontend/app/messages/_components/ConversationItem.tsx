@@ -4,7 +4,7 @@ import Link from 'next/link';
 
 import { cn } from '@/lib/utils';
 import type { Conversation } from '@/types/messaging';
-import { SafeImage } from '../ui/safe-image';
+import { SafeImage } from '@/components/ui/safe-image';
 
 // ─── Relative time helper ─────────────────────────────────────────────────────
 
