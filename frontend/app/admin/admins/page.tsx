@@ -26,7 +26,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { SafeImage } from '@/components/ui/safe-image';
+import ImageSafe from '@/components/image/ImageSafe';
 import { Separator } from '@/components/ui/separator';
 import {
   Table,
@@ -995,7 +995,7 @@ export default function AdminsPage() {
                       {/* Name */}
                       <TableCell className="py-2 whitespace-nowrap">
                         <div className="flex items-center gap-3">
-                          <SafeImage
+                          <ImageSafe
                             src={admin.profile_image_url}
                             type="profile"
                             alt={`${admin.first_name} ${admin.last_name}'s profile picture`}

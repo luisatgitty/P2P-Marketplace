@@ -4,7 +4,6 @@ import Image, { type ImageProps } from 'next/image';
 import { useEffect, useMemo, useState } from 'react';
 
 import { cn } from '@/lib/utils';
-import type { ImageType } from '@/types/image';
 import { validateImageURL } from '@/utils/validation';
 
 type SafeImageProps = Omit<ImageProps, 'src' | 'alt'> & {
@@ -12,6 +11,14 @@ type SafeImageProps = Omit<ImageProps, 'src' | 'alt'> & {
   type: ImageType;
   alt?: string;
 };
+
+export type ImageType =
+  | 'profile'
+  | 'thumbnail'
+  | 'card'
+  | 'id'
+  | 'listing'
+  | 'cover';
 
 function svgToDataUri(svg: string): string {
   return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
@@ -97,7 +104,7 @@ function getResolvedSrc(src: string, fallback: string): string {
   return src;
 }
 
-export function SafeImage({
+export default function ImageSafe({
   src,
   type,
   alt,

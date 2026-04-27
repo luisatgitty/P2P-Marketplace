@@ -29,21 +29,21 @@ import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
-import { ImageLink } from '@/components/image-link';
-import ListingConditionBadge from '@/components/listing-condition-badge';
-import ListingTypeBadge from '@/components/listing-type-badge';
-import { LoadingPage } from '@/components/loading';
+import { ImageLink } from '@/components/image/ImageLink';
+import ListingConditionBadge from '@/components/badge/ListingConditionBadge';
+import ListingTypeBadge from '@/components/badge/ListingTypeBadge';
+import { LoadingPage } from '@/components/Loading';
 import {
   type MediaViewerItem,
-  MediaViewerModal,
-} from '@/components/media-viewer-modal';
-import OfferModal from '@/components/offer-modal';
-import PostCard, { type PostCardProps } from '@/components/post-card';
-import { ReportModal } from '@/components/report-modal';
-import { ScheduleModal } from '@/components/schedule-modal';
+  MediaViewer,
+} from '@/components/modal/MediaViewer';
+import ListingOffer from '@/components/modal/ListingOffer';
+import PostCard, { type PostCardProps } from '@/components/PostCard';
+import { ReportForm } from '@/components/modal/ReportForm';
+import { ListingSchedule } from '@/components/modal/ListingSchedule';
 import { Button } from '@/components/ui/button';
-import { SafeImage } from '@/components/ui/safe-image';
-import VerificationBadge from '@/components/verification-badge';
+import ImageSafe from '@/components/image/ImageSafe';
+import VerificationBadge from '@/components/badge/VerificationBadge';
 import { cn } from '@/lib/utils';
 import { getListingDetailById } from '@/app/messages/_services/listings';
 import { openOrCreateConversationFromListing } from '@/services/messagingService';
@@ -686,7 +686,7 @@ export default function ListingPage() {
             {/* ── Image gallery ── */}
             <div className="bg-white dark:bg-[#1c1f2e] rounded-lg border border-stone-200 dark:border-[#2a2d3e] overflow-hidden shadow-sm">
               <div className="relative aspect-video overflow-hidden group">
-                <SafeImage
+                <ImageSafe
                   src={images[imgIdx] ?? listing.imageUrl}
                   type="listing"
                   alt={`Photo ${imgIdx + 1} of ${images.length}`}
@@ -788,7 +788,7 @@ export default function ListingPage() {
                           : 'border-transparent opacity-60 hover:opacity-100',
                       )}
                     >
-                      <SafeImage
+                      <ImageSafe
                         src={img}
                         type="thumbnail"
                         alt={`Photo ${i + 1}`}
@@ -1072,7 +1072,7 @@ export default function ListingPage() {
         </div>
       </div>
 
-      <OfferModal
+      <ListingOffer
         open={offerOpen}
         title="Make an Offer"
         subtitle={listing.title}
@@ -1088,7 +1088,7 @@ export default function ListingPage() {
       />
 
       {/* ══ SCHEDULE REQUEST MODAL ══════════════════════════════════════════════ */}
-      <ScheduleModal
+      <ListingSchedule
         open={scheduleOpen}
         onClose={() => setScheduleOpen(false)}
         onSubmit={sendSchedule}
@@ -1103,7 +1103,7 @@ export default function ListingPage() {
 
       {/* ══ REPORT MODAL ══════════════════════════════════════════════════════ */}
       {reportOpen && (
-        <ReportModal
+        <ReportForm
           open={reportOpen}
           title="Report Listing"
           subtitle="What's wrong with this listing?"
@@ -1115,7 +1115,7 @@ export default function ListingPage() {
       )}
 
       {mediaViewerIndex !== null && galleryMediaItems.length > 0 && (
-        <MediaViewerModal
+        <MediaViewer
           mediaItems={galleryMediaItems}
           activeIndex={mediaViewerIndex}
           onSelect={setMediaViewerIndex}

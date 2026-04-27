@@ -61,7 +61,7 @@ export interface BookingCalendarProps {
   disablePast?: boolean;
 }
 
-export function BookingCalendar({
+export function ScheduleCalendar({
   viewYear,
   viewMonth,
   onPrevMonth,

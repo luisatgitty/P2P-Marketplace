@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
-import { Banner, Container } from '@/components/auth/auth-container';
+import { Banner, Container } from '@/components/auth/AuthContainer';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import {

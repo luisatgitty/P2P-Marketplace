@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
-import { Banner } from '@/components/auth/auth-container';
+import { Banner } from '@/components/auth/AuthContainer';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import {
@@ -17,7 +17,7 @@ import {
   FieldSeparator,
 } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
-import { Container } from '@/components/auth/auth-container';
+import { Container } from '@/components/auth/AuthContainer';
 import { getSessionMeta, sendPostRequest } from '@/services/authService';
 import { useUser } from '@/utils/UserContext';
 import { AUTH_LIMITS } from '@/utils/validation';

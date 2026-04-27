@@ -3,7 +3,7 @@
 import { notFound } from 'next/navigation';
 import { use } from 'react';
 
-import ListingForm from '@/components/listing-form';
+import ListingForm from '@/components/ListingForm';
 import type { ListingType } from '@/types/listings';
 
 interface PageProps {

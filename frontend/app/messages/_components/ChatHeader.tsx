@@ -17,16 +17,16 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
-import ListingTypeBadge from '@/components/listing-type-badge';
-import OfferModal from '@/components/offer-modal';
-import { ReportModal } from '@/components/report-modal';
-import { ScheduleModal } from '@/components/schedule-modal';
-import VerificationBadge from '@/components/verification-badge';
+import ListingTypeBadge from '@/components/badge/ListingTypeBadge';
+import ListingOffer from '@/components/modal/ListingOffer';
+import { ReportForm } from '@/components/modal/ReportForm';
+import { ListingSchedule } from '@/components/modal/ListingSchedule';
+import VerificationBadge from '@/components/badge/VerificationBadge';
 import { cn } from '@/lib/utils';
 import type { Conversation } from '@/types/messaging';
 import { useConfirmDialog } from '@/utils/ConfirmDialogContext';
 import { useUser } from '@/utils/UserContext';
-import { ImageLink } from '@/components/image-link';
+import { ImageLink } from '@/components/image/ImageLink';
 
 import { useListingContextActions } from './use-listing-context-actions';
 import { submitUserListingReport } from '../_services/listings';
@@ -421,7 +421,7 @@ export default function ChatHeader({
           </div>
         </div>
       </header>
-      <ReportModal
+      <ReportForm
         open={reportOpen}
         title="Report User"
         subtitle="Why are you reporting this user?"
@@ -431,7 +431,7 @@ export default function ChatHeader({
         onSubmit={handleSubmitReport}
       />
 
-      <OfferModal
+      <ListingOffer
         open={editPriceOpen}
         title="Edit Offered Price"
         subtitle={listing.title}
@@ -447,7 +447,7 @@ export default function ChatHeader({
         onClose={handleCloseEditPriceModal}
       />
 
-      <ScheduleModal
+      <ListingSchedule
         open={editScheduleOpen}
         onClose={() => setEditScheduleOpen(false)}
         onSubmit={handleEditScheduleAction}

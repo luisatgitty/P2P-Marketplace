@@ -3,7 +3,7 @@
 import { LogOut } from 'lucide-react';
 import { useState } from 'react';
 
-import { SafeImage } from '@/components/ui/safe-image';
+import ImageSafe from '@/components/image/ImageSafe';
 import { cn } from '@/lib/utils';
 import { useUser } from '@/utils/UserContext';
 
@@ -84,7 +84,7 @@ export function LogoutModal({ open, onClose }: LogoutModalProps) {
               <div className="flex items-center gap-3 bg-stone-50 dark:bg-[#13151f] border border-stone-200 dark:border-[#2a2d3e] rounded-lg px-3.5 py-2.5">
                 {/* Avatar */}
                 <div className="w-9 h-9 rounded-full overflow-hidden border border-stone-200 dark:border-[#2a2d3e] bg-stone-200 dark:bg-stone-700 shrink-0 relative">
-                  <SafeImage
+                  <ImageSafe
                     src={user?.profileImageUrl}
                     type="profile"
                     alt={`${userName}'s profile picture`}

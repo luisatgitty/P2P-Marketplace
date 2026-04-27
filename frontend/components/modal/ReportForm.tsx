@@ -3,9 +3,10 @@
 import { Flag } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
-import { ModalFormCard } from '@/components/modal-form-card';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
+
+import { ModalFormCard } from './ModalFormCard';
 
 const REPORT_REASONS = [
   'Scam / Fraud',
@@ -29,7 +30,7 @@ interface ReportModalProps {
   }) => Promise<void> | void;
 }
 
-export function ReportModal({
+export function ReportForm({
   open,
   title,
   subtitle,

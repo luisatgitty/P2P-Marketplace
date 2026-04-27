@@ -20,9 +20,9 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 
-import { LogoutModal } from '@/components/auth/logout-modal';
-import { ThemeModeSwitch } from '@/components/theme-mode-switch';
-import { SafeImage } from '@/components/ui/safe-image';
+import { LogoutModal } from '@/components/auth/Logout';
+import { ThemeModeSwitch } from '@/components/ThemeModeSwitch';
+import ImageSafe from '@/components/image/ImageSafe';
 import { cn } from '@/lib/utils';
 import { getAdminReports } from '@/services/adminReportsService';
 import { getAdminVerifications } from '@/services/adminVerificationsService';
@@ -317,7 +317,7 @@ function SidebarContent({
         >
           {/* Avatar */}
           <div className="w-8 h-8 rounded-full overflow-hidden shrink-0 ring-2 ring-white/10">
-            <SafeImage
+            <ImageSafe
               src={user?.profileImageUrl}
               type="profile"
               alt={`${user?.firstName}'s profile picture`}

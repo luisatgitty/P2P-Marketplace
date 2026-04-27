@@ -2,8 +2,8 @@ import type { Metadata } from 'next';
 import { DM_Sans, Geist_Mono, Inter } from 'next/font/google';
 import { ThemeProvider } from 'next-themes';
 
-import AppChrome from '@/components/app-chrome';
-import QueryProvider from '@/components/query-provider';
+import AppChrome from '@/components/AppChrome';
+import QueryProvider from '@/components/QueryProvider';
 import { Toaster } from '@/components/ui/sonner';
 import { ConfirmDialogProvider } from '@/utils/ConfirmDialogContext';
 import { UnsavedChangesProvider } from '@/utils/UnsavedChangesContext';

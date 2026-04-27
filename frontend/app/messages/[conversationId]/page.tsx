@@ -11,8 +11,8 @@ import {
 } from 'react';
 import { toast } from 'sonner';
 
-import { MediaViewerModal } from '@/components/media-viewer-modal';
-import type { PostCardProps } from '@/components/post-card';
+import { MediaViewer } from '@/components/modal/MediaViewer';
+import type { PostCardProps } from '@/components/PostCard';
 import { cn } from '@/lib/utils';
 import { getListingDetailById } from '@/app/messages/_services/listings';
 import {
@@ -1107,7 +1107,7 @@ export default function ConversationPage() {
       )}
 
       {mediaViewerIndex !== null && mediaItems.length > 0 && (
-        <MediaViewerModal
+        <MediaViewer
           mediaItems={mediaItems}
           activeIndex={mediaViewerIndex}
           onSelect={setMediaViewerIndex}

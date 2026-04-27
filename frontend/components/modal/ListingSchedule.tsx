@@ -4,11 +4,10 @@ import { ClockIcon, Package } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
-import { ModalFormCard } from '@/components/modal-form-card';
 import {
-  BookingCalendar,
+  ScheduleCalendar,
   type BookingCalendarColors,
-} from '@/components/ui/booking-calendar';
+} from '@/components/ScheduleCalendar';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -23,6 +22,8 @@ import {
   limitMessageInputLength,
   MESSAGE_MAX_LENGTH,
 } from '@/utils/validation';
+
+import { ModalFormCard } from './ModalFormCard';
 
 // ── Date helpers ───────────────────────────────────────────────────────────────
 function sod(d: Date): Date {
@@ -142,7 +143,7 @@ export interface ScheduleModalProps {
   type: ListingType | string;
 }
 
-export function ScheduleModal({
+export function ListingSchedule({
   open,
   onClose,
   onSubmit,
@@ -511,7 +512,7 @@ export function ScheduleModal({
         </div>
 
         <div className="bg-stone-50 dark:bg-[#13151f] rounded-lg p-4 border border-stone-200 dark:border-[#2a2d3e]">
-          <BookingCalendar
+          <ScheduleCalendar
             viewYear={viewYear}
             viewMonth={viewMonth}
             onPrevMonth={prevMonth}

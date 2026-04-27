@@ -25,7 +25,7 @@ import type {
 import { REACTIONS } from '@/types/messaging';
 import { useConfirmDialog } from '@/utils/ConfirmDialogContext';
 import { MESSAGE_EDIT_DURATION_MS } from '@/utils/validation';
-import { SafeImage } from '@/components/ui/safe-image';
+import ImageSafe from '@/components/image/ImageSafe';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -146,7 +146,7 @@ function AttachmentGrid({
             </div>
           </>
         ) : (
-          <SafeImage
+          <ImageSafe
             src={att.fileUrl}
             type="thumbnail"
             alt={`Attachment ${att.fileName}`}

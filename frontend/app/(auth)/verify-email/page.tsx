@@ -4,8 +4,8 @@ import { useRouter } from 'next/navigation';
 import { Suspense, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
-import { Banner, Container } from '@/components/auth/auth-container';
-import { LoadingPage } from '@/components/loading';
+import { Banner, Container } from '@/components/auth/AuthContainer';
+import { LoadingPage } from '@/components/Loading';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import {

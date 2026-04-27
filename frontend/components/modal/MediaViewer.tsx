@@ -17,7 +17,7 @@ export type MediaViewerItem = {
   fileName?: string;
 };
 
-export function MediaViewerModal({
+export function MediaViewer({
   mediaItems,
   activeIndex,
   onSelect,

@@ -3,7 +3,6 @@
 import { HandHelping } from 'lucide-react';
 import { useMemo } from 'react';
 
-import { ModalFormCard } from '@/components/modal-form-card';
 import { Textarea } from '@/components/ui/textarea';
 import { formatPrice } from '@/utils/string-builder';
 import {
@@ -11,6 +10,8 @@ import {
   limitMessageInputLength,
   MESSAGE_MAX_LENGTH,
 } from '@/utils/validation';
+
+import { ModalFormCard } from './ModalFormCard';
 
 interface OfferModalProps {
   open: boolean;
@@ -29,7 +30,7 @@ interface OfferModalProps {
   presets?: number[];
 }
 
-export default function OfferModal({
+export default function ListingOffer({
   open,
   title,
   subtitle,

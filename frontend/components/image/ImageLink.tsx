@@ -1,9 +1,9 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 
-import { SafeImage } from '@/components/ui/safe-image';
 import { cn } from '@/lib/utils';
-import type { ImageType } from '@/types/image';
+
+import ImageSafe, { type ImageType } from './ImageSafe';
 
 interface ImageLinkProps {
   href: string;
@@ -41,7 +41,7 @@ export function ImageLink({
       aria-label={title}
       className={cn('w-9 h-9 shrink-0 relative block', className)}
     >
-      <SafeImage
+      <ImageSafe
         src={src}
         type={type}
         alt={`Image of ${label}`}

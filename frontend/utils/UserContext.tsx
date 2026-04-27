@@ -9,7 +9,7 @@ import {
   useState,
 } from 'react';
 
-import { LoadingPage } from '@/components/loading';
+import { LoadingPage } from '@/components/Loading';
 import { sendDeleteRequest, sendGetRequest } from '@/services/authService';
 import type { User } from '@/types/forms';
 import { validateImageURL } from '@/utils/validation';

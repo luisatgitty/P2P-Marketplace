@@ -1,4 +1,4 @@
-import type { PostCardProps } from '@/components/post-card';
+import type { PostCardProps } from '@/components/PostCard';
 
 export interface ProfileListingItem extends PostCardProps {
   status?: 'active' | 'sold' | 'rented' | 'completed' | 'hidden' | string;

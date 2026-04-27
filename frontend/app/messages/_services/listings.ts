@@ -1,4 +1,4 @@
-import type { PostCardProps } from '@/components/post-card';
+import type { PostCardProps } from '@/components/PostCard';
 
 export interface ListingExtra {
   description: string;

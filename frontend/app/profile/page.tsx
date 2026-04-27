@@ -20,12 +20,12 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
-import { ImageLink } from '@/components/image-link';
-import PostCard from '@/components/post-card';
+import { ImageLink } from '@/components/image/ImageLink';
+import PostCard from '@/components/PostCard';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { SafeImage } from '@/components/ui/safe-image';
-import VerificationBadge from '@/components/verification-badge';
+import ImageSafe from '@/components/image/ImageSafe';
+import VerificationBadge from '@/components/badge/VerificationBadge';
 import {
   encodeImageToPayload,
   encodeSquareProfileImageToPayload,
@@ -1074,7 +1074,7 @@ export default function ProfilePage() {
             onClick={() => !isViewingExternalProfile && cover.trigger()}
           >
             {cover.src ? (
-              <SafeImage
+              <ImageSafe
                 src={cover.src}
                 type="cover"
                 alt={`${fullName}'s cover photo`}
@@ -1139,7 +1139,7 @@ export default function ProfilePage() {
                     !isViewingExternalProfile && setShowAvatarMenu((v) => !v)
                   }
                 >
-                  <SafeImage
+                  <ImageSafe
                     src={avatar.src ?? undefined}
                     type="profile"
                     alt={`${fullName}'s profile photo`}

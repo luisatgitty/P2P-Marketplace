@@ -27,16 +27,16 @@ import {
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
-import { ImageLink } from '@/components/image-link';
+import { ImageLink } from '@/components/image/ImageLink';
 import {
   type MediaViewerItem,
-  MediaViewerModal,
-} from '@/components/media-viewer-modal';
+  MediaViewer,
+} from '@/components/modal/MediaViewer';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { SafeImage } from '@/components/ui/safe-image';
+import ImageSafe from '@/components/image/ImageSafe';
 import { Separator } from '@/components/ui/separator';
 import {
   Table,
@@ -207,7 +207,7 @@ function IdImageCard({
       </p>
       {resolvedUrl ? (
         <div className="relative w-full rounded-lg overflow-hidden border border-stone-200 dark:border-[#2a2d3e] bg-stone-100 dark:bg-[#13151f] hover:opacity-95 transition-opacity">
-          <SafeImage
+          <ImageSafe
             src={resolvedUrl}
             type="id"
             alt={`Image of ${label}`}
@@ -693,7 +693,7 @@ function DetailModal({
       </div>
 
       {mediaViewerIndex !== null && submittedMediaItems.length > 0 && (
-        <MediaViewerModal
+        <MediaViewer
           mediaItems={submittedMediaItems}
           activeIndex={mediaViewerIndex}
           onSelect={setMediaViewerIndex}

@@ -23,7 +23,7 @@ import {
 } from '@/components/ui/card';
 import { FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
-import { SafeImage } from '@/components/ui/safe-image';
+import ImageSafe from '@/components/image/ImageSafe';
 import { Separator } from '@/components/ui/separator';
 import { encodeImageToPayload } from '@/lib/imageCompression';
 import { cn } from '@/lib/utils';
@@ -364,7 +364,7 @@ export default function SettingsPage() {
                 !updatingProfileImage && setShowProfileImageMenu((v) => !v)
               }
             >
-              <SafeImage
+              <ImageSafe
                 src={profilePreview || user?.profileImageUrl}
                 type="profile"
                 alt={`${user?.firstName ?? 'User'}'s profile picture`}

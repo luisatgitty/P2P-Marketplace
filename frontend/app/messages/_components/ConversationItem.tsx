@@ -4,7 +4,7 @@ import Link from 'next/link';
 
 import { cn } from '@/lib/utils';
 import type { Conversation } from '@/types/messaging';
-import { SafeImage } from '@/components/ui/safe-image';
+import ImageSafe from '@/components/image/ImageSafe';
 
 // ─── Relative time helper ─────────────────────────────────────────────────────
 
@@ -57,7 +57,7 @@ export default function ConversationItem({
     >
       {/* Profile Image */}
       <div className="relative w-10 h-10 shrink-0">
-        <SafeImage
+        <ImageSafe
           src={otherParticipant.profileImageUrl || undefined}
           type="profile"
           alt={`${otherParticipant.firstName} ${otherParticipant.lastName} profile picture`}

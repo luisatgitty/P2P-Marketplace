@@ -3,8 +3,8 @@
 import { Clock, MapPin } from 'lucide-react';
 import Link from 'next/link';
 
-import { ImageLink } from '@/components/image-link';
-import ListingTypeBadge from '@/components/listing-type-badge';
+import { ImageLink } from '@/components/image/ImageLink';
+import ListingTypeBadge from '@/components/badge/ListingTypeBadge';
 import type { ListingType } from '@/types/listings';
 import { formatPrice, formatTimeAgo } from '@/utils/string-builder';
 

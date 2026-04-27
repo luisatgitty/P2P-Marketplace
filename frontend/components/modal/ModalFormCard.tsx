@@ -5,8 +5,6 @@ import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
 import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
-import { useModalFocusTrap } from '@/utils/useModalFocusTrap';
 import {
   Card,
   CardContent,
@@ -14,7 +12,9 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-} from './ui/card';
+} from '@/components/ui/card';
+import { cn } from '@/lib/utils';
+import { useModalFocusTrap } from '@/utils/useModalFocusTrap';
 
 export interface ModalFormCardProps {
   icon: LucideIcon;

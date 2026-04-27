@@ -3,7 +3,7 @@
 import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
-import ListingForm from '@/components/listing-form';
+import ListingForm from '@/components/ListingForm';
 import type { ListingType } from '@/types/listings';
 
 import {

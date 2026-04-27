@@ -2,11 +2,11 @@
 
 import { Star } from 'lucide-react';
 
-import OfferModal from '@/components/offer-modal';
-import { ScheduleModal } from '@/components/schedule-modal';
+import ListingOffer from '@/components/modal/ListingOffer';
+import { ListingSchedule } from '@/components/modal/ListingSchedule';
 import type { ConversationListing } from '@/types/messaging';
 import { formatPrice } from '@/utils/string-builder';
-import { ImageLink } from '@/components/image-link';
+import { ImageLink } from '@/components/image/ImageLink';
 import { ModalFormCard } from '@/components/modal-form-card';
 
 import { useListingContextActions } from './use-listing-context-actions';
@@ -396,7 +396,7 @@ export default function ListingContextCard({
       )}
 
       {editPriceOpen && (
-        <OfferModal
+        <ListingOffer
           open={editPriceOpen}
           title="Edit Offered Price"
           subtitle={listing.title}
@@ -416,7 +416,7 @@ export default function ListingContextCard({
       )}
 
       {editScheduleOpen && (
-        <ScheduleModal
+        <ListingSchedule
           open={editScheduleOpen}
           onClose={() => setEditScheduleOpen(false)}
           onSubmit={handleEditScheduleAction}

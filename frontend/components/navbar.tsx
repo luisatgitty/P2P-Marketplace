@@ -29,14 +29,14 @@ import {
 } from 'react';
 import { toast } from 'sonner';
 
-import { LogoutModal } from '@/components/auth/logout-modal';
+import { LogoutModal } from '@/components/auth/Logout';
 import {
   NotificationItem,
   type NotificationItemData,
-} from '@/components/notifications/notification-item';
-import { ThemeModeSwitch } from '@/components/theme-mode-switch';
-import { SafeImage } from '@/components/ui/safe-image';
-import VerificationBadge from '@/components/verification-badge';
+} from '@/components/NotificationItem';
+import { ThemeModeSwitch } from '@/components/ThemeModeSwitch';
+import ImageSafe from '@/components/image/ImageSafe';
+import VerificationBadge from '@/components/badge/VerificationBadge';
 import { cn } from '@/lib/utils';
 import { getConversations } from '@/services/messagingService';
 import {
@@ -673,7 +673,7 @@ export default function Navbar() {
               >
                 <div className="relative w-7 h-7">
                   <div className="w-7 h-7 rounded-full bg-stone-600 overflow-hidden border border-white/20">
-                    <SafeImage
+                    <ImageSafe
                       src={user?.profileImageUrl}
                       type="profile"
                       alt={`${user?.firstName}'s profile picture`}

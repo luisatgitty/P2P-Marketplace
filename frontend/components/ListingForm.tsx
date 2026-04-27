@@ -25,9 +25,9 @@ import {
 } from 'react';
 
 import {
-  BookingCalendar,
+  ScheduleCalendar,
   type BookingCalendarColors,
-} from '@/components/ui/booking-calendar';
+} from '@/components/ScheduleCalendar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -1508,7 +1508,7 @@ export default function ListingForm({
               )}
             </div>
 
-            <BookingCalendar
+            <ScheduleCalendar
               viewYear={calendarYear}
               viewMonth={calendarMonth}
               onPrevMonth={prevAvailabilityMonth}
