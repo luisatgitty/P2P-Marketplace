@@ -1,4 +1,6 @@
+// TODO: Resolve this later
 export type ListingType = 'sell' | 'rent' | 'service';
+export type ListingTypeU = 'SELL' | 'RENT' | 'SERVICE';
 
 export const CATEGORIES = [
   'Agriculture & Gardening',

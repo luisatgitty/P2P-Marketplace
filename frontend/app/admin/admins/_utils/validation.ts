@@ -5,7 +5,7 @@ import {
   isValidPassword,
 } from '@/utils/validation';
 
-const ADMIN_ROLES = ['ADMIN', 'SUPER_ADMIN'] as const;
+import { ADMIN_ROLES } from '../_types/admin-management';
 
 export function validateCreateAdminInput(input: {
   firstName: string;

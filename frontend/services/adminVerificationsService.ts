@@ -1,3 +1,4 @@
+// TODO: Make this service more specific
 export type AdminVerificationRecord = {
   id: string;
   user_id: string;

@@ -30,51 +30,28 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
-import { getAdminReports } from '@/services/adminReportsService';
-import type { AdminReport, ReportStatus } from '@/types/admin';
 import { formatPrice } from '@/utils/string-builder';
 import { useUser } from '@/utils/UserContext';
 
-import ReportActionsModal from './_components/ReportActionsModal';
-import { setAdminReportAction } from './_services/admin-reports';
-
-type SortField =
-  | 'reporter'
-  | 'listingOwner'
-  | 'reportedListing'
-  | 'submitted'
-  | 'reviewedAt';
-type SortDir = 'asc' | 'desc';
+import { STATUS_CONFIG } from './_constants/admin-reports';
+import {
+  REPORT_ACTION_TYPES,
+  type SortDir,
+  type SortField,
+  type ReportActionType,
+  type AdminReport
+} from './_types/admin-reports';
+import ReportResolution from './_components/ReportResolution';
+import {
+  getAdminReports,
+  setAdminReportAction
+} from './_services/admin-reports';
 
 const REPORTS: AdminReport[] = [];
 
-const STATUS_CONFIG: Record<ReportStatus, { cls: string; label: string }> = {
-  PENDING: {
-    cls: 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300',
-    label: 'Pending',
-  },
-  RESOLVED: {
-    cls: 'bg-teal-100 dark:bg-teal-900/40 text-teal-700 dark:text-teal-300',
-    label: 'Resolved',
-  },
-  DISMISSED: {
-    cls: 'bg-stone-100 dark:bg-stone-800 text-stone-500 dark:text-stone-400',
-    label: 'Dismissed',
-  },
-};
-
 const REPORT_ACTION_REASON_MAX_LENGTH = 500;
-const REPORT_ACTION_TYPES = new Set([
-  'DISMISS',
-  'BAN_LISTING',
-  'LOCK_3',
-  'LOCK_7',
-  'LOCK_30',
-  'DELETE_LISTING',
-  'PERMANENT_BAN',
-] as const);
+const REPORT_ACTION_TYPES_SET = new Set<ReportActionType>(REPORT_ACTION_TYPES);
 
-// ── Shared filter select ───────────────────────────────────────────────────────
 function FilterSelect({
   value,
   onChange,
@@ -116,7 +93,6 @@ function FilterSelect({
   );
 }
 
-// ── Main page ──────────────────────────────────────────────────────────────────
 export default function ReportsPage() {
   const { user } = useUser();
   const [search, setSearch] = useState('');
@@ -264,18 +240,11 @@ export default function ReportsPage() {
   // ── Actions ───────────────────────────────────────────────────────────────────
   async function handleModalSubmit(
     id: string,
-    action:
-      | 'DISMISS'
-      | 'BAN_LISTING'
-      | 'LOCK_3'
-      | 'LOCK_7'
-      | 'LOCK_30'
-      | 'DELETE_LISTING'
-      | 'PERMANENT_BAN',
+    action: ReportActionType,
     reason: string,
   ) {
     const trimmedReason = reason.trim();
-    if (!REPORT_ACTION_TYPES.has(action)) {
+    if (!REPORT_ACTION_TYPES_SET.has(action)) {
       toast.error('Invalid report action selected', { position: 'top-center' });
       return;
     }
@@ -775,7 +744,7 @@ export default function ReportsPage() {
       </div>
 
       {resolving && (
-        <ReportActionsModal
+        <ReportResolution
           report={resolving}
           onClose={() => setResolving(null)}
           onSubmit={handleModalSubmit}

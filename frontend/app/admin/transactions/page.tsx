@@ -7,13 +7,10 @@ import {
   ChevronUp,
   Clock,
   Handshake,
-  Home,
   RotateCw,
   Search,
-  ShoppingBag,
-  Wrench,
   X,
-  XCircle,
+  XCircle
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
@@ -34,25 +31,13 @@ import {
 import { cn } from '@/lib/utils';
 import { formatPrice } from '@/utils/string-builder';
 
+import { TYPE_CONFIG, STATUS_CONFIG } from './_constants/admin-transactions';
 import {
   type AdminTransactionRecord,
-  getAdminTransactions,
-} from './_services/admin-transactions';
-
-// ── Types ──────────────────────────────────────────────────────────────────────
-type ListingType = 'SELL' | 'RENT' | 'SERVICE';
-type TransactionStatus = 'PENDING' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED';
-type SortField =
-  | 'client'
-  | 'owner'
-  | 'listing'
-  | 'scheduleEnd'
-  | 'totalPrice'
-  | 'completedAt'
-  | 'createdAt';
-type SortDir = 'asc' | 'desc';
-
-interface AdminTransaction extends AdminTransactionRecord {}
+  type SortDir,
+  type SortField
+} from './_types/admin-transactions';
+import { getAdminTransactions } from './_services/admin-transactions';
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 function formatDateTime(value?: string | null): string {
@@ -66,35 +51,6 @@ function formatDateTime(value?: string | null): string {
   });
 }
 
-const TYPE_CONFIG: Record<
-  ListingType,
-  { label: string; cls: string; Icon: React.ElementType }
-> = {
-  SELL: {
-    label: 'For Sale',
-    cls: 'bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300',
-    Icon: ShoppingBag,
-  },
-  RENT: {
-    label: 'For Rent',
-    cls: 'bg-teal-100 dark:bg-teal-900/40 text-teal-700 dark:text-teal-300',
-    Icon: Home,
-  },
-  SERVICE: {
-    label: 'Service',
-    cls: 'bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-300',
-    Icon: Wrench,
-  },
-};
-
-const STATUS_CONFIG: Record<TransactionStatus, string> = {
-  PENDING:
-    'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300',
-  CONFIRMED: 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300',
-  COMPLETED: 'bg-teal-100 dark:bg-teal-900/40 text-teal-700 dark:text-teal-300',
-  CANCELLED: 'bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-300',
-};
-
 function formatDateRange(start?: string | null, end?: string | null): string {
   if (!start || !end) return 'N/A';
   const s = new Date(start);
@@ -103,7 +59,7 @@ function formatDateRange(start?: string | null, end?: string | null): string {
   return `${s.toLocaleDateString('en-PH', { month: 'short', day: '2-digit', year: 'numeric' })} - ${e.toLocaleDateString('en-PH', { month: 'short', day: '2-digit', year: 'numeric' })}`;
 }
 
-function buildScheduleUnitsLabel(tx: AdminTransaction): string {
+function buildScheduleUnitsLabel(tx: AdminTransactionRecord): string {
   const units = Math.max(1, Number(tx.schedule_units || 1));
   if (tx.listing_type === 'SELL') {
     return `${units} ${units === 1 ? 'unit' : 'units'}`;
@@ -204,7 +160,7 @@ export default function TransactionsPage() {
     field: 'createdAt',
     dir: 'desc',
   });
-  const [transactions, setTransactions] = useState<AdminTransaction[]>([]);
+  const [transactions, setTransactions] = useState<AdminTransactionRecord[]>([]);
   const [loadingTransactions, setLoadingTransactions] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
@@ -237,7 +193,7 @@ export default function TransactionsPage() {
           offset: nextOffset,
         });
 
-        const received = (payload.transactions ?? []) as AdminTransaction[];
+        const received = (payload.transactions ?? []) as AdminTransactionRecord[];
         setTransactions(received);
         setTotalCount(payload.total);
         setCurrentPage(pageNumber);

@@ -8,14 +8,12 @@ import {
   ChevronsUpDown,
   ChevronUp,
   CircleDashed,
-  Home,
   RotateCw,
   Search,
   ShoppingBag,
   Trash2,
-  Wrench,
   X,
-  XCircle,
+  XCircle
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
@@ -34,59 +32,24 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
+import { formatPrice } from '@/utils/string-builder';
 import { useConfirmDialog } from '@/utils/ConfirmDialogContext';
 
+// TODO: The same as the transactions constants
+import { TYPE_CONFIG } from '../transactions/_constants/admin-transactions';
+import { STATUS_CONFIG } from './_constants/admin-listings';
 import {
-  type AdminListingRecord,
+  type ListingStatus,
+  type SortDir,
+  type SortField,
+  type AdminListing,
+  type AdminListingRecord
+} from './_types/admin-listings';
+import {
   deleteAdminListing,
   getAdminListings,
   toggleAdminListingVisibility,
 } from './_services/admin-listings';
-
-// ── Types ──────────────────────────────────────────────────────────────────────
-type ListingType = 'SELL' | 'RENT' | 'SERVICE';
-type ListingStatus =
-  | 'AVAILABLE'
-  | 'UNAVAILABLE'
-  | 'SOLD'
-  | 'BANNED'
-  | 'DELETED';
-type SortField =
-  | 'title'
-  | 'type'
-  | 'price'
-  | 'transactions'
-  | 'reviews'
-  | 'created'
-  | 'updated'
-  | 'bannedUntil'
-  | 'deletedAt'
-  | 'owner'
-  | 'status';
-type SortDir = 'asc' | 'desc';
-
-interface AdminListing {
-  id: string;
-  title: string;
-  type: ListingType;
-  category: string;
-  price: number;
-  unit: string;
-  location: string;
-  status: ListingStatus;
-  listing_image_url: string;
-  seller_id: string;
-  seller: string;
-  seller_location: string;
-  seller_profile_image_url: string;
-  transaction_count: number;
-  review_count: number;
-  created: string;
-  updated_at: string;
-  banned_until: string | null;
-  deleted_at: string | null;
-  action_by_name: string;
-}
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 function formatDateTime(value?: string | null): string {
@@ -123,42 +86,6 @@ function getCurrentAdminDisplayName(): string {
     return '';
   }
 }
-
-const TYPE_CONFIG: Record<
-  ListingType,
-  { label: string; cls: string; Icon: React.ElementType }
-> = {
-  SELL: {
-    label: 'For Sale',
-    cls: 'bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300',
-    Icon: ShoppingBag,
-  },
-  RENT: {
-    label: 'For Rent',
-    cls: 'bg-teal-100 dark:bg-teal-900/40 text-teal-700 dark:text-teal-300',
-    Icon: Home,
-  },
-  SERVICE: {
-    label: 'Service',
-    cls: 'bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-300',
-    Icon: Wrench,
-  },
-};
-
-const STATUS_CONFIG: Record<ListingStatus, string> = {
-  AVAILABLE: 'bg-teal-100 dark:bg-teal-900/40 text-teal-700 dark:text-teal-300',
-  UNAVAILABLE:
-    'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300',
-  SOLD: 'bg-stone-100 dark:bg-stone-800 text-stone-500 dark:text-stone-400',
-  BANNED: 'bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400',
-  DELETED: 'bg-stone-200 dark:bg-stone-700 text-stone-600 dark:text-stone-300',
-};
-
-const phpFmt = new Intl.NumberFormat('en-PH', {
-  style: 'currency',
-  currency: 'PHP',
-  minimumFractionDigits: 0,
-});
 
 // ── Sort icon ──────────────────────────────────────────────────────────────────
 function SortIcon({
@@ -807,7 +734,7 @@ export default function ListingsPage() {
                         {/* Price */}
                         <TableCell className="py-3.5 whitespace-nowrap">
                           <p className="text-sm font-bold text-stone-800 dark:text-stone-100">
-                            {phpFmt.format(listing.price)}
+                            {formatPrice(listing.price)}
                           </p>
                           <p className="text-xs text-stone-400 dark:text-stone-500">
                             {listing.unit}

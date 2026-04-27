@@ -2,16 +2,13 @@
 
 import {
   AlertTriangle,
-  CheckCircle2,
   ChevronDown,
   Clock,
   FileText,
   Flag,
   Gavel,
-  ShieldX,
-  Trash2,
   User,
-  X,
+  X
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -22,126 +19,17 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
-import type { AdminReport, ReportActionType } from '@/types/admin';
 import { formatPrice } from '@/utils/string-builder';
 
-interface ReportActionsModalProps {
-  report: AdminReport;
-  onClose: () => void;
-  onSubmit: (
-    reportId: string,
-    action: ReportActionType,
-    reason: string,
-  ) => Promise<void> | void;
-}
-
-// ── Action config ──────────────────────────────────────────────────────────────
-
-interface ActionOption {
-  value: ReportActionType;
-  label: string;
-  description: string;
-  icon: React.ElementType;
-  severity: 'low' | 'medium' | 'high' | 'critical';
-  group: string;
-}
-
-const ACTION_OPTIONS: ActionOption[] = [
-  {
-    value: 'DISMISS',
-    label: 'Dismiss Report',
-    description: 'No necessary action needed.',
-    icon: CheckCircle2,
-    severity: 'low',
-    group: 'Minor Actions',
-  },
-  {
-    value: 'BAN_LISTING',
-    label: 'Shadow Ban Listing',
-    description: 'Shadow ban the listing for 1 day',
-    icon: ShieldX,
-    severity: 'medium',
-    group: 'Minor Actions',
-  },
-  {
-    value: 'LOCK_3',
-    label: 'Lockout 1st Offense',
-    description: 'Temporarily restrict account access for 3 Days',
-    icon: Clock,
-    severity: 'high',
-    group: 'Account Lockout',
-  },
-  {
-    value: 'LOCK_7',
-    label: 'Lockout 2nd Offense',
-    description: 'Temporarily restrict account access for 7 Days',
-    icon: Clock,
-    severity: 'high',
-    group: 'Account Lockout',
-  },
-  {
-    value: 'LOCK_30',
-    label: 'Lockout 3rd Offense',
-    description: 'Extended account restriction for 30 Days',
-    icon: Clock,
-    severity: 'high',
-    group: 'Account Lockout',
-  },
-  {
-    value: 'DELETE_LISTING',
-    label: 'Delete Listing',
-    description: 'Permanently remove the listing, and notify the owner.',
-    icon: Trash2,
-    severity: 'high',
-    group: 'Permanent Actions',
-  },
-  {
-    value: 'PERMANENT_BAN',
-    label: 'Ban Account',
-    description: 'Irreversibly ban account from the platform',
-    icon: ShieldX,
-    severity: 'critical',
-    group: 'Permanent Actions',
-  },
-];
-
-const SEVERITY_STYLES: Record<
-  ActionOption['severity'],
-  {
-    idle: string;
-    selected: string;
-    dot: string;
-  }
-> = {
-  low: {
-    idle: 'border-stone-200 dark:border-[#2a2d3e] hover:border-teal-300 dark:hover:border-teal-700',
-    selected:
-      'border-teal-400 dark:border-teal-500 bg-teal-50 dark:bg-teal-950/30 ring-1 ring-teal-400/40',
-    dot: 'bg-teal-500',
-  },
-  medium: {
-    idle: 'border-stone-200 dark:border-[#2a2d3e] hover:border-amber-300 dark:hover:border-amber-700',
-    selected:
-      'border-amber-400 dark:border-amber-500 bg-amber-50 dark:bg-amber-950/30 ring-1 ring-amber-400/40',
-    dot: 'bg-amber-500',
-  },
-  high: {
-    idle: 'border-stone-200 dark:border-[#2a2d3e] hover:border-orange-300 dark:hover:border-orange-700',
-    selected:
-      'border-orange-400 dark:border-orange-500 bg-orange-50 dark:bg-orange-950/30 ring-1 ring-orange-400/40',
-    dot: 'bg-orange-500',
-  },
-  critical: {
-    idle: 'border-stone-200 dark:border-[#2a2d3e] hover:border-red-300 dark:hover:border-red-700',
-    selected:
-      'border-red-400 dark:border-red-500 bg-red-50 dark:bg-red-950/30 ring-1 ring-red-400/40',
-    dot: 'bg-red-500',
-  },
-};
-
-const ACTION_GROUPS = ['Minor Actions', 'Account Lockout', 'Permanent Actions'];
-
-// ── Info pair ──────────────────────────────────────────────────────────────────
+import {
+  type ReportActionType,
+  type ReportActionsModalProps,
+} from '../_types/admin-reports';
+import {
+  ACTION_GROUPS,
+  ACTION_OPTIONS,
+  SEVERITY_STYLES,
+} from '../_constants/admin-reports';
 
 function InfoPair({
   icon: Icon,
@@ -200,9 +88,7 @@ function formatReportDate(value: string | null | undefined): string {
   });
 }
 
-// ── Modal ──────────────────────────────────────────────────────────────────────
-
-export default function ReportActionsModal({
+export default function ReportResolution({
   report,
   onClose,
   onSubmit,

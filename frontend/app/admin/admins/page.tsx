@@ -45,34 +45,17 @@ import { useConfirmDialog } from '@/utils/ConfirmDialogContext';
 import { AUTH_LIMITS } from '@/utils/validation';
 
 import {
-  type AdminAccountRecord,
+  type AdminRole,
+  type SortField,
+  type SortDir,
+  type AdminAccount,
+  type AdminAccountRecord
+} from './_types/admin-management';
+import {
   createAdminAccount,
   getAdminAccounts,
 } from './_services/admin-management';
 import { validateCreateAdminInput } from './_utils/validation';
-
-// ── Types ──────────────────────────────────────────────────────────────────────
-type AdminRole = 'ADMIN' | 'SUPER_ADMIN';
-type SortField = 'name' | 'created' | 'last_login' | 'updated' | 'deleted';
-type SortDir = 'asc' | 'desc';
-
-interface AdminAccount {
-  id: string;
-  first_name: string;
-  last_name: string;
-  profile_image_url: string;
-  email: string;
-  phone: string;
-  role: AdminRole;
-  is_active: boolean;
-  created_at: string;
-  last_login: string | null;
-  updated_at: string;
-  deleted_at: string | null;
-  deleted_by_name: string;
-  deleted_by_email: string;
-  added_by: string;
-}
 
 function getCurrentAdminSnapshot(): { fullName: string; email: string } | null {
   if (typeof window === 'undefined') return null;

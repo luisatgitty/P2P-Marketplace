@@ -1,43 +1,9 @@
-export type AdminAccountRecord = {
-  id: string;
-  first_name: string;
-  last_name: string;
-  profile_image_url: string;
-  email: string;
-  phone: string;
-  role: 'ADMIN' | 'SUPER_ADMIN';
-  is_active: boolean;
-  created_at: string;
-  last_login: string | null;
-  updated_at: string;
-  deleted_at: string | null;
-  deleted_by_name: string;
-  deleted_by_email: string;
-};
-
-export type CreateAdminPayload = {
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone?: string;
-  role: 'ADMIN' | 'SUPER_ADMIN';
-  password: string;
-};
-
-export type AdminAccountsQuery = {
-  search?: string;
-  role?: string;
-  status?: string;
-  limit?: number;
-  offset?: number;
-};
-
-export type AdminAccountsResponse = {
-  admins: AdminAccountRecord[];
-  total: number;
-  limit: number;
-  offset: number;
-};
+import {
+  type AdminAccountRecord,
+  type AdminAccountsQuery,
+  type AdminAccountsResponse,
+  type CreateAdminPayload
+} from '../_types/admin-management';
 
 export async function getAdminAccounts(
   query?: AdminAccountsQuery,

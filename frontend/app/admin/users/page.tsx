@@ -39,51 +39,14 @@ import {
 } from '@/services/adminUsersService';
 import { useConfirmDialog } from '@/utils/ConfirmDialogContext';
 
+import { type AdminUserRecord } from './_types/admin-users';
 import {
-  type AdminUserRecord,
-  getAdminUsers,
-} from './_services/admin-users';
-
-// ── Types ──────────────────────────────────────────────────────────────────────
-type Role = 'USER' | 'ADMIN' | 'SUPER_ADMIN';
-type VerifStatus = 'UNVERIFIED' | 'PENDING' | 'VERIFIED' | 'REJECTED';
-type SortField =
-  | 'name'
-  | 'email'
-  | 'role'
-  | 'verification'
-  | 'joined'
-  | 'last_login'
-  | 'listings'
-  | 'locked_until'
-  | 'updated'
-  | 'deleted';
-type SortDir = 'asc' | 'desc';
-
-interface AdminUser {
-  id: string;
-  first_name: string;
-  last_name: string;
-  profile_image_url: string;
-  email: string;
-  phone: string | null;
-  role: Role;
-  verification: VerifStatus;
-  is_active: boolean;
-  is_email_verified: boolean;
-  failed_login: number;
-  listings: number;
-  client_transactions: number;
-  owner_transactions: number;
-  account_locked_until: string | null;
-  last_login: string | null;
-  joined: string;
-  updated_at: string;
-  deleted_at: string | null;
-  action_by_name: string;
-  action_by_email: string;
-  location: string;
-}
+  VerifStatus,
+  SortDir,
+  SortField,
+  AdminUser
+} from './_types/admin-users';
+import { getAdminUsers } from './_services/admin-users';
 
 function getCurrentAdminSnapshot(): { fullName: string; email: string } | null {
   if (typeof window === 'undefined') return null;

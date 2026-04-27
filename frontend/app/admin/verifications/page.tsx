@@ -7,7 +7,6 @@ import {
   ChevronDown,
   ChevronsUpDown,
   ChevronUp,
-  Clock,
   Cpu,
   CreditCard,
   Expand,
@@ -48,104 +47,25 @@ import {
 } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
-import {
-  type AdminVerificationRecord,
-  getAdminVerifications
-} from '@/services/adminVerificationsService';
 import { useConfirmDialog } from '@/utils/ConfirmDialogContext';
 import { validateImageURL } from '@/utils/validation';
 
-import { setAdminVerificationStatus } from './_services/admin-verifications';
-
-// ── Types ──────────────────────────────────────────────────────────────────────
-type VerifStatus = 'PENDING' | 'VERIFIED' | 'REJECTED';
-type IdType =
-  | 'ALL'
-  | 'philsys'
-  | 'postal'
-  | 'drivers'
-  | 'prc'
-  | 'passport'
-  | 'sss'
-  | 'gsis'
-  | 'hdmf'
-  | 'voters'
-  | 'acr';
-type SortField = 'applicant' | 'dateOfBirth' | 'submitted' | 'reviewedBy';
-type SortDir = 'asc' | 'desc';
-
-const ID_TYPE_OPTIONS: [IdType, string][] = [
-  ['ALL', 'All ID Types'],
-  ['philsys', 'National ID'],
-  ['postal', 'Postal ID'],
-  ['drivers', "Driver's License"],
-  ['prc', 'PRC ID'],
-  ['passport', 'Passport'],
-  ['sss', 'UMID / SSS ID'],
-  ['gsis', 'GSIS ID'],
-  ['hdmf', 'HDMF ID'],
-  ['voters', "Voter's ID"],
-  ['acr', 'ACR (Foreigners)'],
-];
-
-const VERIFICATION_REVIEW_REASON_MAX_LENGTH = 500;
-
-interface AdminVerification {
-  id: string;
-  user_id: string;
-  // Registered profile
-  user_name: string;
-  user_email: string;
-  profile_image_url: string;
-  // Submitted personal info (from become-seller form)
-  id_first_name: string;
-  id_last_name: string;
-  id_birthdate: string;
-  id_birthdate_raw: string;
-  mobile_number: string;
-  // ID document
-  id_type: string;
-  id_number: string;
-  id_image_front_url: string;
-  id_image_back_url: string;
-  selfie_url: string;
-  // Submission metadata
-  ip_address: string;
-  user_agent: string;
-  hardware_info: string; // JSON string from getDeviceInfo()
-  // Review state
-  status: VerifStatus;
-  reason: string | null;
-  reviewed_by: string | null;
-  reviewed_at: string | null;
-  reviewed_at_raw: string | null;
-  submitted_at_raw: string;
-  submitted_date: string;
-  submitted_time: string;
-}
-
-const STATUS_CONFIG: Record<
-  VerifStatus,
-  { cls: string; label: string; Icon: React.ElementType }
-> = {
-  PENDING: {
-    cls: 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300',
-    label: 'Pending',
-    Icon: Clock,
-  },
-  VERIFIED: {
-    cls: 'bg-teal-100 dark:bg-teal-900/40 text-teal-700 dark:text-teal-300',
-    label: 'Verified',
-    Icon: ShieldCheck,
-  },
-  REJECTED: {
-    cls: 'bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400',
-    label: 'Rejected',
-    Icon: XCircle,
-  },
-};
-
-// ── Shared sub-components ──────────────────────────────────────────────────────
+import {
+  ID_TYPE_OPTIONS,
+  STATUS_CONFIG,
+  VERIFICATION_REVIEW_REASON_MAX_LENGTH
+} from './_constants/admin-verifications';
+import {
+  type IdType,
+  type SortDir,
+  type SortField,
+  type AdminVerification,
+  type AdminVerificationRecord
+} from './_types/admin-verifications';
+import {
+  getAdminVerifications,
+  setAdminVerificationStatus
+} from './_services/admin-verifications';
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (

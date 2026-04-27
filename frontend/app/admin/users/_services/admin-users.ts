@@ -1,42 +1,8 @@
-export type AdminUserRecord = {
-  id: string;
-  first_name: string;
-  last_name: string;
-  profile_image_url: string;
-  email: string;
-  phone: string;
-  role: 'USER' | 'ADMIN' | 'SUPER_ADMIN';
-  verification: 'UNVERIFIED' | 'PENDING' | 'VERIFIED' | 'REJECTED';
-  is_active: boolean;
-  is_email_verified: boolean;
-  failed_login: number;
-  listings: number;
-  client_transactions: number;
-  owner_transactions: number;
-  account_locked_until: string | null;
-  last_login: string | null;
-  joined: string;
-  updated_at: string;
-  deleted_at: string | null;
-  action_by_name: string;
-  action_by_email: string;
-  location: string;
-};
-
-export type AdminUsersQuery = {
-  search?: string;
-  status?: string;
-  verified?: string;
-  limit?: number;
-  offset?: number;
-};
-
-export type AdminUsersResponse = {
-  users: AdminUserRecord[];
-  total: number;
-  limit: number;
-  offset: number;
-};
+import {
+  type AdminUsersQuery,
+  type AdminUsersResponse,
+  type AdminUserRecord
+} from '../_types/admin-users';
 
 export async function getAdminUsers(
   query?: AdminUsersQuery,
