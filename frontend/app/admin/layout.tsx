@@ -24,9 +24,9 @@ import { LogoutModal } from '@/components/auth/Logout';
 import { ThemeModeSwitch } from '@/components/ThemeModeSwitch';
 import ImageSafe from '@/components/image/ImageSafe';
 import { cn } from '@/lib/utils';
-import { getAdminReports } from '@/services/adminReportsService';
-import { getAdminVerifications } from '@/services/adminVerificationsService';
 import { useUser } from '@/utils/UserContext';
+
+import { getAdminPendingCounts } from './_services/admin-pending-counts';
 
 const BADGE_KEYS = {
   reports: '/admin/reports',
@@ -109,23 +109,12 @@ function SidebarContent({
 
     const loadPendingCounts = async () => {
       try {
-        const [reports, verifications] = await Promise.all([
-          getAdminReports(),
-          getAdminVerifications(),
-        ]);
-
         if (!active) return;
-
-        const pendingReports = reports.reports.filter(
-          (item) => item.status === 'PENDING',
-        ).length;
-        const pendingVerifications = verifications.verifications.filter(
-          (item) => item.status === 'PENDING',
-        ).length;
+        const counts = await getAdminPendingCounts();
 
         setBadges({
-          [BADGE_KEYS.reports]: pendingReports,
-          [BADGE_KEYS.verifications]: pendingVerifications,
+          [BADGE_KEYS.reports]: counts.pendingReports,
+          [BADGE_KEYS.verifications]: counts.pendingVerifications,
         });
       } catch {
         if (!active) return;

@@ -42,6 +42,23 @@ func GetAdminDashboardStats() (model.AdminDashboardStatsFromDb, error) {
 	return stats, nil
 }
 
+func GetAdminPendingCounts() (model.AdminPendingCountsFromDb, error) {
+	db := middleware.DBConn
+	var counts model.AdminPendingCountsFromDb
+
+	query := `
+		SELECT
+			(SELECT COUNT(*)::int FROM public.reports WHERE status = 'PENDING') AS pending_reports,
+			(SELECT COUNT(*)::int FROM public.user_verifications WHERE verification_status = 'PENDING') AS pending_verifications
+	`
+
+	if err := db.Raw(query).Scan(&counts).Error; err != nil {
+		return counts, fmt.Errorf("Failed to fetch admin pending counts")
+	}
+
+	return counts, nil
+}
+
 func GetAdminWeeklyNewUsers() ([]model.AdminWeeklyNewUsersFromDb, error) {
 	db := middleware.DBConn
 	rows := make([]model.AdminWeeklyNewUsersFromDb, 0, 7)
