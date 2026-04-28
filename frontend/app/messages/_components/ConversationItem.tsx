@@ -3,10 +3,9 @@
 import Link from 'next/link';
 
 import { cn } from '@/lib/utils';
-import type { Conversation } from '@/types/messaging';
 import ImageSafe from '@/components/image/ImageSafe';
 
-// ─── Relative time helper ─────────────────────────────────────────────────────
+import type { ConversationItemProps } from '../_types/messages';
 
 function relativeTime(iso?: string): string {
   if (!iso) return '';
@@ -22,13 +21,6 @@ function relativeTime(iso?: string): string {
     month: 'short',
     day: 'numeric',
   });
-}
-
-// ─── Component ────────────────────────────────────────────────────────────────
-
-interface ConversationItemProps {
-  conversation: Conversation;
-  isActive: boolean;
 }
 
 export default function ConversationItem({

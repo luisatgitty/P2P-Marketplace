@@ -5,15 +5,11 @@ import { usePathname } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { cn } from '@/lib/utils';
-import type { Conversation, MessageTab } from '@/types/messaging';
 
 import ConversationItem from './ConversationItem';
 import EmptyState from './EmptyState';
-import { getConversationsPage } from '../[conversationId]/_services/conversation';
-
-interface ConversationsListProps {
-  activeTab: MessageTab;
-}
+import type { Conversation, ConversationsListProps } from '../_types/messages';
+import { getConversationsPage } from '../_services/listings';
 
 export default function ConversationsList({
   activeTab,

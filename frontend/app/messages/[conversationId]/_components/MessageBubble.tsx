@@ -16,33 +16,20 @@ import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 import { cn } from '@/lib/utils';
+
+import { useConfirmDialog } from '@/utils/ConfirmDialogContext';
+import { MESSAGE_EDIT_DURATION_MS } from '@/utils/validation';
+import ImageSafe from '@/components/image/ImageSafe';
+
+import { REACTIONS } from '../../_constants/messages';
 import type {
   Message,
   MessageAttachment,
   ReactionType,
   ReplyPreview,
-} from '@/types/messaging';
-import { REACTIONS } from '@/types/messaging';
-import { useConfirmDialog } from '@/utils/ConfirmDialogContext';
-import { MESSAGE_EDIT_DURATION_MS } from '@/utils/validation';
-import ImageSafe from '@/components/image/ImageSafe';
+} from '../../_types/messages';
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-interface MessageBubbleProps {
-  message: Message;
-  currentUserId: string;
-  showTime?: boolean;
-  /** Name of the other participant (for reply labels) */
-  otherName: string;
-  onReply: (msg: Message) => void;
-  onReact: (messageId: string, reaction: ReactionType | null) => void;
-  onEdit: (messageId: string, currentContent: string) => void;
-  onDelete: (messageId: string, unsend: boolean) => void;
-  onOpenMediaViewer?: (attachmentId: string) => void;
-}
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+import type { MessageBubbleProps } from '../_types/conversation';
 
 function formatTime(iso: string) {
   return new Date(iso).toLocaleTimeString('en-PH', {

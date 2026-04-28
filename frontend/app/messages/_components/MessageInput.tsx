@@ -8,25 +8,12 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { encodeImageToPayload } from '@/lib/imageCompression';
 import { cn } from '@/lib/utils';
-import type { ReplyPreview } from '@/types/messaging';
 import {
   limitMessageInputLength,
   MESSAGE_MAX_LENGTH,
 } from '@/utils/validation';
 
-type OutgoingAttachment = {
-  name: string;
-  mimeType: string;
-  data: string;
-};
-
-interface MessageInputProps {
-  onSend: (content: string, attachments: OutgoingAttachment[]) => Promise<void>;
-  disabled?: boolean;
-  replyTo?: ReplyPreview | null;
-  onCancelReply?: () => void;
-  autoFocusKey?: string;
-}
+import type { OutgoingAttachment, MessageInputProps } from '../_types/messages';
 
 export default function MessageInput({
   onSend,

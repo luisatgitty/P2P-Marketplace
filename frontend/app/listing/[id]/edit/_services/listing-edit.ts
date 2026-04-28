@@ -1,19 +1,7 @@
-import type { ListingFormData } from '@/components/ListingForm';
-
-export type ListingEditData = Partial<ListingFormData> & {
-  type: 'sell' | 'rent' | 'service';
-};
-
-type ListingEditApiData = Omit<ListingEditData, 'timeWindows'> & {
-  minPeriod?: string | number;
-  availability?: string;
-  timeWindows?: Array<{
-    startTime?: string;
-    endTime?: string;
-    start?: string;
-    end?: string;
-  }>;
-};
+import {
+  ListingEditData,
+  ListingEditApiData
+} from '../_types/listing-edit';
 
 export async function getListingEditById(id: string): Promise<ListingEditData> {
   try {

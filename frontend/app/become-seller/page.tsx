@@ -60,64 +60,25 @@ import {
 } from '@/utils/validation';
 
 import {
+  RESEND_SECONDS,
+  DEVICE,
+  ID_OPTIONS,
+  VERIF_LIMITS
+} from './_constants/become-seller';
+import {
+  type IdType,
+  type VerifyStep,
+  type VerificationImagePayload,
+  type CameraInputProps
+} from './_types/become-seller';
+import {
   sendPhoneOTP,
   submitVerification,
-  type VerificationImagePayload,
   verifyPhoneOTP,
 } from './_services/become-seller';
 
-// ── Types ──────────────────────────────────────────────────────────────────────
-type VerifyStep = 1 | 2 | 3;
-type IdType =
-  | ''
-  | 'philsys'
-  | 'postal'
-  | 'drivers'
-  | 'prc'
-  | 'passport'
-  | 'sss'
-  | 'gsis'
-  | 'hdmf'
-  | 'voters'
-  | 'acr';
+// const RESEND_SECONDS = 45;
 
-const ID_OPTIONS: { value: IdType; label: string }[] = [
-  { value: '', label: 'Select an ID type…' },
-  { value: 'philsys', label: 'National ID' },
-  { value: 'postal', label: 'Postal ID' },
-  { value: 'drivers', label: "Driver's License" },
-  { value: 'prc', label: 'PRC ID' },
-  { value: 'passport', label: 'Passport' },
-  { value: 'sss', label: 'UMID / SSS ID' },
-  { value: 'gsis', label: 'GSIS ID' },
-  { value: 'hdmf', label: 'HDMF ID' },
-  { value: 'voters', label: "Voter's ID" },
-  { value: 'acr', label: 'ACR (Foreigners)' },
-];
-
-export const VERIFICATION_LIMITS = {
-  minimumAge: 18,
-  idTypeMinLength: 3,
-  idTypeMaxLength: 20,
-  idNumberMinLength: 4,
-  idNumberMaxLength: 50,
-  mobileNumberLength: 11,
-  userAgentMaxLength: 1024,
-  ipAddressMinLength: 7,
-  ipAddressMaxLength: 45,
-  hardwareInfoMinLength: 200,
-  hardwareInfoMaxLength: 350,
-} as const;
-
-const TOTAL = 3;
-const OTP_LENGTH = 6;
-const RESEND_SECONDS = 45;
-const PHONE_DIGITS = 10;
-
-const device = getDeviceInfo();
-// NOTE: Temporary override to bypass device check during development.
-// Remove this line in production.
-device.isMobile = true;
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 function formatCountdown(s: number): string {
@@ -160,15 +121,6 @@ async function fileToVerificationImagePayload(
   fieldName: string,
 ): Promise<VerificationImagePayload> {
   return encodeImageToPayload(file, 'id', fieldName);
-}
-
-// ── CameraInput ────────────────────────────────────────────────────────────────
-interface CameraInputProps {
-  label: string;
-  capture: 'environment' | 'user';
-  file: File | null;
-  inputRef: React.RefObject<HTMLInputElement | null>;
-  onChange: (f: File | null) => void;
 }
 
 function CameraInput({
@@ -299,8 +251,8 @@ export default function BecomeSellerPage() {
   );
 
   // ── Derived booleans ────────────────────────────────────────────────────────
-  const phoneComplete = phoneNumber.replace(/\D/g, '').length === PHONE_DIGITS;
-  const otpComplete = otpValue.length === OTP_LENGTH;
+  const phoneComplete = phoneNumber.replace(/\D/g, '').length === VERIF_LIMITS.mobileNumberLength;
+  const otpComplete = otpValue.length === VERIF_LIMITS.otpLength;
 
   // ── CHANGED: isNextDisabled now also requires otpVerified ──────────────────
   // Previously the form only checked otpComplete (the user just filled all 6 slots).
@@ -314,7 +266,7 @@ export default function BecomeSellerPage() {
 
   // ── Effects ─────────────────────────────────────────────────────────────────
   useEffect(() => {
-    setIsMobile(device.isMobile);
+    setIsMobile(DEVICE.isMobile);
   }, []);
 
   // Resend countdown
@@ -344,7 +296,7 @@ export default function BecomeSellerPage() {
       return;
 
     const digits = phoneNumber.replace(/\D/g, '');
-    if (digits.length !== PHONE_DIGITS) return;
+    if (digits.length !== VERIF_LIMITS.mobileNumberLength) return;
 
     void (async () => {
       setVerifyingOtp(true);
@@ -448,9 +400,8 @@ export default function BecomeSellerPage() {
     if (!normalizedPhone)
       return 'Please add a valid Philippine mobile number in your profile.';
 
-    const mobileNumber = `0${normalizedPhone}`;
-    if (mobileNumber.length !== VERIFICATION_LIMITS.mobileNumberLength) {
-      return `Mobile number must be exactly ${VERIFICATION_LIMITS.mobileNumberLength} digits.`;
+    if (normalizedPhone.length !== VERIF_LIMITS.mobileNumberLength) {
+      return `Mobile number must be exactly ${VERIF_LIMITS.mobileNumberLength} digits.`;
     }
 
     const city = (user?.locationCity ?? '').trim();
@@ -486,10 +437,10 @@ export default function BecomeSellerPage() {
 
     if (!normalizedIdType) return 'Please select an ID type.';
     if (
-      normalizedIdType.length < VERIFICATION_LIMITS.idTypeMinLength ||
-      normalizedIdType.length > VERIFICATION_LIMITS.idTypeMaxLength
+      normalizedIdType.length < VERIF_LIMITS.idTypeMinLength ||
+      normalizedIdType.length > VERIF_LIMITS.idTypeMaxLength
     ) {
-      return `ID type must be between ${VERIFICATION_LIMITS.idTypeMinLength} and ${VERIFICATION_LIMITS.idTypeMaxLength} characters.`;
+      return `ID type must be between ${VERIF_LIMITS.idTypeMinLength} and ${VERIF_LIMITS.idTypeMaxLength} characters.`;
     }
     if (
       !VERIFICATION_ID_TYPES.includes(
@@ -514,20 +465,20 @@ export default function BecomeSellerPage() {
     }
     const now = new Date();
     const minimumAllowedBirthdate = new Date(
-      now.getFullYear() - VERIFICATION_LIMITS.minimumAge,
+      now.getFullYear() - VERIF_LIMITS.minimumAge,
       now.getMonth(),
       now.getDate(),
     );
     if (parsedDob > minimumAllowedBirthdate) {
-      return `You must be at least ${VERIFICATION_LIMITS.minimumAge} years old.`;
+      return `You must be at least ${VERIF_LIMITS.minimumAge} years old.`;
     }
 
     if (!normalizedIdNumber) return 'ID number is required.';
-    if (normalizedIdNumber.length < VERIFICATION_LIMITS.idNumberMinLength) {
-      return `ID number must be at least ${VERIFICATION_LIMITS.idNumberMinLength} characters.`;
+    if (normalizedIdNumber.length < VERIF_LIMITS.idNumberMinLength) {
+      return `ID number must be at least ${VERIF_LIMITS.idNumberMinLength} characters.`;
     }
-    if (normalizedIdNumber.length > VERIFICATION_LIMITS.idNumberMaxLength) {
-      return `ID number must not exceed ${VERIFICATION_LIMITS.idNumberMaxLength} characters.`;
+    if (normalizedIdNumber.length > VERIF_LIMITS.idNumberMaxLength) {
+      return `ID number must not exceed ${VERIF_LIMITS.idNumberMaxLength} characters.`;
     }
 
     if (!(idFront instanceof File))
@@ -543,12 +494,11 @@ export default function BecomeSellerPage() {
     if (!otpVerified) return 'Please verify your OTP code before submitting.';
 
     const digits = phoneNumber.replace(/\D/g, '');
-    if (digits.length !== PHONE_DIGITS)
+    if (digits.length !== VERIF_LIMITS.mobileNumberLength)
       return 'Please provide a valid Philippine mobile number.';
 
-    const mobileNumber = `0${digits}`;
-    if (mobileNumber.length !== VERIFICATION_LIMITS.mobileNumberLength) {
-      return `Mobile number must be exactly ${VERIFICATION_LIMITS.mobileNumberLength} digits.`;
+    if (digits.length !== VERIF_LIMITS.mobileNumberLength) {
+      return `Mobile number must be exactly ${VERIF_LIMITS.mobileNumberLength} digits.`;
     }
 
     if (
@@ -565,7 +515,7 @@ export default function BecomeSellerPage() {
   // ── CHANGED: handleSendOtp now calls the real API ─────────────────────────
   async function handleSendOtp() {
     const digits = phoneNumber.replace(/\D/g, '');
-    if (digits.length !== PHONE_DIGITS) return;
+    if (digits.length !== VERIF_LIMITS.mobileNumberLength) return;
 
     setSendingOtp(true);
     try {
@@ -641,7 +591,7 @@ export default function BecomeSellerPage() {
   }
 
   async function next() {
-    if (!device.isMobile) return;
+    if (!DEVICE.isMobile) return;
 
     if (step === 1) {
       const err = validateStep1();
@@ -693,18 +643,18 @@ export default function BecomeSellerPage() {
       };
 
       const ipAddress = sessionMeta.ipAddress ?? 'unknown';
-      if (ipAddress.length > VERIFICATION_LIMITS.ipAddressMaxLength) {
-        ipAddress.slice(0, VERIFICATION_LIMITS.ipAddressMaxLength);
+      if (ipAddress.length > VERIF_LIMITS.ipAddressMaxLength) {
+        ipAddress.slice(0, VERIF_LIMITS.ipAddressMaxLength);
       }
 
       const userAgent = sessionMeta.userAgent ?? 'unknown';
-      if (userAgent.length > VERIFICATION_LIMITS.userAgentMaxLength) {
-        userAgent.slice(0, VERIFICATION_LIMITS.userAgentMaxLength);
+      if (userAgent.length > VERIF_LIMITS.userAgentMaxLength) {
+        userAgent.slice(0, VERIF_LIMITS.userAgentMaxLength);
       }
 
       const hardwareInfo = String(getDeviceInfo({ asJson: true }));
-      if (hardwareInfo.length > VERIFICATION_LIMITS.hardwareInfoMaxLength) {
-        hardwareInfo.slice(0, VERIFICATION_LIMITS.hardwareInfoMaxLength);
+      if (hardwareInfo.length > VERIF_LIMITS.hardwareInfoMaxLength) {
+        hardwareInfo.slice(0, VERIF_LIMITS.hardwareInfoMaxLength);
       }
 
       const [idImageFront, idImageBack, selfieImage] = await Promise.all([
@@ -831,10 +781,10 @@ export default function BecomeSellerPage() {
           <div className="bg-[#1e2433] px-7 py-5">
             <h1 className="text-white font-bold text-xl">Become a Seller</h1>
             <p className="text-slate-400 text-sm mt-1">
-              Complete {TOTAL} quick steps to get verified
+              Complete {VERIF_LIMITS.totalSteps} quick steps to get verified
             </p>
             <div className="flex gap-1.5 mt-4">
-              {Array.from({ length: TOTAL }, (_, i) => i + 1).map((i) => (
+              {Array.from({ length: VERIF_LIMITS.totalSteps }, (_, i) => i + 1).map((i) => (
                 <div
                   key={i}
                   className={cn(
@@ -1167,13 +1117,13 @@ export default function BecomeSellerPage() {
                         setIdNumber(
                           e.target.value.slice(
                             0,
-                            VERIFICATION_LIMITS.idNumberMaxLength,
+                            VERIF_LIMITS.idNumberMaxLength,
                           ),
                         )
                       }
                       placeholder="1234-5678-9012"
-                      minLength={VERIFICATION_LIMITS.idNumberMinLength}
-                      maxLength={VERIFICATION_LIMITS.idNumberMaxLength}
+                      minLength={VERIF_LIMITS.idNumberMinLength}
+                      maxLength={VERIF_LIMITS.idNumberMaxLength}
                       className="dark:bg-[#13151f] dark:border-[#2a2d3e] font-mono"
                     />
                   </div>
@@ -1247,7 +1197,7 @@ export default function BecomeSellerPage() {
                       value={phoneNumber}
                       onChange={setPhoneNumber}
                       placeholder="9XX XXX XXXX"
-                      maxLength={PHONE_DIGITS}
+                      maxLength={VERIF_LIMITS.mobileNumberLength}
                     />
                     {/* ── CHANGED: button now shows loading state and calls real API ── */}
                     <Button
@@ -1287,7 +1237,7 @@ export default function BecomeSellerPage() {
                 <div className="flex justify-center">
                   <div className="relative">
                     <InputOTP
-                      maxLength={OTP_LENGTH}
+                      maxLength={VERIF_LIMITS.otpLength}
                       value={otpValue}
                       onChange={setOtpValue}
                       // Disable while verifying or already verified
@@ -1361,7 +1311,7 @@ export default function BecomeSellerPage() {
             <Separator className="mt-6 dark:bg-[#2a2d3e]" />
             <div className="flex items-center justify-between my-4">
               <span className="text-xs text-stone-400 dark:text-stone-500">
-                Step {step} of {TOTAL}
+                Step {step} of {VERIF_LIMITS.totalSteps}
               </span>
               <div className="flex gap-2">
                 <Button
@@ -1391,7 +1341,7 @@ export default function BecomeSellerPage() {
                       : undefined
                   }
                 >
-                  {step === TOTAL
+                  {step === VERIF_LIMITS.totalSteps
                     ? submitting
                       ? 'Submitting…'
                       : 'Submit Application'

@@ -45,13 +45,14 @@ import { Button } from '@/components/ui/button';
 import ImageSafe from '@/components/image/ImageSafe';
 import VerificationBadge from '@/components/badge/VerificationBadge';
 import { cn } from '@/lib/utils';
-import { getListingDetailById } from '@/app/messages/_services/listings';
+import { getListingDetailById } from '@/services/listingService';
 import { openOrCreateConversationFromListing } from '@/services/messagingService';
 import { getUserProfileData } from '@/services/profileService';
 import { useConfirmDialog } from '@/utils/ConfirmDialogContext';
 import { formatPrice, formatTimeAgo } from '@/utils/string-builder';
 import { useUser } from '@/utils/UserContext';
 
+import { ExtraDetail } from './_types/listings';
 import {
   addListingBookmark,
   deleteListing,
@@ -59,31 +60,6 @@ import {
   submitListingReport,
   toggleListingVisibility,
 } from './_services/listings';
-
-// ── ExtraDetail — mirrors every field the listing form collects ────────────────
-interface ExtraDetail {
-  description: string;
-  condition: string; // sell only — "Brand New"|"Like New"|"Good"|"Fair"|"For Parts"
-  images: string[];
-  features: string[]; // highlights (up to 8 keywords)
-  transactionCount: number;
-  reviewCount: number;
-  // Common
-  deliveryMethod: string; // from form's deliveryMethod field
-  // Rent-specific
-  minPeriod?: string;
-  available_from?: string;
-  availability?: string;
-  deposit?: string;
-  amenities?: string[];
-  daysOff?: string[];
-  timeWindows?: { startTime: string; endTime: string }[];
-  // Service-specific
-  turnaround?: string;
-  serviceArea?: string;
-  arrangement?: string;
-  inclusions?: string[];
-}
 
 function getDefaultExtra(listing: PostCardProps): ExtraDetail {
   return {

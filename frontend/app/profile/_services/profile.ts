@@ -1,7 +1,7 @@
 import {
   appendProfileQueryParams,
-  ProfilePayload,
-  ProfilePageQuery
+  type ProfilePayload,
+  type ProfilePageQuery
 } from '@/services/profileService';
 
 export async function getProfileData(

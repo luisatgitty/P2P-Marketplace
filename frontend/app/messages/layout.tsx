@@ -4,7 +4,6 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useState } from 'react';
 
 import { cn } from '@/lib/utils';
-import type { MessageTab } from '@/types/messaging';
 
 import ChatHeader from './_components/ChatHeader';
 import ConversationsList from './_components/ConversationsList';
@@ -15,6 +14,7 @@ import {
   useMessageShell,
 } from './_components/MessageShellContext';
 import MessagesTabNav from './_components/MessagesTabNav';
+import type { MessageTab } from './_types/messages';
 
 function ConversationShell({ children }: { children: React.ReactNode }) {
   const { shellState } = useMessageShell();

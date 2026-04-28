@@ -1,4 +1,4 @@
-import type { Conversation } from '@/types/messaging';
+import type { Conversation } from '@/app/messages/_types/messages';
 import type { ApiSuccess } from '@/types/api';
 
 export type ScheduleRequestPayload = {
@@ -35,6 +35,7 @@ export async function apiFetch<T>(route: string, options?: RequestInit): Promise
   return (parsed.data ?? {}) as T;
 }
 
+// TODO: To be replace with unread conversations endpoint once implemented
 export async function getConversations(): Promise<Conversation[]> {
   const data = await apiFetch<{ conversations: Conversation[] }>(
     '/messages/conversations',

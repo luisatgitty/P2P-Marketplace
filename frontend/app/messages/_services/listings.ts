@@ -1,61 +1,113 @@
-import type { PostCardProps } from '@/components/PostCard';
+import {
+  apiFetch,
+  emitMessagesUpdate,
+  ScheduleRequestPayload
+} from '@/services/messagingService';
 
-export interface ListingExtra {
-  description: string;
-  condition: string;
-  images: string[];
-  features: string[];
-  transactionCount: number;
-  reviewCount: number;
-  deliveryMethod: string;
-  minPeriod?: string;
-  available_from?: string;
-  availability?: string;
-  deposit?: string;
-  amenities?: string[];
-  daysOff?: string[];
-  timeWindows?: { startTime: string; endTime: string }[];
-  turnaround?: string;
-  serviceArea?: string;
-  arrangement?: string;
-  inclusions?: string[];
-}
+import type {
+  Conversation,
+  ConversationsPageQuery,
+  ConversationsPage,
+  ListingReviewPayload
+} from '../_types/messages';
 
-export interface ListingDetailPayload {
-  listing: PostCardProps;
-  extra: ListingExtra;
-  related: PostCardProps[];
-  isBookmarked?: boolean;
-}
+export async function getConversationsPage(
+  query: ConversationsPageQuery = {},
+): Promise<ConversationsPage> {
+  const params = new URLSearchParams();
+  if (Number.isFinite(query.limit)) {
+    params.set('limit', String(query.limit));
+  }
+  if (Number.isFinite(query.offset)) {
+    params.set('offset', String(query.offset));
+  }
+  if (typeof query.search === 'string' && query.search.trim() !== '') {
+    params.set('search', query.search.trim());
+  }
+  if (typeof query.tab === 'string' && query.tab.trim() !== '') {
+    params.set('tab', query.tab.trim());
+  }
 
-export interface ListingReviewPayload {
-  id: string;
-  rating: number;
-  comment: string;
-}
+  const suffix = params.size > 0 ? `?${params.toString()}` : '';
 
-export async function getListingDetailById(
-  id: string,
-): Promise<ListingDetailPayload> {
   try {
-    const res = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/listing/${id}`,
-      {
-        method: 'GET',
-        credentials: 'include',
-      },
-    );
+    const data = await apiFetch<{
+      conversations: Conversation[];
+      total?: number;
+      limit?: number;
+      offset?: number;
+    }>(`/messages/conversations${suffix}`, {
+      method: 'GET',
+    });
 
-    const parsedJson = await res.json();
-    if (!res.ok) {
-      throw parsedJson?.data?.message || 'Failed to fetch listing details.';
-    }
+    const conversations = data.conversations ?? [];
+    const total = Number(data.total ?? conversations.length);
+    const limit = Number(data.limit ?? query.limit ?? conversations.length);
+    const offset = Number(data.offset ?? query.offset ?? 0);
 
-    return parsedJson.data as ListingDetailPayload;
+    return {
+      conversations,
+      total,
+      limit,
+      offset,
+    };
   } catch {
-    throw 'An unexpected error occurred. Please try again later.';
+    return {
+      conversations: [],
+      total: 0,
+      limit: Number(query.limit ?? 0),
+      offset: Number(query.offset ?? 0),
+    };
   }
 }
+
+export async function updateConversationOfferAsOwner(
+  conversationId: string,
+  offerPrice?: number,
+  offerMessage?: string,
+): Promise<void> {
+  await apiFetch<{}>(`/messages/conversations/${conversationId}/offer`, {
+    method: 'PATCH',
+    body: JSON.stringify({
+      offerPrice:
+        Number.isFinite(offerPrice) && (offerPrice ?? 0) > 0
+          ? Math.trunc(offerPrice as number)
+          : undefined,
+      offerMessage: (offerMessage ?? '').trim() || undefined,
+    }),
+  });
+  emitMessagesUpdate();
+}
+
+export async function updateConversationScheduleAsOwner(
+  conversationId: string,
+  schedule: ScheduleRequestPayload,
+): Promise<void> {
+  await apiFetch<{}>(`/messages/conversations/${conversationId}/schedule`, {
+    method: 'PATCH',
+    body: JSON.stringify({
+      startDate: schedule.startDate,
+      endDate: schedule.endDate,
+      startTime: schedule.startTime,
+      endTime: schedule.endTime,
+      scheduleMessage: (schedule.message ?? '').trim() || undefined,
+    }),
+  });
+  emitMessagesUpdate();
+}
+
+export async function toggleConversationDealAgreement(
+  conversationId: string,
+): Promise<void> {
+  await apiFetch<{}>(`/messages/conversations/${conversationId}/deal`, {
+    method: 'PATCH',
+  });
+  emitMessagesUpdate();
+}
+
+
+
+
 
 export async function markListingAsComplete(id: string): Promise<void> {
   try {

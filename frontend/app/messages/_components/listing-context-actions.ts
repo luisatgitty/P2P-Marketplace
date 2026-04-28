@@ -2,39 +2,22 @@ import {
   openOrCreateConversationFromListing,
   type ScheduleRequestPayload,
 } from '@/services/messagingService';
-import type { ConversationListing } from '@/types/messaging';
 
-import {
-  createListingReview,
-  deleteListingReview,
-  getMyListingReview,
-  type ListingReviewPayload,
-  markListingAsComplete,
-  updateListingReview,
-} from '../_services/listings';
+import type {
+  ConversationListing,
+  ListingContextActionState,
+  ListingReviewPayload
+} from '../_types/messages';
 import {
   toggleConversationDealAgreement,
   updateConversationOfferAsOwner,
   updateConversationScheduleAsOwner,
-} from '../[conversationId]/_services/conversation';
-
-export type ListingContextActionState = {
-  normalizedStatus: string;
-  normalizedTransactionStatus: string;
-  isSold: boolean;
-  isListingBlocked: boolean;
-  shouldHideButtons: boolean;
-  hasTransaction: boolean;
-  isTransactionConfirmed: boolean;
-  canMarkAsComplete: boolean;
-  canDeal: boolean;
-  hasAgreed: boolean;
-  canReview: boolean;
-  offeredPrice: number;
-  scheduleValue: string;
-  canEditPrice: boolean;
-  canEditSchedule: boolean;
-};
+  createListingReview,
+  deleteListingReview,
+  getMyListingReview,
+  markListingAsComplete,
+  updateListingReview
+} from '../_services/listings';
 
 export function getListingContextActionState(
   listing: ConversationListing,

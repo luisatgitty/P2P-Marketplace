@@ -14,26 +14,24 @@ import { toast } from 'sonner';
 import { MediaViewer } from '@/components/modal/MediaViewer';
 import type { PostCardProps } from '@/components/PostCard';
 import { cn } from '@/lib/utils';
-import { getListingDetailById } from '@/app/messages/_services/listings';
-import {
-  getConversations,
-  openOrCreateConversationFromListing,
-} from '@/services/messagingService';
-import type {
-  Conversation,
-  Message,
-  ReactionType,
-  ReplyPreview,
-} from '@/types/messaging';
+import { getListingDetailById } from '@/services/listingService';
+import { openOrCreateConversationFromListing } from '@/services/messagingService';
 import { useUser } from '@/utils/UserContext';
 
 import MessageBubble from './_components/MessageBubble';
 import { MessageEditModal } from './_components/MessageEditModal';
 import { useMessageShell } from '../_components/MessageShellContext';
+import type {
+  Conversation,
+  Message,
+  ReactionType,
+  ReplyPreview,
+} from '../_types/messages';
 import {
   deleteConversation,
   deleteMessage,
   getConversation,
+  getConversations,
   getMessages,
   markConversationRead,
   reactToMessage,

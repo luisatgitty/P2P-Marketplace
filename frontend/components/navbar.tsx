@@ -455,6 +455,7 @@ export default function Navbar() {
     }
 
     try {
+      // TODO: Optimize by having a dedicated endpoint that returns unread status instead of fetching all conversations.
       const conversations = await getConversations();
       const hasUnread = conversations.some(
         (conversation) => (conversation.unreadCount ?? 0) > 0,

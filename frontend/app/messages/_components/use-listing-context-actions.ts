@@ -4,9 +4,13 @@ import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 import type { ScheduleRequestPayload } from '@/services/messagingService';
-import type { ConversationListing } from '@/types/messaging';
 import { useConfirmDialog } from '@/utils/ConfirmDialogContext';
 
+import type {
+  ListingReviewPayload,
+  UseListingContextActionsParams
+} from '../_types/messages';
+import {  } from '../_types/messages';
 import {
   getListingContextActionState,
   loadListingReview,
@@ -17,16 +21,6 @@ import {
   runReviewUpsert,
   runScheduleUpdate,
 } from './listing-context-actions';
-import type { ListingReviewPayload } from '../_services/listings';
-
-type UseListingContextActionsParams = {
-  listing: ConversationListing;
-  isSeller: boolean;
-  hideActionButtons?: boolean;
-  conversationId?: string;
-  onMarkedComplete?: () => void | Promise<void>;
-  onOfferUpdated?: () => void | Promise<void>;
-};
 
 export function useListingContextActions({
   listing,

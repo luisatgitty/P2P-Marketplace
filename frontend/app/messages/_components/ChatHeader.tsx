@@ -11,7 +11,7 @@ import {
   MoreVertical,
   Star,
   Trash2,
-  User,
+  User
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
@@ -23,20 +23,13 @@ import { ReportForm } from '@/components/modal/ReportForm';
 import { ListingSchedule } from '@/components/modal/ListingSchedule';
 import VerificationBadge from '@/components/badge/VerificationBadge';
 import { cn } from '@/lib/utils';
-import type { Conversation } from '@/types/messaging';
 import { useConfirmDialog } from '@/utils/ConfirmDialogContext';
 import { useUser } from '@/utils/UserContext';
 import { ImageLink } from '@/components/image/ImageLink';
 
+import type { ChatHeaderProps } from '../_types/messages';
 import { useListingContextActions } from './use-listing-context-actions';
 import { submitUserListingReport } from '../_services/listings';
-
-interface ChatHeaderProps {
-  conversation: Conversation;
-  onDelete?: () => void;
-  onMarkedComplete?: () => void | Promise<void>;
-  onOfferUpdated?: () => void | Promise<void>;
-}
 
 export default function ChatHeader({
   conversation,

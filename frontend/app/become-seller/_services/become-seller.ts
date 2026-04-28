@@ -1,23 +1,4 @@
-export type VerificationImagePayload = {
-  name: string;
-  mimeType: string;
-  data: string;
-};
-
-export type SubmitVerificationPayload = {
-  idType: string;
-  idNumber: string;
-  idFirstName: string;
-  idLastName: string;
-  idBirthdate: string;
-  mobileNumber: string;
-  userAgent: string;
-  ipAddress: string;
-  hardwareInfo: string;
-  idImageFront: VerificationImagePayload;
-  idImageBack: VerificationImagePayload;
-  selfieImage: VerificationImagePayload;
-};
+import { SubmitVerificationPayload } from '../_types/become-seller';
 
 export async function submitVerification(
   payload: SubmitVerificationPayload,

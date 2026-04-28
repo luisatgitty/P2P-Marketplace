@@ -4,21 +4,12 @@ import { Star } from 'lucide-react';
 
 import ListingOffer from '@/components/modal/ListingOffer';
 import { ListingSchedule } from '@/components/modal/ListingSchedule';
-import type { ConversationListing } from '@/types/messaging';
 import { formatPrice } from '@/utils/string-builder';
 import { ImageLink } from '@/components/image/ImageLink';
-import { ModalFormCard } from '@/components/modal-form-card';
+import { ModalFormCard } from '@/components/modal/ModalFormCard';
 
+import type { ListingContextCardProps } from '../_types/messages';
 import { useListingContextActions } from './use-listing-context-actions';
-
-interface ListingContextCardProps {
-  conversationId?: string;
-  listing: ConversationListing;
-  isSeller?: boolean;
-  hideActionButtons?: boolean;
-  onMarkedComplete?: () => void | Promise<void>;
-  onOfferUpdated?: () => void | Promise<void>;
-}
 
 export default function ListingContextCard({
   conversationId,

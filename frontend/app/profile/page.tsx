@@ -56,42 +56,20 @@ import {
 import { useUser } from '@/utils/UserContext';
 import { AUTH_LIMITS, isValidName } from '@/utils/validation';
 
+import type {
+  EditableProfileSnapshot,
+  ListingTab,
+  ProfileForm,
+  ProfileTab,
+  ReviewTab
+} from './_types/profile';
 import {
   deactivateProfile,
   getProfileData
 } from './_services/profile';
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-type ListingTab = 'all' | 'active' | 'sold' | 'booked';
-type ProfileTab = 'listings' | 'bookmarks' | 'reviews';
-type ReviewTab = 'received' | 'personal';
-
-const SOLD_STATUSES = new Set(['sold']);
-const PROFILE_SCROLL_BATCH_SIZE = 16;
-
-interface ProfileForm {
-  firstName: string;
-  lastName: string;
-  bio: string;
-  phone: string;
-  locationProv: string;
-  locationCity: string;
-  locationBrgy: string;
-  currentPassword: string;
-  newPassword: string;
-  confirmPassword: string;
-}
-
-type EditableProfileSnapshot = Pick<
-  ProfileForm,
-  | 'firstName'
-  | 'lastName'
-  | 'bio'
-  | 'phone'
-  | 'locationProv'
-  | 'locationCity'
-  | 'locationBrgy'
->;
+export const SOLD_STATUSES = new Set(['sold']);
+export const PROFILE_SCROLL_BATCH_SIZE = 16;
 
 function normalizeEditableProfile(
   form: EditableProfileSnapshot,
@@ -107,7 +85,6 @@ function normalizeEditableProfile(
   };
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
 function AddListingCard() {
   return (
     <Link href="/create" className="block group">

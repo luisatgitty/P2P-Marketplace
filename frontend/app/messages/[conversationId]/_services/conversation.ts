@@ -1,97 +1,19 @@
+import {
+  apiFetch,
+  emitMessagesUpdate
+} from '@/services/messagingService';
+
 import type {
   Conversation,
   Message,
-  MessageTab,
   ReactionType,
-  ReplyPreview,
-} from '@/types/messaging';
-import {
-  apiFetch,
-  emitMessagesUpdate,
-  ScheduleRequestPayload
-} from '@/services/messagingService';
-
-export type OutgoingMessageAttachment = {
-  name: string;
-  mimeType: string;
-  data: string;
-};
-
-export type MessagesPageQuery = {
-  limit?: number;
-  offset?: number;
-};
-
-export type ConversationsPageQuery = {
-  limit?: number;
-  offset?: number;
-  search?: string;
-  tab?: MessageTab;
-};
-
-export type ConversationsPage = {
-  conversations: Conversation[];
-  total: number;
-  limit: number;
-  offset: number;
-};
-
-export type MessagesPage = {
-  messages: Message[];
-  total: number;
-  limit: number;
-  offset: number;
-};
-
-export async function getConversationsPage(
-  query: ConversationsPageQuery = {},
-): Promise<ConversationsPage> {
-  const params = new URLSearchParams();
-  if (Number.isFinite(query.limit)) {
-    params.set('limit', String(query.limit));
-  }
-  if (Number.isFinite(query.offset)) {
-    params.set('offset', String(query.offset));
-  }
-  if (typeof query.search === 'string' && query.search.trim() !== '') {
-    params.set('search', query.search.trim());
-  }
-  if (typeof query.tab === 'string' && query.tab.trim() !== '') {
-    params.set('tab', query.tab.trim());
-  }
-
-  const suffix = params.size > 0 ? `?${params.toString()}` : '';
-
-  try {
-    const data = await apiFetch<{
-      conversations: Conversation[];
-      total?: number;
-      limit?: number;
-      offset?: number;
-    }>(`/messages/conversations${suffix}`, {
-      method: 'GET',
-    });
-
-    const conversations = data.conversations ?? [];
-    const total = Number(data.total ?? conversations.length);
-    const limit = Number(data.limit ?? query.limit ?? conversations.length);
-    const offset = Number(data.offset ?? query.offset ?? 0);
-
-    return {
-      conversations,
-      total,
-      limit,
-      offset,
-    };
-  } catch {
-    return {
-      conversations: [],
-      total: 0,
-      limit: Number(query.limit ?? 0),
-      offset: Number(query.offset ?? 0),
-    };
-  }
-}
+  ReplyPreview
+} from '../../_types/messages';
+import type {
+  MessagesPageQuery,
+  MessagesPage,
+  OutgoingMessageAttachment
+} from '../_types/conversation';
 
 export async function getConversation(
   id: string,
@@ -107,6 +29,16 @@ export async function getConversation(
   } catch {
     return null;
   }
+}
+
+export async function getConversations(): Promise<Conversation[]> {
+  const data = await apiFetch<{ conversations: Conversation[] }>(
+    '/messages/conversations',
+    {
+      method: 'GET',
+    },
+  );
+  return data.conversations ?? [];
 }
 
 export async function getMessages(
@@ -236,50 +168,6 @@ export async function deleteConversation(
 ): Promise<void> {
   await apiFetch<{}>(`/messages/conversations/${conversationId}`, {
     method: 'DELETE',
-  });
-  emitMessagesUpdate();
-}
-
-export async function updateConversationOfferAsOwner(
-  conversationId: string,
-  offerPrice?: number,
-  offerMessage?: string,
-): Promise<void> {
-  await apiFetch<{}>(`/messages/conversations/${conversationId}/offer`, {
-    method: 'PATCH',
-    body: JSON.stringify({
-      offerPrice:
-        Number.isFinite(offerPrice) && (offerPrice ?? 0) > 0
-          ? Math.trunc(offerPrice as number)
-          : undefined,
-      offerMessage: (offerMessage ?? '').trim() || undefined,
-    }),
-  });
-  emitMessagesUpdate();
-}
-
-export async function updateConversationScheduleAsOwner(
-  conversationId: string,
-  schedule: ScheduleRequestPayload,
-): Promise<void> {
-  await apiFetch<{}>(`/messages/conversations/${conversationId}/schedule`, {
-    method: 'PATCH',
-    body: JSON.stringify({
-      startDate: schedule.startDate,
-      endDate: schedule.endDate,
-      startTime: schedule.startTime,
-      endTime: schedule.endTime,
-      scheduleMessage: (schedule.message ?? '').trim() || undefined,
-    }),
-  });
-  emitMessagesUpdate();
-}
-
-export async function toggleConversationDealAgreement(
-  conversationId: string,
-): Promise<void> {
-  await apiFetch<{}>(`/messages/conversations/${conversationId}/deal`, {
-    method: 'PATCH',
   });
   emitMessagesUpdate();
 }

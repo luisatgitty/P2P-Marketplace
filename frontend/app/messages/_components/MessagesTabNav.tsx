@@ -1,26 +1,10 @@
 'use client';
 
-import { Key, ShoppingCart, Tag, Wrench } from 'lucide-react';
-
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
-import type { MessageTab } from '@/types/messaging';
 
-export const MESSAGE_TABS: {
-  id: MessageTab;
-  label: string;
-  Icon: React.ElementType;
-}[] = [
-  { id: 'buying', label: 'Buy', Icon: ShoppingCart },
-  { id: 'selling', label: 'Sell', Icon: Tag },
-  { id: 'rental', label: 'Rent', Icon: Key },
-  { id: 'services', label: 'Service', Icon: Wrench },
-];
-
-interface MessagesTabNavProps {
-  activeTab: MessageTab;
-  onTabChange: (tab: MessageTab) => void;
-}
+import { MESSAGE_TABS } from '../_constants/messages';
+import { MessagesTabNavProps } from '../_types/messages';
 
 export default function MessagesTabNav({
   activeTab,
