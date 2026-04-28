@@ -79,7 +79,7 @@ func SendOTP(c *fiber.Ctx) error {
 	// }
 
 	// NOTE: Only used for development/testing since we don't have a real SMS service integrated yet.
-	fmt.Println(fmt.Sprintf("OTP sent successfully: %s", rawOTP))
+	fmt.Printf("OTP sent successfully: %s", rawOTP)
 	return SendSuccessResponse(c, 200, "OTP sent successfully.", nil)
 }
 

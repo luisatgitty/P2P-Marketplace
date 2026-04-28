@@ -57,6 +57,7 @@ func AppRoutes(app *fiber.App) {
 	app.Post("/admin/admins", controller.AuthenticateUser, privateLimiter, controller.CreateAdminAccount)
 	app.Patch("/admin/admins/:id/active", controller.AuthenticateUser, privateLimiter, controller.SetAdminAccountActive)
 	app.Delete("/admin/admins/:id", controller.AuthenticateUser, privateLimiter, controller.DeleteAdminAccount)
+	app.Get("/admin/pending-counts", controller.AuthenticateUser, privateLimiter, controller.GetAdminPendingCounts)
 	app.Get("/admin/listings", controller.AuthenticateUser, privateLimiter, controller.GetAdminListings)
 	app.Get("/admin/transactions", controller.AuthenticateUser, privateLimiter, controller.GetAdminTransactions)
 	app.Patch("/admin/listings/:id/toggle-visibility", controller.AuthenticateUser, privateLimiter, controller.ToggleAdminListingVisibility)

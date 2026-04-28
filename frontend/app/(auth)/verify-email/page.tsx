@@ -1,45 +1,47 @@
-"use client";
+'use client';
 
-import { useState, useEffect, useRef, Suspense } from "react";
-import { useRouter } from "next/navigation";
-import { toast } from "sonner"
-import { sendPostRequest, getSessionMeta } from "@/services/authService";
-import { useUser } from "@/utils/UserContext";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { useRouter } from 'next/navigation';
+import { Suspense, useEffect, useRef, useState } from 'react';
+import { toast } from 'sonner';
+
+import { Banner, Container } from '@/components/auth/AuthContainer';
+import { LoadingPage } from '@/components/Loading';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 import {
   Field,
+  FieldDescription,
   FieldGroup,
   FieldLabel,
-  FieldDescription,
-} from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
-import { Banner, Container } from "@/components/auth/auth-container";
-import { LoadingPage } from "@/components/loading";
-import { SignupForm } from "@/types/forms";
-import { AUTH_LIMITS, validateOtpCode } from "@/utils/validation";
+} from '@/components/ui/field';
+import { Input } from '@/components/ui/input';
+import { getSessionMeta, sendPostRequest } from '@/services/authService';
+import type { SignupForm } from '@/types/forms';
+import { useUser } from '@/utils/UserContext';
+
+import { validateOtpCode } from './_utils/validation';
 
 function VerifyEmailForm() {
   const router = useRouter();
   const { saveUserData } = useUser();
   const [form, setForm] = useState<SignupForm>({
-    firstName: "",
-    lastName: "",
-    email: "",
-    password: "",
-    confirmPassword: "",
+    firstName: '',
+    lastName: '',
+    email: '',
+    password: '',
+    confirmPassword: '',
   });
-  const [otp, setOtp] = useState(["", "", "", "", "", ""]);
+  const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [loading, setLoading] = useState(false);
   const [otpResendCooldown, setOtpResendCooldown] = useState(0);
   const [otpTimeLeft, setOtpTimeLeft] = useState(0);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
-  const signupData = sessionStorage.getItem("pending_signup");
+  const signupData = sessionStorage.getItem('pending_signup');
 
   useEffect(() => {
     if (!signupData) {
-      router.replace("/signup"); // Redirect if no pending signup data
+      router.replace('/signup'); // Redirect if no pending signup data
       return;
     }
 
@@ -47,7 +49,7 @@ function VerifyEmailForm() {
     setForm(JSON.parse(signupData));
 
     // Read existing OTP expiry time or set a new one
-    const otpExpiration = sessionStorage.getItem("otp_expires_at");
+    const otpExpiration = sessionStorage.getItem('otp_expires_at');
     if (otpExpiration) {
       const remaining = Math.max(
         0,
@@ -56,7 +58,7 @@ function VerifyEmailForm() {
       setOtpTimeLeft(remaining);
     } else {
       const expiresAt = Date.now() + 10 * 60 * 1000;
-      sessionStorage.setItem("otp_expires_at", expiresAt.toString());
+      sessionStorage.setItem('otp_expires_at', expiresAt.toString());
       setOtpTimeLeft(10 * 60);
     }
 
@@ -83,7 +85,7 @@ function VerifyEmailForm() {
   const formatTime = (seconds: number) => {
     const m = Math.floor(seconds / 60);
     const s = seconds % 60;
-    return `${m}:${s.toString().padStart(2, "0")}`;
+    return `${m}:${s.toString().padStart(2, '0')}`;
   };
 
   // Handle individual OTP digit input
@@ -102,7 +104,7 @@ function VerifyEmailForm() {
 
   // Go to previous input on backspace
   const handleKeyDown = (index: number, e: React.KeyboardEvent) => {
-    if (e.key === "Backspace" && !otp[index] && index > 0) {
+    if (e.key === 'Backspace' && !otp[index] && index > 0) {
       inputRefs.current[index - 1]?.focus();
     }
   };
@@ -110,17 +112,17 @@ function VerifyEmailForm() {
   // Fill OTP from clipboard paste
   const handlePaste = (e: React.ClipboardEvent) => {
     const pasted = e.clipboardData
-      .getData("text")
-      .replace(/\D/g, "")
+      .getData('text')
+      .replace(/\D/g, '')
       .slice(0, 6);
     if (pasted.length === 6) {
-      setOtp(pasted.split(""));
+      setOtp(pasted.split(''));
       inputRefs.current[5]?.focus();
     }
   };
 
   const showErrorToast = (message: string) => {
-    toast.error(message, { position: "top-center" });
+    toast.error(message, { position: 'top-center' });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -128,7 +130,7 @@ function VerifyEmailForm() {
     setLoading(true);
 
     // Validate OTP length
-    const otpString = otp.join("");
+    const otpString = otp.join('');
     const otpError = validateOtpCode(otpString);
     if (otpError) {
       showErrorToast(otpError);
@@ -140,21 +142,21 @@ function VerifyEmailForm() {
     try {
       const { ipAddress, userAgent } = await getSessionMeta();
       const data = await sendPostRequest(
-        "/auth/verify-email",
+        '/auth/verify-email',
         { ...form, ipAddress, userAgent, otpString },
         true,
       );
       saveUserData(data.user);
-      sessionStorage.removeItem("pending_signup");
-      sessionStorage.removeItem("otp_expires_at");
-      router.replace("/");
+      sessionStorage.removeItem('pending_signup');
+      sessionStorage.removeItem('otp_expires_at');
+      router.replace('/');
     } catch (error: any) {
-      if (error === "Failed to fetch") {
-        error = "Failed to verify email. Please contact support.";
+      if (error === 'Failed to fetch') {
+        error = 'Failed to verify email. Please contact support.';
       }
 
       showErrorToast(error);
-      setOtp(["", "", "", "", "", ""]);
+      setOtp(['', '', '', '', '', '']);
       inputRefs.current[0]?.focus();
     } finally {
       setLoading(false);
@@ -164,21 +166,21 @@ function VerifyEmailForm() {
   const handleResend = async () => {
     if (otpResendCooldown > 0) return;
     try {
-      await sendPostRequest("/auth/resend-otp", { ...form });
+      await sendPostRequest('/auth/resend-otp', { ...form });
       // Reset OTP expiry timer
       const expiresAt = Date.now() + 10 * 60 * 1000;
-      sessionStorage.setItem("otp_expires_at", expiresAt.toString());
+      sessionStorage.setItem('otp_expires_at', expiresAt.toString());
       setOtpTimeLeft(10 * 60);
       setOtpResendCooldown(60); // 60 second cooldown
     } catch (error: any) {
-      if (error === "Failed to fetch") {
-        error = "Failed to resend OTP. Please try again later.";
+      if (error === 'Failed to fetch') {
+        error = 'Failed to resend OTP. Please try again later.';
       }
       showErrorToast(error);
     }
   };
 
-  if (!signupData) return (<LoadingPage />);
+  if (!signupData) return <LoadingPage />;
 
   return (
     <Container>
@@ -227,14 +229,14 @@ function VerifyEmailForm() {
                     {otpTimeLeft > 0 ? (
                       `Code expires in ${formatTime(otpTimeLeft)}`
                     ) : (
-                      <span style={{ color: "red" }}>Code has expired</span>
+                      <span style={{ color: 'red' }}>Code has expired</span>
                     )}
                   </FieldDescription>
                 </Field>
 
                 <Field className="mt-4 w-xs mx-auto">
                   <Button type="submit" disabled={loading}>
-                    {loading ? "Verifying..." : "Verify Email"}
+                    {loading ? 'Verifying...' : 'Verify Email'}
                   </Button>
                 </Field>
               </form>
@@ -242,7 +244,7 @@ function VerifyEmailForm() {
               {/* Resend OTP with cooldown */}
               <div className="text-center text-sm mt-2">
                 <span className="text-muted-foreground">
-                  Didn't receive the code?{" "}
+                  Didn't receive the code?{' '}
                 </span>
                 <button
                   type="button"
@@ -252,7 +254,7 @@ function VerifyEmailForm() {
                 >
                   {otpResendCooldown > 0
                     ? `Resend in ${otpResendCooldown}s`
-                    : "Resend"}
+                    : 'Resend'}
                 </button>
               </div>
             </FieldGroup>

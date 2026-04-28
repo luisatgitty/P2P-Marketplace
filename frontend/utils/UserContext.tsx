@@ -1,11 +1,18 @@
-"use client";
+'use client';
 
-import { createContext, useCallback, useContext, useState, useEffect } from "react";
-import { useRouter, usePathname } from "next/navigation";
-import { User } from "@/types/forms";
-import { LoadingPage } from "@/components/loading";
-import { validateImageURL } from "@/utils/validation";
-import { sendDeleteRequest, sendGetRequest } from "@/services/authService";
+import { usePathname, useRouter } from 'next/navigation';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+} from 'react';
+
+import { LoadingPage } from '@/components/Loading';
+import { sendDeleteRequest, sendGetRequest } from '@/services/authService';
+import type { User } from '@/types/forms';
+import { validateImageURL } from '@/utils/validation';
 
 interface UserContextType {
   user: User | null;
@@ -17,52 +24,47 @@ interface UserContextType {
 
 const UserContext = createContext<UserContextType | null>(null);
 const PUBLIC_ROUTES = [
-  "/",
-  "/signup",
-  "/login",
-  "/forgot-password",
-  "/reset-password",
-  "/verify-email",
-  "/listing",
-  "/not-found",
+  '/',
+  '/signup',
+  '/login',
+  '/forgot-password',
+  '/reset-password',
+  '/verify-email',
+  '/listing',
+  '/not-found',
 ];
 const AUTH_ROUTES = [
-  "/signup",
-  "/login",
-  "/forgot-password",
-  "/reset-password",
-  "/verify-email",
+  '/signup',
+  '/login',
+  '/forgot-password',
+  '/reset-password',
+  '/verify-email',
 ];
-const ADMIN_ROUTES = [
-  "/admin",
-];
-const SHARED_AUTH_ROUTES = [
-  "/listing",
-  "/profile",
-];
+const ADMIN_ROUTES = ['/admin'];
+const SHARED_AUTH_ROUTES = ['/listing', '/profile'];
 const KNOWN_APP_ROUTES = [
-  "/",
-  "/signup",
-  "/login",
-  "/forgot-password",
-  "/reset-password",
-  "/verify-email",
-  "/listing",
-  "/become-seller",
-  "/create",
-  "/messages",
-  "/profile",
-  "/admin",
-  "/not-found",
+  '/',
+  '/signup',
+  '/login',
+  '/forgot-password',
+  '/reset-password',
+  '/verify-email',
+  '/listing',
+  '/become-seller',
+  '/create',
+  '/messages',
+  '/profile',
+  '/admin',
+  '/not-found',
 ];
-const STORAGE_KEY = "auth_user";
+const STORAGE_KEY = 'auth_user';
 
 function setRoleCookie(role?: string) {
-  if (typeof document === "undefined") return;
+  if (typeof document === 'undefined') return;
 
-  const normalized = (role ?? "").trim().toUpperCase();
+  const normalized = (role ?? '').trim().toUpperCase();
   if (!normalized) {
-    document.cookie = "app_role=; path=/; max-age=0; samesite=lax";
+    document.cookie = 'app_role=; path=/; max-age=0; samesite=lax';
     return;
   }
 
@@ -71,16 +73,16 @@ function setRoleCookie(role?: string) {
 
 function getRealtimeSocketURL(): string {
   const apiUrl = process.env.NEXT_PUBLIC_API_URL?.trim();
-  if (!apiUrl) return "";
+  if (!apiUrl) return '';
 
   try {
     const url = new URL(apiUrl);
-    url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
-    url.pathname = "/ws";
-    url.search = "";
+    url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
+    url.pathname = '/ws';
+    url.search = '';
     return url.toString();
   } catch {
-    return "";
+    return '';
   }
 }
 
@@ -90,38 +92,46 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isAuth, setIsAuth] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [presenceByUserId, setPresenceByUserId] = useState<Record<string, boolean>>({});
+  const [presenceByUserId, setPresenceByUserId] = useState<
+    Record<string, boolean>
+  >({});
 
-  const applyPresenceUpdate = useCallback((userId?: string, isOnline?: boolean) => {
-    const normalizedUserId = (userId ?? "").trim();
-    if (!normalizedUserId) return;
+  const applyPresenceUpdate = useCallback(
+    (userId?: string, isOnline?: boolean) => {
+      const normalizedUserId = (userId ?? '').trim();
+      if (!normalizedUserId) return;
 
-    setPresenceByUserId((prev) => {
-      const nextValue = Boolean(isOnline);
-      if (prev[normalizedUserId] === nextValue) return prev;
-      return {
-        ...prev,
-        [normalizedUserId]: nextValue,
-      };
-    });
-  }, []);
+      setPresenceByUserId((prev) => {
+        const nextValue = Boolean(isOnline);
+        if (prev[normalizedUserId] === nextValue) return prev;
+        return {
+          ...prev,
+          [normalizedUserId]: nextValue,
+        };
+      });
+    },
+    [],
+  );
 
-  const isUserOnline = useCallback((userId?: string | null) => {
-    const normalizedUserId = (userId ?? "").trim();
-    if (!normalizedUserId) return false;
-    return Boolean(presenceByUserId[normalizedUserId]);
-  }, [presenceByUserId]);
+  const isUserOnline = useCallback(
+    (userId?: string | null) => {
+      const normalizedUserId = (userId ?? '').trim();
+      if (!normalizedUserId) return false;
+      return Boolean(presenceByUserId[normalizedUserId]);
+    },
+    [presenceByUserId],
+  );
 
   const normalizePath = (path: string): string => {
-    const normalized = path.replace(/\/+$/, "");
-    return normalized === "" ? "/" : normalized;
+    const normalized = path.replace(/\/+$/, '');
+    return normalized === '' ? '/' : normalized;
   };
 
   const currentPath = normalizePath(pathname);
 
   const isRouteRootMatch = (route: string): boolean => {
     const routeRoot = normalizePath(route);
-    if (routeRoot === "/") return currentPath === "/";
+    if (routeRoot === '/') return currentPath === '/';
     return currentPath === routeRoot || currentPath.startsWith(`${routeRoot}/`);
   };
 
@@ -130,11 +140,13 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const isAdminRoute = ADMIN_ROUTES.some(isRouteRootMatch);
   const isSharedAuthRoute = SHARED_AUTH_ROUTES.some(isRouteRootMatch);
   const isKnownAppRoute = KNOWN_APP_ROUTES.some(isRouteRootMatch);
-  const isAdminRole = ["ADMIN", "SUPER_ADMIN"].includes((user?.role ?? "").toUpperCase());
+  const isAdminRole = ['ADMIN', 'SUPER_ADMIN'].includes(
+    (user?.role ?? '').toUpperCase(),
+  );
 
   // Save user data during login
   const saveUserData = (userData: User) => {
-    console.log("Logged User Data:", userData);
+    console.log('Logged User Data:', userData);
     setUser(userData);
     setIsAuth(true);
     setIsLoading(false);
@@ -145,8 +157,8 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   // Clear user saved data after logout
   const clearUserData = async () => {
     try {
-      await sendDeleteRequest("/auth/logout");
-    }  catch {
+      await sendDeleteRequest('/auth/logout');
+    } catch {
       // Ignore errors during logout since we will clear client state regardless
     } finally {
       // Clear user data and validation state regardless of logout success
@@ -155,9 +167,9 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       setIsAuth(false);
       setIsLoading(false);
       setPresenceByUserId({});
-      setRoleCookie("");
+      setRoleCookie('');
       localStorage.removeItem(STORAGE_KEY);
-      router.replace("/login");
+      router.replace('/login');
     }
   };
 
@@ -183,7 +195,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       }
 
       try {
-        const me = await sendGetRequest("/auth/me", true);
+        const me = await sendGetRequest('/auth/me', true);
         if (!mounted) return;
 
         setUser(me);
@@ -194,7 +206,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         if (!mounted) return;
 
         localStorage.removeItem(STORAGE_KEY);
-        setRoleCookie("");
+        setRoleCookie('');
         setUser(null);
         setIsAuth(false);
       } finally {
@@ -230,16 +242,16 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
       ws.onopen = async () => {
         // Update user local storage of account data
-        const user = await sendGetRequest("/auth/me", true);
+        const user = await sendGetRequest('/auth/me', true);
         saveUserData(user);
-        
+
         wasEverOpen = true;
-        window.dispatchEvent(new Event("messages:updated"));
+        window.dispatchEvent(new Event('messages:updated'));
 
         if (pingInterval) clearInterval(pingInterval);
         pingInterval = setInterval(() => {
           if (ws?.readyState === WebSocket.OPEN) {
-            ws.send(JSON.stringify({ type: "ping" }));
+            ws.send(JSON.stringify({ type: 'ping' }));
           }
         }, 25_000);
       };
@@ -248,81 +260,110 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         try {
           const parsed = JSON.parse(evt.data) as { type?: string; data?: any };
 
-          if (parsed.type === "presence:update") {
-            const presenceData = parsed.data as { userId?: string; isOnline?: boolean };
+          if (parsed.type === 'presence:update') {
+            const presenceData = parsed.data as {
+              userId?: string;
+              isOnline?: boolean;
+            };
             applyPresenceUpdate(presenceData?.userId, presenceData?.isOnline);
-            window.dispatchEvent(new CustomEvent("realtime:presence", { detail: parsed.data }));
-            window.dispatchEvent(new Event("messages:updated"));
+            window.dispatchEvent(
+              new CustomEvent('realtime:presence', { detail: parsed.data }),
+            );
+            window.dispatchEvent(new Event('messages:updated'));
             return;
           }
 
-          if (parsed.type === "presence:snapshot") {
-            const onlineUserIds = Array.isArray((parsed.data as { onlineUserIds?: unknown })?.onlineUserIds)
-              ? ((parsed.data as { onlineUserIds?: unknown[] }).onlineUserIds ?? [])
+          if (parsed.type === 'presence:snapshot') {
+            const onlineUserIds = Array.isArray(
+              (parsed.data as { onlineUserIds?: unknown })?.onlineUserIds,
+            )
+              ? ((parsed.data as { onlineUserIds?: unknown[] }).onlineUserIds ??
+                [])
               : [];
 
             const next: Record<string, boolean> = {};
             for (const value of onlineUserIds) {
-              const id = typeof value === "string" ? value.trim() : "";
+              const id = typeof value === 'string' ? value.trim() : '';
               if (id) next[id] = true;
             }
 
             setPresenceByUserId(next);
 
-            window.dispatchEvent(new Event("messages:updated"));
+            window.dispatchEvent(new Event('messages:updated'));
             return;
           }
 
-          if (parsed.type === "presence:connected") {
-            const connectedUserId = (parsed.data as { userId?: string })?.userId;
+          if (parsed.type === 'presence:connected') {
+            const connectedUserId = (parsed.data as { userId?: string })
+              ?.userId;
             applyPresenceUpdate(connectedUserId, true);
-            window.dispatchEvent(new Event("messages:updated"));
+            window.dispatchEvent(new Event('messages:updated'));
             return;
           }
 
-          if (parsed.type === "message:new") {
-            window.dispatchEvent(new CustomEvent("realtime:message", { detail: parsed.data }));
-            window.dispatchEvent(new Event("messages:updated"));
+          if (parsed.type === 'message:new') {
+            window.dispatchEvent(
+              new CustomEvent('realtime:message', { detail: parsed.data }),
+            );
+            window.dispatchEvent(new Event('messages:updated'));
             return;
           }
 
-          if (parsed.type === "reaction:update") {
-            window.dispatchEvent(new CustomEvent("realtime:reaction", { detail: parsed.data }));
+          if (parsed.type === 'reaction:update') {
+            window.dispatchEvent(
+              new CustomEvent('realtime:reaction', { detail: parsed.data }),
+            );
             return;
           }
 
-          if (parsed.type === "message:read") {
-            window.dispatchEvent(new CustomEvent("realtime:read", { detail: parsed.data }));
-            window.dispatchEvent(new Event("messages:updated"));
+          if (parsed.type === 'message:read') {
+            window.dispatchEvent(
+              new CustomEvent('realtime:read', { detail: parsed.data }),
+            );
+            window.dispatchEvent(new Event('messages:updated'));
             return;
           }
 
-          if (parsed.type === "message:status") {
-            window.dispatchEvent(new CustomEvent("realtime:status", { detail: parsed.data }));
+          if (parsed.type === 'message:status') {
+            window.dispatchEvent(
+              new CustomEvent('realtime:status', { detail: parsed.data }),
+            );
             return;
           }
 
-          if (parsed.type === "message:edit") {
-            window.dispatchEvent(new CustomEvent("realtime:message-edit", { detail: parsed.data }));
-            window.dispatchEvent(new Event("messages:updated"));
+          if (parsed.type === 'message:edit') {
+            window.dispatchEvent(
+              new CustomEvent('realtime:message-edit', { detail: parsed.data }),
+            );
+            window.dispatchEvent(new Event('messages:updated'));
             return;
           }
 
-          if (parsed.type === "message:unsend") {
-            window.dispatchEvent(new CustomEvent("realtime:message-unsend", { detail: parsed.data }));
-            window.dispatchEvent(new Event("messages:updated"));
+          if (parsed.type === 'message:unsend') {
+            window.dispatchEvent(
+              new CustomEvent('realtime:message-unsend', {
+                detail: parsed.data,
+              }),
+            );
+            window.dispatchEvent(new Event('messages:updated'));
             return;
           }
 
-          if (parsed.type === "listing:status") {
-            window.dispatchEvent(new CustomEvent("realtime:listing-status", { detail: parsed.data }));
-            window.dispatchEvent(new Event("messages:updated"));
+          if (parsed.type === 'listing:status') {
+            window.dispatchEvent(
+              new CustomEvent('realtime:listing-status', {
+                detail: parsed.data,
+              }),
+            );
+            window.dispatchEvent(new Event('messages:updated'));
             return;
           }
 
-          if (parsed.type === "conversation:deal-updated") {
-            window.dispatchEvent(new CustomEvent("realtime:deal-updated", { detail: parsed.data }));
-            window.dispatchEvent(new Event("messages:updated"));
+          if (parsed.type === 'conversation:deal-updated') {
+            window.dispatchEvent(
+              new CustomEvent('realtime:deal-updated', { detail: parsed.data }),
+            );
+            window.dispatchEvent(new Event('messages:updated'));
           }
         } catch {
           // Ignore malformed realtime payloads.
@@ -355,7 +396,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         ws?.close();
       };
     };
-    
+
     connect();
 
     return () => {
@@ -370,8 +411,12 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     setUser((prev) => {
       if (!prev) return prev;
 
-      const profile_image_url = (prev.profileImageUrl ?? "/profile-icon.png").trim();
-      const cover_image_url = (prev.coverImageUrl ?? "/cover-placeholder.jpg").trim();
+      const profile_image_url = (
+        prev.profileImageUrl ?? '/profile-icon.png'
+      ).trim();
+      const cover_image_url = (
+        prev.coverImageUrl ?? '/cover-placeholder.jpg'
+      ).trim();
       const nextProfileImageUrl = validateImageURL(profile_image_url);
       const nextCoverImageUrl = validateImageURL(cover_image_url);
 
@@ -395,28 +440,38 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     if (isLoading) return;
 
     if (isAuth && isAuthRoute) {
-      router.replace(isAdminRole ? "/admin" : "/");
+      router.replace(isAdminRole ? '/admin' : '/');
       return;
     }
 
     if (isAuth && isAdminRole && !isAdminRoute && !isSharedAuthRoute) {
-      router.replace("/admin");
+      router.replace('/admin');
       return;
     }
 
     if (isAuth && !isAdminRole && isAdminRoute) {
-      router.replace("/");
+      router.replace('/');
       return;
     }
 
     if (!isAuth && !isPublicRoute) {
       if (!isKnownAppRoute) {
-        router.replace("/not-found");
+        router.replace('/not-found');
         return;
       }
-      router.replace("/login");
+      router.replace('/login');
     }
-  }, [isAdminRole, isAdminRoute, isAuth, isAuthRoute, isKnownAppRoute, isPublicRoute, isSharedAuthRoute, isLoading, router]);
+  }, [
+    isAdminRole,
+    isAdminRoute,
+    isAuth,
+    isAuthRoute,
+    isKnownAppRoute,
+    isPublicRoute,
+    isSharedAuthRoute,
+    isLoading,
+    router,
+  ]);
 
   // Guard against BFCache restoring a protected page after logout
   useEffect(() => {
@@ -427,7 +482,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      void sendGetRequest("/auth/me", true)
+      void sendGetRequest('/auth/me', true)
         .then((me) => {
           setUser(me);
           setIsAuth(true);
@@ -437,22 +492,24 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         .catch(() => {
           setUser(null);
           setIsAuth(false);
-          setRoleCookie("");
+          setRoleCookie('');
 
           if (!isPublicRoute) {
-            router.replace("/login");
+            router.replace('/login');
           }
         });
     };
 
-    window.addEventListener("pageshow", onPageShow);
-    return () => window.removeEventListener("pageshow", onPageShow);
+    window.addEventListener('pageshow', onPageShow);
+    return () => window.removeEventListener('pageshow', onPageShow);
   }, [isPublicRoute, router]);
 
-  if (isLoading) return (<LoadingPage />);
+  if (isLoading) return <LoadingPage />;
 
   return (
-    <UserContext.Provider value={{ user, isAuth, isUserOnline, saveUserData, clearUserData }}>
+    <UserContext.Provider
+      value={{ user, isAuth, isUserOnline, saveUserData, clearUserData }}
+    >
       {children}
     </UserContext.Provider>
   );
@@ -460,6 +517,6 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
 export function useUser(): UserContextType {
   const context = useContext(UserContext);
-  if (!context) throw new Error("useUser must be used within a UserProvider");
+  if (!context) throw new Error('useUser must be used within a UserProvider');
   return context;
 }

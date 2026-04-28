@@ -1,24 +1,24 @@
 const WEEKDAYS = new Set([
-  "sunday",
-  "monday",
-  "tuesday",
-  "wednesday",
-  "thursday",
-  "friday",
-  "saturday",
+  'sunday',
+  'monday',
+  'tuesday',
+  'wednesday',
+  'thursday',
+  'friday',
+  'saturday',
 ]);
 
 const PH_REGULAR_HOLIDAY_CACHE = new Map<number, Set<string>>();
 
 export const DAY_OFF_OPTIONS = [
-  "Holiday",
-  "Saturday",
-  "Sunday",
-  "Monday",
-  "Tuesday",
-  "Wednesday",
-  "Thursday",
-  "Friday",
+  'Holiday',
+  'Saturday',
+  'Sunday',
+  'Monday',
+  'Tuesday',
+  'Wednesday',
+  'Thursday',
+  'Friday',
 ] as const;
 
 export interface DaysOffRules {
@@ -33,21 +33,25 @@ export function startOfDay(d: Date): Date {
 
 export function toISODate(d: Date): string {
   const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
 }
 
 export function parseDateOnly(value?: string): Date | null {
   if (!value || !value.trim()) return null;
   const clean = value.trim().slice(0, 10);
-  const parts = clean.split("-");
+  const parts = clean.split('-');
   if (parts.length !== 3) return null;
 
   const year = Number.parseInt(parts[0], 10);
   const month = Number.parseInt(parts[1], 10);
   const day = Number.parseInt(parts[2], 10);
-  if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) {
+  if (
+    !Number.isFinite(year) ||
+    !Number.isFinite(month) ||
+    !Number.isFinite(day)
+  ) {
     return null;
   }
 
@@ -91,7 +95,7 @@ export function getPhilippineRegularHolidaySet(year: number): Set<string> {
   if (cached) return cached;
 
   const set = new Set<string>();
-  const fixed = ["01-01", "04-09", "05-01", "06-12", "11-30", "12-25", "12-30"];
+  const fixed = ['01-01', '04-09', '05-01', '06-12', '11-30', '12-25', '12-30'];
   for (const monthDay of fixed) {
     set.add(`${year}-${monthDay}`);
   }
@@ -105,15 +109,17 @@ export function getPhilippineRegularHolidaySet(year: number): Set<string> {
   return set;
 }
 
-export function normalizeDaysOff(daysOffInput: string[] | string | undefined | null): DaysOffRules {
+export function normalizeDaysOff(
+  daysOffInput: string[] | string | undefined | null,
+): DaysOffRules {
   const dateSet = new Set<string>();
   const weekdaySet = new Set<string>();
   let includeHoliday = false;
 
   const rawItems = Array.isArray(daysOffInput)
     ? daysOffInput
-    : typeof daysOffInput === "string"
-      ? daysOffInput.split(",")
+    : typeof daysOffInput === 'string'
+      ? daysOffInput.split(',')
       : [];
 
   for (const item of rawItems) {
@@ -121,7 +127,7 @@ export function normalizeDaysOff(daysOffInput: string[] | string | undefined | n
     if (!trimmed) continue;
 
     const normalized = trimmed.toLowerCase();
-    if (normalized === "holiday") {
+    if (normalized === 'holiday') {
       includeHoliday = true;
       continue;
     }
@@ -157,11 +163,14 @@ export function isDayUnavailableByDaysOff(
     return true;
   }
 
-  const rules = Array.isArray(daysOffInput) || typeof daysOffInput === "string"
-    ? normalizeDaysOff(daysOffInput)
-    : daysOffInput;
+  const rules =
+    Array.isArray(daysOffInput) || typeof daysOffInput === 'string'
+      ? normalizeDaysOff(daysOffInput)
+      : daysOffInput;
 
-  const weekday = day.toLocaleDateString("en-US", { weekday: "long" }).toLowerCase();
+  const weekday = day
+    .toLocaleDateString('en-US', { weekday: 'long' })
+    .toLowerCase();
   if (rules.weekdaySet.has(weekday)) {
     return true;
   }

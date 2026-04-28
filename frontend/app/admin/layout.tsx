@@ -1,67 +1,68 @@
-"use client";
+'use client';
 
-import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
-import Image from "next/image";
-import { usePathname } from "next/navigation";
-import { useUser } from "@/utils/UserContext";
-import { LogoutModal } from "@/components/auth/logout-modal";
 import {
-  LayoutDashboard,
-  Users,
-  Package,
-  Handshake,
-  Flag,
-  ShieldCheck,
-  Settings,
-  UserCog,
-  LogOut,
-  ChevronUp,
   ChevronRight,
+  ChevronUp,
+  Flag,
+  Handshake,
+  LayoutDashboard,
+  LogOut,
+  Package,
   PanelLeftClose,
   PanelLeftOpen,
-} from "lucide-react";
-import { cn } from "@/lib/utils";
-import { getAdminReports } from "@/services/adminReportsService";
-import { getAdminVerifications } from "@/services/adminVerificationsService";
-import { SafeImage } from "@/components/ui/safe-image";
-import { ThemeModeSwitch } from "@/components/theme-mode-switch";
+  Settings,
+  ShieldCheck,
+  UserCog,
+  Users,
+} from 'lucide-react';
+import Image from 'next/image';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { useEffect, useRef, useState } from 'react';
+
+import { LogoutModal } from '@/components/auth/Logout';
+import { ThemeModeSwitch } from '@/components/ThemeModeSwitch';
+import ImageSafe from '@/components/image/ImageSafe';
+import { cn } from '@/lib/utils';
+import { useUser } from '@/utils/UserContext';
+
+import { getAdminPendingCounts } from './_services/admin-pending-counts';
 
 const BADGE_KEYS = {
-  reports: "/admin/reports",
-  verifications: "/admin/verifications",
+  reports: '/admin/reports',
+  verifications: '/admin/verifications',
 } as const;
 
 interface NavItem {
   href: string;
   label: string;
   Icon: React.ElementType;
-  roles?: Array<"ADMIN" | "SUPER_ADMIN">;
+  roles?: Array<'ADMIN' | 'SUPER_ADMIN'>;
 }
 
 // ── Main navigation (sidebar links) ───────────────────────────────────────────
 // Settings and Admin Management have been moved to the user dropdown below.
 const NAV: NavItem[] = [
-  { href: "/admin/dashboard", label: "Dashboard", Icon: LayoutDashboard },
-  { href: "/admin/users", label: "Users", Icon: Users },
-  { href: "/admin/listings", label: "Listings", Icon: Package },
-  { href: "/admin/transactions", label: "Transactions", Icon: Handshake },
-  { href: "/admin/reports", label: "Reports", Icon: Flag },
-  { href: "/admin/verifications", label: "Verifications", Icon: ShieldCheck },
+  { href: '/admin/dashboard', label: 'Dashboard', Icon: LayoutDashboard },
+  { href: '/admin/users', label: 'Users', Icon: Users },
+  { href: '/admin/listings', label: 'Listings', Icon: Package },
+  { href: '/admin/transactions', label: 'Transactions', Icon: Handshake },
+  { href: '/admin/reports', label: 'Reports', Icon: Flag },
+  { href: '/admin/verifications', label: 'Verifications', Icon: ShieldCheck },
 ];
 
 // ── User-scoped menu (shown in bottom dropdown) ───────────────────────────────
 const USER_MENU: NavItem[] = [
   {
-    href: "/admin/admins",
-    label: "Admins",
+    href: '/admin/admins',
+    label: 'Admins',
     Icon: UserCog,
-    roles: ["SUPER_ADMIN"],
+    roles: ['SUPER_ADMIN'],
   },
   {
-    href: "/admin/settings",
-    label: "Settings",
-    Icon: Settings 
+    href: '/admin/settings',
+    label: 'Settings',
+    Icon: Settings,
   },
 ];
 
@@ -88,17 +89,19 @@ function SidebarContent({
     [BADGE_KEYS.reports]: 0,
     [BADGE_KEYS.verifications]: 0,
   });
-  const roleFromUser = String(user?.role ?? "").toUpperCase();
-  const currentAdminRole: "ADMIN" | "SUPER_ADMIN" | null =
-    roleFromUser === "SUPER_ADMIN"
-      ? "SUPER_ADMIN"
-      : roleFromUser === "ADMIN"
-        ? "ADMIN"
+  const roleFromUser = String(user?.role ?? '').toUpperCase();
+  const currentAdminRole: 'ADMIN' | 'SUPER_ADMIN' | null =
+    roleFromUser === 'SUPER_ADMIN'
+      ? 'SUPER_ADMIN'
+      : roleFromUser === 'ADMIN'
+        ? 'ADMIN'
         : null;
 
   const filteredNav = NAV;
   const filteredUserMenu = USER_MENU.filter(
-    (item) => !item.roles || (currentAdminRole !== null && item.roles.includes(currentAdminRole)),
+    (item) =>
+      !item.roles ||
+      (currentAdminRole !== null && item.roles.includes(currentAdminRole)),
   );
 
   useEffect(() => {
@@ -106,19 +109,12 @@ function SidebarContent({
 
     const loadPendingCounts = async () => {
       try {
-        const [reports, verifications] = await Promise.all([
-          getAdminReports(),
-          getAdminVerifications(),
-        ]);
-
         if (!active) return;
-
-        const pendingReports = reports.reports.filter((item) => item.status === "PENDING").length;
-        const pendingVerifications = verifications.verifications.filter((item) => item.status === "PENDING").length;
+        const counts = await getAdminPendingCounts();
 
         setBadges({
-          [BADGE_KEYS.reports]: pendingReports,
-          [BADGE_KEYS.verifications]: pendingVerifications,
+          [BADGE_KEYS.reports]: counts.pendingReports,
+          [BADGE_KEYS.verifications]: counts.pendingVerifications,
         });
       } catch {
         if (!active) return;
@@ -140,10 +136,10 @@ function SidebarContent({
       {/* ── Logo + collapse toggle ─────────────────────────────────────── */}
       <div
         className={cn(
-          "shrink-0 border-b border-white/10",
+          'shrink-0 border-b border-white/10',
           collapsed
-            ? "flex flex-col items-center gap-2 py-3.5"
-            : "flex items-center gap-2.5 px-5 py-5",
+            ? 'flex flex-col items-center gap-2 py-3.5'
+            : 'flex items-center gap-2.5 px-5 py-5',
         )}
       >
         <Image
@@ -170,7 +166,7 @@ function SidebarContent({
           <button
             type="button"
             onClick={onToggleCollapse}
-            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             className="shrink-0 w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:bg-white/10 hover:text-white transition-colors"
           >
             {collapsed ? (
@@ -185,14 +181,14 @@ function SidebarContent({
       {/* ── Navigation ────────────────────────────────────────────────── */}
       <nav
         className={cn(
-          "flex-1 overflow-y-auto py-4",
+          'flex-1 overflow-y-auto py-4',
           collapsed
-            ? "flex flex-col items-center gap-1 px-0"
-            : "px-3 space-y-0.5",
+            ? 'flex flex-col items-center gap-1 px-0'
+            : 'px-3 space-y-0.5',
         )}
       >
         {filteredNav.map(({ href, label, Icon }) => {
-          const active = pathname === href || pathname.startsWith(href + "/");
+          const active = pathname === href || pathname.startsWith(href + '/');
           const badge = badges[href];
 
           return (
@@ -202,13 +198,13 @@ function SidebarContent({
               onClick={onNavigate}
               title={collapsed ? label : undefined}
               className={cn(
-                "relative flex items-center rounded-lg transition-all",
+                'relative flex items-center rounded-lg transition-all',
                 collapsed
-                  ? "justify-center w-10 h-10"
-                  : "gap-3 px-3 py-2.5 w-full text-sm font-medium",
+                  ? 'justify-center w-10 h-10'
+                  : 'gap-3 px-3 py-2.5 w-full text-sm font-medium',
                 active
-                  ? "bg-white/10 text-white"
-                  : "text-slate-400 hover:bg-white/5 hover:text-white",
+                  ? 'bg-white/10 text-white'
+                  : 'text-slate-400 hover:bg-white/5 hover:text-white',
               )}
             >
               <Icon className="w-4 h-4 shrink-0" />
@@ -222,7 +218,7 @@ function SidebarContent({
                   <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-red-500" />
                 ) : (
                   <span className="w-4 h-4 pb-0.5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
-                    {badge > 9 ? "9+" : badge}
+                    {badge > 9 ? '9+' : badge}
                   </span>
                 )
               ) : active && !collapsed ? (
@@ -234,18 +230,16 @@ function SidebarContent({
       </nav>
 
       {/* ── Theme toggle near profile ─────────────────────────────────────── */}
-      <div className={cn("shrink-0 px-3 pb-2", collapsed ? "px-2" : "px-3")}>
+      <div className={cn('shrink-0 px-3 pb-2', collapsed ? 'px-2' : 'px-3')}>
         <ThemeModeSwitch
           showLabel={!collapsed}
           compact={collapsed}
-          className={collapsed ? "mx-auto" : undefined}
+          className={collapsed ? 'mx-auto' : undefined}
         />
       </div>
 
       {/* ── Bottom: user button + dropdown ──────────────────────────────── */}
-      <div
-        className={"relative p-4 shrink-0 border-t border-white/10"}
-      >
+      <div className={'relative p-4 shrink-0 border-t border-white/10'}>
         {/* Close dropdown on outside click */}
         {dropdownOpen && (
           <div
@@ -258,11 +252,11 @@ function SidebarContent({
         {dropdownOpen && (
           <div
             className={cn(
-              "absolute z-50 bottom-full mb-2",
-              "min-w-46 left-2 right-2",
-              "bg-[#252f45] border border-white/10 rounded-lg shadow-2xl overflow-hidden",
+              'absolute z-50 bottom-full mb-2',
+              'min-w-46 left-2 right-2',
+              'bg-[#252f45] border border-white/10 rounded-lg shadow-2xl overflow-hidden',
               // Slide-up entrance
-              "animate-in fade-in slide-in-from-bottom-2 duration-150",
+              'animate-in fade-in slide-in-from-bottom-2 duration-150',
             )}
           >
             {/* User menu items */}
@@ -305,14 +299,14 @@ function SidebarContent({
           type="button"
           onClick={() => setDropdown((v) => !v)}
           className={cn(
-            "w-full flex items-center rounded-lg transition-all",
-            "hover:bg-white/5 active:bg-white/10",
-            collapsed ? "justify-center w-8 h-8 mx-auto" : "gap-3",
+            'w-full flex items-center rounded-lg transition-all',
+            'hover:bg-white/5 active:bg-white/10',
+            collapsed ? 'justify-center w-8 h-8 mx-auto' : 'gap-3',
           )}
         >
           {/* Avatar */}
           <div className="w-8 h-8 rounded-full overflow-hidden shrink-0 ring-2 ring-white/10">
-            <SafeImage
+            <ImageSafe
               src={user?.profileImageUrl}
               type="profile"
               alt={`${user?.firstName}'s profile picture`}
@@ -336,8 +330,8 @@ function SidebarContent({
               {/* Animated chevron */}
               <ChevronUp
                 className={cn(
-                  "w-3.5 h-3.5 shrink-0 text-slate-500 transition-transform duration-200",
-                  dropdownOpen ? "rotate-0" : "rotate-180",
+                  'w-3.5 h-3.5 shrink-0 text-slate-500 transition-transform duration-200',
+                  dropdownOpen ? 'rotate-0' : 'rotate-180',
                 )}
               />
             </>
@@ -367,8 +361,8 @@ export default function AdminLayout({
     };
 
     checkScreen();
-    window.addEventListener("resize", checkScreen);
-    return () => window.removeEventListener("resize", checkScreen);
+    window.addEventListener('resize', checkScreen);
+    return () => window.removeEventListener('resize', checkScreen);
   }, []);
 
   useEffect(() => {
@@ -380,8 +374,8 @@ export default function AdminLayout({
       }
     };
 
-    document.addEventListener("click", handleOutsideClick);
-    return () => document.removeEventListener("click", handleOutsideClick);
+    document.addEventListener('click', handleOutsideClick);
+    return () => document.removeEventListener('click', handleOutsideClick);
   }, [collapsed]);
 
   const effectiveCollapsed = collapsed;
@@ -404,9 +398,9 @@ export default function AdminLayout({
           ref={sidebarRef}
           onMouseLeave={handleSidebarMouseLeave}
           className={cn(
-            "absolute top-0 left-0 h-full bg-[#1e2433] z-10",
-            "transition-all duration-300 ease-in-out",
-            effectiveCollapsed ? "w-16" : "w-60",
+            'absolute top-0 left-0 h-full bg-[#1e2433] z-10',
+            'transition-all duration-300 ease-in-out',
+            effectiveCollapsed ? 'w-16' : 'w-60',
           )}
         >
           <SidebarContent
@@ -419,9 +413,7 @@ export default function AdminLayout({
         </div>
 
         {/* ── Main area ───────────────────────────────────────────────────── */}
-        <div
-          className={"absolute inset-0 flex flex-col ml-0 overflow-hidden"}
-        >
+        <div className={'absolute inset-0 flex flex-col ml-0 overflow-hidden'}>
           <main className="flex-1 overflow-y-auto ml-16">{children}</main>
         </div>
       </div>

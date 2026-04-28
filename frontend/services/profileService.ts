@@ -1,7 +1,7 @@
-import { PostCardProps } from "@/components/post-card";
+import type { PostCardProps } from '@/components/PostCard';
 
 export interface ProfileListingItem extends PostCardProps {
-  status?: "active" | "sold" | "rented" | "completed" | "hidden" | string;
+  status?: 'active' | 'sold' | 'rented' | 'completed' | 'hidden' | string;
   hasActiveBooking?: boolean;
 }
 
@@ -68,12 +68,14 @@ export interface ProfilePageQuery {
   personalReviewsOffset?: number;
 }
 
-function appendProfileQueryParams(url: URL, query?: ProfilePageQuery) {
+export function appendProfileQueryParams(url: URL, query?: ProfilePageQuery) {
   if (!query) return;
 
-  const entries = Object.entries(query) as Array<[keyof ProfilePageQuery, number | undefined]>;
+  const entries = Object.entries(query) as Array<
+    [keyof ProfilePageQuery, number | undefined]
+  >;
   for (const [key, value] of entries) {
-    if (typeof value === "number" && Number.isFinite(value) && value >= 0) {
+    if (typeof value === 'number' && Number.isFinite(value) && value >= 0) {
       url.searchParams.set(key, String(value));
     }
   }
@@ -116,106 +118,77 @@ export interface UpdateProfileImagesPayload {
   removeCoverImage?: boolean;
 }
 
-export async function getProfileData(query?: ProfilePageQuery): Promise<ProfilePayload> {
-  try {
-    const url = new URL(`${process.env.NEXT_PUBLIC_API_URL}/profile/me`);
-    appendProfileQueryParams(url, query);
-
-    const res = await fetch(url.toString(), {
-      method: "GET",
-      credentials: "include",
-    });
-
-    const parsedJson = await res.json();
-    if (!res.ok) {
-      throw parsedJson?.data?.message || "Failed to fetch profile data.";
-    }
-
-    return parsedJson.data as ProfilePayload;
-  } catch {
-    throw "An unexpected error occurred. Please try again later.";
-  }
-}
-
-export async function getUserProfileData(userId: string, query?: ProfilePageQuery): Promise<ProfilePayload> {
+export async function getUserProfileData(
+  userId: string,
+  query?: ProfilePageQuery,
+): Promise<ProfilePayload> {
   try {
     const url = new URL(`${process.env.NEXT_PUBLIC_API_URL}/profile/${userId}`);
     appendProfileQueryParams(url, query);
 
     const res = await fetch(url.toString(), {
-      method: "GET",
-      credentials: "include",
+      method: 'GET',
+      credentials: 'include',
     });
 
     const parsedJson = await res.json();
     if (!res.ok) {
-      throw parsedJson?.data?.message || "Failed to fetch profile data.";
+      throw parsedJson?.data?.message || 'Failed to fetch profile data.';
     }
 
     return parsedJson.data as ProfilePayload;
   } catch {
-    throw "An unexpected error occurred. Please try again later.";
+    throw 'An unexpected error occurred. Please try again later.';
   }
 }
 
-export async function updateProfileData(payload: UpdateProfilePayload): Promise<ProfilePayload["user"]> {
+export async function updateProfileData(
+  payload: UpdateProfilePayload,
+): Promise<ProfilePayload['user']> {
   try {
     const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/profile/me`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify(payload),
     });
 
     const parsedJson = await res.json();
     if (!res.ok) {
-      throw parsedJson?.data?.message || "Failed to update profile data.";
+      throw parsedJson?.data?.message || 'Failed to update profile data.';
     }
 
-    return parsedJson.data.user as ProfilePayload["user"];
+    return parsedJson.data.user as ProfilePayload['user'];
   } catch (err) {
-    if (typeof err === "string") throw err;
+    if (typeof err === 'string') throw err;
     if (err instanceof Error) throw err.message;
-    throw "An unexpected error occurred. Please try again later.";
+    throw 'An unexpected error occurred. Please try again later.';
   }
 }
 
-export async function deactivateProfile(): Promise<void> {
+export async function updateProfileImages(
+  payload: UpdateProfileImagesPayload,
+): Promise<ProfilePayload['user']> {
   try {
-    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/profile/me`, {
-      method: "DELETE",
-      credentials: "include",
-    });
-
-    if (!res.ok) {
-      const parsedJson = await res.json();
-      throw parsedJson?.data?.message || "Failed to deactivate account.";
-    }
-  } catch (err) {
-    if (typeof err === "string") throw err;
-    if (err instanceof Error) throw err.message;
-    throw "An unexpected error occurred. Please try again later.";
-  }
-}
-
-export async function updateProfileImages(payload: UpdateProfileImagesPayload): Promise<ProfilePayload["user"]> {
-  try {
-    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/profile/me/images`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify(payload),
-    });
+    const res = await fetch(
+      `${process.env.NEXT_PUBLIC_API_URL}/profile/me/images`,
+      {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(payload),
+      },
+    );
 
     const parsedJson = await res.json();
     if (!res.ok) {
-      throw parsedJson?.data?.message || "Failed to update profile images.";
+      throw parsedJson?.data?.message || 'Failed to update profile images.';
     }
 
-    return parsedJson.data.user as ProfilePayload["user"];
+    return parsedJson.data.user as ProfilePayload['user'];
   } catch (err) {
-    if (typeof err === "string") throw err;
+    if (typeof err === 'string') throw err;
     if (err instanceof Error) throw err.message;
-    throw "An unexpected error occurred. Please try again later.";
+    throw 'An unexpected error occurred. Please try again later.';
   }
 }

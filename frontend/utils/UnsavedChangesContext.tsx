@@ -1,19 +1,28 @@
-"use client";
+'use client';
 
-import React, { createContext, useContext, useState, useCallback } from "react";
+import type React from 'react';
+import { createContext, useContext, useState } from 'react';
 
 interface UnsavedChangesContextType {
   hasUnsavedChanges: boolean;
   setHasUnsavedChanges: (value: boolean) => void;
 }
 
-const UnsavedChangesContext = createContext<UnsavedChangesContextType | undefined>(undefined);
+const UnsavedChangesContext = createContext<
+  UnsavedChangesContextType | undefined
+>(undefined);
 
-export function UnsavedChangesProvider({ children }: { children: React.ReactNode }) {
+export function UnsavedChangesProvider({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
   return (
-    <UnsavedChangesContext.Provider value={{ hasUnsavedChanges, setHasUnsavedChanges }}>
+    <UnsavedChangesContext.Provider
+      value={{ hasUnsavedChanges, setHasUnsavedChanges }}
+    >
       {children}
     </UnsavedChangesContext.Provider>
   );
@@ -22,7 +31,9 @@ export function UnsavedChangesProvider({ children }: { children: React.ReactNode
 export function useUnsavedChanges() {
   const context = useContext(UnsavedChangesContext);
   if (!context) {
-    throw new Error("useUnsavedChanges must be used within UnsavedChangesProvider");
+    throw new Error(
+      'useUnsavedChanges must be used within UnsavedChangesProvider',
+    );
   }
   return context;
 }

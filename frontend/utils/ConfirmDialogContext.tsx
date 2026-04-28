@@ -1,14 +1,15 @@
 'use client';
 
+import { AlertCircle, X } from 'lucide-react';
 import {
   createContext,
-  useContext,
-  useState,
+  type ReactNode,
   useCallback,
+  useContext,
   useRef,
-  ReactNode,
+  useState,
 } from 'react';
-import { AlertCircle, X } from 'lucide-react';
+
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useModalFocusTrap } from '@/utils/useModalFocusTrap';
@@ -85,19 +86,19 @@ export function ConfirmDialogProvider({ children }: { children: ReactNode }) {
           />
 
           {/* Modal */}
-          <div className='fixed inset-0 z-1000 flex items-center justify-center p-4'>
+          <div className="fixed inset-0 z-1000 flex items-center justify-center p-4">
             <div
               ref={dialogRef}
               className={cn(
                 'w-full max-w-sm rounded-lg border border-stone-200 dark:border-[#2a2d3e] bg-white dark:bg-[#1c1f2e] shadow-2xl transition-all duration-150',
                 isClosing ? 'opacity-0 scale-90' : 'opacity-100 scale-100',
               )}
-              role='dialog'
-              aria-modal='true'
+              role="dialog"
+              aria-modal="true"
             >
               {/* Header */}
-              <div className='flex items-start justify-between gap-3 px-6 py-4 border-b border-stone-200 dark:border-[#2a2d3e]'>
-                <div className='flex items-center gap-3 flex-1'>
+              <div className="flex items-start justify-between gap-3 px-6 py-4 border-b border-stone-200 dark:border-[#2a2d3e]">
+                <div className="flex items-center gap-3 flex-1">
                   {/* Icon with background */}
                   <div
                     className={cn(
@@ -118,8 +119,8 @@ export function ConfirmDialogProvider({ children }: { children: ReactNode }) {
                   </div>
 
                   {/* Title */}
-                  <div className='flex-1 min-w-0'>
-                    <h2 className='text-base font-semibold text-stone-900 dark:text-white'>
+                  <div className="flex-1 min-w-0">
+                    <h2 className="text-base font-semibold text-stone-900 dark:text-white">
                       {dialog.title || 'Confirm Action'}
                     </h2>
                   </div>
@@ -130,27 +131,27 @@ export function ConfirmDialogProvider({ children }: { children: ReactNode }) {
                   variant={'ghost'}
                   size={'sm'}
                   onClick={handleCancel}
-                  className='text-stone-400 hover:text-stone-600 dark:hover:text-stone-300 transition-colors shrink-0'
+                  className="text-stone-400 hover:text-stone-600 dark:hover:text-stone-300 transition-colors shrink-0"
                 >
                   <X size={18} />
                 </Button>
               </div>
 
               {/* Content */}
-              <div className='px-6 py-4'>
-                <p className='text-sm text-stone-600 dark:text-stone-300 leading-relaxed'>
+              <div className="px-6 py-4">
+                <p className="text-sm text-stone-600 dark:text-stone-300 leading-relaxed">
                   {dialog.message}
                 </p>
               </div>
 
               {/* Footer */}
-              <div className='flex items-center justify-end gap-3 px-6 py-4 border-t border-stone-200 dark:border-[#2a2d3e] bg-stone-50 dark:bg-[#13151f] rounded-b-lg'>
+              <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-stone-200 dark:border-[#2a2d3e] bg-stone-50 dark:bg-[#13151f] rounded-b-lg">
                 {/* Cancel Button */}
                 <Button
                   variant={'ghost'}
                   size={'lg'}
                   onClick={handleCancel}
-                  className='px-5 py-2.5 rounded-lg border border-stone-200 dark:border-[#2a2d3e] text-sm font-semibold text-stone-700 dark:text-stone-200 hover:bg-stone-100 dark:hover:bg-[#1c1f2e] transition-colors'
+                  className="px-5 py-2.5 rounded-lg border border-stone-200 dark:border-[#2a2d3e] text-sm font-semibold text-stone-700 dark:text-stone-200 hover:bg-stone-100 dark:hover:bg-[#1c1f2e] transition-colors"
                 >
                   {dialog.cancelText || 'Cancel'}
                 </Button>

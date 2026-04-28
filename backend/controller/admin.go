@@ -97,6 +97,23 @@ func GetAdminDashboardStats(c *fiber.Ctx) error {
 	})
 }
 
+func GetAdminPendingCounts(c *fiber.Ctx) error {
+	_, authErr := requireAdmin(c)
+	if authErr != nil {
+		return authErr
+	}
+
+	counts, err := repository.GetAdminPendingCounts()
+	if err != nil {
+		return SendErrorResponse(c, 500, err.Error(), err)
+	}
+
+	return SendSuccessResponse(c, 200, "Admin pending counts fetched successfully", map[string]any{
+		"pendingReports":       counts.PendingReports,
+		"pendingVerifications": counts.PendingVerifications,
+	})
+}
+
 func GetAdminUsers(c *fiber.Ctx) error {
 	_, authErr := requireAdmin(c)
 	if authErr != nil {

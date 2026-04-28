@@ -1,5 +1,6 @@
-import { Input } from "@/components/ui/input";
-import { useEffect, useState } from "react";
+import { useEffect, useState } from 'react';
+
+import { Input } from '@/components/ui/input';
 
 interface NumberInputProps {
   value: string;
@@ -12,17 +13,17 @@ interface NumberInputProps {
 export function NumberInput({
   value,
   onChange,
-  placeholder = "Enter numbers...",
+  placeholder = 'Enter numbers...',
   maxLength = 10,
   className,
 }: NumberInputProps) {
   const [characterCount, setCharacterCount] = useState(0);
-  
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     // Remove non-digits and enforce the max length
-    const digitsOnly = e.target.value.replace(/\D/g, "");
+    const digitsOnly = e.target.value.replace(/\D/g, '');
     const limitedValue = digitsOnly.slice(0, maxLength);
-    
+
     // Send the cleaned string back to the parent
     onChange(limitedValue);
     setCharacterCount(limitedValue.length);
@@ -32,7 +33,6 @@ export function NumberInput({
   useEffect(() => {
     setCharacterCount(value.length);
   });
-
 
   return (
     <div className="relative w-full">

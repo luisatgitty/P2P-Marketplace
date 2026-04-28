@@ -1,18 +1,24 @@
-"use client";
+'use client';
 
-import Link from "next/link";
-import { useRouter } from "next/navigation";
 import {
-  ShieldX, ArrowLeft, Home, LogIn, Lock, AlertTriangle,
-} from "lucide-react";
-import { cn } from "@/lib/utils";
+  AlertTriangle,
+  ArrowLeft,
+  Home,
+  Lock,
+  LogIn,
+  ShieldX,
+} from 'lucide-react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+
+import { cn } from '@/lib/utils';
 
 // ── Quick-links shown below the main CTAs ─────────────────────────────────────
 const QUICK_LINKS = [
-  { label: "Browse Listings",   href: "/"             },
-  { label: "Login",             href: "/login"        },
-  { label: "Create Account",    href: "/signup"       },
-  { label: "Contact Support",   href: "/support"      },
+  { label: 'Browse Listings', href: '/' },
+  { label: 'Login', href: '/login' },
+  { label: 'Create Account', href: '/signup' },
+  { label: 'Contact Support', href: '/support' },
 ];
 
 export default function ForbiddenPage() {
@@ -20,20 +26,16 @@ export default function ForbiddenPage() {
 
   return (
     <div className="min-h-screen bg-stone-100 dark:bg-[#0f1117] flex flex-col">
-
       {/* ── Top accent bar (mirrors navbar amber stripe) ── */}
       <div className="h-1 w-full bg-linear-to-r from-[#1e2433] via-[#3a4a6a] to-[#1e2433] shrink-0" />
 
       {/* ── Main content ── */}
       <div className="flex-1 flex items-center justify-center px-4 py-16">
         <div className="w-full max-w-lg">
-
           {/* ── Card ── */}
           <div className="bg-white dark:bg-[#1c1f2e] rounded-lg border border-stone-200 dark:border-[#2a2d3e] shadow-sm overflow-hidden">
-
             {/* Card header — dark navy band */}
             <div className="bg-[#1e2433] px-8 py-8 flex flex-col items-center text-center relative overflow-hidden">
-
               {/* Decorative background rings */}
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                 <div className="w-64 h-64 rounded-full border border-white/5" />
@@ -48,13 +50,19 @@ export default function ForbiddenPage() {
                 <div className="w-24 h-24 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center">
                   {/* Inner circle */}
                   <div className="w-16 h-16 rounded-full bg-red-500/15 border border-red-500/25 flex items-center justify-center">
-                    <ShieldX className="w-8 h-8 text-red-400" strokeWidth={1.75} />
+                    <ShieldX
+                      className="w-8 h-8 text-red-400"
+                      strokeWidth={1.75}
+                    />
                   </div>
                 </div>
 
                 {/* Small lock badge */}
                 <div className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-[#1e2433] border-2 border-[#2a3a55] flex items-center justify-center shadow-lg">
-                  <Lock className="w-3.5 h-3.5 text-stone-400" strokeWidth={2} />
+                  <Lock
+                    className="w-3.5 h-3.5 text-stone-400"
+                    strokeWidth={2}
+                  />
                 </div>
               </div>
 
@@ -78,7 +86,6 @@ export default function ForbiddenPage() {
 
             {/* ── Card body ── */}
             <div className="px-8 py-7 flex flex-col gap-5">
-
               {/* Possible reasons box */}
               <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
                 <div className="flex items-center gap-2 mb-2.5">
@@ -89,16 +96,18 @@ export default function ForbiddenPage() {
                 </div>
                 <ul className="flex flex-col gap-1.5">
                   {[
-                    "You are not signed in to your account",
-                    "This page is restricted to verified users",
-                    "You followed an expired or invalid link",
-                    "Your account does not have the required role",
+                    'You are not signed in to your account',
+                    'This page is restricted to verified users',
+                    'You followed an expired or invalid link',
+                    'Your account does not have the required role',
                   ].map((reason) => (
                     <li
                       key={reason}
                       className="flex items-start gap-2 text-[12.5px] text-amber-700 dark:text-amber-400"
                     >
-                      <span className="text-amber-400 dark:text-amber-600 mt-0.5 shrink-0">•</span>
+                      <span className="text-amber-400 dark:text-amber-600 mt-0.5 shrink-0">
+                        •
+                      </span>
                       {reason}
                     </li>
                   ))}
@@ -111,7 +120,10 @@ export default function ForbiddenPage() {
                 <Link
                   href="/login"
                   className="flex items-center justify-center gap-2 w-full py-3 rounded-lg text-sm font-bold text-white transition-all hover:opacity-90 active:scale-[0.98]"
-                  style={{ background: "linear-gradient(135deg, #1e2433 0%, #3a4a6a 100%)" }}
+                  style={{
+                    background:
+                      'linear-gradient(135deg, #1e2433 0%, #3a4a6a 100%)',
+                  }}
                 >
                   <LogIn className="w-4 h-4" />
                   Log In to Your Account
@@ -153,12 +165,12 @@ export default function ForbiddenPage() {
                     key={href}
                     href={href}
                     className={cn(
-                      "text-center text-xs font-semibold px-3 py-2.5 rounded-lg transition-all",
-                      "bg-stone-50 dark:bg-[#13151f] border border-stone-200 dark:border-[#2a2d3e]",
-                      "text-stone-600 dark:text-stone-400",
-                      "hover:border-stone-400 dark:hover:border-stone-500",
-                      "hover:text-stone-800 dark:hover:text-stone-100",
-                      "hover:bg-white dark:hover:bg-[#252837]",
+                      'text-center text-xs font-semibold px-3 py-2.5 rounded-lg transition-all',
+                      'bg-stone-50 dark:bg-[#13151f] border border-stone-200 dark:border-[#2a2d3e]',
+                      'text-stone-600 dark:text-stone-400',
+                      'hover:border-stone-400 dark:hover:border-stone-500',
+                      'hover:text-stone-800 dark:hover:text-stone-100',
+                      'hover:bg-white dark:hover:bg-[#252837]',
                     )}
                   >
                     {label}
@@ -170,7 +182,7 @@ export default function ForbiddenPage() {
 
           {/* ── Footer note ── */}
           <p className="text-center text-xs text-stone-400 dark:text-stone-600 mt-6">
-            If you believe this is a mistake, please{" "}
+            If you believe this is a mistake, please{' '}
             <Link
               href="/support"
               className="text-stone-600 dark:text-stone-400 underline underline-offset-2 hover:text-stone-900 dark:hover:text-stone-200 transition-colors"

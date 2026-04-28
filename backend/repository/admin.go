@@ -42,6 +42,23 @@ func GetAdminDashboardStats() (model.AdminDashboardStatsFromDb, error) {
 	return stats, nil
 }
 
+func GetAdminPendingCounts() (model.AdminPendingCountsFromDb, error) {
+	db := middleware.DBConn
+	var counts model.AdminPendingCountsFromDb
+
+	query := `
+		SELECT
+			(SELECT COUNT(*)::int FROM public.reports WHERE status = 'PENDING') AS pending_reports,
+			(SELECT COUNT(*)::int FROM public.user_verifications WHERE verification_status = 'PENDING') AS pending_verifications
+	`
+
+	if err := db.Raw(query).Scan(&counts).Error; err != nil {
+		return counts, fmt.Errorf("Failed to fetch admin pending counts")
+	}
+
+	return counts, nil
+}
+
 func GetAdminWeeklyNewUsers() ([]model.AdminWeeklyNewUsersFromDb, error) {
 	db := middleware.DBConn
 	rows := make([]model.AdminWeeklyNewUsersFromDb, 0, 7)
@@ -196,9 +213,10 @@ func GetAdminUsers(query model.AdminUsersQuery) ([]model.AdminUserListItemFromDb
 	}
 
 	status := strings.ToUpper(strings.TrimSpace(query.Status))
-	if status == "ACTIVE" {
+	switch status {
+	case "ACTIVE":
 		whereParts = append(whereParts, "u.is_active = TRUE")
-	} else if status == "INACTIVE" {
+	case "INACTIVE":
 		whereParts = append(whereParts, "u.is_active = FALSE")
 	}
 
@@ -442,11 +460,12 @@ func GetAdminAccounts(query model.AdminAccountsQuery) ([]model.AdminAccountListI
 	}
 
 	statusFilter := strings.ToUpper(strings.TrimSpace(query.Status))
-	if statusFilter == "ACTIVE" {
+	switch statusFilter {
+	case "ACTIVE":
 		whereParts = append(whereParts, "u.deleted_at IS NULL AND u.is_active = TRUE")
-	} else if statusFilter == "INACTIVE" {
+	case "INACTIVE":
 		whereParts = append(whereParts, "u.deleted_at IS NULL AND u.is_active = FALSE")
-	} else if statusFilter == "DELETED" {
+	case "DELETED":
 		whereParts = append(whereParts, "u.deleted_at IS NOT NULL")
 	}
 

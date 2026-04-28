@@ -274,6 +274,11 @@ type AdminDashboardStatsFromDb struct {
 	PendingVerificationsYesterday int `gorm:"column:pending_verifications_yesterday" json:"pendingVerificationsYesterday"`
 }
 
+type AdminPendingCountsFromDb struct {
+	PendingReports       int `gorm:"column:pending_reports" json:"pendingReports"`
+	PendingVerifications int `gorm:"column:pending_verifications" json:"pendingVerifications"`
+}
+
 type AdminWeeklyNewUsersFromDb struct {
 	Day      string `gorm:"column:day" json:"day"`
 	Count    int    `gorm:"column:count" json:"count"`

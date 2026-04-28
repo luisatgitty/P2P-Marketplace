@@ -1,15 +1,20 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
-import { cn } from "@/lib/utils";
-import type { MessageTab } from "@/types/messaging";
-import MessagesTabNav from "@/components/messages/messages-tab-nav";
-import ConversationsList from "@/components/messages/conversations-list";
-import ChatHeader from "@/components/messages/chat-header";
-import ListingContextCard from "@/components/messages/listing-context-card";
-import MessageInput from "@/components/messages/message-input";
-import { MessageShellProvider, useMessageShell } from "@/components/messages/message-shell-context";
+import { usePathname, useRouter } from 'next/navigation';
+import { useState } from 'react';
+
+import { cn } from '@/lib/utils';
+
+import ChatHeader from './_components/ChatHeader';
+import ConversationsList from './_components/ConversationsList';
+import MessageInput from './_components/MessageInput';
+import ListingContextCard from './_components/ListingContextCard';
+import {
+  MessageShellProvider,
+  useMessageShell,
+} from './_components/MessageShellContext';
+import MessagesTabNav from './_components/MessagesTabNav';
+import type { MessageTab } from './_types/messages';
 
 function ConversationShell({ children }: { children: React.ReactNode }) {
   const { shellState } = useMessageShell();
@@ -23,10 +28,17 @@ function ConversationShell({ children }: { children: React.ReactNode }) {
     replyTo,
     onCancelReply,
   } = shellState;
-  const listingStatus = String(conversation?.listing?.status ?? "").trim().toUpperCase();
-  const isListingBlocked = listingStatus === "BANNED" || listingStatus === "DELETED";
-  const hideListingActionButtons = Boolean(conversation && (conversation.canSendMessage === false || isListingBlocked));
-  const canShowInput = Boolean(conversation && conversation.canSendMessage !== false && !isListingBlocked);
+  const listingStatus = String(conversation?.listing?.status ?? '')
+    .trim()
+    .toUpperCase();
+  const isListingBlocked =
+    listingStatus === 'BANNED' || listingStatus === 'DELETED';
+  const hideListingActionButtons = Boolean(
+    conversation && (conversation.canSendMessage === false || isListingBlocked),
+  );
+  const canShowInput = Boolean(
+    conversation && conversation.canSendMessage !== false && !isListingBlocked,
+  );
 
   return (
     <div className="flex flex-col h-full overflow-hidden bg-[#faf6f0] dark:bg-[#0b0f1a]">
@@ -68,72 +80,78 @@ function ConversationShell({ children }: { children: React.ReactNode }) {
   );
 }
 
-export default function MessagesLayout({ children }: { children: React.ReactNode }) {
+export default function MessagesLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const pathname = usePathname();
-  const router   = useRouter();
-  const [activeTab, setActiveTab] = useState<MessageTab>("all");
-  
+  const router = useRouter();
+  const [activeTab, setActiveTab] = useState<MessageTab>('all');
+
   // On mobile: if we're on a specific conversation, show the chat view full-screen
-  const isInConversation = pathname !== "/messages";
+  const isInConversation = pathname !== '/messages';
 
   const handleTabChange = (tab: MessageTab) => {
-    setActiveTab((prev) => (prev === tab ? "all" : tab));
+    setActiveTab((prev) => (prev === tab ? 'all' : tab));
     // On mobile, tapping a tab while in a conversation navigates back to the list
     if (isInConversation) {
-      router.push("/messages");
+      router.push('/messages');
     }
   };
 
   return (
     <MessageShellProvider>
-    <div className="h-[calc(100vh-60px)] flex overflow-hidden bg-[#faf6f0] dark:bg-[#0b0f1a]">
-
-      {/* ══════════════════════════════════════════════
+      <div className="h-[calc(100vh-60px)] flex overflow-hidden bg-[#faf6f0] dark:bg-[#0b0f1a]">
+        {/* ══════════════════════════════════════════════
           LEFT — conversations list
           • Always visible on md+
           • On mobile: visible only on /messages, hidden when in a conversation
       ══════════════════════════════════════════════ */}
-      <div
-        className={cn(
-          "flex flex-col border-r border-border bg-[#faf6f0] dark:bg-[#1c1f2e] shrink-0",
-          // Width
-          "w-full md:w-80",
-          // Mobile visibility
-          isInConversation ? "hidden md:flex" : "flex"
-        )}
-      >
-        {/* Panel header */}
-        <div className="flex items-center px-3 py-3 border-b border-border">
-          <h1 className="shrink-0 px-1 pr-2 text-base font-bold text-stone-900 dark:text-stone-50 leading-tight">
-            Messages
-          </h1>
-          <div className="min-w-0 flex-1">
-            <MessagesTabNav
-              activeTab={activeTab}
-              onTabChange={handleTabChange}
-            />
+        <div
+          className={cn(
+            'flex flex-col border-r border-border bg-[#faf6f0] dark:bg-[#1c1f2e] shrink-0',
+            // Width
+            'w-full md:w-80',
+            // Mobile visibility
+            isInConversation ? 'hidden md:flex' : 'flex',
+          )}
+        >
+          {/* Panel header */}
+          <div className="flex items-center px-3 py-3 border-b border-border">
+            <h1 className="shrink-0 px-1 pr-2 text-base font-bold text-stone-900 dark:text-stone-50 leading-tight">
+              Messages
+            </h1>
+            <div className="min-w-0 flex-1">
+              <MessagesTabNav
+                activeTab={activeTab}
+                onTabChange={handleTabChange}
+              />
+            </div>
           </div>
+
+          <ConversationsList activeTab={activeTab} />
         </div>
 
-        <ConversationsList activeTab={activeTab} />
-      </div>
-
-      {/* ══════════════════════════════════════════════
+        {/* ══════════════════════════════════════════════
           RIGHT — chat view or empty state
           • Always visible on md+
           • On mobile: visible only when in a conversation
       ══════════════════════════════════════════════ */}
-      <div
-        className={cn(
-          "flex-1 flex flex-col overflow-hidden",
-          // Mobile visibility — hide the empty-state on /messages so only the list shows
-          !isInConversation && "hidden md:flex"
-        )}
-      >
-        {isInConversation ? <ConversationShell>{children}</ConversationShell> : children}
+        <div
+          className={cn(
+            'flex-1 flex flex-col overflow-hidden',
+            // Mobile visibility — hide the empty-state on /messages so only the list shows
+            !isInConversation && 'hidden md:flex',
+          )}
+        >
+          {isInConversation ? (
+            <ConversationShell>{children}</ConversationShell>
+          ) : (
+            children
+          )}
+        </div>
       </div>
-
-    </div>
     </MessageShellProvider>
   );
 }

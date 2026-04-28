@@ -1,42 +1,46 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { toast } from "sonner"
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
-import { Banner, Container } from "@/components/auth/auth-container";
-import { sendPostRequest } from "@/services/authService";
-import { AUTH_LIMITS, validateForgotPasswordInput } from "@/utils/validation";
-import Link from "next/link";
+import Link from 'next/link';
+import { useState } from 'react';
+import { toast } from 'sonner';
+
+import { Banner, Container } from '@/components/auth/AuthContainer';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import {
+  Field,
+  FieldDescription,
+  FieldGroup,
+  FieldLabel,
+} from '@/components/ui/field';
+import { Input } from '@/components/ui/input';
+import { sendPostRequest } from '@/services/authService';
+import { AUTH_LIMITS, isValidEmail } from '@/utils/validation';
 
 export default function ForgotPasswordPage() {
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const validationError = validateForgotPasswordInput(email);
+    const validationError = isValidEmail(email);
     if (validationError) {
-      toast.error(validationError, { position: "top-center" });
+      toast.error(validationError, { position: 'top-center' });
       return;
     }
 
     setIsLoading(true);
 
     try {
-      await sendPostRequest("/auth/forgot-password", { email });
+      await sendPostRequest('/auth/forgot-password', { email });
       setSubmitted(true);
-
     } catch (error: any) {
-      if (error === "Failed to fetch") {
-        error = "Failed to send reset link. Please contact support.";
+      if (error === 'Failed to fetch') {
+        error = 'Failed to send reset link. Please contact support.';
       }
-      toast.error(error, { position: "top-center" });
-      
+      toast.error(error, { position: 'top-center' });
     } finally {
       setIsLoading(false);
     }
@@ -76,7 +80,9 @@ export default function ForgotPasswordPage() {
                   />
                 </Field>
                 <Field>
-                  <Button type="submit" disabled={isLoading}>{isLoading ? "Sending Reset Link..." : "Send Reset Link"}</Button>
+                  <Button type="submit" disabled={isLoading}>
+                    {isLoading ? 'Sending Reset Link...' : 'Send Reset Link'}
+                  </Button>
                 </Field>
                 <FieldDescription className="text-center">
                   Remember your password? <Link href="/login">Log in</Link>

@@ -1,4 +1,4 @@
-import type { PostCardProps } from "@/components/post-card";
+import type { PostCardProps } from '@/components/PostCard';
 
 export type HomeListing = PostCardProps & {
   category: string;
@@ -27,42 +27,50 @@ export type HomeListingsResponse = {
   offset: number;
 };
 
-export async function getHomeListings(query: HomeListingsQuery = {}): Promise<HomeListingsResponse> {
+export async function getHomeListings(
+  query: HomeListingsQuery = {},
+): Promise<HomeListingsResponse> {
   try {
     const params = new URLSearchParams();
 
     const entries: Array<[keyof HomeListingsQuery, string | undefined]> = [
-      ["type", query.type],
-      ["keyword", query.keyword],
-      ["category", query.category],
-      ["condition", query.condition],
-      ["province", query.province],
-      ["city", query.city],
-      ["priceMin", query.priceMin],
-      ["priceMax", query.priceMax],
-      ["sort", query.sort],
-      ["limit", typeof query.limit === "number" ? String(query.limit) : undefined],
-      ["offset", typeof query.offset === "number" ? String(query.offset) : undefined],
+      ['type', query.type],
+      ['keyword', query.keyword],
+      ['category', query.category],
+      ['condition', query.condition],
+      ['province', query.province],
+      ['city', query.city],
+      ['priceMin', query.priceMin],
+      ['priceMax', query.priceMax],
+      ['sort', query.sort],
+      [
+        'limit',
+        typeof query.limit === 'number' ? String(query.limit) : undefined,
+      ],
+      [
+        'offset',
+        typeof query.offset === 'number' ? String(query.offset) : undefined,
+      ],
     ];
 
     for (const [key, value] of entries) {
-      const normalized = (value ?? "").trim();
+      const normalized = (value ?? '').trim();
       if (normalized) {
         params.set(key, normalized);
       }
     }
 
     const queryString = params.toString();
-    const endpoint = `${process.env.NEXT_PUBLIC_API_URL}/listings${queryString ? `?${queryString}` : ""}`;
+    const endpoint = `${process.env.NEXT_PUBLIC_API_URL}/listings${queryString ? `?${queryString}` : ''}`;
 
     const res = await fetch(endpoint, {
-      method: "GET",
-      credentials: "include",
+      method: 'GET',
+      credentials: 'include',
     });
 
     const parsedJson = await res.json();
     if (!res.ok) {
-      throw parsedJson?.data?.message || "Failed to fetch listings.";
+      throw parsedJson?.data?.message || 'Failed to fetch listings.';
     }
 
     return {
@@ -72,6 +80,6 @@ export async function getHomeListings(query: HomeListingsQuery = {}): Promise<Ho
       offset: Number(parsedJson?.data?.offset ?? query.offset ?? 0),
     };
   } catch {
-    throw "An unexpected error occurred. Please try again later.";
+    throw 'An unexpected error occurred. Please try again later.';
   }
 }
